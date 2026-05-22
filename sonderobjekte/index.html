@@ -375,18 +375,22 @@ tr.status-red:hover    > td { background: #fff1f2 !important; }
     backdrop-filter: blur(4px);
     justify-content: center;
     align-items: flex-start;
-    padding-top: 60px;
+    padding: 20px 12px;
     z-index: 1000;
+    overflow-y: auto;          /* ganzer Overlay scrollbar */
 }
 .modal-content {
     background: #fff;
     padding: 22px 24px 18px;
     width: 440px;
     max-width: 95vw;
+    max-height: calc(100dvh - 40px);  /* nie höher als Viewport */
+    overflow-y: auto;          /* Inhalt scrollt intern */
     border-radius: 12px;
     box-shadow: var(--shadow-lg);
     border: 1px solid var(--gray-200);
     animation: modal-in 0.18s ease;
+    margin: auto;              /* zentriert auch wenn Overlay scrollt */
 }
 @keyframes modal-in {
     from { opacity: 0; transform: translateY(-12px) scale(0.98); }
@@ -403,7 +407,7 @@ tr.status-red:hover    > td { background: #fff1f2 !important; }
 /* ── LOGIN MODAL ─────────────────────────────────────────── */
 #login-modal {
     align-items: center;
-    padding-top: 0;
+    padding: 20px 12px;
     background: linear-gradient(135deg, var(--nova-900) 0%, #1d3a5f 50%, #0f2744 100%);
 }
 #login-modal .modal-content {
@@ -789,7 +793,7 @@ let searchTerm = "";
 function buildExportPayload() {
     return {
         generatedAt: new Date().toISOString(),
-        version: "terminverwaltung-sonderobjekte-v2.2.3",
+        version: "terminverwaltung-sonderobjekte-v2.2.4",
         customers,
         appointments,
         ...getHeaderState()
@@ -1733,6 +1737,6 @@ document.getElementById("logout-btn").addEventListener("click", async () => {
 
 initApp();
 </script>
-<footer class="footer" id="app-footer" style="display:none;">Made with Love &copy; &ndash; Terminverwaltung NOVA Sonderobjekte V 2.2.3</footer>
+<footer class="footer" id="app-footer" style="display:none;">Made with Love &copy; &ndash; Terminverwaltung NOVA Sonderobjekte V 2.2.4</footer>
 </body>
 </html>
