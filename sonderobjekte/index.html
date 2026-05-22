@@ -195,20 +195,31 @@ body {
 }
 
 /* ── PRESENCE ────────────────────────────────────────────── */
-.presence-bar { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; max-width: 320px; }
-.presence-chip {
-    display: inline-flex; align-items: center; gap: 5px;
-    padding: 4px 10px; border-radius: 6px;
+.presence-indicator {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 10px; border-radius: 6px;
     background: #f0fdf4; border: 1px solid #86efac;
-    color: #166534; font-size: 11px; white-space: nowrap;
-    font-weight: 500;
+    color: #166534; font-size: 12px; font-weight: 500;
+    cursor: default; white-space: nowrap;
+    position: relative;
 }
-.presence-chip .dot {
-    width: 6px; height: 6px; border-radius: 50%;
-    background: #22c55e; animation: pulse 2s infinite;
+.presence-indicator .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #22c55e; animation: pulse 2s infinite; flex-shrink: 0;
 }
+.presence-indicator .count { font-family: var(--mono); font-size: 12px; }
+.presence-indicator .tooltip {
+    display: none;
+    position: absolute; top: calc(100% + 6px); right: 0;
+    background: var(--gray-900); color: #fff;
+    font-size: 11px; padding: 6px 10px; border-radius: 6px;
+    white-space: nowrap; z-index: 200;
+    box-shadow: var(--shadow);
+    pointer-events: none;
+    line-height: 1.8;
+}
+.presence-indicator:hover .tooltip { display: block; }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
-.presence-label { font-size: 11px; color: var(--gray-500); }
 
 /* ── BUTTONS ─────────────────────────────────────────────── */
 .btn {
@@ -333,17 +344,13 @@ tr:last-child td { border-bottom: none; }
 .actions button { margin-right: 3px; margin-bottom: 2px; }
 
 /* ── STATUS-FARBEN ───────────────────────────────────────── */
-/* Status: linker Farbrand nur auf erster Spalte, Hintergrund subtil */
-tr.status-green  > td:first-child { border-left: 3px solid #22c55e; }
-tr.status-yellow > td:first-child { border-left: 3px solid #f59e0b; }
-tr.status-red    > td:first-child { border-left: 3px solid var(--danger); }
-tr.status-green  > td { background: #f6fef9 !important; }
-tr.status-yellow > td { background: #fffdf0 !important; }
-tr.status-red    > td { background: #fff8f8 !important; }
-/* Hover darf Status-Farbe nicht komplett überschreiben */
-tr.status-green:hover  > td { background: #edfdf4 !important; }
-tr.status-yellow:hover > td { background: #fffbe6 !important; }
-tr.status-red:hover    > td { background: #fff1f2 !important; }
+/* Status: nur Hintergrundfarbe, kein Rand */
+tr.status-green  > td { background: #f0fdf4 !important; }
+tr.status-yellow > td { background: #fefce8 !important; }
+tr.status-red    > td { background: #fff1f2 !important; }
+tr.status-green:hover  > td { background: #dcfce7 !important; }
+tr.status-yellow:hover > td { background: #fef9c3 !important; }
+tr.status-red:hover    > td { background: #ffe4e6 !important; }
 .status-icon-ok  { color: var(--success); font-weight: 600; text-align: center; font-size: 15px; }
 .status-icon-bad { color: var(--danger);  font-weight: 600; text-align: center; font-size: 15px; }
 
@@ -793,7 +800,7 @@ let searchTerm = "";
 function buildExportPayload() {
     return {
         generatedAt: new Date().toISOString(),
-        version: "terminverwaltung-sonderobjekte-v2.2.4",
+        version: "terminverwaltung-sonderobjekte-v2.2.5",
         customers,
         appointments,
         ...getHeaderState()
@@ -1568,24 +1575,21 @@ function stopPolling() {
 let presenceChannel = null;
 
 function renderPresenceChips(state) {
-    const bar   = document.getElementById("presence-bar");
-    const chips = document.getElementById("presence-chips");
-    if (!chips) return;
-    chips.innerHTML = "";
+    const bar = document.getElementById("presence-bar");
+    if (!bar) return;
     const users = [];
     Object.values(state).forEach(presences => {
         if (presences.length > 0 && presences[0].email) users.push(presences[0].email);
     });
-    if (users.length === 0) { if (bar) bar.style.display = "none"; return; }
-    if (bar) bar.style.display = "flex";
-    users.forEach(email => {
-        const short = email.length > 22 ? email.slice(0,20) + "..." : email;
-        const chip  = document.createElement("span");
-        chip.className = "presence-chip";
-        chip.innerHTML = '<span class="dot"></span>' + short;
-        chip.title = email;
-        chips.appendChild(chip);
-    });
+    if (users.length === 0) { bar.style.display = "none"; return; }
+    bar.style.display = "";
+    const tooltipLines = users.map(e => "&#128100; " + e).join("<br>");
+    bar.innerHTML =
+        '<span class="presence-indicator">' +
+        '<span class="dot"></span>' +
+        '<span class="count">' + users.length + ' online</span>' +
+        '<span class="tooltip">' + tooltipLines + '</span>' +
+        '</span>';
 }
 async function joinPresence(user) {
     if (presenceChannel) { await presenceChannel.unsubscribe(); presenceChannel = null; }
@@ -1737,6 +1741,6 @@ document.getElementById("logout-btn").addEventListener("click", async () => {
 
 initApp();
 </script>
-<footer class="footer" id="app-footer" style="display:none;">Made with Love &copy; &ndash; Terminverwaltung NOVA Sonderobjekte V 2.2.4</footer>
+<footer class="footer" id="app-footer" style="display:none;">Made with Love &copy; &ndash; Terminverwaltung NOVA Sonderobjekte V 2.2.5</footer>
 </body>
 </html>
