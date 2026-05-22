@@ -23,7 +23,243 @@
 -->
 
 <!-- Supabase JS v2 -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js">
+// ================================================================
+// SYNC STATUS
+// ================================================================
+function setSyncStatus(text, mode) {
+    const el = document.getElementById("sync-status");
+    if (!el) return;
+    el.textContent = text;
+    el.className = "sync-status " + (mode || "off");
+}
+
+// ================================================================
+// AUTH HELPERS
+// ================================================================
+function showLoginModal() {
+    document.getElementById("login-modal").style.display = "flex";
+    const chip = document.getElementById("user-chip");
+    const btn  = document.getElementById("logout-btn");
+    if (chip) chip.style.display = "none";
+    if (btn)  btn.style.display  = "none";
+    setSyncStatus("nicht angemeldet", "off");
+}
+function hideLoginModal() {
+    document.getElementById("login-modal").style.display = "none";
+}
+function showUserInfo(user) {
+    const chip = document.getElementById("user-chip");
+    if (chip) { chip.textContent = "&#128100; " + (user.email || "Angemeldet"); chip.style.display = ""; }
+    const btn = document.getElementById("logout-btn");
+    if (btn) btn.style.display = "";
+    setSyncStatus("Verbunden", "on");
+}
+
+// ================================================================
+// POLLING (anderer User hat gespeichert → alle 2 Sek pruefen)
+// ================================================================
+function startPolling() {
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = setInterval(async () => {
+        if (!currentUser || !db) return;
+        try {
+            const { data, error } = await db
+                .from(TABLE_NAME)
+                .select("updated_at, updated_by, data")
+                .eq("id", DATASET_ID)
+                .single();
+            if (error || !data) return;
+            if (data.updated_by === currentUser.id) return;
+            if (data.updated_at === lastKnownUpdatedAt) return;
+            lastKnownUpdatedAt = data.updated_at;
+            if (!data.data) return;
+            applyPayload(data.data);
+            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data.data)); } catch(e) {}
+            renderAll();
+            setSyncStatus("Aktualisiert (anderer Nutzer)", "on");
+        } catch(e) { console.warn("Poll-Fehler:", e); }
+    }, POLL_INTERVAL);
+}
+function stopPolling() {
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+}
+
+// ================================================================
+// PRESENCE
+// ================================================================
+let presenceChannel = null;
+
+function renderPresenceChips(state) {
+    const bar   = document.getElementById("presence-bar");
+    const chips = document.getElementById("presence-chips");
+    if (!chips) return;
+    chips.innerHTML = "";
+    const users = [];
+    Object.values(state).forEach(presences => {
+        if (presences.length > 0 && presences[0].email) users.push(presences[0].email);
+    });
+    if (users.length === 0) { if (bar) bar.style.display = "none"; return; }
+    if (bar) bar.style.display = "flex";
+    users.forEach(email => {
+        const short = email.length > 22 ? email.slice(0,20) + "..." : email;
+        const chip  = document.createElement("span");
+        chip.className = "presence-chip";
+        chip.innerHTML = '<span class="dot"></span>' + short;
+        chip.title = email;
+        chips.appendChild(chip);
+    });
+}
+async function joinPresence(user) {
+    if (presenceChannel) { await presenceChannel.unsubscribe(); presenceChannel = null; }
+    presenceChannel = db.channel("nova-sonderobjekte-presence", {
+        config: { presence: { key: user.id } }
+    });
+    presenceChannel
+        .on("presence", { event: "sync" }, () => {
+            renderPresenceChips(presenceChannel.presenceState());
+        });
+    await presenceChannel.subscribe(async (status) => {
+        if (status === "SUBSCRIBED") await presenceChannel.track({ email: user.email });
+    });
+}
+async function leavePresence() {
+    if (presenceChannel) {
+        await presenceChannel.untrack();
+        await presenceChannel.unsubscribe();
+        presenceChannel = null;
+    }
+    const bar = document.getElementById("presence-bar");
+    if (bar) bar.style.display = "none";
+}
+
+// ================================================================
+// SUPABASE SAVE
+// ================================================================
+async function syncToSupabase() {
+    if (!currentUser || !db) return;
+    setSyncStatus("Speichern...", "warn");
+    const payload = buildExportPayload();
+
+    const { data, error } = await db
+        .from(TABLE_NAME)
+        .update({ data: payload, updated_by: currentUser.id, updated_at: new Date().toISOString() })
+        .eq("id", DATASET_ID)
+        .select("id");
+
+    if (error) {
+        console.error("Supabase save error:", error);
+        setSyncStatus("Fehler: " + (error.message || "?"), "warn");
+        alert("Supabase Fehler:\n" + (error.message || JSON.stringify(error)));
+        return;
+    }
+    if (!data || data.length === 0) {
+        const { error: ie } = await db
+            .from(TABLE_NAME)
+            .insert({ id: DATASET_ID, data: payload, updated_by: currentUser.id });
+        if (ie) { setSyncStatus("Fehler (insert): " + ie.message, "warn"); return; }
+    }
+    lastKnownUpdatedAt = new Date().toISOString();
+    setSyncStatus("Gespeichert", "on");
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(payload)); } catch(e) {}
+}
+
+function scheduleSupabaseSave() {
+    if (supabaseDebounceTimer) clearTimeout(supabaseDebounceTimer);
+    supabaseDebounceTimer = setTimeout(syncToSupabase, 500);
+}
+
+// ================================================================
+// SUPABASE LOAD
+// ================================================================
+async function loadFromSupabase() {
+    if (!currentUser || !db) return false;
+    setSyncStatus("Lade Daten...", "warn");
+    const { data, error } = await db
+        .from(TABLE_NAME)
+        .select("data, updated_at")
+        .eq("id", DATASET_ID)
+        .maybeSingle();
+
+    if (error) {
+        console.error("Supabase load error:", error);
+        setSyncStatus("Ladefehler: " + (error.message || "?"), "warn");
+        loadFromLocalStorage();
+        return false;
+    }
+    if (!data || !data.data) {
+        const hasLocal = loadFromLocalStorage();
+        if (hasLocal) { setSyncStatus("Lokal geladen", "warn"); scheduleSupabaseSave(); }
+        else { initDemoData(); saveData(); }
+        return false;
+    }
+    lastKnownUpdatedAt = data.updated_at;
+    applyPayload(data.data);
+    setSyncStatus("Geladen", "on");
+    return true;
+}
+
+// ================================================================
+// APP INIT
+// ================================================================
+async function initApp() {
+    db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+    const hadLocal = loadFromLocalStorage();
+    if (hadLocal) renderAll();
+
+    const { data: { session } } = await db.auth.getSession();
+    if (session && session.user) {
+        currentUser = session.user;
+        hideLoginModal();
+        showUserInfo(currentUser);
+        await joinPresence(currentUser);
+        startPolling();
+        await loadFromSupabase();
+        renderAll();
+    } else {
+        showLoginModal();
+        if (!hadLocal) { initDemoData(); renderAll(); }
+    }
+    db.auth.onAuthStateChange((_event, session) => {
+        if (session && session.user) { currentUser = session.user; showUserInfo(currentUser); }
+        else if (_event === "SIGNED_OUT") { currentUser = null; }
+    });
+}
+
+
+document.getElementById("login-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email    = document.getElementById("login-email").value.trim();
+    const password = document.getElementById("login-password").value;
+    const errEl    = document.getElementById("login-error");
+    const btn      = e.target.querySelector("button[type=submit]");
+    errEl.textContent = "";
+    btn.disabled = true; btn.textContent = "Anmelden...";
+    const { data, error } = await db.auth.signInWithPassword({ email, password });
+    btn.disabled = false; btn.textContent = "Anmelden";
+    if (error) { errEl.textContent = "Fehler: " + (error.message || "Login fehlgeschlagen"); return; }
+    currentUser = data.user;
+    hideLoginModal(); showUserInfo(currentUser);
+    await joinPresence(currentUser);
+    startPolling();
+    await loadFromSupabase();
+    renderAll();
+});
+
+document.getElementById("logout-btn").addEventListener("click", async () => {
+    if (!confirm("Wirklich abmelden?")) return;
+    stopPolling();
+    await leavePresence();
+    await db.auth.signOut();
+    currentUser = null;
+    customers = []; appointments = []; selectedCustomerId = null;
+    localStorage.removeItem(STORAGE_KEY);
+    showLoginModal(); renderAll();
+});
+
+initApp();
+</script>
 
 <style>
 body {
@@ -36,24 +272,11 @@ body {
 
 /* Header im NOVA-Stil */
 .header-main {
-    background: #163b5b;
-    color: #fff;
-    padding: 18px 24px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-    display: flex;
-    align-items: center;
-    gap: 14px;
+    background: #163b5b; color: #fff; padding: 18px 24px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2); display:flex; align-items:center; gap:14px;
 }
-.header-logo {
-    height: 42px;
-    width: auto;
-    border-radius: 6px;
-    flex-shrink: 0;
-}
-.header-text {
-    display: flex;
-    flex-direction: column;
-}
+.header-logo { height:42px; width:auto; border-radius:6px; flex-shrink:0; }
+.header-text { display:flex; flex-direction:column; }
 .header-title {
     font-size: 24px;
     font-weight: bold;
@@ -269,42 +492,31 @@ textarea { resize: vertical; }
 
 
 /* Presence */
-.presence-bar {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 12px;
-    flex-wrap: wrap;
-}
+.presence-bar { display:flex; align-items:center; gap:6px; font-size:12px; flex-wrap:wrap; }
 .presence-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 4px 8px;
-    border-radius: 12px;
-    background: #eaf7ee;
-    border: 1px solid #b7dfc2;
-    color: #1a6b3c;
-    font-size: 11px;
-    white-space: nowrap;
+    display:inline-flex; align-items:center; gap:4px; padding:4px 8px;
+    border-radius:12px; background:#eaf7ee; border:1px solid #b7dfc2;
+    color:#1a6b3c; font-size:11px; white-space:nowrap;
 }
 .presence-chip .dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: #22c55e;
-    display: inline-block;
-    animation: pulse 2s infinite;
+    width:7px; height:7px; border-radius:50%; background:#22c55e;
+    display:inline-block; animation:pulse 2s infinite;
 }
-@keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50%       { opacity: 0.4; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+.presence-label { font-size:11px; color:#6b7280; white-space:nowrap; }
+.user-chip {
+    font-size:12px; color:#163b5b; padding:6px 10px;
+    border:1px solid #b6cce0; border-radius:6px; background:#eaf3fb;
+    white-space:nowrap; max-width:180px; overflow:hidden; text-overflow:ellipsis;
 }
-.presence-label {
-    font-size: 11px;
-    color: #6b7280;
-    white-space: nowrap;
+.sync-status {
+    font-size:12px; color:#555; padding:6px 10px;
+    border:1px dashed #ced4da; border-radius:6px; background:#f8fafc;
+    line-height:1; white-space:nowrap;
 }
+.sync-status.on   { color:#198754; border-color:#b7dfc2; background:#eaf7ee; }
+.sync-status.warn { color:#b45309; border-color:#f3d19c; background:#fff7ed; }
+.sync-status.off  { color:#6b7280; }
 
 /* Responsive */
 @media (max-width: 800px) {
@@ -339,11 +551,11 @@ textarea { resize: vertical; }
 
 <!-- HEADER -->
 <header class="header-main">
-    <img src="https://raw.githubusercontent.com/kaffeetrinker80/NOVA/main/sonderobjekte/nova_logo.png"
-         alt="NOVA Logo" class="header-logo">
+    <img src="https://raw.githubusercontent.com/kaffeetrinker80/NOVA/main/sonderobjekte/nova_logo.png" alt="NOVA Logo" class="header-logo">
     <div class="header-text">
     <div id="editable-header-title" class="header-title editable-header" contenteditable="true" spellcheck="false">Terminverwaltung NOVA Sonderobjekte</div>
     <div id="editable-header-subtitle" class="header-subtitle editable-header" contenteditable="true" spellcheck="false">Wiederkehrende Termine, Einzelaufträge und Erinnerungen für kleine Labore</div>
+    </div>
 </header>
 
 <!-- TOP BAR -->
@@ -360,10 +572,6 @@ textarea { resize: vertical; }
         <button id="import-btn" class="btn btn-secondary">⬆ Importieren</button>
         <input type="file" id="import-file" accept="application/json" style="display:none" />
         <button id="export-btn" class="btn btn-secondary">⬇ Exportieren</button>
-        <div id="presence-bar" class="presence-bar" style="display:none;">
-            <span class="presence-label">Online:</span>
-            <div id="presence-chips"></div>
-        </div>
         <span id="sync-status" class="sync-status off">☁ nicht angemeldet</span>
         <span id="user-chip" class="user-chip" style="display:none;"></span>
         <button id="logout-btn" class="btn btn-secondary btn-small" style="display:none;">🔓 Abmelden</button>
@@ -591,7 +799,8 @@ textarea { resize: vertical; }
 const SUPABASE_URL  = "https://avuimpwjslrgpdahyloa.supabase.co";
 const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF2dWltcHdqc2xyZ3BkYWh5bG9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwOTc0MjAsImV4cCI6MjA5NDY3MzQyMH0.q6s3s36WOoGGLbH7gsWqyzY2b_36vUjAHqKrGrAhYEs";
 const TABLE_NAME    = "nova_sonderobjekte_app_data";
-const DATASET_ID    = "shared";          // gemeinsamer Datensatz für alle Nutzer
+const DATASET_ID    = "shared";
+const POLL_INTERVAL = 2000;
 const STORAGE_KEY   = "nova_sonderobjekte_v2";
 
 let db = null; // wird in initApp() initialisiert
@@ -599,8 +808,10 @@ let db = null; // wird in initApp() initialisiert
 // ================================================================
 // STATE
 // ================================================================
-let currentUser = null;
+let currentUser           = null;
 let supabaseDebounceTimer = null;
+let pollTimer             = null;
+let lastKnownUpdatedAt    = null;
 
 let customers = [];
 let appointments = [];
@@ -621,178 +832,12 @@ let searchTerm = "";
 // ================================================================
 // SYNC STATUS
 // ================================================================
-function setSyncStatus(text, mode) {
-    const el = document.getElementById("sync-status");
-    if (!el) return;
-    el.textContent = "☁ " + text;
-    el.className = "sync-status " + (mode || "off");
-}
-
-
-// ================================================================
-// REALTIME PRESENCE
-// ================================================================
-let presenceChannel = null;
-
-function renderPresenceChips(state) {
-    const bar   = document.getElementById("presence-bar");
-    const chips = document.getElementById("presence-chips");
-    if (!chips) return;
-    chips.innerHTML = "";
-
-    // Ein Eintrag pro user.id-Key – egal wie viele Tabs offen sind
-    const users = [];
-    Object.values(state).forEach(presences => {
-        if (presences.length > 0 && presences[0].email) {
-            users.push(presences[0].email);
-        }
-    });
-
-    if (users.length === 0) { bar.style.display = "none"; return; }
-    bar.style.display = "flex";
-
-    users.forEach(email => {
-        const short = email.length > 22 ? email.slice(0, 20) + "…" : email;
-        const chip  = document.createElement("span");
-        chip.className = "presence-chip";
-        chip.innerHTML = `<span class="dot"></span>${short}`;
-        chip.title     = email;
-        chips.appendChild(chip);
-    });
-}
-
-async function joinPresence(user) {
-    if (presenceChannel) {
-        await presenceChannel.unsubscribe();
-        presenceChannel = null;
-    }
-
-    presenceChannel = db.channel("nova-sonderobjekte-presence", {
-        config: { presence: { key: user.id } }
-    });
-
-    presenceChannel
-        .on("presence", { event: "sync" }, () => {
-            renderPresenceChips(presenceChannel.presenceState());
-        })
-        .on("presence", { event: "join" }, ({ newPresences }) => {
-            // state wird via sync aktualisiert
-        })
-        .on("presence", { event: "leave" }, ({ leftPresences }) => {
-            // state wird via sync aktualisiert
-        });
-
-    await presenceChannel.subscribe(async (status) => {
-        if (status === "SUBSCRIBED") {
-            await presenceChannel.track({ email: user.email });
-        }
-    });
-}
-
-async function leavePresence() {
-    if (presenceChannel) {
-        await presenceChannel.untrack();
-        await presenceChannel.unsubscribe();
-        presenceChannel = null;
-    }
-    const bar = document.getElementById("presence-bar");
-    if (bar) bar.style.display = "none";
-}
-
-
-// ================================================================
-// REALTIME DATEN-SYNC (andere User speichern → wir laden neu)
-// ================================================================
-let realtimeChannel = null;
-
-function startRealtimeSync() {
-    if (realtimeChannel) { realtimeChannel.unsubscribe(); realtimeChannel = null; }
-
-    realtimeChannel = db.channel("nova-sonderobjekte-db")
-        .on("postgres_changes", {
-            event: "UPDATE",
-            schema: "public",
-            table: TABLE_NAME,
-            filter: `id=eq.${DATASET_ID}`
-        }, async (payload) => {
-            // Nur neu laden wenn ein *anderer* User gespeichert hat
-            if (payload.new?.updated_by === currentUser?.id) return;
-            if (!payload.new?.data) return;
-            applyPayload(payload.new.data);
-            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(payload.new.data)); } catch(e) {}
-            renderAll();
-            setSyncStatus("Aktualisiert ✓ (anderer Nutzer)", "on");
-        })
-        .subscribe();
-}
-
-function stopRealtimeSync() {
-    if (realtimeChannel) { realtimeChannel.unsubscribe(); realtimeChannel = null; }
-}
 
 // ================================================================
 // AUTH
 // ================================================================
-function showLoginModal() {
-    document.getElementById("login-modal").style.display = "flex";
-    document.getElementById("user-chip").style.display = "none";
-    document.getElementById("logout-btn").style.display = "none";
-    setSyncStatus("nicht angemeldet", "off");
-}
 
-function hideLoginModal() {
-    document.getElementById("login-modal").style.display = "none";
-}
 
-function showUserInfo(user) {
-    const chip = document.getElementById("user-chip");
-    chip.textContent = "👤 " + (user.email || "Angemeldet");
-    chip.style.display = "";
-    document.getElementById("logout-btn").style.display = "";
-    setSyncStatus("Verbunden", "on");
-}
-
-document.getElementById("login-form").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const email = document.getElementById("login-email").value.trim();
-    const password = document.getElementById("login-password").value;
-    const errEl = document.getElementById("login-error");
-    errEl.textContent = "";
-    const btn = e.target.querySelector("button[type=submit]");
-    btn.disabled = true;
-    btn.textContent = "Anmelden …";
-
-    const { data, error } = await db.auth.signInWithPassword({ email, password });
-
-    btn.disabled = false;
-    btn.textContent = "Anmelden";
-
-    if (error) {
-        errEl.textContent = "Fehler: " + (error.message || "Login fehlgeschlagen");
-        return;
-    }
-    currentUser = data.user;
-    hideLoginModal();
-    showUserInfo(currentUser);
-    await joinPresence(currentUser);
-    startRealtimeSync();
-    await loadFromSupabase();
-    renderAll();
-});
-
-document.getElementById("logout-btn").addEventListener("click", async () => {
-    if (!confirm("Wirklich abmelden? Nicht gespeicherte Änderungen gehen verloren.")) return;
-    await leavePresence();
-    stopRealtimeSync();
-    await db.auth.signOut();
-    currentUser = null;
-    customers = [];
-    appointments = [];
-    selectedCustomerId = null;
-    localStorage.removeItem(STORAGE_KEY);
-    showLoginModal();
-    renderAll();
-});
 
 // ================================================================
 // SUPABASE SAVE / LOAD
@@ -800,91 +845,30 @@ document.getElementById("logout-btn").addEventListener("click", async () => {
 function buildExportPayload() {
     return {
         generatedAt: new Date().toISOString(),
-        version: "terminverwaltung-sonderobjekte-v2.2",
+        version: "terminverwaltung-sonderobjekte-v2.2.1",
         customers,
         appointments,
         ...getHeaderState()
     };
 }
 
-async function syncToSupabase() {
-    if (!currentUser) { console.warn("syncToSupabase: kein User"); return; }
-    if (!db)          { console.warn("syncToSupabase: db null");   return; }
-    setSyncStatus("Speichern …", "warn");
-    const payload = buildExportPayload();
 
-    const { data, error } = await db
-        .from(TABLE_NAME)
-        .update({ data: payload, updated_by: currentUser.id, updated_at: new Date().toISOString() })
-        .eq("id", DATASET_ID)
-        .select("id");
-
-    if (error) {
-        console.error("Supabase save error:", error);
-        setSyncStatus("Fehler: " + (error.message || error.code || "?"), "warn");
-        alert("Supabase Fehler:\n" + (error.message || JSON.stringify(error)));
-        return;
-    }
-    if (!data || data.length === 0) {
-        console.warn("UPDATE traf keine Zeile – INSERT folgt");
-        const { error: ie } = await db
-            .from(TABLE_NAME)
-            .insert({ id: DATASET_ID, data: payload, updated_by: currentUser.id });
-        if (ie) {
-            setSyncStatus("Fehler (insert): " + ie.message, "warn");
-            alert("Supabase INSERT Fehler:\n" + ie.message);
-            return;
-        }
-    }
-    setSyncStatus("Gespeichert ✓", "on");
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(payload)); } catch(e) {}
-}
-function scheduleSupabaseSave() {
-    if (supabaseDebounceTimer) clearTimeout(supabaseDebounceTimer);
-    supabaseDebounceTimer = setTimeout(() => {
-        syncToSupabase();
-    }, 1500);
-}
-
-async function loadFromSupabase() {
-    if (!currentUser) return false;
-    setSyncStatus("Lade Daten …", "warn");
-    const { data, error } = await db
-        .from(TABLE_NAME)
-        .select("data")
-        .eq("id", DATASET_ID)
-        .maybeSingle();
-
-    if (error) {
-        console.error("Supabase load error:", error);
-        setSyncStatus("Ladefehler: " + (error.message || error.code || "unbekannt"), "warn");
-        alert("Supabase Fehler beim Laden:\n" + (error.message || JSON.stringify(error)));
-        loadFromLocalStorage();
-        return false;
-    }
-
-    if (!data || !data.data) {
-        // Kein Cloud-Datensatz: prüfe ob lokale Daten vorhanden
-        const hasLocal = loadFromLocalStorage();
-        if (hasLocal) {
-            setSyncStatus("Lokal geladen – noch kein Cloud-Stand", "warn");
-            // Lokale Daten direkt hochladen
-            scheduleSupabaseSave();
-        } else {
-            initDemoData();
-            saveData();
-        }
-        return false;
-    }
-
-    applyPayload(data.data);
-    setSyncStatus("Geladen ✓", "on");
-    return true;
-}
 
 // ================================================================
 // LOCAL STORAGE (Cache / Fallback)
 // ================================================================
+// saveData: localStorage + Supabase (debounced)
+function saveData() {
+    try {
+        const payload = buildExportPayload();
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    } catch(e) {}
+    if (currentUser) {
+        setSyncStatus("Aenderung...", "warn");
+        scheduleSupabaseSave();
+    }
+}
+
 function ensureObjectScope(obj) {
     if (!obj.scope) obj.scope = {};
     if (typeof obj.scope.legionellen !== "boolean") obj.scope.legionellen = false;
@@ -933,18 +917,6 @@ function loadFromLocalStorage() {
 }
 
 // saveData: immer localStorage + Supabase (debounced)
-function saveData() {
-    try {
-        const payload = buildExportPayload();
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-    } catch (e) {
-        console.warn("localStorage nicht verfügbar:", e);
-    }
-    if (currentUser) {
-        setSyncStatus("Änderung …", "warn");
-        scheduleSupabaseSave();
-    }
-}
 
 // ================================================================
 // HEADER STATE
@@ -1565,42 +1537,9 @@ function buildCustomersFromObjectList(list) {
 // ================================================================
 // APP INIT
 // ================================================================
-async function initApp() {
-    // Supabase Client initialisieren (wie im funktionierenden Template)
-    db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
-    // Zuerst localStorage laden für schnelle UI
-    const hadLocal = loadFromLocalStorage();
-    if (hadLocal) renderAll();
 
-    // Dann Auth-Status prüfen
-    const { data: { session } } = await db.auth.getSession();
-    if (session && session.user) {
-        currentUser = session.user;
-        hideLoginModal();
-        showUserInfo(currentUser);
-        await joinPresence(currentUser);
-        await loadFromSupabase();
-        renderAll();
-    } else {
-        showLoginModal();
-        if (!hadLocal) { initDemoData(); renderAll(); }
-    }
-
-    // Auth-Änderungen beobachten (z.B. Token-Refresh)
-    db.auth.onAuthStateChange((_event, session) => {
-        if (session && session.user) {
-            currentUser = session.user;
-            showUserInfo(currentUser);
-        } else if (_event === "SIGNED_OUT") {
-            currentUser = null;
-        }
-    });
-}
-
-initApp();
 </script>
-
-<footer class="footer">Made with Love © – Terminverwaltung NOVA Sonderobjekte V 2.2</footer>
+<footer class="footer">Made with Love &copy; &ndash; Terminverwaltung NOVA Sonderobjekte V 2.2.1</footer>
 </body>
 </html>
