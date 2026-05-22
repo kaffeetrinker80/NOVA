@@ -1,0 +1,1423 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Terminverwaltung NOVA Sonderobjekte</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!--
+  SUPABASE SETUP – einmalig im Dashboard ausführen:
+  ─────────────────────────────────────────────────
+  create table nova_sonderobjekte_app_data (
+    id         uuid primary key default gen_random_uuid(),
+    user_id    uuid references auth.users unique not null,
+    data       jsonb,
+    updated_at timestamptz default now()
+  );
+  alter table sondertermine_data enable row level security;
+  create policy "own data only"
+    on sondertermine_data for all
+    using  (auth.uid() = user_id)
+    with check (auth.uid() = user_id);
+  ─────────────────────────────────────────────────
+-->
+
+<!-- Supabase JS v2 -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: #f3f5f7;
+    margin: 0;
+    padding: 0;
+    color: #212529;
+}
+
+/* Header im NOVA-Stil */
+.header-main {
+    background: #163b5b;
+    color: #fff;
+    padding: 18px 24px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+.header-title {
+    font-size: 24px;
+    font-weight: bold;
+}
+.header-subtitle {
+    font-size: 13px;
+    opacity: 0.9;
+    margin-top: 4px;
+}
+.editable-header {
+    display: inline-block;
+    border-radius: 6px;
+    padding: 2px 6px;
+    transition: background 0.15s, outline 0.15s;
+}
+.editable-header:hover { background: rgba(255,255,255,0.08); }
+.editable-header:focus {
+    outline: 2px solid rgba(255,255,255,0.35);
+    background: rgba(255,255,255,0.12);
+}
+
+/* Topbar */
+.topbar {
+    background: #ffffff;
+    padding: 16px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 20px;
+    border-bottom: 1px solid #d1d5db;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+.topbar-left h2 { margin: 0 0 8px 0; font-size: 18px; }
+#search-input {
+    width: 320px;
+    max-width: 100%;
+    padding: 8px 10px;
+    border-radius: 4px;
+    border: 1px solid #ced4da;
+    font-size: 14px;
+}
+.info-line { margin-top: 6px; font-size: 12px; color: #555; }
+.topbar-right { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+/* Sync-Status Badge */
+.sync-status {
+    font-size: 12px;
+    color: #555;
+    padding: 6px 10px;
+    border: 1px dashed #ced4da;
+    border-radius: 6px;
+    background: #f8fafc;
+    line-height: 1;
+    white-space: nowrap;
+}
+.sync-status.on  { color: #198754; border-color: #b7dfc2; background: #eaf7ee; }
+.sync-status.warn{ color: #b45309; border-color: #f3d19c; background: #fff7ed; }
+.sync-status.off { color: #6b7280; }
+
+/* User-Chip */
+.user-chip {
+    font-size: 12px;
+    color: #163b5b;
+    padding: 6px 10px;
+    border: 1px solid #b6cce0;
+    border-radius: 6px;
+    background: #eaf3fb;
+    white-space: nowrap;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Buttons */
+.btn {
+    padding: 7px 12px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    background: #0d6efd;
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.btn-secondary { background: #6c757d; color: #fff; }
+.btn-danger    { background: #dc3545; color: #fff; }
+.btn-small     { padding: 5px 9px; font-size: 12px; }
+.btn:disabled  { opacity: 0.6; cursor: default; }
+.link-button {
+    background: none; border: none; padding: 0; margin: 0;
+    color: #0d6efd; text-decoration: underline; cursor: pointer; font-size: 13px;
+}
+
+/* Tabs */
+.tab-nav {
+    display: flex; gap: 10px; padding: 10px 24px 0 24px; background: #f3f5f7;
+}
+.tab-nav button {
+    background: #e9ecef;
+    border: 1px solid #ced4da;
+    border-bottom: none;
+    padding: 7px 14px;
+    border-radius: 6px 6px 0 0;
+    font-size: 13px;
+    cursor: pointer;
+}
+.tab-nav button.active {
+    background: #ffffff;
+    border-bottom: 1px solid #ffffff;
+    color: #0d6efd;
+    font-weight: bold;
+}
+
+/* Container & Cards */
+.container { padding: 0 24px 24px 24px; }
+.footer {
+    margin-top: 28px; padding: 14px 20px; text-align: center;
+    font-size: 12px; color: #6b7280; border-top: 1px solid #d1d5db; background: #f8fafc;
+}
+.card {
+    background: #ffffff; border-radius: 6px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    padding: 14px 16px 16px 16px; margin-top: 12px;
+}
+.card h3 { margin: 0 0 10px 0; font-size: 15px; }
+.card-header-line { display: flex; justify-content: space-between; align-items: center; }
+
+/* Tabellen */
+table { width: 100%; border-collapse: collapse; background: #fff; margin-top: 8px; }
+th, td { padding: 7px 8px; border-bottom: 1px solid #e5e7eb; font-size: 13px; text-align: left; }
+th { background: #e9ecef; }
+tr:nth-child(even) { background: #f8fafc; }
+.actions button { margin-right: 4px; margin-bottom: 2px; }
+
+/* Farbcodierung */
+.status-green  { background: #d4edda !important; }
+.status-yellow { background: #fff3cd !important; }
+.status-red    { background: #f8d7da !important; }
+.status-icon-ok  { color: #198754; font-weight: bold; text-align: center; }
+.status-icon-bad { color: #dc3545; font-weight: bold; text-align: center; }
+
+/* Layout Kunden & Objekte */
+.split-layout { display: flex; gap: 18px; margin-top: 10px; }
+.panel { flex: 1; }
+.panel h4 { margin: 0 0 6px 0; font-size: 14px; }
+.selected-row { background: #e7f1ff !important; }
+.info-text { font-size: 12px; color: #555; }
+
+/* Details-Zeile */
+.details-row { display: none; background: #f7f9fb !important; }
+.details-cell {
+    padding: 10px 12px; font-size: 12px; color: #333;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+/* Modals */
+.modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    justify-content: center;
+    align-items: flex-start;
+    padding-top: 60px;
+    z-index: 1000;
+}
+.modal-content {
+    background: #ffffff;
+    padding: 16px 18px 14px 18px;
+    width: 420px;
+    max-width: 95vw;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+}
+.modal-header { font-size: 15px; margin-bottom: 8px; font-weight: bold; }
+.modal-footer { text-align: right; margin-top: 8px; }
+
+/* Login-Modal etwas größer */
+#login-modal .modal-content { max-width: 360px; }
+.login-logo {
+    font-size: 32px; text-align: center; margin-bottom: 8px;
+}
+.login-title {
+    font-size: 16px; font-weight: bold; text-align: center;
+    color: #163b5b; margin-bottom: 4px;
+}
+.login-sub {
+    font-size: 12px; text-align: center; color: #888; margin-bottom: 14px;
+}
+#login-error { color: #dc3545; font-size: 12px; margin: -4px 0 6px 0; min-height: 16px; }
+
+/* Inputs */
+input, textarea, select {
+    width: 100%; padding: 6px 7px; margin-top: 3px; margin-bottom: 8px;
+    box-sizing: border-box; font-size: 13px; border-radius: 4px; border: 1px solid #ced4da;
+}
+label { font-size: 13px; }
+textarea { resize: vertical; }
+.detail-actions { margin-bottom: 6px; display: flex; gap: 6px; }
+
+/* Scope-Checkboxen */
+.scope-group { margin: 4px 0 8px 0; }
+.scope-checkboxes { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-bottom: 6px; }
+.scope-checkboxes label { font-size: 12px; display: flex; align-items: center; }
+.scope-checkboxes input { width: auto; margin-right: 4px; margin-bottom: 0; }
+
+/* KW-Helfer */
+.kw-helper { font-size: 12px; margin-top: -4px; margin-bottom: 4px; }
+.kw-row { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
+.kw-row input { width: 80px; margin-bottom: 0; }
+
+/* Responsive */
+@media (max-width: 800px) {
+    .topbar { flex-direction: column; }
+    .split-layout { flex-direction: column; }
+}
+@media print {
+    @page { size: A4 landscape; }
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN-MODAL (wird beim Start gezeigt bis Authentifizierung klar ist) -->
+<div class="modal" id="login-modal" style="display:flex;">
+    <div class="modal-content">
+        <div class="login-logo">🔐</div>
+        <div class="login-title">Terminverwaltung NOVA Sonderobjekte</div>
+        <div class="login-sub">NOVA Praxis-Hygiene – Supabase Login</div>
+        <form id="login-form" autocomplete="on">
+            <label for="login-email">E-Mail</label>
+            <input type="email" id="login-email" autocomplete="email" required placeholder="deine@email.de">
+            <label for="login-password">Passwort</label>
+            <input type="password" id="login-password" autocomplete="current-password" required placeholder="••••••••">
+            <div id="login-error"></div>
+            <div class="modal-footer">
+                <button type="submit" class="btn" style="width:100%;justify-content:center;">Anmelden</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- HEADER -->
+<header class="header-main">
+    <div id="editable-header-title" class="header-title editable-header" contenteditable="true" spellcheck="false">Terminverwaltung NOVA Sonderobjekte</div>
+    <div id="editable-header-subtitle" class="header-subtitle editable-header" contenteditable="true" spellcheck="false">Wiederkehrende Termine, Einzelaufträge und Erinnerungen für kleine Labore</div>
+</header>
+
+<!-- TOP BAR -->
+<section class="topbar">
+    <div class="topbar-left">
+        <h2>Terminübersicht</h2>
+        <input type="text" id="search-input" placeholder="Suche nach Kunde, Objekt, PLZ, Ort..." />
+        <div class="info-line">
+            Gefunden: <span id="found-count">0</span> Einträge (bald fällige nächste Untersuchungen)
+        </div>
+    </div>
+    <div class="topbar-right">
+        <button id="print-btn" class="btn btn-secondary">🖨 Drucken</button>
+        <button id="import-btn" class="btn btn-secondary">⬆ Importieren</button>
+        <input type="file" id="import-file" accept="application/json" style="display:none" />
+        <button id="export-btn" class="btn btn-secondary">⬇ Exportieren</button>
+        <span id="sync-status" class="sync-status off">☁ nicht angemeldet</span>
+        <span id="user-chip" class="user-chip" style="display:none;"></span>
+        <button id="logout-btn" class="btn btn-secondary btn-small" style="display:none;">🔓 Abmelden</button>
+    </div>
+</section>
+
+<!-- TABS -->
+<nav class="tab-nav">
+    <button id="tab-customers" class="active">👤 Kunden &amp; Objekte</button>
+    <button id="tab-allobjects">📅 Anlagen &amp; Termine</button>
+</nav>
+
+<div class="container">
+
+    <!-- VIEW: KUNDEN & OBJEKTE -->
+    <div id="view-customers">
+        <section class="card">
+            <h3>Bald fällige nächste Untersuchungen</h3>
+            <div class="info-text">
+                Alle Objekte mit nächstem Termin innerhalb der nächsten 60 Tage (oder überfällig).
+                <b>Rot</b> = überfällig, <b>Gelb</b> = in den nächsten 14 Tagen, <b>Grün</b> = später.
+            </div>
+            <table id="upcoming-table">
+                <thead>
+                    <tr>
+                        <th>Kunde</th><th>Objekt</th><th>Art</th><th>Ort</th><th>Nächster Termin</th>
+                    </tr>
+                </thead>
+                <tbody id="upcoming-tbody"></tbody>
+            </table>
+        </section>
+
+        <section class="card">
+            <div class="card-header-line">
+                <h3>Kunden &amp; Objekte (Bearbeitung)</h3>
+                <button class="btn btn-small" id="new-customer-btn">+ Neuer Kunde</button>
+            </div>
+            <div class="split-layout">
+                <div class="panel">
+                    <h4>Kunden</h4>
+                    <table id="customer-table">
+                        <thead><tr><th>Kunde</th><th>Anzahl Objekte</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                <div class="panel">
+                    <h4 id="detail-customer-title">Kein Kunde ausgewählt</h4>
+                    <p id="detail-customer-address" class="info-text"></p>
+                    <p id="detail-customer-notes" class="info-text"></p>
+                    <div class="detail-actions">
+                        <button id="edit-customer-btn" class="btn-secondary btn-small">Kunde bearbeiten</button>
+                        <button id="delete-customer-btn" class="btn-danger btn-small">Kunde löschen</button>
+                        <button id="new-object-btn" class="btn btn-small">+ Neues Objekt</button>
+                    </div>
+                    <table id="customer-objects-table">
+                        <thead>
+                            <tr>
+                                <th>Objekt</th><th>Art</th><th>Ort</th>
+                                <th>Letzte Untersuchung</th><th>Nächster Termin</th><th>Aktionen</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- VIEW: ALLE ANLAGEN & TERMINE -->
+    <div id="view-allobjects" style="display:none;">
+        <section class="card">
+            <h3>Alle Anlagen &amp; Termine</h3>
+            <div class="info-text">
+                Alle Objekte, sortiert nach nächster Untersuchung (bald fällige zuerst, ohne Datum am Ende).
+                Objektname ist klickbar für direkte Historie.
+            </div>
+            <table id="allobjects-table">
+                <thead>
+                    <tr>
+                        <th>Status</th><th>Kunde</th><th>Objekt (Historie)</th><th>Art</th>
+                        <th>Ort</th><th>Letzte Untersuchung</th><th>Nächste Untersuchung</th>
+                        <th>Routine (Monate)</th><th>Aktionen</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </section>
+    </div>
+
+</div>
+
+<!-- MODAL: KUNDE -->
+<div class="modal" id="customer-modal">
+    <div class="modal-content">
+        <div class="modal-header" id="customer-modal-title">Neuer Kunde</div>
+        <form id="customer-form">
+            <label for="customer-name">Name des Kunden</label>
+            <input type="text" id="customer-name" required>
+            <label for="customer-street">Straße / Hausnummer</label>
+            <input type="text" id="customer-street">
+            <label for="customer-zip">PLZ</label>
+            <input type="text" id="customer-zip">
+            <label for="customer-city">Ort</label>
+            <input type="text" id="customer-city">
+            <label for="customer-notes">Notizen (optional)</label>
+            <textarea id="customer-notes" rows="3"></textarea>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary btn-small" id="customer-cancel">Abbrechen</button>
+                <button type="submit" class="btn btn-small">Speichern</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL: OBJEKT -->
+<div class="modal" id="object-modal">
+    <div class="modal-content">
+        <div class="modal-header" id="object-modal-title">Neues Objekt</div>
+        <form id="object-form">
+            <div class="info-text" id="object-modal-customer-label"></div>
+            <label for="obj-name">Objekt / Anlage</label>
+            <input type="text" id="obj-name" required>
+            <label for="obj-type">Art der Anlage</label>
+            <select id="obj-type">
+                <option value="">- bitte wählen -</option>
+                <option value="Schwimmbeckenuntersuchung">Schwimmbeckenuntersuchung</option>
+                <option value="Kühlwasser">Kühlwasser</option>
+                <option value="Eigenversorgungsanlage">Eigenversorgungsanlage</option>
+                <option value="Sonstige">Sonstige</option>
+            </select>
+            <label for="obj-city">Ort</label>
+            <input type="text" id="obj-city">
+            <label for="obj-last">Letzte Untersuchung (optional)</label>
+            <input type="date" id="obj-last">
+            <label for="obj-interval">Untersuchungsroutine (Monate)</label>
+            <select id="obj-interval">
+                <option value="0">Keine Routine</option>
+                <option value="1">Alle 1 Monat</option>
+                <option value="2">Alle 2 Monate</option>
+                <option value="3">Alle 3 Monate</option>
+                <option value="4">Alle 4 Monate</option>
+                <option value="5">Alle 5 Monate</option>
+                <option value="6">Alle 6 Monate</option>
+                <option value="7">Alle 7 Monate</option>
+                <option value="8">Alle 8 Monate</option>
+                <option value="9">Alle 9 Monate</option>
+                <option value="10">Alle 10 Monate</option>
+                <option value="11">Alle 11 Monate</option>
+                <option value="12">Alle 12 Monate</option>
+            </select>
+            <div class="scope-group">
+                <label>Untersuchungsumfang (Probenarten)</label>
+                <div class="scope-checkboxes">
+                    <label><input type="checkbox" id="scope-legionellen">Legionellen</label>
+                    <label><input type="checkbox" id="scope-mibi">Mibi</label>
+                    <label><input type="checkbox" id="scope-chemie">Chemie</label>
+                    <label><input type="checkbox" id="scope-vorort">Vorortparameter</label>
+                    <label><input type="checkbox" id="scope-sonstiges">Sonstiges</label>
+                </div>
+                <label for="scope-details">Stückzahl / Details</label>
+                <textarea id="scope-details" rows="2" placeholder="z.B. 3x Mibi, 1x Chemie"></textarea>
+            </div>
+            <label for="obj-notes">Notizen (z.B. Probennahme-Hinweise)</label>
+            <textarea id="obj-notes" rows="3"></textarea>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary btn-small" id="object-cancel">Abbrechen</button>
+                <button type="submit" class="btn btn-small">Speichern</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL: TERMIN PLANEN -->
+<div class="modal" id="plan-modal">
+    <div class="modal-content">
+        <div class="modal-header">Termin planen</div>
+        <form id="plan-form">
+            <div class="info-text" id="plan-object-label"></div>
+            <div class="kw-helper">Optional: Termin über Kalenderwoche setzen</div>
+            <div class="kw-row">
+                <input type="number" id="plan-kw-year" placeholder="Jahr" min="2000" max="2100">
+                <input type="number" id="plan-kw" placeholder="KW" min="1" max="53">
+                <button type="button" id="kw-to-date-btn" class="btn-secondary btn-small">KW → Datum</button>
+            </div>
+            <label for="plan-date">Datum</label>
+            <input type="date" id="plan-date" required>
+            <label for="plan-notes">Notizen zur Probennahme / Besonderheiten</label>
+            <textarea id="plan-notes" rows="3"></textarea>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary btn-small" id="plan-cancel">Abbrechen</button>
+                <button type="submit" class="btn btn-small">Speichern</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL: HISTORIE -->
+<div class="modal" id="history-modal">
+    <div class="modal-content">
+        <div class="modal-header">Historie</div>
+        <div class="info-text" id="history-object-label" style="margin-bottom:6px; font-weight:bold;"></div>
+        <div id="history-list" style="max-height:180px; overflow-y:auto; border:1px solid #ddd; padding:6px; margin-bottom:8px; background:#fafafa; font-size:12px;"></div>
+        <form id="history-form">
+            <label for="history-date">Datum</label>
+            <input type="date" id="history-date" required>
+            <label for="history-type">Art der Untersuchung</label>
+            <input type="text" id="history-type" placeholder="z.B. Kühlwasserprüfung" required>
+            <label for="history-result">Ergebnis</label>
+            <select id="history-result">
+                <option value="Sauber">Sauber</option>
+                <option value="Überschreitung">Überschreitung</option>
+            </select>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary btn-small" id="history-cancel">Schließen</button>
+                <button type="submit" class="btn btn-small">Eintrag speichern</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// ================================================================
+// SUPABASE INIT
+// ================================================================
+const SUPABASE_URL  = "https://avuimpwjslrgpdahyloa.supabase.co";
+const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF2dWltcHdqc2xyZ3BkYWh5bG9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwOTc0MjAsImV4cCI6MjA5NDY3MzQyMH0.q6s3s36WOoGGLbH7gsWqyzY2b_36vUjAHqKrGrAhYEs";
+const TABLE_NAME    = "nova_sonderobjekte_app_data";
+const STORAGE_KEY   = "nova_sonderobjekte_v2";
+
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+// ================================================================
+// STATE
+// ================================================================
+let currentUser = null;
+let supabaseDebounceTimer = null;
+
+let customers = [];
+let appointments = [];
+let nextCustomerId  = 1;
+let nextObjectId    = 1;
+let nextAppointmentId = 1;
+let selectedCustomerId = null;
+
+let editingCustomerId = null;
+let editingObjectCustomerId = null;
+let editingObjectId  = null;
+let planCustomerId   = null;
+let planObjectId     = null;
+let historyCustomerId = null;
+let historyObjectId   = null;
+let searchTerm = "";
+
+// ================================================================
+// SYNC STATUS
+// ================================================================
+function setSyncStatus(text, mode) {
+    const el = document.getElementById("sync-status");
+    if (!el) return;
+    el.textContent = "☁ " + text;
+    el.className = "sync-status " + (mode || "off");
+}
+
+// ================================================================
+// AUTH
+// ================================================================
+function showLoginModal() {
+    document.getElementById("login-modal").style.display = "flex";
+    document.getElementById("user-chip").style.display = "none";
+    document.getElementById("logout-btn").style.display = "none";
+    setSyncStatus("nicht angemeldet", "off");
+}
+
+function hideLoginModal() {
+    document.getElementById("login-modal").style.display = "none";
+}
+
+function showUserInfo(user) {
+    const chip = document.getElementById("user-chip");
+    chip.textContent = "👤 " + (user.email || "Angemeldet");
+    chip.style.display = "";
+    document.getElementById("logout-btn").style.display = "";
+    setSyncStatus("Verbunden", "on");
+}
+
+document.getElementById("login-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = document.getElementById("login-email").value.trim();
+    const password = document.getElementById("login-password").value;
+    const errEl = document.getElementById("login-error");
+    errEl.textContent = "";
+    const btn = e.target.querySelector("button[type=submit]");
+    btn.disabled = true;
+    btn.textContent = "Anmelden …";
+
+    const { data, error } = await db.auth.signInWithPassword({ email, password });
+
+    btn.disabled = false;
+    btn.textContent = "Anmelden";
+
+    if (error) {
+        errEl.textContent = "Fehler: " + (error.message || "Login fehlgeschlagen");
+        return;
+    }
+    currentUser = data.user;
+    hideLoginModal();
+    showUserInfo(currentUser);
+    await loadFromSupabase();
+    renderAll();
+});
+
+document.getElementById("logout-btn").addEventListener("click", async () => {
+    if (!confirm("Wirklich abmelden? Nicht gespeicherte Änderungen gehen verloren.")) return;
+    await db.auth.signOut();
+    currentUser = null;
+    customers = [];
+    appointments = [];
+    selectedCustomerId = null;
+    localStorage.removeItem(STORAGE_KEY);
+    showLoginModal();
+    renderAll();
+});
+
+// ================================================================
+// SUPABASE SAVE / LOAD
+// ================================================================
+function buildExportPayload() {
+    return {
+        generatedAt: new Date().toISOString(),
+        version: "terminverwaltung-sonderobjekte-v2.2",
+        customers,
+        appointments,
+        ...getHeaderState()
+    };
+}
+
+async function syncToSupabase() {
+    if (!currentUser) return;
+    setSyncStatus("Speichern …", "warn");
+    const payload = buildExportPayload();
+    const { error } = await supabase
+        .from(TABLE_NAME)
+        .upsert(
+            { user_id: currentUser.id, data: payload, updated_at: new Date().toISOString() },
+            { onConflict: "user_id" }
+        );
+    if (error) {
+        console.warn("Supabase save error:", error);
+        setSyncStatus("Fehler beim Speichern", "warn");
+    } else {
+        setSyncStatus("Gespeichert ✓", "on");
+        // Auch lokalen Cache aktualisieren
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(payload)); } catch(e) {}
+    }
+}
+
+function scheduleSupabaseSave() {
+    if (supabaseDebounceTimer) clearTimeout(supabaseDebounceTimer);
+    supabaseDebounceTimer = setTimeout(() => {
+        syncToSupabase();
+    }, 1500);
+}
+
+async function loadFromSupabase() {
+    if (!currentUser) return false;
+    setSyncStatus("Lade Daten …", "warn");
+    const { data, error } = await supabase
+        .from(TABLE_NAME)
+        .select("data")
+        .eq("user_id", currentUser.id)
+        .maybeSingle();
+
+    if (error) {
+        console.warn("Supabase load error:", error);
+        setSyncStatus("Ladefehler – lokale Daten", "warn");
+        loadFromLocalStorage();
+        return false;
+    }
+
+    if (!data || !data.data) {
+        // Kein Cloud-Datensatz: prüfe ob lokale Daten vorhanden
+        const hasLocal = loadFromLocalStorage();
+        if (hasLocal) {
+            setSyncStatus("Lokal geladen – noch kein Cloud-Stand", "warn");
+            // Lokale Daten direkt hochladen
+            scheduleSupabaseSave();
+        } else {
+            initDemoData();
+            saveData();
+        }
+        return false;
+    }
+
+    applyPayload(data.data);
+    setSyncStatus("Geladen ✓", "on");
+    return true;
+}
+
+// ================================================================
+// LOCAL STORAGE (Cache / Fallback)
+// ================================================================
+function ensureObjectScope(obj) {
+    if (!obj.scope) obj.scope = {};
+    if (typeof obj.scope.legionellen !== "boolean") obj.scope.legionellen = false;
+    if (typeof obj.scope.mibi       !== "boolean") obj.scope.mibi       = false;
+    if (typeof obj.scope.chemie     !== "boolean") obj.scope.chemie     = false;
+    if (typeof obj.scope.vorort     !== "boolean") obj.scope.vorort     = false;
+    if (typeof obj.scope.sonstiges  !== "boolean") obj.scope.sonstiges  = false;
+    if (typeof obj.scope.details    !== "string")  obj.scope.details    = "";
+    if (typeof obj.intervalMonths   !== "number")  obj.intervalMonths   = 0;
+}
+
+function applyPayload(payload) {
+    customers    = Array.isArray(payload.customers)    ? payload.customers    : [];
+    appointments = Array.isArray(payload.appointments) ? payload.appointments : [];
+    applyHeaderState(payload);
+
+    nextCustomerId = customers.length ? Math.max(...customers.map(c => c.id || 0)) + 1 : 1;
+    let maxO = 0;
+    customers.forEach(c => {
+        if (!Array.isArray(c.objects)) c.objects = [];
+        if (!c.street) c.street = "";
+        if (!c.zip)    c.zip    = "";
+        if (!c.city)   c.city   = "";
+        c.objects.forEach(o => {
+            if (o.id && o.id > maxO) maxO = o.id;
+            if (!Array.isArray(o.history)) o.history = [];
+            ensureObjectScope(o);
+        });
+    });
+    nextObjectId      = maxO + 1;
+    nextAppointmentId = appointments.length ? Math.max(...appointments.map(a => a.id || 0)) + 1 : 1;
+    selectedCustomerId = customers.length ? customers[0].id : null;
+}
+
+function loadFromLocalStorage() {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return false;
+    try {
+        const payload = JSON.parse(raw);
+        if (!Array.isArray(payload.customers)) return false;
+        applyPayload(payload);
+        return true;
+    } catch (e) {
+        return false;
+    }
+}
+
+// saveData: immer localStorage + Supabase (debounced)
+function saveData() {
+    try {
+        const payload = buildExportPayload();
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    } catch (e) {
+        console.warn("localStorage nicht verfügbar:", e);
+    }
+    if (currentUser) {
+        setSyncStatus("Änderung …", "warn");
+        scheduleSupabaseSave();
+    }
+}
+
+// ================================================================
+// HEADER STATE
+// ================================================================
+function getHeaderState() {
+    return {
+        headerTitle:    document.getElementById("editable-header-title")?.innerText.trim()    || "Terminverwaltung NOVA Sonderobjekte",
+        headerSubtitle: document.getElementById("editable-header-subtitle")?.innerText.trim() || ""
+    };
+}
+function applyHeaderState(data) {
+    const t = document.getElementById("editable-header-title");
+    const s = document.getElementById("editable-header-subtitle");
+    if (t) t.innerText = data?.headerTitle    || "Terminverwaltung NOVA Sonderobjekte";
+    if (s) s.innerText = data?.headerSubtitle || "Wiederkehrende Termine, Einzelaufträge und Erinnerungen für kleine Labore";
+}
+
+// ================================================================
+// DEMO DATEN
+// ================================================================
+function initDemoData() {
+    customers = [{
+        id: 1, name: "Beispiel-Firma GmbH",
+        street: "Musterstraße 1", zip: "12345", city: "Musterstadt",
+        notes: "Beispieldatensatz – echte Daten per JSON-Import laden",
+        objects: [{
+            id: 1, name: "Beispiel-Objekt 1", type: "Schwimmbeckenuntersuchung",
+            city: "Musterstadt", lastDate: "01.01.2026", nextDate: "01.04.2026",
+            intervalMonths: 3, notes: "Beispielhinweis zur Probennahme",
+            scope: { legionellen: true, mibi: true, chemie: false, vorort: true, sonstiges: false, details: "3x Mibi, 1x Legionellen" },
+            history: [{ date: "01.01.2026", type: "Beispieluntersuchung", result: "Sauber" }]
+        }]
+    }];
+    appointments = [{ id: 1, customerId: 1, objectId: 1, dateISO: "2026-04-01", notes: "Beispieltermin" }];
+    nextCustomerId = 2; nextObjectId = 2; nextAppointmentId = 2;
+    selectedCustomerId = 1;
+}
+
+// ================================================================
+// DATUM-HILFSFUNKTIONEN
+// ================================================================
+function toGermanDate(iso) {
+    if (!iso) return "";
+    const p = iso.split("-");
+    if (p.length !== 3) return "";
+    return p[2] + "." + p[1] + "." + p[0];
+}
+function parseGermanDate(d) {
+    if (!d) return null;
+    const p = d.split(".");
+    if (p.length !== 3) return null;
+    const dt = new Date(parseInt(p[2],10), parseInt(p[1],10)-1, parseInt(p[0],10));
+    return isNaN(dt.getTime()) ? null : dt;
+}
+function getStatusClassForNext(dateGerman) {
+    if (!dateGerman) return "";
+    const d = parseGermanDate(dateGerman);
+    if (!d) return "";
+    const today = new Date(); today.setHours(0,0,0,0); d.setHours(0,0,0,0);
+    const diff = (d - today) / (1000*60*60*24);
+    if (diff < 0) return "status-red";
+    if (diff <= 14) return "status-yellow";
+    return "status-green";
+}
+function isoWeekToDate(year, week, weekday) {
+    const simple = new Date(year, 0, 1 + (week - 1) * 7);
+    const dow = simple.getDay();
+    const isoMon = new Date(simple);
+    isoMon.setDate(simple.getDate() - (dow <= 4 ? dow - 1 : dow - 8));
+    const target = new Date(isoMon);
+    target.setDate(isoMon.getDate() + (weekday - 1));
+    return target;
+}
+function addMonthsToIso(isoDate, months) {
+    if (!isoDate) return "";
+    const p = isoDate.split("-");
+    if (p.length !== 3) return "";
+    const d = new Date(parseInt(p[0],10), parseInt(p[1],10)-1, parseInt(p[2],10));
+    if (isNaN(d.getTime())) return "";
+    d.setMonth(d.getMonth() + months);
+    return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+}
+
+// ================================================================
+// DATEN-HELFER
+// ================================================================
+function getCustomerById(id)            { return customers.find(c => c.id === id) || null; }
+function getObjectById(custId, objId)   {
+    const c = getCustomerById(custId);
+    return c ? (c.objects||[]).find(o => o.id === objId) || null : null;
+}
+function getAllObjects() {
+    const list = [];
+    customers.forEach(c => {
+        (c.objects||[]).forEach(o => {
+            ensureObjectScope(o);
+            list.push({
+                customerId: c.id, customerName: c.name,
+                customerStreet: c.street||"", customerZip: c.zip||"", customerCity: c.city||"",
+                objectId: o.id, name: o.name, type: o.type, city: o.city,
+                lastDate: o.lastDate, nextDate: o.nextDate,
+                intervalMonths: o.intervalMonths||0, notes: o.notes,
+                scope: o.scope, history: o.history||[]
+            });
+        });
+    });
+    return list;
+}
+
+// ================================================================
+// RENDERING
+// ================================================================
+function renderUpcoming() {
+    const tbody = document.getElementById("upcoming-tbody");
+    tbody.innerHTML = "";
+    const all = getAllObjects();
+    const today = new Date(); today.setHours(0,0,0,0);
+
+    let rel = all.filter(o => {
+        if (!o.nextDate) return false;
+        const d = parseGermanDate(o.nextDate);
+        if (!d) return false;
+        return (d - today) / (1000*60*60*24) <= 60;
+    });
+
+    if (searchTerm) {
+        const t = searchTerm.toLowerCase();
+        rel = rel.filter(o => (o.customerName+" "+o.name+" "+(o.city||"")+" "+(o.type||"")+" "+o.customerZip+" "+o.customerCity).toLowerCase().includes(t));
+    }
+
+    rel.sort((a,b) => {
+        const da = parseGermanDate(a.nextDate), db = parseGermanDate(b.nextDate);
+        if (!da||!db) return 0; return da - db;
+    });
+    document.getElementById("found-count").textContent = rel.length;
+
+    rel.forEach(o => {
+        const tr = document.createElement("tr");
+        const cls = getStatusClassForNext(o.nextDate);
+        if (cls) tr.classList.add(cls);
+        ["customerName","name","type","city","nextDate"].forEach(k => {
+            const td = document.createElement("td");
+            td.textContent = o[k] || "";
+            tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+    });
+}
+
+function renderCustomerTable() {
+    const tbody = document.querySelector("#customer-table tbody");
+    tbody.innerHTML = "";
+    const sorted = customers.slice().sort((a,b) => a.name.localeCompare(b.name));
+    if (!selectedCustomerId && sorted.length) selectedCustomerId = sorted[0].id;
+    sorted.forEach(c => {
+        const tr = document.createElement("tr");
+        if (c.id === selectedCustomerId) tr.classList.add("selected-row");
+        const tn = document.createElement("td"); tn.textContent = c.name;
+        const tc = document.createElement("td"); tc.textContent = (c.objects||[]).length;
+        tr.appendChild(tn); tr.appendChild(tc);
+        tr.addEventListener("click", () => { selectedCustomerId = c.id; renderCustomerTable(); renderCustomerDetail(); });
+        tbody.appendChild(tr);
+    });
+}
+
+function renderCustomerDetail() {
+    const title   = document.getElementById("detail-customer-title");
+    const addrP   = document.getElementById("detail-customer-address");
+    const notesP  = document.getElementById("detail-customer-notes");
+    const tbody   = document.querySelector("#customer-objects-table tbody");
+    const editBtn = document.getElementById("edit-customer-btn");
+    const delBtn  = document.getElementById("delete-customer-btn");
+    const newObj  = document.getElementById("new-object-btn");
+    tbody.innerHTML = "";
+
+    const cust = selectedCustomerId ? getCustomerById(selectedCustomerId) : null;
+    if (!cust) {
+        title.textContent = "Kein Kunde ausgewählt";
+        addrP.textContent = ""; notesP.textContent = "";
+        editBtn.disabled = delBtn.disabled = newObj.disabled = true;
+        return;
+    }
+    title.textContent = cust.name;
+    const parts = [];
+    if (cust.street) parts.push(cust.street);
+    const po = ((cust.zip||"") + " " + (cust.city||"")).trim();
+    if (po) parts.push(po);
+    addrP.textContent  = parts.join(", ");
+    notesP.textContent = cust.notes || "";
+    editBtn.disabled = delBtn.disabled = newObj.disabled = false;
+
+    (cust.objects||[]).forEach(o => {
+        ensureObjectScope(o);
+        const tr = document.createElement("tr");
+        const cls = getStatusClassForNext(o.nextDate);
+        if (cls) tr.classList.add(cls);
+        const cells = [o.name, o.type||"", o.city||"", o.lastDate||"", o.nextDate||""];
+        cells.forEach(v => { const td = document.createElement("td"); td.textContent = v; tr.appendChild(td); });
+        const tdA = document.createElement("td"); tdA.className = "actions";
+
+        [["Bearbeiten","btn btn-small",()=>openObjectModal(cust.id,o.id)],
+         ["Termin","btn-secondary btn-small",()=>openPlanModal(cust.id,o.id)],
+         ["Historie","btn-secondary btn-small",()=>openHistoryModal(cust.id,o.id)],
+         ["Löschen","btn-danger btn-small",()=>{ if(confirm("Objekt inkl. Termine wirklich löschen?")) deleteObject(cust.id,o.id); }]
+        ].forEach(([t,c,fn]) => {
+            const b = document.createElement("button"); b.textContent=t; b.className=c; b.addEventListener("click",fn); tdA.appendChild(b);
+        });
+        tr.appendChild(tdA); tbody.appendChild(tr);
+    });
+}
+
+function renderAllObjectsView() {
+    const tbody = document.querySelector("#allobjects-table tbody");
+    tbody.innerHTML = "";
+    const objs = getAllObjects();
+
+    objs.sort((a,b) => {
+        const dateA = a.nextDate ? parseGermanDate(a.nextDate) : null;
+        const dateB = b.nextDate ? parseGermanDate(b.nextDate) : null;
+        if (!dateA && !dateB) return (a.customerName+" "+a.name).localeCompare(b.customerName+" "+b.name);
+        if (!dateA) return 1; if (!dateB) return -1;
+        return dateA - dateB;
+    });
+
+    objs.forEach(o => {
+        const tr = document.createElement("tr");
+        const cls = getStatusClassForNext(o.nextDate);
+        if (cls) tr.classList.add(cls);
+
+        // Status-Spalte
+        const tdSt = document.createElement("td");
+        if (o.history && o.history.length) {
+            const last = o.history[o.history.length-1];
+            const sp = document.createElement("span");
+            sp.textContent = last.result === "Sauber" ? "✓" : (last.result === "Überschreitung" ? "✗" : "");
+            sp.className   = last.result === "Sauber" ? "status-icon-ok" : "status-icon-bad";
+            tdSt.appendChild(sp);
+        }
+        tr.appendChild(tdSt);
+
+        // Kunde
+        const tdC = document.createElement("td"); tdC.textContent = o.customerName; tr.appendChild(tdC);
+
+        // Objekt (klickbar für Historie)
+        const tdO = document.createElement("td");
+        const btnO = document.createElement("button"); btnO.className = "link-button"; btnO.textContent = o.name;
+        btnO.addEventListener("click", () => openHistoryModal(o.customerId, o.objectId));
+        tdO.appendChild(btnO); tr.appendChild(tdO);
+
+        [o.type||"", o.city||"", o.lastDate||"", o.nextDate||"",
+         o.intervalMonths ? "alle "+o.intervalMonths+" Monate" : ""
+        ].forEach(v => { const td = document.createElement("td"); td.textContent = v; tr.appendChild(td); });
+
+        // Aktionen
+        const tdA = document.createElement("td"); tdA.className = "actions";
+        let btnDetails;
+        [["Termin","btn-secondary btn-small",()=>openPlanModal(o.customerId,o.objectId)],
+         ["Historie","btn-secondary btn-small",()=>openHistoryModal(o.customerId,o.objectId)],
+         ["Details","btn-secondary btn-small",null]
+        ].forEach(([t,c,fn],i) => {
+            const b = document.createElement("button"); b.textContent=t; b.className=c;
+            if (fn) b.addEventListener("click",fn);
+            if (i===2) btnDetails = b;
+            tdA.appendChild(b);
+        });
+        tr.appendChild(tdA);
+        tbody.appendChild(tr);
+
+        // Details-Zeile
+        const detTr = document.createElement("tr"); detTr.className = "details-row";
+        const detTd = document.createElement("td"); detTd.className = "details-cell"; detTd.colSpan = 9;
+        const scope = o.scope||{};
+        const scList = ["legionellen","mibi","chemie","vorort","sonstiges"]
+            .filter(k => scope[k])
+            .map(k => ({legionellen:"Legionellen",mibi:"Mibi",chemie:"Chemie",vorort:"Vorortparameter",sonstiges:"Sonstiges"}[k]));
+
+        detTd.innerHTML =
+            `<b>Umfang / Menge:</b> ${scope.details||"-"}<br>` +
+            `<b>Probenarten:</b> ${scList.length ? scList.join(", ") : "-"}<br>` +
+            `<b>Routine / Intervall:</b> ${o.intervalMonths ? "alle "+o.intervalMonths+" Monate" : "-"}<br>` +
+            `<b>Notizen:</b> ${o.notes||"-"}<br>` +
+            (o.history&&o.history.length
+                ? `<b>Letzter Eintrag:</b> ${o.history[o.history.length-1].date} – ${o.history[o.history.length-1].type} (${o.history[o.history.length-1].result})`
+                : `<b>Historie:</b> keine Einträge`);
+
+        if (btnDetails) btnDetails.addEventListener("click", () => {
+            const shown = detTr.style.display === "table-row";
+            detTr.style.display = shown ? "none" : "table-row";
+            btnDetails.textContent = shown ? "Details" : "Weniger";
+        });
+
+        detTr.appendChild(detTd);
+        tbody.appendChild(detTr);
+    });
+}
+
+function renderAll() {
+    renderUpcoming();
+    renderCustomerTable();
+    renderCustomerDetail();
+    renderAllObjectsView();
+}
+
+// ================================================================
+// LÖSCHFUNKTIONEN
+// ================================================================
+function deleteCustomer(cId) {
+    appointments = appointments.filter(a => a.customerId !== cId);
+    customers    = customers.filter(c => c.id !== cId);
+    selectedCustomerId = customers.length ? customers[0].id : null;
+    saveData(); renderAll();
+}
+function deleteObject(cId, oId) {
+    const cust = getCustomerById(cId);
+    if (!cust) return;
+    cust.objects = (cust.objects||[]).filter(o => o.id !== oId);
+    appointments = appointments.filter(a => !(a.customerId===cId && a.objectId===oId));
+    saveData(); renderAll();
+}
+
+// ================================================================
+// MODALS – KUNDE
+// ================================================================
+function openCustomerModal(custId) {
+    editingCustomerId = custId || null;
+    document.getElementById("customer-modal-title").textContent = custId ? "Kunde bearbeiten" : "Neuer Kunde";
+    const c = custId ? getCustomerById(custId) : null;
+    document.getElementById("customer-name").value   = c?.name   || "";
+    document.getElementById("customer-street").value = c?.street || "";
+    document.getElementById("customer-zip").value    = c?.zip    || "";
+    document.getElementById("customer-city").value   = c?.city   || "";
+    document.getElementById("customer-notes").value  = c?.notes  || "";
+    document.getElementById("customer-modal").style.display = "flex";
+}
+function closeCustomerModal() { document.getElementById("customer-modal").style.display = "none"; }
+
+// ================================================================
+// MODALS – OBJEKT
+// ================================================================
+function openObjectModal(custId, objId) {
+    editingObjectCustomerId = custId; editingObjectId = objId || null;
+    const cust = getCustomerById(custId); if (!cust) return;
+    document.getElementById("object-modal-title").textContent        = objId ? "Objekt bearbeiten" : "Neues Objekt";
+    document.getElementById("object-modal-customer-label").textContent = "Kunde: " + cust.name;
+    const obj = objId ? getObjectById(custId, objId) : null;
+    if (obj) ensureObjectScope(obj);
+    document.getElementById("obj-name").value  = obj?.name  || "";
+    document.getElementById("obj-type").value  = obj?.type  || "";
+    document.getElementById("obj-city").value  = obj?.city  || "";
+    document.getElementById("obj-notes").value = obj?.notes || "";
+    document.getElementById("obj-interval").value = (obj?.intervalMonths||0).toString();
+    if (obj?.lastDate) {
+        const dt = parseGermanDate(obj.lastDate);
+        document.getElementById("obj-last").value = (dt && !isNaN(dt.getTime())) ? dt.toISOString().slice(0,10) : "";
+    } else { document.getElementById("obj-last").value = ""; }
+    document.getElementById("scope-legionellen").checked = !!obj?.scope?.legionellen;
+    document.getElementById("scope-mibi").checked        = !!obj?.scope?.mibi;
+    document.getElementById("scope-chemie").checked      = !!obj?.scope?.chemie;
+    document.getElementById("scope-vorort").checked      = !!obj?.scope?.vorort;
+    document.getElementById("scope-sonstiges").checked   = !!obj?.scope?.sonstiges;
+    document.getElementById("scope-details").value       = obj?.scope?.details || "";
+    document.getElementById("object-modal").style.display = "flex";
+}
+function closeObjectModal() { document.getElementById("object-modal").style.display = "none"; }
+
+// ================================================================
+// MODALS – TERMIN
+// ================================================================
+function openPlanModal(custId, objId) {
+    planCustomerId = custId; planObjectId = objId;
+    const cust = getCustomerById(custId), obj = getObjectById(custId, objId);
+    if (!cust||!obj) return;
+    document.getElementById("plan-object-label").textContent = cust.name + " – " + obj.name;
+    const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+1);
+    document.getElementById("plan-date").value     = tomorrow.toISOString().slice(0,10);
+    document.getElementById("plan-kw-year").value  = new Date().getFullYear();
+    document.getElementById("plan-kw").value       = "";
+    document.getElementById("plan-notes").value    = "";
+    document.getElementById("plan-modal").style.display = "flex";
+}
+function closePlanModal() { document.getElementById("plan-modal").style.display = "none"; }
+
+// ================================================================
+// MODALS – HISTORIE
+// ================================================================
+function openHistoryModal(custId, objId) {
+    historyCustomerId = custId; historyObjectId = objId;
+    const cust = getCustomerById(custId), obj = getObjectById(custId, objId);
+    if (!cust||!obj) return;
+    ensureObjectScope(obj);
+    document.getElementById("history-object-label").textContent = cust.name + " – " + obj.name;
+    const listDiv = document.getElementById("history-list");
+    listDiv.innerHTML = "";
+    if (obj.scope?.details) {
+        const d = document.createElement("div");
+        d.style.cssText = "margin-bottom:6px;font-weight:bold;";
+        d.textContent = "Umfang: " + obj.scope.details;
+        listDiv.appendChild(d);
+    }
+    if (obj.history && obj.history.length) {
+        obj.history.forEach(e => {
+            const r = document.createElement("div"); r.style.marginBottom = "3px";
+            r.textContent = e.date + " – " + e.type + " (" + e.result + ")";
+            listDiv.appendChild(r);
+        });
+    } else {
+        const em = document.createElement("div"); em.textContent = "Noch keine Einträge."; listDiv.appendChild(em);
+    }
+    document.getElementById("history-date").value   = "";
+    document.getElementById("history-type").value   = "";
+    document.getElementById("history-result").value = "Sauber";
+    document.getElementById("history-modal").style.display = "flex";
+}
+function closeHistoryModal() { document.getElementById("history-modal").style.display = "none"; }
+
+// ================================================================
+// EVENT HANDLER
+// ================================================================
+document.getElementById("search-input").addEventListener("input", e => { searchTerm = e.target.value || ""; renderUpcoming(); });
+document.getElementById("print-btn").addEventListener("click", () => window.print());
+
+// Tabs
+document.getElementById("tab-customers").addEventListener("click", () => {
+    document.getElementById("view-customers").style.display  = "";
+    document.getElementById("view-allobjects").style.display = "none";
+    document.getElementById("tab-customers").classList.add("active");
+    document.getElementById("tab-allobjects").classList.remove("active");
+});
+document.getElementById("tab-allobjects").addEventListener("click", () => {
+    document.getElementById("view-customers").style.display  = "none";
+    document.getElementById("view-allobjects").style.display = "";
+    document.getElementById("tab-customers").classList.remove("active");
+    document.getElementById("tab-allobjects").classList.add("active");
+});
+
+// Kunde
+document.getElementById("new-customer-btn").addEventListener("click", () => openCustomerModal(null));
+document.getElementById("edit-customer-btn").addEventListener("click", () => { if (selectedCustomerId) openCustomerModal(selectedCustomerId); });
+document.getElementById("delete-customer-btn").addEventListener("click", () => {
+    if (!selectedCustomerId) return;
+    const c = getCustomerById(selectedCustomerId); if (!c) return;
+    if (confirm('Kunde "' + c.name + '" inkl. aller Objekte und Termine wirklich löschen?')) deleteCustomer(selectedCustomerId);
+});
+document.getElementById("customer-cancel").addEventListener("click", closeCustomerModal);
+document.getElementById("customer-form").addEventListener("submit", e => {
+    e.preventDefault();
+    const name   = document.getElementById("customer-name").value.trim();
+    const street = document.getElementById("customer-street").value.trim();
+    const zip    = document.getElementById("customer-zip").value.trim();
+    const city   = document.getElementById("customer-city").value.trim();
+    const notes  = document.getElementById("customer-notes").value.trim();
+    if (!name) { alert("Bitte Kundennamen angeben."); return; }
+    if (editingCustomerId) {
+        const c = getCustomerById(editingCustomerId);
+        if (c) Object.assign(c, { name, street, zip, city, notes });
+    } else {
+        const newId = nextCustomerId++;
+        customers.push({ id: newId, name, street, zip, city, notes, objects: [] });
+        selectedCustomerId = newId;
+    }
+    closeCustomerModal(); saveData(); renderAll();
+});
+
+// Objekt
+document.getElementById("new-object-btn").addEventListener("click", () => {
+    if (!selectedCustomerId) { alert("Bitte zuerst einen Kunden auswählen."); return; }
+    openObjectModal(selectedCustomerId, null);
+});
+document.getElementById("object-cancel").addEventListener("click", closeObjectModal);
+document.getElementById("object-form").addEventListener("submit", e => {
+    e.preventDefault();
+    if (!editingObjectCustomerId) return;
+    const cust = getCustomerById(editingObjectCustomerId); if (!cust) return;
+    const name          = document.getElementById("obj-name").value.trim();
+    const type          = document.getElementById("obj-type").value;
+    const city          = document.getElementById("obj-city").value.trim();
+    const lastISO       = document.getElementById("obj-last").value;
+    const intervalMonths = parseInt(document.getElementById("obj-interval").value, 10) || 0;
+    const notes         = document.getElementById("obj-notes").value.trim();
+    const lastGerman    = lastISO ? toGermanDate(lastISO) : "";
+    if (!name) { alert("Bitte Objektname angeben."); return; }
+    const scope = {
+        legionellen: document.getElementById("scope-legionellen").checked,
+        mibi:        document.getElementById("scope-mibi").checked,
+        chemie:      document.getElementById("scope-chemie").checked,
+        vorort:      document.getElementById("scope-vorort").checked,
+        sonstiges:   document.getElementById("scope-sonstiges").checked,
+        details:     document.getElementById("scope-details").value.trim()
+    };
+    let nextGerman = "";
+    if (lastISO && intervalMonths > 0) {
+        const nxt = addMonthsToIso(lastISO, intervalMonths);
+        if (nxt) nextGerman = toGermanDate(nxt);
+    }
+    if (editingObjectId) {
+        const obj = getObjectById(editingObjectCustomerId, editingObjectId);
+        if (obj) Object.assign(obj, { name, type, city, lastDate: lastGerman, intervalMonths, notes, scope, ...(nextGerman ? {nextDate: nextGerman} : {}) });
+    } else {
+        cust.objects.push({ id: nextObjectId++, name, type, city, lastDate: lastGerman, nextDate: nextGerman, intervalMonths, notes, scope, history: [] });
+    }
+    closeObjectModal(); saveData(); renderAll();
+});
+
+// Termin
+document.getElementById("plan-cancel").addEventListener("click", closePlanModal);
+document.getElementById("kw-to-date-btn").addEventListener("click", () => {
+    const year = parseInt(document.getElementById("plan-kw-year").value, 10);
+    const kw   = parseInt(document.getElementById("plan-kw").value, 10);
+    if (!year || !kw || kw < 1 || kw > 53) { alert("Bitte gültiges Jahr und KW angeben (1–53)."); return; }
+    const date = isoWeekToDate(year, kw, 3);
+    if (isNaN(date.getTime())) { alert("KW konnte nicht berechnet werden."); return; }
+    document.getElementById("plan-date").value = date.toISOString().slice(0,10);
+});
+document.getElementById("plan-form").addEventListener("submit", e => {
+    e.preventDefault();
+    if (!planCustomerId || !planObjectId) return;
+    const cust = getCustomerById(planCustomerId), obj = getObjectById(planCustomerId, planObjectId);
+    if (!cust||!obj) return;
+    const dateISO = document.getElementById("plan-date").value;
+    if (!dateISO) { alert("Bitte ein Datum auswählen."); return; }
+    obj.nextDate = toGermanDate(dateISO);
+    appointments.push({ id: nextAppointmentId++, customerId: cust.id, objectId: obj.id, dateISO, notes: document.getElementById("plan-notes").value.trim() });
+    closePlanModal(); saveData(); renderAll();
+});
+
+// Historie
+document.getElementById("history-cancel").addEventListener("click", closeHistoryModal);
+document.getElementById("history-form").addEventListener("submit", e => {
+    e.preventDefault();
+    if (!historyCustomerId || !historyObjectId) return;
+    const cust = getCustomerById(historyCustomerId), obj = getObjectById(historyCustomerId, historyObjectId);
+    if (!cust||!obj) return;
+    const dateISO = document.getElementById("history-date").value;
+    const type    = document.getElementById("history-type").value.trim();
+    const result  = document.getElementById("history-result").value;
+    if (!dateISO || !type) { alert("Bitte Datum und Art der Untersuchung angeben."); return; }
+    const dateGerman = toGermanDate(dateISO);
+    if (!Array.isArray(obj.history)) obj.history = [];
+    obj.history.push({ date: dateGerman, type, result });
+    obj.lastDate = dateGerman;
+    if (obj.intervalMonths > 0) {
+        const nxt = addMonthsToIso(dateISO, obj.intervalMonths);
+        if (nxt) obj.nextDate = toGermanDate(nxt);
+    }
+    openHistoryModal(historyCustomerId, historyObjectId);
+    saveData(); renderAll();
+});
+
+// Header direkt speicherbar
+document.getElementById("editable-header-title").addEventListener("input", saveData);
+document.getElementById("editable-header-subtitle").addEventListener("input", saveData);
+
+// ================================================================
+// EXPORT / IMPORT (JSON Backup)
+// ================================================================
+function buildTimestampFilename(prefix) {
+    const now = new Date();
+    const pad = n => String(n).padStart(2,"0");
+    return `${prefix}_${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}.json`;
+}
+function downloadJson(payload, filename) {
+    const uri  = "data:application/json;charset=utf-8," + encodeURIComponent(JSON.stringify(payload, null, 2));
+    const link = document.createElement("a");
+    link.href  = uri; link.download = filename;
+    document.body.appendChild(link); link.click(); document.body.removeChild(link);
+}
+
+document.getElementById("export-btn").addEventListener("click", () => {
+    downloadJson(buildExportPayload(), buildTimestampFilename("sonderobjekte"));
+});
+
+document.getElementById("import-btn").addEventListener("click", () => {
+    document.getElementById("import-file").value = "";
+    document.getElementById("import-file").click();
+});
+document.getElementById("import-file").addEventListener("change", e => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = evt => {
+        try {
+            const data = JSON.parse(evt.target.result);
+            if (Array.isArray(data.customers)) {
+                applyPayload(data);
+            } else if (Array.isArray(data.objects)) {
+                // Altes Format
+                applyPayload({ customers: buildCustomersFromObjectList(data.objects), appointments: data.appointments||[] });
+            } else { alert("Unbekanntes Format – bitte gültigen Export importieren."); return; }
+            saveData(); renderAll();
+            alert("Import erfolgreich. Daten werden zu Supabase synchronisiert.");
+        } catch (err) { alert("Fehler beim Import: " + err.message); }
+    };
+    reader.readAsText(file, "UTF-8");
+});
+
+function buildCustomersFromObjectList(list) {
+    const map = new Map();
+    list.forEach(o => {
+        const n = o.customer || o.verwaltung || "Unbekannter Kunde";
+        if (!map.has(n)) map.set(n,[]);
+        map.get(n).push(o);
+    });
+    const result = []; let cid=1, oid=1;
+    map.forEach((objs, name) => {
+        const c = { id: cid++, name, street:"", zip:"", city:"", notes:"", objects:[] };
+        objs.forEach(o => {
+            const obj = {
+                id: oid++, name: o.name||o.objekt||"", type: o.type||"", city: o.city||o.ort||"",
+                lastDate: o.lastDate||"", nextDate: o.nextDate||"", intervalMonths: 0,
+                notes: o.notes||"", history: Array.isArray(o.history)?o.history:[], scope:{}
+            };
+            ensureObjectScope(obj); c.objects.push(obj);
+        });
+        result.push(c);
+    });
+    return result;
+}
+
+// ================================================================
+// APP INIT
+// ================================================================
+async function initApp() {
+    // Zuerst localStorage laden für schnelle UI
+    const hadLocal = loadFromLocalStorage();
+    if (hadLocal) renderAll();
+
+    // Dann Auth-Status prüfen
+    const { data: { session } } = await db.auth.getSession();
+    if (session && session.user) {
+        currentUser = session.user;
+        hideLoginModal();
+        showUserInfo(currentUser);
+        await loadFromSupabase();
+        renderAll();
+    } else {
+        showLoginModal();
+        if (!hadLocal) { initDemoData(); renderAll(); }
+    }
+
+    // Auth-Änderungen beobachten (z.B. Token-Refresh)
+    db.auth.onAuthStateChange((_event, session) => {
+        if (session && session.user) {
+            currentUser = session.user;
+            showUserInfo(currentUser);
+        } else if (_event === "SIGNED_OUT") {
+            currentUser = null;
+        }
+    });
+}
+
+initApp();
+</script>
+
+<footer class="footer">Made with Love © – Terminverwaltung NOVA Sonderobjekte V 2.2</footer>
+</body>
+</html>
