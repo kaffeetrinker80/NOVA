@@ -6,6 +6,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<meta http-equiv="Cache-Control" content="max-age=3600">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <!--
@@ -380,6 +381,7 @@ tr.status-red:hover    > td { background: #ffe4e6 !important; }
     display: none;
     position: fixed; inset: 0;
     background: rgba(15,23,42,0.5);
+    -webkit-backdrop-filter: blur(4px);
     backdrop-filter: blur(4px);
     justify-content: center;
     align-items: flex-start;
@@ -509,8 +511,8 @@ textarea { resize: vertical; }
 <header class="header-main" id="app-header" style="display:none;">
     <img src="https://raw.githubusercontent.com/kaffeetrinker80/NOVA/main/sonderobjekte/nova_logo.png" alt="NOVA Logo" class="header-logo">
     <div class="header-text">
-    <div id="editable-header-title" class="header-title editable-header" contenteditable="true" spellcheck="false">Terminverwaltung NOVA Sonderobjekte</div>
-    <div id="editable-header-subtitle" class="header-subtitle editable-header" contenteditable="true" spellcheck="false">Wiederkehrende Termine, Einzelaufträge und Erinnerungen für kleine Labore</div>
+    <div id="editable-header-title" class="header-title editable-header" contenteditable="true" spellcheck="false" aria-label="Titel bearbeiten" role="textbox">Terminverwaltung NOVA Sonderobjekte</div>
+    <div id="editable-header-subtitle" class="header-subtitle editable-header" contenteditable="true" spellcheck="false" aria-label="Untertitel bearbeiten" role="textbox">Wiederkehrende Termine, Einzelaufträge und Erinnerungen für kleine Labore</div>
     </div>
 </header>
 
@@ -518,7 +520,7 @@ textarea { resize: vertical; }
 <section class="topbar" id="app-topbar" style="display:none;">
     <div class="topbar-left">
         <h2>Terminübersicht</h2>
-        <input type="text" id="search-input" placeholder="Suche nach Kunde, Objekt, PLZ, Ort..." />
+        <input type="text" id="search-input" aria-label="Suche nach Kunde, Objekt, PLZ oder Ort" placeholder="Suche nach Kunde, Objekt, PLZ, Ort..." />
         <div class="info-line">
             Gefunden: <span id="found-count">0</span> Einträge (bald fällige nächste Untersuchungen)
         </div>
@@ -526,7 +528,7 @@ textarea { resize: vertical; }
     <div class="topbar-right">
         <button id="print-btn" class="btn btn-secondary">🖨 Drucken</button>
         <button id="import-btn" class="btn btn-secondary">⬆ Importieren</button>
-        <input type="file" id="import-file" accept="application/json" style="display:none" />
+        <input type="file" id="import-file" accept="application/json" aria-label="JSON-Datei importieren" style="display:none" />
         <button id="export-btn" class="btn btn-secondary">⬇ Exportieren</button>
         <span id="sync-status" class="sync-status off">☁ nicht angemeldet</span>
         <span id="user-chip" class="user-chip" style="display:none;"></span>
@@ -708,8 +710,8 @@ textarea { resize: vertical; }
             <div class="info-text" id="plan-object-label"></div>
             <div class="kw-helper">Optional: Termin über Kalenderwoche setzen</div>
             <div class="kw-row">
-                <input type="number" id="plan-kw-year" placeholder="Jahr" min="2000" max="2100">
-                <input type="number" id="plan-kw" placeholder="KW" min="1" max="53">
+                <input type="number" id="plan-kw-year" placeholder="Jahr" min="2000" max="2100" aria-label="Kalenderwoche Jahr">
+                <input type="number" id="plan-kw" placeholder="KW" min="1" max="53" aria-label="Kalenderwoche Nummer">
                 <button type="button" id="kw-to-date-btn" class="btn-secondary btn-small">KW → Datum</button>
             </div>
             <label for="plan-date">Datum</label>
@@ -801,7 +803,7 @@ let searchTerm = "";
 function buildExportPayload() {
     return {
         generatedAt: new Date().toISOString(),
-        version: "terminverwaltung-sonderobjekte-v2.2.6",
+        version: "terminverwaltung-sonderobjekte-v2.2.7",
         customers,
         appointments,
         ...getHeaderState()
@@ -1764,6 +1766,6 @@ document.getElementById("logout-btn").addEventListener("click", async () => {
 
 initApp();
 </script>
-<footer class="footer" id="app-footer" style="display:none;">Made with Love &copy; &ndash; Terminverwaltung NOVA Sonderobjekte V 2.2.6</footer>
+<footer class="footer" id="app-footer" style="display:none;">Made with Love &copy; &ndash; Terminverwaltung NOVA Sonderobjekte V 2.2.7</footer>
 </body>
 </html>
