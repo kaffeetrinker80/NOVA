@@ -639,9 +639,12 @@ function renderPresenceChips(state) {
     if (!chips) return;
     chips.innerHTML = "";
 
+    // Ein Eintrag pro user.id-Key – egal wie viele Tabs offen sind
     const users = [];
     Object.values(state).forEach(presences => {
-        presences.forEach(p => { if (p.email) users.push(p.email); });
+        if (presences.length > 0 && presences[0].email) {
+            users.push(presences[0].email);
+        }
     });
 
     if (users.length === 0) { bar.style.display = "none"; return; }
