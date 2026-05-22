@@ -254,6 +254,45 @@ textarea { resize: vertical; }
 .kw-row { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
 .kw-row input { width: 80px; margin-bottom: 0; }
 
+
+/* Presence */
+.presence-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    flex-wrap: wrap;
+}
+.presence-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 12px;
+    background: #eaf7ee;
+    border: 1px solid #b7dfc2;
+    color: #1a6b3c;
+    font-size: 11px;
+    white-space: nowrap;
+}
+.presence-chip .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #22c55e;
+    display: inline-block;
+    animation: pulse 2s infinite;
+}
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.4; }
+}
+.presence-label {
+    font-size: 11px;
+    color: #6b7280;
+    white-space: nowrap;
+}
+
 /* Responsive */
 @media (max-width: 800px) {
     .topbar { flex-direction: column; }
@@ -305,6 +344,10 @@ textarea { resize: vertical; }
         <button id="import-btn" class="btn btn-secondary">⬆ Importieren</button>
         <input type="file" id="import-file" accept="application/json" style="display:none" />
         <button id="export-btn" class="btn btn-secondary">⬇ Exportieren</button>
+        <div id="presence-bar" class="presence-bar" style="display:none;">
+            <span class="presence-label">Online:</span>
+            <div id="presence-chips"></div>
+        </div>
         <span id="sync-status" class="sync-status off">☁ nicht angemeldet</span>
         <span id="user-chip" class="user-chip" style="display:none;"></span>
         <button id="logout-btn" class="btn btn-secondary btn-small" style="display:none;">🔓 Abmelden</button>
@@ -568,6 +611,74 @@ function setSyncStatus(text, mode) {
     el.className = "sync-status " + (mode || "off");
 }
 
+
+// ================================================================
+// REALTIME PRESENCE
+// ================================================================
+let presenceChannel = null;
+
+function renderPresenceChips(state) {
+    const bar   = document.getElementById("presence-bar");
+    const chips = document.getElementById("presence-chips");
+    if (!chips) return;
+    chips.innerHTML = "";
+
+    const users = [];
+    Object.values(state).forEach(presences => {
+        presences.forEach(p => { if (p.email) users.push(p.email); });
+    });
+
+    if (users.length === 0) { bar.style.display = "none"; return; }
+    bar.style.display = "flex";
+
+    users.forEach(email => {
+        const short = email.length > 22 ? email.slice(0, 20) + "…" : email;
+        const chip  = document.createElement("span");
+        chip.className = "presence-chip";
+        chip.innerHTML = `<span class="dot"></span>${short}`;
+        chip.title     = email;
+        chips.appendChild(chip);
+    });
+}
+
+async function joinPresence(user) {
+    if (presenceChannel) {
+        await presenceChannel.unsubscribe();
+        presenceChannel = null;
+    }
+
+    presenceChannel = db.channel("nova-sonderobjekte-presence", {
+        config: { presence: { key: user.id } }
+    });
+
+    presenceChannel
+        .on("presence", { event: "sync" }, () => {
+            renderPresenceChips(presenceChannel.presenceState());
+        })
+        .on("presence", { event: "join" }, ({ newPresences }) => {
+            // state wird via sync aktualisiert
+        })
+        .on("presence", { event: "leave" }, ({ leftPresences }) => {
+            // state wird via sync aktualisiert
+        });
+
+    await presenceChannel.subscribe(async (status) => {
+        if (status === "SUBSCRIBED") {
+            await presenceChannel.track({ email: user.email });
+        }
+    });
+}
+
+async function leavePresence() {
+    if (presenceChannel) {
+        await presenceChannel.untrack();
+        await presenceChannel.unsubscribe();
+        presenceChannel = null;
+    }
+    const bar = document.getElementById("presence-bar");
+    if (bar) bar.style.display = "none";
+}
+
 // ================================================================
 // AUTH
 // ================================================================
@@ -612,12 +723,14 @@ document.getElementById("login-form").addEventListener("submit", async (e) => {
     currentUser = data.user;
     hideLoginModal();
     showUserInfo(currentUser);
+    await joinPresence(currentUser);
     await loadFromSupabase();
     renderAll();
 });
 
 document.getElementById("logout-btn").addEventListener("click", async () => {
     if (!confirm("Wirklich abmelden? Nicht gespeicherte Änderungen gehen verloren.")) return;
+    await leavePresence();
     await db.auth.signOut();
     currentUser = null;
     customers = [];
@@ -1397,6 +1510,7 @@ async function initApp() {
         currentUser = session.user;
         hideLoginModal();
         showUserInfo(currentUser);
+        await joinPresence(currentUser);
         await loadFromSupabase();
         renderAll();
     } else {
