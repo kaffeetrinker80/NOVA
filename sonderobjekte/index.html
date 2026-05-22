@@ -594,7 +594,7 @@ const TABLE_NAME    = "nova_sonderobjekte_app_data";
 const DATASET_ID    = "shared";          // gemeinsamer Datensatz für alle Nutzer
 const STORAGE_KEY   = "nova_sonderobjekte_v2";
 
-const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+let db = null; // wird in initApp() initialisiert
 
 // ================================================================
 // STATE
@@ -1554,6 +1554,9 @@ function buildCustomersFromObjectList(list) {
 // APP INIT
 // ================================================================
 async function initApp() {
+    // Supabase Client initialisieren (wie im funktionierenden Template)
+    db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
     // Zuerst localStorage laden für schnelle UI
     const hadLocal = loadFromLocalStorage();
     if (hadLocal) renderAll();
