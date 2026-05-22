@@ -181,17 +181,18 @@ body {
 
 /* ── USER CHIP ───────────────────────────────────────────── */
 .user-chip {
-    font-size: 12px;
+    font-size: 10px;
     color: var(--nova-800);
-    padding: 5px 12px;
+    padding: 5px 10px;
     border: 1.5px solid var(--nova-100);
     border-radius: 6px;
     background: var(--nova-50);
     white-space: nowrap;
-    max-width: 200px;
+    max-width: 260px;
     overflow: hidden;
     text-overflow: ellipsis;
     font-weight: 500;
+    font-family: var(--mono);
 }
 
 /* ── PRESENCE ────────────────────────────────────────────── */
@@ -800,7 +801,7 @@ let searchTerm = "";
 function buildExportPayload() {
     return {
         generatedAt: new Date().toISOString(),
-        version: "terminverwaltung-sonderobjekte-v2.2.5",
+        version: "terminverwaltung-sonderobjekte-v2.2.6",
         customers,
         appointments,
         ...getHeaderState()
@@ -1592,16 +1593,38 @@ function renderPresenceChips(state) {
         '</span>';
 }
 async function joinPresence(user) {
-    if (presenceChannel) { await presenceChannel.unsubscribe(); presenceChannel = null; }
+    if (presenceChannel) {
+        try { await presenceChannel.untrack(); } catch(e) {}
+        try { await presenceChannel.unsubscribe(); } catch(e) {}
+        presenceChannel = null;
+    }
+
     presenceChannel = db.channel("nova-sonderobjekte-presence", {
         config: { presence: { key: user.id } }
     });
-    presenceChannel
-        .on("presence", { event: "sync" }, () => {
-            renderPresenceChips(presenceChannel.presenceState());
+
+    // sync: bei jeder Zustandsänderung (join/leave/reconnect)
+    presenceChannel.on("presence", { event: "sync" }, () => {
+        renderPresenceChips(presenceChannel.presenceState());
+    });
+    // join: wenn neuer User reinkommt (redundant aber sicherer)
+    presenceChannel.on("presence", { event: "join" }, () => {
+        renderPresenceChips(presenceChannel.presenceState());
+    });
+    // leave: wenn User geht
+    presenceChannel.on("presence", { event: "leave" }, () => {
+        renderPresenceChips(presenceChannel.presenceState());
+    });
+
+    await new Promise((resolve) => {
+        presenceChannel.subscribe(async (status) => {
+            if (status === "SUBSCRIBED") {
+                await presenceChannel.track({ email: user.email, online_at: new Date().toISOString() });
+                // Direkt nach subscribe: aktuellen State rendern
+                renderPresenceChips(presenceChannel.presenceState());
+                resolve();
+            }
         });
-    await presenceChannel.subscribe(async (status) => {
-        if (status === "SUBSCRIBED") await presenceChannel.track({ email: user.email });
     });
 }
 async function leavePresence() {
@@ -1741,6 +1764,6 @@ document.getElementById("logout-btn").addEventListener("click", async () => {
 
 initApp();
 </script>
-<footer class="footer" id="app-footer" style="display:none;">Made with Love &copy; &ndash; Terminverwaltung NOVA Sonderobjekte V 2.2.5</footer>
+<footer class="footer" id="app-footer" style="display:none;">Made with Love &copy; &ndash; Terminverwaltung NOVA Sonderobjekte V 2.2.6</footer>
 </body>
 </html>
