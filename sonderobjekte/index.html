@@ -808,25 +808,37 @@ function buildExportPayload() {
 }
 
 async function syncToSupabase() {
-    if (!currentUser) return;
+    if (!currentUser) { console.warn("syncToSupabase: kein User"); return; }
+    if (!db)          { console.warn("syncToSupabase: db null");   return; }
     setSyncStatus("Speichern …", "warn");
     const payload = buildExportPayload();
-    const { error } = await supabase
+
+    const { data, error } = await db
         .from(TABLE_NAME)
-        .upsert(
-            { id: DATASET_ID, data: payload, updated_by: currentUser.id, updated_at: new Date().toISOString() },
-            { onConflict: "id" }
-        );
+        .update({ data: payload, updated_by: currentUser.id, updated_at: new Date().toISOString() })
+        .eq("id", DATASET_ID)
+        .select("id");
+
     if (error) {
         console.error("Supabase save error:", error);
-        setSyncStatus("Fehler: " + (error.message || error.code || "unbekannt"), "warn");
-        alert("Supabase Fehler beim Speichern:\n" + (error.message || JSON.stringify(error)));
-    } else {
-        setSyncStatus("Gespeichert ✓", "on");
-        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(payload)); } catch(e) {}
+        setSyncStatus("Fehler: " + (error.message || error.code || "?"), "warn");
+        alert("Supabase Fehler:\n" + (error.message || JSON.stringify(error)));
+        return;
     }
+    if (!data || data.length === 0) {
+        console.warn("UPDATE traf keine Zeile – INSERT folgt");
+        const { error: ie } = await db
+            .from(TABLE_NAME)
+            .insert({ id: DATASET_ID, data: payload, updated_by: currentUser.id });
+        if (ie) {
+            setSyncStatus("Fehler (insert): " + ie.message, "warn");
+            alert("Supabase INSERT Fehler:\n" + ie.message);
+            return;
+        }
+    }
+    setSyncStatus("Gespeichert ✓", "on");
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(payload)); } catch(e) {}
 }
-
 function scheduleSupabaseSave() {
     if (supabaseDebounceTimer) clearTimeout(supabaseDebounceTimer);
     supabaseDebounceTimer = setTimeout(() => {
@@ -837,7 +849,7 @@ function scheduleSupabaseSave() {
 async function loadFromSupabase() {
     if (!currentUser) return false;
     setSyncStatus("Lade Daten …", "warn");
-    const { data, error } = await supabase
+    const { data, error } = await db
         .from(TABLE_NAME)
         .select("data")
         .eq("id", DATASET_ID)
