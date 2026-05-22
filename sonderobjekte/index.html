@@ -591,6 +591,7 @@ textarea { resize: vertical; }
 const SUPABASE_URL  = "https://avuimpwjslrgpdahyloa.supabase.co";
 const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF2dWltcHdqc2xyZ3BkYWh5bG9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwOTc0MjAsImV4cCI6MjA5NDY3MzQyMH0.q6s3s36WOoGGLbH7gsWqyzY2b_36vUjAHqKrGrAhYEs";
 const TABLE_NAME    = "nova_sonderobjekte_app_data";
+const DATASET_ID    = "shared";          // gemeinsamer Datensatz für alle Nutzer
 const STORAGE_KEY   = "nova_sonderobjekte_v2";
 
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
@@ -698,6 +699,37 @@ async function leavePresence() {
     if (bar) bar.style.display = "none";
 }
 
+
+// ================================================================
+// REALTIME DATEN-SYNC (andere User speichern → wir laden neu)
+// ================================================================
+let realtimeChannel = null;
+
+function startRealtimeSync() {
+    if (realtimeChannel) { realtimeChannel.unsubscribe(); realtimeChannel = null; }
+
+    realtimeChannel = db.channel("nova-sonderobjekte-db")
+        .on("postgres_changes", {
+            event: "UPDATE",
+            schema: "public",
+            table: TABLE_NAME,
+            filter: `id=eq.${DATASET_ID}`
+        }, async (payload) => {
+            // Nur neu laden wenn ein *anderer* User gespeichert hat
+            if (payload.new?.updated_by === currentUser?.id) return;
+            if (!payload.new?.data) return;
+            applyPayload(payload.new.data);
+            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(payload.new.data)); } catch(e) {}
+            renderAll();
+            setSyncStatus("Aktualisiert ✓ (anderer Nutzer)", "on");
+        })
+        .subscribe();
+}
+
+function stopRealtimeSync() {
+    if (realtimeChannel) { realtimeChannel.unsubscribe(); realtimeChannel = null; }
+}
+
 // ================================================================
 // AUTH
 // ================================================================
@@ -743,6 +775,7 @@ document.getElementById("login-form").addEventListener("submit", async (e) => {
     hideLoginModal();
     showUserInfo(currentUser);
     await joinPresence(currentUser);
+    startRealtimeSync();
     await loadFromSupabase();
     renderAll();
 });
@@ -750,6 +783,7 @@ document.getElementById("login-form").addEventListener("submit", async (e) => {
 document.getElementById("logout-btn").addEventListener("click", async () => {
     if (!confirm("Wirklich abmelden? Nicht gespeicherte Änderungen gehen verloren.")) return;
     await leavePresence();
+    stopRealtimeSync();
     await db.auth.signOut();
     currentUser = null;
     customers = [];
@@ -780,8 +814,8 @@ async function syncToSupabase() {
     const { error } = await supabase
         .from(TABLE_NAME)
         .upsert(
-            { user_id: currentUser.id, data: payload, updated_at: new Date().toISOString() },
-            { onConflict: "user_id" }
+            { id: DATASET_ID, data: payload, updated_by: currentUser.id, updated_at: new Date().toISOString() },
+            { onConflict: "id" }
         );
     if (error) {
         console.warn("Supabase save error:", error);
@@ -806,7 +840,7 @@ async function loadFromSupabase() {
     const { data, error } = await supabase
         .from(TABLE_NAME)
         .select("data")
-        .eq("user_id", currentUser.id)
+        .eq("id", DATASET_ID)
         .maybeSingle();
 
     if (error) {
