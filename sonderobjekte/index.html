@@ -1343,7 +1343,7 @@ function hideLoginModal() {
 }
 function showUserInfo(user) {
     const chip = document.getElementById("user-chip");
-    if (chip) { chip.textContent = "&#128100; " + (user.email || "Angemeldet"); chip.style.display = ""; }
+    if (chip) { chip.textContent = "👤 " + (user.email || "Angemeldet"); chip.style.display = ""; }
     const btn = document.getElementById("logout-btn");
     if (btn) btn.style.display = "";
     setSyncStatus("Verbunden", "on");
