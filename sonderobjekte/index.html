@@ -818,11 +818,11 @@ async function syncToSupabase() {
             { onConflict: "id" }
         );
     if (error) {
-        console.warn("Supabase save error:", error);
-        setSyncStatus("Fehler beim Speichern", "warn");
+        console.error("Supabase save error:", error);
+        setSyncStatus("Fehler: " + (error.message || error.code || "unbekannt"), "warn");
+        alert("Supabase Fehler beim Speichern:\n" + (error.message || JSON.stringify(error)));
     } else {
         setSyncStatus("Gespeichert ✓", "on");
-        // Auch lokalen Cache aktualisieren
         try { localStorage.setItem(STORAGE_KEY, JSON.stringify(payload)); } catch(e) {}
     }
 }
@@ -844,8 +844,9 @@ async function loadFromSupabase() {
         .maybeSingle();
 
     if (error) {
-        console.warn("Supabase load error:", error);
-        setSyncStatus("Ladefehler – lokale Daten", "warn");
+        console.error("Supabase load error:", error);
+        setSyncStatus("Ladefehler: " + (error.message || error.code || "unbekannt"), "warn");
+        alert("Supabase Fehler beim Laden:\n" + (error.message || JSON.stringify(error)));
         loadFromLocalStorage();
         return false;
     }
