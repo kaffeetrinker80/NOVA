@@ -7,7 +7,7 @@ Interne Tools für NOVA Praxis-Hygiene GmbH
 | Tool | Beschreibung | Link |
 |------|-------------|------|
 | `supabase_template_tool.html` | Supabase Test-Tool (Standalone + Team Mode) | [Direktlink](https://kaffeetrinker80.github.io/NOVA/test/supabase_template_tool.html) |
-| `supabase_connection_test.html` | Supabase Verbindungstest | [Direktlink]([./supabase](https://kaffeetrinker80.github.io/NOVA/connection_test.html) |
+| `supabase_connection_test.html` | Supabase Verbindungstest | [Direktlink](https://kaffeetrinker80.github.io/NOVA/connection_test.html) |
 
 ---
 
