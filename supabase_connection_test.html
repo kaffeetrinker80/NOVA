@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supabase Test</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: monospace;
+            background: #0a0a0a;
+            color: #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 500px; width: 100%; }
+        h1 { font-size: 18px; color: #fff; margin-bottom: 4px; }
+        .sub { font-size: 12px; color: #666; margin-bottom: 30px; }
+        .big-status {
+            background: #1a1a1a;
+            border: 2px solid #333;
+            border-radius: 8px;
+            padding: 40px 30px;
+            text-align: center;
+            margin-bottom: 20px;
+            transition: border-color 0.4s;
+        }
+        .big-status.testing { border-color: #fbbf24; }
+        .big-status.ok      { border-color: #10b981; }
+        .big-status.fail    { border-color: #ef4444; }
+        .big-icon  { font-size: 52px; margin-bottom: 16px; display: block; }
+        .big-label { font-size: 22px; font-weight: bold; margin-bottom: 8px; }
+        .big-label.testing { color: #fbbf24; }
+        .big-label.ok      { color: #10b981; }
+        .big-label.fail    { color: #ef4444; }
+        .big-detail { font-size: 13px; color: #999; }
+        .log {
+            background: #111;
+            border: 1px solid #222;
+            border-radius: 4px;
+            padding: 14px 16px;
+            font-size: 12px;
+            line-height: 2;
+            max-height: 220px;
+            overflow-y: auto;
+        }
+        .log-line { display: flex; gap: 10px; }
+        .log-line .t  { color: #555; min-width: 75px; }
+        .log-line .m  { flex: 1; }
+        .log-line.ok   .m { color: #10b981; }
+        .log-line.err  .m { color: #ef4444; }
+        .log-line.info .m { color: #999; }
+        button {
+            margin-top: 16px;
+            width: 100%;
+            padding: 12px;
+            background: #10b981;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 14px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Supabase Connection Test</h1>
+    <p class="sub">avuimpwjslrgpdahyloa.supabase.co</p>
+
+    <div class="big-status testing" id="bigBox">
+        <span class="big-icon" id="bigIcon">⏳</span>
+        <div class="big-label testing" id="bigLabel">Verbinde...</div>
+        <div class="big-detail" id="bigDetail">Bitte warten</div>
+    </div>
+
+    <div class="log" id="log"></div>
+    <button onclick="runTest()">Nochmal testen</button>
+</div>
+<script>
+    const URL = 'https://avuimpwjslrgpdahyloa.supabase.co';
+    const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF2dWltcHdqc2xyZ3BkYWh5bG9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwOTc0MjAsImV4cCI6MjA5NDY3MzQyMH0.q6s3s36WOoGGLbH7gsWqyzY2b_36vUjAHqKrGrAhYEs';
+
+    function log(msg, type) {
+        const el = document.getElementById('log');
+        const d = document.createElement('div');
+        d.className = 'log-line ' + (type||'info');
+        const t = new Date().toLocaleTimeString('de-DE');
+        d.innerHTML = '<span class="t">['+t+']</span><span class="m">'+msg+'</span>';
+        el.appendChild(d);
+        el.scrollTop = el.scrollHeight;
+    }
+
+    function status(icon, label, detail, state) {
+        document.getElementById('bigIcon').textContent = icon;
+        document.getElementById('bigLabel').textContent = label;
+        document.getElementById('bigLabel').className = 'big-label '+state;
+        document.getElementById('bigDetail').textContent = detail;
+        document.getElementById('bigBox').className = 'big-status '+state;
+    }
+
+    async function runTest() {
+        document.getElementById('log').innerHTML = '';
+        status('⏳','Verbinde...','Bitte warten','testing');
+        log('Teste REST API...');
+        const t = Date.now();
+        try {
+            const r = await fetch(URL+'/rest/v1/', {
+                headers: { 'apikey': KEY, 'Authorization': 'Bearer '+KEY }
+            });
+            const ms = Date.now()-t;
+            log('HTTP '+r.status+' nach '+ms+'ms');
+            if (r.ok || r.status===404 || r.status===400) {
+                status('✅','Verbindung OK!','Antwortet in '+ms+'ms','ok');
+                log('Datenbank erreichbar ✓','ok');
+            } else if (r.status===503) {
+                status('❌','Projekt paused','Bitte Resume klicken','fail');
+                log('503 – paused','err');
+            } else {
+                status('✅','Erreichbar','HTTP '+r.status+' ('+ms+'ms)','ok');
+                log('Antwort ✓','ok');
+            }
+        } catch(e) {
+            log('Fehler: '+e.message,'err');
+            status('❌','Nicht erreichbar',e.message,'fail');
+        }
+    }
+
+    window.addEventListener('load', runTest);
+</script>
+</body>
+</html>
