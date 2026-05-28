@@ -610,6 +610,54 @@
         .alert-info  { background: rgba(88,166,255,0.08); color: var(--accent); }
 
         /* ============================================================
+           PASSWORT VERGESSEN / RESET LINK
+        ============================================================ */
+        .forgot-link {
+            display: block;
+            text-align: right;
+            font-size: 12px;
+            color: var(--text-muted);
+            cursor: pointer;
+            margin-top: 6px;
+            text-decoration: none;
+            transition: color 0.15s;
+        }
+        .forgot-link:hover { color: var(--accent); }
+
+        .reset-success {
+            text-align: center;
+            padding: 24px 0 8px;
+        }
+        .reset-success .big-icon { font-size: 40px; margin-bottom: 12px; }
+        .reset-success h3 { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+        .reset-success p  { font-size: 13px; color: var(--text-muted); line-height: 1.6; }
+
+        /* ============================================================
+           PASSWORT ÄNDERN MODAL (im eingeloggten Zustand)
+        ============================================================ */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 200;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 32px;
+            width: 100%;
+            max-width: 380px;
+        }
+        .modal-box h3 { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+        .modal-box p  { font-size: 12px; color: var(--text-muted); margin-bottom: 24px; }
+
+        /* ============================================================
            SPINNER
         ============================================================ */
         .spinner {
@@ -686,7 +734,9 @@
         <div id="loginAlert" class="alert alert-error"></div>
         <div id="loginInfo" class="alert alert-info"></div>
 
-        <div style="display: flex; gap: 8px; margin-top: 20px;">
+        <a class="forgot-link" onclick="showScreen('screen-reset')">Passwort vergessen?</a>
+
+        <div style="display: flex; gap: 8px; margin-top: 12px;">
             <button class="btn btn-primary" id="loginBtn" onclick="handleLogin()" style="flex: 1;">
                 Anmelden
             </button>
@@ -705,6 +755,102 @@
 </div>
 
 <!-- ================================================================
+     SCREEN 4: PASSWORT VERGESSEN
+================================================================ -->
+<div id="screen-reset" class="screen">
+    <div class="login-box">
+        <h2>Passwort zurücksetzen</h2>
+        <p>Gib deine Email-Adresse ein – wir senden dir einen Reset-Link.</p>
+
+        <div id="resetForm">
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="resetEmail" placeholder="deine@email.de" autocomplete="email">
+            </div>
+            <div id="resetAlert" class="alert alert-error"></div>
+            <div style="display: flex; gap: 8px; margin-top: 20px;">
+                <button class="btn btn-primary" id="resetBtn" onclick="handlePasswordReset()" style="flex: 1;">
+                    Reset-Link senden
+                </button>
+                <button class="btn btn-secondary" onclick="showScreen('screen-login')">
+                    Zurück
+                </button>
+            </div>
+        </div>
+
+        <div id="resetSuccess" class="reset-success" style="display:none;">
+            <div class="big-icon">📬</div>
+            <h3>Email gesendet!</h3>
+            <p>Schau in dein Postfach bei <strong id="resetEmailSent"></strong>.<br>
+            Klicke auf den Link in der Email um dein Passwort zu ändern.<br><br>
+            <em style="font-size:11px; color: var(--text-dim);">Kein Email erhalten? Prüfe den Spam-Ordner oder warte kurz.</em></p>
+            <button class="btn btn-secondary" onclick="showScreen('screen-login')" style="margin-top: 20px;">
+                Zurück zum Login
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ================================================================
+     SCREEN 5: NEUES PASSWORT SETZEN (kommt vom Email-Link)
+================================================================ -->
+<div id="screen-newpassword" class="screen">
+    <div class="login-box">
+        <h2>Neues Passwort setzen</h2>
+        <p>Wähle ein sicheres Passwort für deinen Account.</p>
+
+        <div class="form-group">
+            <label>Neues Passwort</label>
+            <input type="password" id="newPassword" placeholder="Mindestens 8 Zeichen" autocomplete="new-password">
+        </div>
+        <div class="form-group">
+            <label>Passwort bestätigen</label>
+            <input type="password" id="newPasswordConfirm" placeholder="Nochmal eingeben" autocomplete="new-password">
+        </div>
+
+        <div id="newPwAlert" class="alert alert-error"></div>
+        <div id="newPwInfo" class="alert alert-info"></div>
+
+        <div style="margin-top: 20px;">
+            <button class="btn btn-primary" id="newPwBtn" onclick="handleSetNewPassword()" style="width: 100%;">
+                Passwort speichern
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ================================================================
+     MODAL: PASSWORT ÄNDERN (eingeloggt)
+================================================================ -->
+<div id="modal-changepw" class="modal-overlay">
+    <div class="modal-box">
+        <h3>Passwort ändern</h3>
+        <p>Gib ein neues Passwort für <span id="changePwUser"></span> ein.</p>
+
+        <div class="form-group">
+            <label>Neues Passwort</label>
+            <input type="password" id="changePwNew" placeholder="Mindestens 8 Zeichen" autocomplete="new-password">
+        </div>
+        <div class="form-group">
+            <label>Bestätigen</label>
+            <input type="password" id="changePwConfirm" placeholder="Nochmal eingeben" autocomplete="new-password">
+        </div>
+
+        <div id="changePwAlert" class="alert alert-error"></div>
+        <div id="changePwInfo" class="alert alert-info"></div>
+
+        <div style="display: flex; gap: 8px; margin-top: 20px;">
+            <button class="btn btn-primary" id="changePwBtn" onclick="handleChangePassword()" style="flex: 1;">
+                Speichern
+            </button>
+            <button class="btn btn-secondary" onclick="closeChangePwModal()">
+                Abbrechen
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ================================================================
      SCREEN 3: MAIN APP
 ================================================================ -->
 <div id="screen-app" class="screen">
@@ -718,6 +864,7 @@
         </div>
         <div class="topbar-right">
             <span class="user-pill" id="userPill">–</span>
+            <button class="btn btn-ghost" onclick="openChangePwModal()" style="font-size: 11px;" id="changePwTopBtn" style="display:none;">🔑 Passwort</button>
             <button class="btn btn-ghost" onclick="handleLogout()">Abmelden</button>
         </div>
     </div>
@@ -861,6 +1008,15 @@ window.addEventListener('load', async () => {
     // Heutiges Datum als Standard setzen
     document.getElementById('inputDatum').valueAsDate = new Date();
 
+    // ✅ AUTH STATE LISTENER – fängt PASSWORD_RECOVERY ab (kommt vom Email-Link)
+    db.auth.onAuthStateChange(async (event, session) => {
+        if (event === 'PASSWORD_RECOVERY') {
+            // User hat auf Reset-Link geklickt → Neues-Passwort-Screen zeigen
+            console.log('🔑 PASSWORD_RECOVERY event empfangen');
+            showScreen('screen-newpassword');
+        }
+    });
+
     // ✅ SESSION CHECK: Noch angemeldet?
     // → Supabase speichert Token im localStorage automatisch
     const { data: { session } } = await db.auth.getSession();
@@ -934,7 +1090,15 @@ async function handleLogin() {
         await enterTeamMode();
 
     } catch (err) {
-        alertEl.textContent = 'Fehler: ' + err.message;
+        // Benutzerfreundliche Fehlermeldungen
+        let msg = err.message;
+        if (msg.includes('Invalid login credentials'))
+            msg = 'Email oder Passwort falsch. Bitte prüfen.';
+        else if (msg.includes('Email not confirmed'))
+            msg = 'Email noch nicht bestätigt. Bitte prüfe dein Postfach.';
+        else if (msg.includes('Too many requests'))
+            msg = 'Zu viele Versuche. Bitte kurz warten und nochmal versuchen.';
+        alertEl.textContent = msg;
         alertEl.classList.add('show');
         infoEl.classList.remove('show');
     }
@@ -981,9 +1145,10 @@ function setupAppUI() {
     document.getElementById('syncDot').classList.add('pulsing');
 
     // Buttons je nach Modus
-    document.getElementById('exportBtn').style.display  = currentMode === 'standalone' ? 'inline-flex' : 'none';
-    document.getElementById('importBtn').style.display  = currentMode === 'standalone' ? 'inline-flex' : 'none';
-    document.getElementById('refreshBtn').style.display = currentMode === 'team'       ? 'inline-flex' : 'none';
+    document.getElementById('exportBtn').style.display    = currentMode === 'standalone' ? 'inline-flex' : 'none';
+    document.getElementById('importBtn').style.display    = currentMode === 'standalone' ? 'inline-flex' : 'none';
+    document.getElementById('refreshBtn').style.display   = currentMode === 'team'       ? 'inline-flex' : 'none';
+    document.getElementById('changePwTopBtn').style.display = currentMode === 'team'     ? 'inline-flex' : 'none';
 
     // Banner
     const banner = document.getElementById('appBanner');
@@ -1217,6 +1382,162 @@ function importJSON(event) {
 }
 
 /* ================================================================
+   PASSWORT VERGESSEN – Reset-Link senden
+================================================================ */
+async function handlePasswordReset() {
+    const email   = document.getElementById('resetEmail').value.trim();
+    const alertEl = document.getElementById('resetAlert');
+    const btn     = document.getElementById('resetBtn');
+
+    alertEl.classList.remove('show');
+
+    if (!email) {
+        alertEl.textContent = 'Bitte Email-Adresse eingeben';
+        alertEl.classList.add('show');
+        return;
+    }
+
+    btn.disabled    = true;
+    btn.innerHTML   = '<span class="spinner"></span> Senden...';
+
+    // redirectTo = deine Tool-URL (Supabase leitet nach Klick dorthin zurück)
+    const { error } = await db.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.href
+    });
+
+    btn.disabled  = false;
+    btn.innerHTML = 'Reset-Link senden';
+
+    if (error) {
+        alertEl.textContent = 'Fehler: ' + error.message;
+        alertEl.classList.add('show');
+        return;
+    }
+
+    // Erfolg anzeigen
+    document.getElementById('resetEmailSent').textContent = email;
+    document.getElementById('resetForm').style.display    = 'none';
+    document.getElementById('resetSuccess').style.display = 'block';
+}
+
+/* ================================================================
+   NEUES PASSWORT SETZEN (nach Email-Link / PASSWORD_RECOVERY)
+================================================================ */
+async function handleSetNewPassword() {
+    const pw1     = document.getElementById('newPassword').value;
+    const pw2     = document.getElementById('newPasswordConfirm').value;
+    const alertEl = document.getElementById('newPwAlert');
+    const infoEl  = document.getElementById('newPwInfo');
+    const btn     = document.getElementById('newPwBtn');
+
+    alertEl.classList.remove('show');
+    infoEl.classList.remove('show');
+
+    if (!pw1 || !pw2) {
+        alertEl.textContent = 'Bitte beide Felder ausfüllen';
+        alertEl.classList.add('show');
+        return;
+    }
+    if (pw1.length < 8) {
+        alertEl.textContent = 'Passwort muss mindestens 8 Zeichen haben';
+        alertEl.classList.add('show');
+        return;
+    }
+    if (pw1 !== pw2) {
+        alertEl.textContent = 'Passwörter stimmen nicht überein';
+        alertEl.classList.add('show');
+        return;
+    }
+
+    btn.disabled  = true;
+    btn.innerHTML = '<span class="spinner"></span> Speichern...';
+
+    const { error } = await db.auth.updateUser({ password: pw1 });
+
+    btn.disabled  = false;
+    btn.innerHTML = 'Passwort speichern';
+
+    if (error) {
+        alertEl.textContent = 'Fehler: ' + error.message;
+        alertEl.classList.add('show');
+        return;
+    }
+
+    infoEl.textContent = '✓ Passwort erfolgreich geändert! Leite weiter...';
+    infoEl.classList.add('show');
+
+    // Kurz anzeigen, dann zum Login
+    setTimeout(() => {
+        document.getElementById('newPassword').value        = '';
+        document.getElementById('newPasswordConfirm').value = '';
+        infoEl.classList.remove('show');
+        showScreen('screen-login');
+    }, 2000);
+}
+
+/* ================================================================
+   PASSWORT ÄNDERN (eingeloggt) – Modal
+================================================================ */
+function openChangePwModal() {
+    document.getElementById('changePwUser').textContent = currentUser.email;
+    document.getElementById('changePwNew').value        = '';
+    document.getElementById('changePwConfirm').value    = '';
+    document.getElementById('changePwAlert').classList.remove('show');
+    document.getElementById('changePwInfo').classList.remove('show');
+    document.getElementById('modal-changepw').classList.add('active');
+}
+
+function closeChangePwModal() {
+    document.getElementById('modal-changepw').classList.remove('active');
+}
+
+async function handleChangePassword() {
+    const pw1     = document.getElementById('changePwNew').value;
+    const pw2     = document.getElementById('changePwConfirm').value;
+    const alertEl = document.getElementById('changePwAlert');
+    const infoEl  = document.getElementById('changePwInfo');
+    const btn     = document.getElementById('changePwBtn');
+
+    alertEl.classList.remove('show');
+    infoEl.classList.remove('show');
+
+    if (!pw1 || !pw2) {
+        alertEl.textContent = 'Bitte beide Felder ausfüllen';
+        alertEl.classList.add('show');
+        return;
+    }
+    if (pw1.length < 8) {
+        alertEl.textContent = 'Passwort muss mindestens 8 Zeichen haben';
+        alertEl.classList.add('show');
+        return;
+    }
+    if (pw1 !== pw2) {
+        alertEl.textContent = 'Passwörter stimmen nicht überein';
+        alertEl.classList.add('show');
+        return;
+    }
+
+    btn.disabled  = true;
+    btn.innerHTML = '<span class="spinner"></span> Speichern...';
+
+    const { error } = await db.auth.updateUser({ password: pw1 });
+
+    btn.disabled  = false;
+    btn.innerHTML = 'Speichern';
+
+    if (error) {
+        alertEl.textContent = 'Fehler: ' + error.message;
+        alertEl.classList.add('show');
+        return;
+    }
+
+    infoEl.textContent = '✓ Passwort erfolgreich geändert!';
+    infoEl.classList.add('show');
+
+    setTimeout(() => closeChangePwModal(), 2000);
+}
+
+/* ================================================================
    LOGOUT
 ================================================================ */
 async function handleLogout() {
@@ -1239,6 +1560,10 @@ async function handleLogout() {
     document.getElementById('loginPassword').value = '';
     document.getElementById('loginAlert').classList.remove('show');
     document.getElementById('loginInfo').classList.remove('show');
+    // Reset-Screen zurücksetzen
+    document.getElementById('resetEmail').value        = '';
+    document.getElementById('resetForm').style.display  = 'block';
+    document.getElementById('resetSuccess').style.display = 'none';
 
     showScreen('screen-mode');
 }
