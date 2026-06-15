@@ -1,9 +1,8 @@
 name: Keep Supabase Alive
-
 on:
   schedule:
     - cron: '0 10 * * *'  # Jeden Tag um 10:00 Uhr UTC (12:00 Uhr München)
-  workflow_dispatch:       # Manuell auslösen möglich (für Tests)
+  workflow_dispatch:
 
 jobs:
   ping:
@@ -13,9 +12,8 @@ jobs:
       - name: Ping Supabase
         run: |
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-            'https://avuimpwjslrgpdahyloa.supabase.co/rest/v1/test_termine?select=count' \
-            -H 'apikey: ${{ secrets.SUPABASE_ANON_KEY }}' \
-            -H 'Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}')
+            'https://avuimpwjslrgpdahyloa.supabase.co/rest/v1/test_termine?select=id&limit=1' \
+            -H 'apikey: ${{ secrets.SUPABASE_ANON_KEY }}')
           
           echo "HTTP Status: $STATUS"
           
@@ -23,4 +21,5 @@ jobs:
             echo "✅ Supabase ist aktiv und erreichbar!"
           else
             echo "⚠️  Unerwarteter Status: $STATUS"
+            exit 1
           fi
