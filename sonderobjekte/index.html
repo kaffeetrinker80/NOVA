@@ -474,6 +474,61 @@ input:focus, textarea:focus, select:focus {
 textarea { resize: vertical; }
 .detail-actions { margin-bottom: 8px; display: flex; gap: 6px; flex-wrap: wrap; }
 
+/* ── HISTORIE ────────────────────────────────────────────── */
+.history-entry {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 4px 2px 4px 6px;
+    border-bottom: 1px solid var(--gray-200);
+}
+.history-entry:last-child { border-bottom: none; }
+.history-entry-text { flex: 1; min-width: 0; }
+.history-entry-delete {
+    flex: 0 0 auto;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--danger);
+    font-size: 17px;
+    line-height: 18px;
+    cursor: pointer;
+    transition: background .15s, border-color .15s;
+}
+.history-entry-delete:hover {
+    background: #fff1f2;
+    border-color: #fecaca;
+}
+.customer-object-option {
+    margin: 2px 0 12px;
+    padding: 10px 12px;
+    border: 1px solid #bfdbfe;
+    border-radius: var(--radius-sm);
+    background: var(--nova-50);
+}
+.customer-object-option label {
+    display: flex;
+    align-items: flex-start;
+    gap: 7px;
+    cursor: pointer;
+    color: var(--nova-800);
+}
+.customer-object-option input {
+    width: auto;
+    margin: 2px 0 0;
+    flex: 0 0 auto;
+}
+.customer-object-option .hint {
+    margin: 4px 0 0 25px;
+    font-size: 11px;
+    color: var(--gray-500);
+    line-height: 1.45;
+}
+
 /* ── SCOPE CHECKBOXEN ────────────────────────────────────── */
 .scope-group { margin: 4px 0 10px; }
 .scope-checkboxes { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-bottom: 8px; }
@@ -625,8 +680,10 @@ tr.row-paused:hover > td { background: #f1f5f9 !important; }
 
         <section class="card">
             <div class="card-header-line">
-                <h3>Kunden &amp; Objekte (Bearbeitung)</h3>
-                <button class="btn btn-small" id="new-customer-btn">+ Neuer Kunde</button>
+                <div>
+                    <h3>Kunden &amp; Objekte (Bearbeitung)</h3>
+                    <div class="info-text">Erst einen Kunden anlegen, anschließend den Kunden auswählen und das passende Objekt anlegen. Bei Privatkunden, bei denen Kunde und Anlage identisch sind, kann das Objekt direkt beim Anlegen des Kunden vorbereitet werden.</div>
+                </div>
             </div>
             <div class="split-layout">
                 <div class="panel panel-list">
@@ -641,9 +698,10 @@ tr.row-paused:hover > td { background: #f1f5f9 !important; }
                     <p id="detail-customer-address" class="info-text"></p>
                     <p id="detail-customer-notes" class="info-text"></p>
                     <div class="detail-actions">
+                        <button id="new-customer-btn" class="btn btn-small">+ Neuer Kunde</button>
                         <button id="edit-customer-btn" class="btn-secondary btn-small">Kunde bearbeiten</button>
+                        <button id="new-object-btn" class="btn btn-small">+ Objekt für diesen Kunden</button>
                         <button id="delete-customer-btn" class="btn-danger btn-small">Kunde löschen</button>
-                        <button id="new-object-btn" class="btn btn-small">+ Neues Objekt</button>
                     </div>
                     <table id="customer-objects-table">
                         <thead>
@@ -746,6 +804,13 @@ tr.row-paused:hover > td { background: #f1f5f9 !important; }
             <input type="text" id="customer-city">
             <label for="customer-notes">Notizen (optional)</label>
             <textarea id="customer-notes" rows="3"></textarea>
+            <div class="customer-object-option" id="customer-object-option">
+                <label for="customer-is-object">
+                    <input type="checkbox" id="customer-is-object">
+                    <span>Kunde ist gleichzeitig das Objekt / die Anlage</span>
+                </label>
+                <div class="hint">Praktisch für Privatkunden mit eigenem Brunnen oder Eigenversorgungsanlage. Nach dem Speichern wird das Objekt mit gleichem Namen und Ort vorbereitet.</div>
+            </div>
             <div class="modal-footer">
                 <button type="button" class="btn-secondary btn-small" id="customer-cancel">Abbrechen</button>
                 <button type="submit" class="btn btn-small">Speichern</button>
@@ -923,7 +988,7 @@ let settings = { anlagenTypes: DEFAULT_TYPES.slice(), scopeItems: DEFAULT_SCOPE.
 function buildExportPayload() {
     return {
         generatedAt: new Date().toISOString(),
-        version: "terminverwaltung-sonderobjekte-v2.9",
+        version: "terminverwaltung-sonderobjekte-v2.9.1",
         customers,
         appointments,
         settings,
@@ -1265,6 +1330,7 @@ function renderCustomerDetail() {
     const addrP   = document.getElementById("detail-customer-address");
     const notesP  = document.getElementById("detail-customer-notes");
     const tbody   = document.querySelector("#customer-objects-table tbody");
+    const newCust = document.getElementById("new-customer-btn");
     const editBtn = document.getElementById("edit-customer-btn");
     const delBtn  = document.getElementById("delete-customer-btn");
     const newObj  = document.getElementById("new-object-btn");
@@ -1274,6 +1340,7 @@ function renderCustomerDetail() {
     if (!cust) {
         title.textContent = "Kein Kunde ausgewählt";
         addrP.textContent = ""; notesP.textContent = "";
+        newCust.disabled = false;
         editBtn.disabled = delBtn.disabled = newObj.disabled = true;
         return;
     }
@@ -1284,6 +1351,7 @@ function renderCustomerDetail() {
     if (po) parts.push(po);
     addrP.textContent  = parts.join(", ");
     notesP.textContent = cust.notes || "";
+    newCust.disabled = false;
     editBtn.disabled = delBtn.disabled = newObj.disabled = false;
 
     (cust.objects||[]).forEach(o => {
@@ -1485,13 +1553,18 @@ function deleteObject(cId, oId) {
 // ================================================================
 function openCustomerModal(custId) {
     editingCustomerId = custId || null;
-    document.getElementById("customer-modal-title").textContent = custId ? "Kunde bearbeiten" : "Neuer Kunde";
+    const isNewCustomer = !custId;
+    document.getElementById("customer-modal-title").textContent = isNewCustomer ? "Neuen Kunden anlegen" : "Kunde bearbeiten";
     const c = custId ? getCustomerById(custId) : null;
     document.getElementById("customer-name").value   = c?.name   || "";
     document.getElementById("customer-street").value = c?.street || "";
     document.getElementById("customer-zip").value    = c?.zip    || "";
     document.getElementById("customer-city").value   = c?.city   || "";
     document.getElementById("customer-notes").value  = c?.notes  || "";
+
+    // Die Kombination Kunde + Objekt ist nur beim erstmaligen Anlegen sinnvoll.
+    document.getElementById("customer-object-option").style.display = isNewCustomer ? "" : "none";
+    document.getElementById("customer-is-object").checked = false;
     document.getElementById("customer-modal").style.display = "flex";
 }
 function closeCustomerModal() { document.getElementById("customer-modal").style.display = "none"; }
@@ -1526,17 +1599,17 @@ function renderScopeCheckboxes(selectedArr) {
     });
 }
 
-function openObjectModal(custId, objId) {
+function openObjectModal(custId, objId, initialValues = {}) {
     editingObjectCustomerId = custId; editingObjectId = objId || null;
     const cust = getCustomerById(custId); if (!cust) return;
-    document.getElementById("object-modal-title").textContent        = objId ? "Objekt bearbeiten" : "Neues Objekt";
+    document.getElementById("object-modal-title").textContent        = objId ? "Objekt bearbeiten" : "Neues Objekt anlegen";
     document.getElementById("object-modal-customer-label").textContent = "Kunde: " + cust.name;
     const obj = objId ? getObjectById(custId, objId) : null;
     if (obj) ensureObjectScope(obj);
-    document.getElementById("obj-name").value  = obj?.name  || "";
-    renderTypeOptions(obj?.type || "");
-    document.getElementById("obj-city").value  = obj?.city  || "";
-    document.getElementById("obj-notes").value = obj?.notes || "";
+    document.getElementById("obj-name").value  = obj?.name  || initialValues.name || "";
+    renderTypeOptions(obj?.type || initialValues.type || "");
+    document.getElementById("obj-city").value  = obj?.city  || initialValues.city || "";
+    document.getElementById("obj-notes").value = obj?.notes || initialValues.notes || "";
     document.getElementById("obj-interval").value = (obj?.intervalMonths||0).toString();
     document.getElementById("obj-last").value    = obj?.lastDate ? germanToIso(obj.lastDate) : "";
     document.getElementById("obj-planned").value = obj?.plannedDate ? germanToIso(obj.plannedDate) : "";
@@ -1573,6 +1646,37 @@ function closePlanModal() { document.getElementById("plan-modal").style.display 
 // ================================================================
 // MODALS – HISTORIE
 // ================================================================
+function recalculateDatesFromHistory(obj) {
+    const history = Array.isArray(obj.history) ? obj.history : [];
+    const datedEntries = history
+        .map(entry => ({ entry, date: parseGermanDate(entry.date) }))
+        .filter(item => item.date && !isNaN(item.date.getTime()))
+        .sort((a, b) => a.date - b.date);
+
+    const last = datedEntries.length ? datedEntries[datedEntries.length - 1].entry : null;
+    obj.lastDate = last ? last.date : "";
+
+    if (obj.intervalMonths > 0 && last) {
+        const nextISO = addMonthsToIso(germanToIso(last.date), obj.intervalMonths);
+        obj.nextDate = nextISO ? toGermanDate(nextISO) : "";
+    } else if (!last) {
+        obj.nextDate = "";
+    }
+}
+
+function deleteHistoryEntry(custId, objId, historyIndex) {
+    const obj = getObjectById(custId, objId);
+    if (!obj || !Array.isArray(obj.history) || !obj.history[historyIndex]) return;
+    const entry = obj.history[historyIndex];
+    if (!confirm(`Historien-Eintrag vom ${entry.date} wirklich löschen?`)) return;
+
+    obj.history.splice(historyIndex, 1);
+    recalculateDatesFromHistory(obj);
+    saveData();
+    renderAll();
+    openHistoryModal(custId, objId);
+}
+
 function openHistoryModal(custId, objId) {
     historyCustomerId = custId; historyObjectId = objId;
     const cust = getCustomerById(custId), obj = getObjectById(custId, objId);
@@ -1588,10 +1692,25 @@ function openHistoryModal(custId, objId) {
         listDiv.appendChild(d);
     }
     if (obj.history && obj.history.length) {
-        obj.history.forEach(e => {
-            const r = document.createElement("div"); r.style.marginBottom = "3px";
-            r.textContent = e.date + " – " + e.type + " (" + e.result + ")";
-            listDiv.appendChild(r);
+        obj.history.forEach((e, index) => {
+            const row = document.createElement("div");
+            row.className = "history-entry";
+
+            const entryText = document.createElement("span");
+            entryText.className = "history-entry-text";
+            entryText.textContent = e.date + " – " + e.type + " (" + e.result + ")";
+
+            const deleteBtn = document.createElement("button");
+            deleteBtn.type = "button";
+            deleteBtn.className = "history-entry-delete";
+            deleteBtn.textContent = "×";
+            deleteBtn.title = "Eintrag löschen";
+            deleteBtn.setAttribute("aria-label", `Historien-Eintrag vom ${e.date} löschen`);
+            deleteBtn.addEventListener("click", () => deleteHistoryEntry(custId, objId, index));
+
+            row.appendChild(entryText);
+            row.appendChild(deleteBtn);
+            listDiv.appendChild(row);
         });
     } else {
         const em = document.createElement("div"); em.textContent = "Noch keine Einträge."; listDiv.appendChild(em);
@@ -1661,16 +1780,27 @@ document.getElementById("customer-form").addEventListener("submit", e => {
     const zip    = document.getElementById("customer-zip").value.trim();
     const city   = document.getElementById("customer-city").value.trim();
     const notes  = document.getElementById("customer-notes").value.trim();
+    const createSameNamedObject = !editingCustomerId && document.getElementById("customer-is-object").checked;
     if (!name) { alert("Bitte Kundennamen angeben."); return; }
+
     if (editingCustomerId) {
         const c = getCustomerById(editingCustomerId);
         if (c) Object.assign(c, { name, street, zip, city, notes });
-    } else {
-        const newId = nextCustomerId++;
-        customers.push({ id: newId, name, street, zip, city, notes, objects: [] });
-        selectedCustomerId = newId;
+        closeCustomerModal(); saveData(); renderAll();
+        return;
     }
-    closeCustomerModal(); saveData(); renderAll();
+
+    const newId = nextCustomerId++;
+    customers.push({ id: newId, name, street, zip, city, notes, objects: [] });
+    selectedCustomerId = newId;
+    closeCustomerModal();
+    saveData();
+    renderAll();
+
+    // Für Privatkunden: Anlage sofort mit gleichem Namen / Ort vorbereiten.
+    if (createSameNamedObject) {
+        openObjectModal(newId, null, { name, city });
+    }
 });
 
 // Objekt
@@ -2127,6 +2257,6 @@ document.getElementById("logout-btn").addEventListener("click", async () => {
 
 initApp();
 </script>
-<footer class="footer" id="app-footer" style="display:none;">Made with Love &copy; &ndash; Terminverwaltung NOVA Sonderobjekte V 2.9</footer>
+<footer class="footer" id="app-footer" style="display:none;">Made with Love &copy; &ndash; Terminverwaltung NOVA Sonderobjekte V 2.9.1</footer>
 </body>
 </html>
