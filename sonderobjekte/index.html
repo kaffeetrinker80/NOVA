@@ -502,6 +502,48 @@ textarea { resize: vertical; }
     .topbar, .tab-nav, .modal, .header-main { display: none !important; }
     .container { padding: 0; }
 }
+
+/* ── TERMIN-BADGES ───────────────────────────────────────── */
+.termin-cell { display: flex; flex-direction: column; gap: 3px; }
+.badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 10px; font-weight: 600; font-family: var(--font);
+    padding: 2px 7px; border-radius: 999px; white-space: nowrap;
+    width: fit-content; letter-spacing: 0.02em;
+}
+.badge-planned { background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; }
+.badge-turnus  { background: var(--gray-100); color: var(--gray-700); border: 1px solid var(--gray-200); }
+.badge-paused  { background: #f1f5f9; color: var(--gray-500); border: 1px dashed var(--gray-300); }
+.badge-none    { background: transparent; color: var(--gray-300); }
+.termin-date   { font-size: 13px; color: var(--gray-700); }
+.termin-date.muted { color: var(--gray-500); font-style: italic; }
+/* pausierte Zeilen neutral halten (Ampel überschreiben) */
+tr.row-paused > td { background: #f8fafc !important; }
+tr.row-paused:hover > td { background: #f1f5f9 !important; }
+
+/* ── EINSTELLUNGEN ───────────────────────────────────────── */
+.settings-grid { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
+.settings-block { flex: 1 1 320px; min-width: 280px; }
+.settings-block h4 {
+    margin: 0 0 4px; font-size: 13px; font-weight: 600; color: var(--gray-700);
+    text-transform: uppercase; letter-spacing: 0.05em;
+}
+.settings-hint { font-size: 11px; color: var(--gray-500); margin: 0 0 10px; line-height: 1.5; }
+.settings-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+.settings-row { display: flex; gap: 6px; align-items: center; }
+.settings-row input { margin: 0; flex: 1; }
+.settings-row .drag-handle { color: var(--gray-300); font-size: 13px; cursor: default; user-select: none; }
+.settings-row button.row-del {
+    flex: 0 0 auto; background: none; border: 1px solid var(--gray-200);
+    color: var(--danger); border-radius: var(--radius-sm); cursor: pointer;
+    padding: 6px 9px; font-size: 13px; line-height: 1; transition: all .15s;
+}
+.settings-row button.row-del:hover { background: #fff1f2; border-color: #fecaca; }
+.settings-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.settings-saved-hint { font-size: 11px; color: var(--success); font-weight: 600; opacity: 0; transition: opacity .2s; }
+.settings-saved-hint.show { opacity: 1; }
+.backup-block { margin-top: 6px; }
+.backup-row { display: flex; gap: 8px; flex-wrap: wrap; }
 </style>
 </head>
 <body>
@@ -545,9 +587,7 @@ textarea { resize: vertical; }
     </div>
     <div class="topbar-right">
         <button id="print-btn" class="btn btn-secondary">🖨 Drucken</button>
-        <button id="import-btn" class="btn btn-secondary">⬆ Importieren</button>
         <input type="file" id="import-file" accept="application/json" aria-label="JSON-Datei importieren" style="display:none" />
-        <button id="export-btn" class="btn btn-secondary">⬇ Exportieren</button>
         <span id="sync-status" class="sync-status off">☁ nicht angemeldet</span>
         <span id="user-chip" class="user-chip" style="display:none;"></span>
         <button id="logout-btn" class="btn btn-secondary btn-small" style="display:none;">🔓 Abmelden</button>
@@ -558,6 +598,7 @@ textarea { resize: vertical; }
 <nav class="tab-nav" id="app-tabnav" style="display:none;">
     <button id="tab-customers" class="active">👤 Kunden &amp; Objekte</button>
     <button id="tab-allobjects">📅 Anlagen &amp; Termine</button>
+    <button id="tab-settings">⚙ Einstellungen</button>
 </nav>
 
 <div class="container" id="app-container" style="display:none;">
@@ -567,13 +608,15 @@ textarea { resize: vertical; }
         <section class="card">
             <h3>Bald fällige nächste Untersuchungen</h3>
             <div class="info-text">
-                Alle Objekte mit nächstem Termin innerhalb der nächsten 60 Tage (oder überfällig).
-                <b>Rot</b> = überfällig, <b>Gelb</b> = in den nächsten 14 Tagen, <b>Grün</b> = später.
+                Alle Objekte mit Termin in den nächsten 60 Tagen (oder überfällig). Saisonpausierte sind ausgeblendet.<br>
+                <span class="badge badge-planned">📅 bestätigt</span> = fix geplanter Termin (zuerst gelistet) &nbsp;·&nbsp;
+                <span class="badge badge-turnus">↻ Turnus</span> = Vorschlag aus der Routine (noch nicht terminiert).<br>
+                <b>Rot</b> = überfällig, <b>Gelb</b> = nächste 14 Tage, <b>Grün</b> = später.
             </div>
             <table id="upcoming-table">
                 <thead>
                     <tr>
-                        <th>Kunde</th><th>Objekt</th><th>Art</th><th>Ort</th><th>Nächster Termin</th>
+                        <th>Kunde</th><th>Objekt</th><th>Art</th><th>Ort</th><th>Termin</th>
                     </tr>
                 </thead>
                 <tbody id="upcoming-tbody"></tbody>
@@ -606,7 +649,7 @@ textarea { resize: vertical; }
                         <thead>
                             <tr>
                                 <th>Objekt</th><th>Art</th><th>Ort</th>
-                                <th>Letzte Untersuchung</th><th>Nächster Termin</th><th>Aktionen</th>
+                                <th>Termin</th><th>Aktionen</th>
                             </tr>
                         </thead>
                         <tbody></tbody>
@@ -621,19 +664,68 @@ textarea { resize: vertical; }
         <section class="card">
             <h3>Alle Anlagen &amp; Termine</h3>
             <div class="info-text">
-                Alle Objekte, sortiert nach nächster Untersuchung (bald fällige zuerst, ohne Datum am Ende).
-                Objektname ist klickbar für direkte Historie.
+                Alle Objekte, sortiert nach Termin (bestätigte zuerst, dann Turnus-Vorschläge, ohne Datum am Ende).
+                Objektname ist klickbar für die Historie. Letzte Untersuchung steht unter „Details".
             </div>
             <table id="allobjects-table">
                 <thead>
                     <tr>
                         <th>Status</th><th>Kunde</th><th>Objekt (Historie)</th><th>Art</th>
-                        <th>Ort</th><th>Letzte Untersuchung</th><th>Nächste Untersuchung</th>
+                        <th>Ort</th><th>Termin</th>
                         <th>Routine (Monate)</th><th>Aktionen</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
             </table>
+        </section>
+    </div>
+
+    <!-- VIEW: EINSTELLUNGEN -->
+    <div id="view-settings" style="display:none;">
+        <section class="card">
+            <h3>Bezeichnungen verwalten</h3>
+            <div class="info-text" style="margin-bottom:14px;">
+                Hier legst du fest, welche Begriffe bei „Objekt bearbeiten" zur Auswahl stehen.
+                Umbenennen wirkt für neue Auswahl; gelöschte Begriffe verschwinden als Option.
+                Ein bereits einem Objekt zugewiesener, gelöschter Begriff bleibt am Objekt sichtbar,
+                bis du ihn dort neu wählst.
+            </div>
+            <div class="settings-grid">
+                <div class="settings-block">
+                    <h4>Art der Anlage</h4>
+                    <p class="settings-hint">Auswahlliste im Feld „Art der Anlage".</p>
+                    <div class="settings-list" id="settings-types-list"></div>
+                    <div class="settings-actions">
+                        <button type="button" class="btn-secondary btn-small" id="settings-types-add">+ Hinzufügen</button>
+                        <button type="button" class="btn btn-small" id="settings-types-save">Speichern</button>
+                        <span class="settings-saved-hint" id="settings-types-hint">✓ gespeichert</span>
+                    </div>
+                </div>
+                <div class="settings-block">
+                    <h4>Untersuchungsumfang (Probenarten)</h4>
+                    <p class="settings-hint">Checkbox-Liste im Bereich „Untersuchungsumfang".</p>
+                    <div class="settings-list" id="settings-scope-list"></div>
+                    <div class="settings-actions">
+                        <button type="button" class="btn-secondary btn-small" id="settings-scope-add">+ Hinzufügen</button>
+                        <button type="button" class="btn btn-small" id="settings-scope-save">Speichern</button>
+                        <span class="settings-saved-hint" id="settings-scope-hint">✓ gespeichert</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="card">
+            <h3>Daten-Backup</h3>
+            <div class="info-text" style="margin-bottom:12px;">
+                Manuelles Sichern/Wiederherstellen als JSON. Der Import ersetzt die aktuellen Daten
+                und synchronisiert anschließend zu Supabase.
+            </div>
+            <div class="backup-block">
+                <div class="backup-row">
+                    <button id="export-btn" class="btn btn-secondary">⬇ Exportieren (JSON)</button>
+                    <button id="import-btn" class="btn btn-secondary">⬆ Importieren (JSON)</button>
+                </div>
+            </div>
         </section>
     </div>
 
@@ -673,10 +765,6 @@ textarea { resize: vertical; }
             <label for="obj-type">Art der Anlage</label>
             <select id="obj-type">
                 <option value="">- bitte wählen -</option>
-                <option value="Schwimmbeckenuntersuchung">Schwimmbeckenuntersuchung</option>
-                <option value="Kühlwasser">Kühlwasser</option>
-                <option value="Eigenversorgungsanlage">Eigenversorgungsanlage</option>
-                <option value="Sonstige">Sonstige</option>
             </select>
             <label for="obj-city">Ort</label>
             <input type="text" id="obj-city">
@@ -698,15 +786,19 @@ textarea { resize: vertical; }
                 <option value="11">Alle 11 Monate</option>
                 <option value="12">Alle 12 Monate</option>
             </select>
+            <label for="obj-planned">Bestätigter Termin (fix geplant, optional)</label>
+            <div class="kw-helper" style="margin-top:0;">
+                Leer = nur Turnus-Vorschlag aus Routine. Mit Datum = echter, terminierter Besuch
+                (taucht überall als <b>📅 bestätigt</b> auf).
+            </div>
+            <input type="date" id="obj-planned">
+            <label class="scope-checkboxes" style="margin-bottom:10px;">
+                <input type="checkbox" id="obj-season-paused" style="width:auto;margin:0 6px 0 0;">
+                Saison pausiert (z.&nbsp;B. Kühlwasser im Winter – aus „bald fällig" ausgeblendet)
+            </label>
             <div class="scope-group">
                 <label>Untersuchungsumfang (Probenarten)</label>
-                <div class="scope-checkboxes">
-                    <label><input type="checkbox" id="scope-legionellen">Legionellen</label>
-                    <label><input type="checkbox" id="scope-mibi">Mibi</label>
-                    <label><input type="checkbox" id="scope-chemie">Chemie</label>
-                    <label><input type="checkbox" id="scope-vorort">Vorortparameter</label>
-                    <label><input type="checkbox" id="scope-sonstiges">Sonstiges</label>
-                </div>
+                <div class="scope-checkboxes" id="scope-checkboxes"></div>
                 <label for="scope-details">Stückzahl / Details</label>
                 <textarea id="scope-details" rows="2" placeholder="z.B. 3x Mibi, 1x Chemie"></textarea>
             </div>
@@ -723,10 +815,10 @@ textarea { resize: vertical; }
 <!-- MODAL: TERMIN PLANEN -->
 <div class="modal" id="plan-modal">
     <div class="modal-content">
-        <div class="modal-header">Termin planen</div>
+        <div class="modal-header">Bestätigten Termin planen</div>
         <form id="plan-form">
             <div class="info-text" id="plan-object-label"></div>
-            <div class="kw-helper">Optional: Termin über Kalenderwoche setzen</div>
+            <div class="kw-helper">Setzt einen <b>fix geplanten Termin</b> (📅 bestätigt). Optional über Kalenderwoche.</div>
             <div class="kw-row">
                 <input type="number" id="plan-kw-year" placeholder="Jahr" min="2000" max="2100" aria-label="Kalenderwoche Jahr">
                 <input type="number" id="plan-kw" placeholder="KW" min="1" max="53" aria-label="Kalenderwoche Nummer">
@@ -736,9 +828,12 @@ textarea { resize: vertical; }
             <input type="date" id="plan-date" required>
             <label for="plan-notes">Notizen zur Probennahme / Besonderheiten</label>
             <textarea id="plan-notes" rows="3"></textarea>
-            <div class="modal-footer">
-                <button type="button" class="btn-secondary btn-small" id="plan-cancel">Abbrechen</button>
-                <button type="submit" class="btn btn-small">Speichern</button>
+            <div class="modal-footer" style="justify-content:space-between;">
+                <button type="button" class="btn-danger btn-small" id="plan-remove" style="display:none;">Termin entfernen</button>
+                <span style="display:flex;gap:6px;">
+                    <button type="button" class="btn-secondary btn-small" id="plan-cancel">Abbrechen</button>
+                    <button type="submit" class="btn btn-small">Speichern</button>
+                </span>
             </div>
         </form>
     </div>
@@ -805,6 +900,13 @@ let historyCustomerId = null;
 let historyObjectId   = null;
 let searchTerm = "";
 
+// Globale Einstellungen (Bezeichnungen). Labels werden by-value gespeichert.
+const DEFAULT_TYPES = ["Schwimmbeckenuntersuchung","Kühlwasser","Eigenversorgungsanlage","Sonstige"];
+const DEFAULT_SCOPE = ["Legionellen","Mibi","Chemie","Vorortparameter","Sonstiges"];
+// Mapping alter Boolean-Felder -> Standard-Label (für Migration aus <= v2.2.8)
+const LEGACY_SCOPE_MAP = { legionellen:"Legionellen", mibi:"Mibi", chemie:"Chemie", vorort:"Vorortparameter", sonstiges:"Sonstiges" };
+let settings = { anlagenTypes: DEFAULT_TYPES.slice(), scopeItems: DEFAULT_SCOPE.slice() };
+
 // ================================================================
 // SYNC STATUS
 // ================================================================
@@ -821,10 +923,21 @@ let searchTerm = "";
 function buildExportPayload() {
     return {
         generatedAt: new Date().toISOString(),
-        version: "terminverwaltung-sonderobjekte-v2.2.8",
+        version: "terminverwaltung-sonderobjekte-v2.9",
         customers,
         appointments,
+        settings,
         ...getHeaderState()
+    };
+}
+
+function ensureSettings(loaded) {
+    const s = (loaded && typeof loaded === "object") ? loaded : {};
+    const types = Array.isArray(s.anlagenTypes) ? s.anlagenTypes.filter(x => typeof x === "string" && x.trim()) : null;
+    const scope = Array.isArray(s.scopeItems)   ? s.scopeItems.filter(x => typeof x === "string" && x.trim())   : null;
+    settings = {
+        anlagenTypes: (types && types.length) ? types : DEFAULT_TYPES.slice(),
+        scopeItems:   (scope && scope.length) ? scope : DEFAULT_SCOPE.slice()
     };
 }
 
@@ -854,11 +967,23 @@ function ensureObjectScope(obj) {
     if (typeof obj.scope.sonstiges  !== "boolean") obj.scope.sonstiges  = false;
     if (typeof obj.scope.details    !== "string")  obj.scope.details    = "";
     if (typeof obj.intervalMonths   !== "number")  obj.intervalMonths   = 0;
+    // NEU v2.9: ausgewählte Probenarten als Label-Liste (Migration aus alten Booleans)
+    if (!Array.isArray(obj.scopeSelected)) {
+        const sel = [];
+        Object.keys(LEGACY_SCOPE_MAP).forEach(k => { if (obj.scope[k]) sel.push(LEGACY_SCOPE_MAP[k]); });
+        obj.scopeSelected = sel;
+    }
+    // NEU v2.9: bestätigter Termin + Saison
+    if (typeof obj.plannedDate  !== "string")  obj.plannedDate  = "";
+    if (typeof obj.plannedNote  !== "string")  obj.plannedNote  = "";
+    if (typeof obj.seasonPaused !== "boolean") obj.seasonPaused = false;
+    if (typeof obj.type         !== "string")  obj.type         = "";
 }
 
 function applyPayload(payload) {
     customers    = Array.isArray(payload.customers)    ? payload.customers    : [];
     appointments = Array.isArray(payload.appointments) ? payload.appointments : [];
+    ensureSettings(payload.settings);
     applyHeaderState(payload);
 
     nextCustomerId = customers.length ? Math.max(...customers.map(c => c.id || 0)) + 1 : 1;
@@ -914,6 +1039,7 @@ function applyHeaderState(data) {
 // DEMO DATEN
 // ================================================================
 function initDemoData() {
+    ensureSettings(null);
     customers = [{
         id: 1, name: "Beispiel-Firma GmbH",
         street: "Musterstraße 1", zip: "12345", city: "Musterstadt",
@@ -921,13 +1047,15 @@ function initDemoData() {
         objects: [{
             id: 1, name: "Beispiel-Objekt 1", type: "Schwimmbeckenuntersuchung",
             city: "Musterstadt", lastDate: "01.01.2026", nextDate: "01.04.2026",
+            plannedDate: "", plannedNote: "", seasonPaused: false,
             intervalMonths: 3, notes: "Beispielhinweis zur Probennahme",
             scope: { legionellen: true, mibi: true, chemie: false, vorort: true, sonstiges: false, details: "3x Mibi, 1x Legionellen" },
+            scopeSelected: ["Legionellen","Mibi","Vorortparameter"],
             history: [{ date: "01.01.2026", type: "Beispieluntersuchung", result: "Sauber" }]
         }]
     }];
-    appointments = [{ id: 1, customerId: 1, objectId: 1, dateISO: "2026-04-01", notes: "Beispieltermin" }];
-    nextCustomerId = 2; nextObjectId = 2; nextAppointmentId = 2;
+    appointments = [];
+    nextCustomerId = 2; nextObjectId = 2; nextAppointmentId = 1;
     selectedCustomerId = 1;
 }
 
@@ -975,6 +1103,13 @@ function addMonthsToIso(isoDate, months) {
     d.setMonth(d.getMonth() + months);
     return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
 }
+// Deutsches Datum -> ISO (yyyy-mm-dd) ohne Zeitzonen-Versatz, für <input type=date>
+function germanToIso(g) {
+    if (!g) return "";
+    const p = g.split(".");
+    if (p.length !== 3) return "";
+    return p[2] + "-" + p[1].padStart(2,"0") + "-" + p[0].padStart(2,"0");
+}
 
 // ================================================================
 // DATEN-HELFER
@@ -994,12 +1129,71 @@ function getAllObjects() {
                 customerStreet: c.street||"", customerZip: c.zip||"", customerCity: c.city||"",
                 objectId: o.id, name: o.name, type: o.type, city: o.city,
                 lastDate: o.lastDate, nextDate: o.nextDate,
+                plannedDate: o.plannedDate||"", plannedNote: o.plannedNote||"", seasonPaused: !!o.seasonPaused,
                 intervalMonths: o.intervalMonths||0, notes: o.notes,
-                scope: o.scope, history: o.history||[]
+                scope: o.scope, scopeSelected: o.scopeSelected||[], history: o.history||[]
             });
         });
     });
     return list;
+}
+
+// ================================================================
+// TERMIN- / SAISON-LOGIK (v2.9)
+// ================================================================
+function escapeHtml(s) {
+    return String(s == null ? "" : s)
+        .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+        .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+}
+// Effektives Datum, das für Sortierung/Ampel zählt: bestätigt schlägt Turnus.
+function effectiveDateGerman(o) {
+    if (o.seasonPaused) return o.plannedDate || "";   // bei Pause zählt nur ein evtl. fixer Termin
+    return o.plannedDate || o.nextDate || "";
+}
+// Welche Art von Termin liegt vor?
+function dueKind(o) {
+    if (o.plannedDate)  return "planned";
+    if (o.seasonPaused) return "paused";
+    if (o.nextDate)     return "turnus";
+    return "none";
+}
+function rowStatusClass(o) {
+    const kind = dueKind(o);
+    if (kind === "paused") return "row-paused";
+    return getStatusClassForNext(effectiveDateGerman(o));
+}
+// HTML für die Termin-Zelle (Badge + Datum)
+function terminCellHtml(o) {
+    const kind = dueKind(o);
+    if (kind === "planned") {
+        return `<div class="termin-cell"><span class="badge badge-planned">📅 bestätigt</span>` +
+               `<span class="termin-date">${escapeHtml(o.plannedDate)}</span></div>`;
+    }
+    if (kind === "paused") {
+        return `<div class="termin-cell"><span class="badge badge-paused">⏸ Saisonpause</span></div>`;
+    }
+    if (kind === "turnus") {
+        return `<div class="termin-cell"><span class="badge badge-turnus">↻ Turnus</span>` +
+               `<span class="termin-date muted">${escapeHtml(o.nextDate)}</span></div>`;
+    }
+    return `<div class="termin-cell"><span class="badge badge-none">– kein Termin</span></div>`;
+}
+// Saison umschalten (mutiert das echte Objekt)
+function toggleSeason(custId, objId) {
+    const obj = getObjectById(custId, objId);
+    if (!obj) return;
+    ensureObjectScope(obj);
+    if (obj.seasonPaused) {
+        // Saison beginnen: Pause aus, Turnus-Vorschlag greift ab heute
+        obj.seasonPaused = false;
+        const today = new Date();
+        obj.nextDate = today.getDate().toString().padStart(2,"0") + "." +
+                       String(today.getMonth()+1).padStart(2,"0") + "." + today.getFullYear();
+    } else {
+        obj.seasonPaused = true;
+    }
+    saveData(); renderAll();
 }
 
 // ================================================================
@@ -1012,10 +1206,12 @@ function renderUpcoming() {
     const today = new Date(); today.setHours(0,0,0,0);
 
     let rel = all.filter(o => {
-        if (!o.nextDate) return false;
-        const d = parseGermanDate(o.nextDate);
+        if (o.seasonPaused) return false;            // Saisonpause: ausgeblendet
+        const eff = effectiveDateGerman(o);
+        if (!eff) return false;
+        const d = parseGermanDate(eff);
         if (!d) return false;
-        return (d - today) / (1000*60*60*24) <= 60;
+        return (d - today) / (1000*60*60*24) <= 60;  // überfällig + nächste 60 Tage
     });
 
     if (searchTerm) {
@@ -1023,21 +1219,27 @@ function renderUpcoming() {
         rel = rel.filter(o => (o.customerName+" "+o.name+" "+(o.city||"")+" "+(o.type||"")+" "+o.customerZip+" "+o.customerCity).toLowerCase().includes(t));
     }
 
+    // Bestätigte zuerst, dann Turnus-Vorschläge; innerhalb je nach Datum
     rel.sort((a,b) => {
-        const da = parseGermanDate(a.nextDate), db = parseGermanDate(b.nextDate);
+        const ka = a.plannedDate ? 0 : 1, kb = b.plannedDate ? 0 : 1;
+        if (ka !== kb) return ka - kb;
+        const da = parseGermanDate(effectiveDateGerman(a)), db = parseGermanDate(effectiveDateGerman(b));
         if (!da||!db) return 0; return da - db;
     });
     document.getElementById("found-count").textContent = rel.length;
 
     rel.forEach(o => {
         const tr = document.createElement("tr");
-        const cls = getStatusClassForNext(o.nextDate);
+        const cls = rowStatusClass(o);
         if (cls) tr.classList.add(cls);
-        ["customerName","name","type","city","nextDate"].forEach(k => {
+        ["customerName","name","type","city"].forEach(k => {
             const td = document.createElement("td");
             td.textContent = o[k] || "";
             tr.appendChild(td);
         });
+        const tdT = document.createElement("td");
+        tdT.innerHTML = terminCellHtml(o);
+        tr.appendChild(tdT);
         tbody.appendChild(tr);
     });
 }
@@ -1087,16 +1289,18 @@ function renderCustomerDetail() {
     (cust.objects||[]).forEach(o => {
         ensureObjectScope(o);
         const tr = document.createElement("tr");
-        const cls = getStatusClassForNext(o.nextDate);
+        const cls = rowStatusClass(o);
         if (cls) tr.classList.add(cls);
-        const cells = [o.name, o.type||"", o.city||"", o.lastDate||"", o.nextDate||""];
-        cells.forEach(v => { const td = document.createElement("td"); td.textContent = v; tr.appendChild(td); });
+        [o.name, o.type||"", o.city||""].forEach(v => { const td = document.createElement("td"); td.textContent = v; tr.appendChild(td); });
+        const tdT = document.createElement("td"); tdT.innerHTML = terminCellHtml(o); tr.appendChild(tdT);
         const tdA = document.createElement("td"); tdA.className = "actions";
         const rowA = document.createElement("div"); rowA.className = "actions-row";
 
+        const seasonLabel = o.seasonPaused ? "▶ Saison beginnen" : "⏸ Saison pausieren";
         [["Bearbeiten","btn btn-small",()=>openObjectModal(cust.id,o.id)],
          ["Termin","btn-secondary btn-small",()=>openPlanModal(cust.id,o.id)],
          ["Historie","btn-secondary btn-small",()=>openHistoryModal(cust.id,o.id)],
+         [seasonLabel,"btn-secondary btn-small",()=>toggleSeason(cust.id,o.id)],
          ["Löschen","btn-danger btn-small",()=>{ if(confirm("Objekt inkl. Termine wirklich löschen?")) deleteObject(cust.id,o.id); }]
         ].forEach(([t,c,fn]) => {
             const b = document.createElement("button"); b.textContent=t; b.className=c; b.addEventListener("click",fn); rowA.appendChild(b);
@@ -1112,19 +1316,26 @@ function renderAllObjectsView() {
     const objs = getAllObjects();
 
     objs.sort((a,b) => {
-        const dateA = a.nextDate ? parseGermanDate(a.nextDate) : null;
-        const dateB = b.nextDate ? parseGermanDate(b.nextDate) : null;
-        if (!dateA && !dateB) return (a.customerName+" "+a.name).localeCompare(b.customerName+" "+b.name);
+        const ka = a.plannedDate ? 0 : (a.seasonPaused ? 2 : 1);
+        const kb = b.plannedDate ? 0 : (b.seasonPaused ? 2 : 1);
+        const ea = effectiveDateGerman(a), eb = effectiveDateGerman(b);
+        const dateA = ea ? parseGermanDate(ea) : null;
+        const dateB = eb ? parseGermanDate(eb) : null;
+        if (!dateA && !dateB) {
+            if (ka !== kb) return ka - kb;
+            return (a.customerName+" "+a.name).localeCompare(b.customerName+" "+b.name);
+        }
         if (!dateA) return 1; if (!dateB) return -1;
+        if (ka !== kb) return ka - kb;
         return dateA - dateB;
     });
 
     objs.forEach(o => {
         const tr = document.createElement("tr");
-        const cls = getStatusClassForNext(o.nextDate);
+        const cls = rowStatusClass(o);
         if (cls) tr.classList.add(cls);
 
-        // Status-Spalte
+        // Status-Spalte (Ergebnis letzte Untersuchung)
         const tdSt = document.createElement("td");
         if (o.history && o.history.length) {
             const last = o.history[o.history.length-1];
@@ -1144,21 +1355,28 @@ function renderAllObjectsView() {
         btnO.addEventListener("click", () => openHistoryModal(o.customerId, o.objectId));
         tdO.appendChild(btnO); tr.appendChild(tdO);
 
-        [o.type||"", o.city||"", o.lastDate||"", o.nextDate||"",
-         o.intervalMonths ? "alle "+o.intervalMonths+" Monate" : ""
-        ].forEach(v => { const td = document.createElement("td"); td.textContent = v; tr.appendChild(td); });
+        // Art, Ort
+        [o.type||"", o.city||""].forEach(v => { const td = document.createElement("td"); td.textContent = v; tr.appendChild(td); });
+
+        // Termin (Badge + Datum)
+        const tdT = document.createElement("td"); tdT.innerHTML = terminCellHtml(o); tr.appendChild(tdT);
+
+        // Routine
+        const tdR = document.createElement("td"); tdR.textContent = o.intervalMonths ? "alle "+o.intervalMonths+" Monate" : ""; tr.appendChild(tdR);
 
         // Aktionen
         const tdA = document.createElement("td"); tdA.className = "actions";
         const rowA = document.createElement("div"); rowA.className = "actions-row-compact";
         let btnDetails;
+        const seasonLabel = o.seasonPaused ? "▶ Saison" : "⏸ Saison";
         [["Termin","btn-secondary btn-small",()=>openPlanModal(o.customerId,o.objectId)],
          ["Historie","btn-secondary btn-small",()=>openHistoryModal(o.customerId,o.objectId)],
+         [seasonLabel,"btn-secondary btn-small",()=>toggleSeason(o.customerId,o.objectId)],
          ["Details","btn-secondary btn-small",null]
         ].forEach(([t,c,fn],i) => {
             const b = document.createElement("button"); b.textContent=t; b.className=c;
             if (fn) b.addEventListener("click",fn);
-            if (i===2) btnDetails = b;
+            if (i===3) btnDetails = b;
             rowA.appendChild(b);
         });
         tdA.appendChild(rowA);
@@ -1167,19 +1385,23 @@ function renderAllObjectsView() {
 
         // Details-Zeile
         const detTr = document.createElement("tr"); detTr.className = "details-row";
-        const detTd = document.createElement("td"); detTd.className = "details-cell"; detTd.colSpan = 9;
+        const detTd = document.createElement("td"); detTd.className = "details-cell"; detTd.colSpan = 8;
         const scope = o.scope||{};
-        const scList = ["legionellen","mibi","chemie","vorort","sonstiges"]
-            .filter(k => scope[k])
-            .map(k => ({legionellen:"Legionellen",mibi:"Mibi",chemie:"Chemie",vorort:"Vorortparameter",sonstiges:"Sonstiges"}[k]));
+        const scList = (Array.isArray(o.scopeSelected) ? o.scopeSelected : []).map(escapeHtml);
+        const plannedLine = o.plannedDate
+            ? `<b>Bestätigter Termin:</b> ${escapeHtml(o.plannedDate)}${o.plannedNote ? " – "+escapeHtml(o.plannedNote) : ""}<br>`
+            : "";
 
         detTd.innerHTML =
-            `<b>Umfang / Menge:</b> ${scope.details||"-"}<br>` +
+            plannedLine +
+            `<b>Letzte Untersuchung:</b> ${escapeHtml(o.lastDate)||"-"}<br>` +
+            `<b>Turnus-Vorschlag:</b> ${escapeHtml(o.nextDate)||"-"}${o.seasonPaused ? " (Saison pausiert)" : ""}<br>` +
+            `<b>Umfang / Menge:</b> ${escapeHtml(scope.details)||"-"}<br>` +
             `<b>Probenarten:</b> ${scList.length ? scList.join(", ") : "-"}<br>` +
             `<b>Routine / Intervall:</b> ${o.intervalMonths ? "alle "+o.intervalMonths+" Monate" : "-"}<br>` +
-            `<b>Notizen:</b> ${o.notes||"-"}<br>` +
+            `<b>Notizen:</b> ${escapeHtml(o.notes)||"-"}<br>` +
             (o.history&&o.history.length
-                ? `<b>Letzter Eintrag:</b> ${o.history[o.history.length-1].date} – ${o.history[o.history.length-1].type} (${o.history[o.history.length-1].result})`
+                ? `<b>Letzter Eintrag:</b> ${escapeHtml(o.history[o.history.length-1].date)} – ${escapeHtml(o.history[o.history.length-1].type)} (${escapeHtml(o.history[o.history.length-1].result)})`
                 : `<b>Historie:</b> keine Einträge`);
 
         if (btnDetails) btnDetails.addEventListener("click", () => {
@@ -1198,6 +1420,47 @@ function renderAll() {
     renderCustomerTable();
     renderCustomerDetail();
     renderAllObjectsView();
+    renderSettings();
+}
+
+// ================================================================
+// EINSTELLUNGEN (Bezeichnungen verwalten)
+// ================================================================
+function renderSettingsList(containerId, list) {
+    const cont = document.getElementById(containerId);
+    if (!cont) return;
+    cont.innerHTML = "";
+    (list||[]).forEach(label => cont.appendChild(buildSettingsRow(label)));
+}
+function buildSettingsRow(label) {
+    const row = document.createElement("div");
+    row.className = "settings-row";
+    const inp = document.createElement("input");
+    inp.type = "text"; inp.value = label || ""; inp.placeholder = "Bezeichnung";
+    const del = document.createElement("button");
+    del.type = "button"; del.className = "row-del"; del.textContent = "🗑"; del.title = "Entfernen";
+    del.addEventListener("click", () => row.remove());
+    row.appendChild(inp); row.appendChild(del);
+    return row;
+}
+function collectSettingsList(containerId) {
+    const cont = document.getElementById(containerId);
+    if (!cont) return [];
+    const seen = new Set(); const out = [];
+    cont.querySelectorAll("input[type=text]").forEach(inp => {
+        const v = inp.value.trim();
+        if (v && !seen.has(v.toLowerCase())) { seen.add(v.toLowerCase()); out.push(v); }
+    });
+    return out;
+}
+function flashSavedHint(id) {
+    const el = document.getElementById(id); if (!el) return;
+    el.classList.add("show");
+    setTimeout(() => el.classList.remove("show"), 1600);
+}
+function renderSettings() {
+    renderSettingsList("settings-types-list", settings.anlagenTypes);
+    renderSettingsList("settings-scope-list", settings.scopeItems);
 }
 
 // ================================================================
@@ -1236,6 +1499,33 @@ function closeCustomerModal() { document.getElementById("customer-modal").style.
 // ================================================================
 // MODALS – OBJEKT
 // ================================================================
+// Baut die Auswahloptionen für "Art der Anlage" aus den Einstellungen.
+function renderTypeOptions(currentLabel) {
+    const sel = document.getElementById("obj-type");
+    if (!sel) return;
+    sel.innerHTML = "";
+    const opt0 = document.createElement("option"); opt0.value = ""; opt0.textContent = "- bitte wählen -"; sel.appendChild(opt0);
+    const list = settings.anlagenTypes.slice();
+    if (currentLabel && !list.includes(currentLabel)) list.push(currentLabel); // alten Wert nicht verlieren
+    list.forEach(t => { const o = document.createElement("option"); o.value = t; o.textContent = t; sel.appendChild(o); });
+    sel.value = currentLabel || "";
+}
+// Baut die Probenart-Checkboxen aus den Einstellungen.
+function renderScopeCheckboxes(selectedArr) {
+    const cont = document.getElementById("scope-checkboxes");
+    if (!cont) return;
+    cont.innerHTML = "";
+    const sel = Array.isArray(selectedArr) ? selectedArr : [];
+    settings.scopeItems.forEach(label => {
+        const lab = document.createElement("label");
+        const cb = document.createElement("input");
+        cb.type = "checkbox"; cb.value = label; cb.checked = sel.includes(label);
+        cb.className = "scope-cb";
+        lab.appendChild(cb); lab.appendChild(document.createTextNode(label));
+        cont.appendChild(lab);
+    });
+}
+
 function openObjectModal(custId, objId) {
     editingObjectCustomerId = custId; editingObjectId = objId || null;
     const cust = getCustomerById(custId); if (!cust) return;
@@ -1244,20 +1534,15 @@ function openObjectModal(custId, objId) {
     const obj = objId ? getObjectById(custId, objId) : null;
     if (obj) ensureObjectScope(obj);
     document.getElementById("obj-name").value  = obj?.name  || "";
-    document.getElementById("obj-type").value  = obj?.type  || "";
+    renderTypeOptions(obj?.type || "");
     document.getElementById("obj-city").value  = obj?.city  || "";
     document.getElementById("obj-notes").value = obj?.notes || "";
     document.getElementById("obj-interval").value = (obj?.intervalMonths||0).toString();
-    if (obj?.lastDate) {
-        const dt = parseGermanDate(obj.lastDate);
-        document.getElementById("obj-last").value = (dt && !isNaN(dt.getTime())) ? dt.toISOString().slice(0,10) : "";
-    } else { document.getElementById("obj-last").value = ""; }
-    document.getElementById("scope-legionellen").checked = !!obj?.scope?.legionellen;
-    document.getElementById("scope-mibi").checked        = !!obj?.scope?.mibi;
-    document.getElementById("scope-chemie").checked      = !!obj?.scope?.chemie;
-    document.getElementById("scope-vorort").checked      = !!obj?.scope?.vorort;
-    document.getElementById("scope-sonstiges").checked   = !!obj?.scope?.sonstiges;
-    document.getElementById("scope-details").value       = obj?.scope?.details || "";
+    document.getElementById("obj-last").value    = obj?.lastDate ? germanToIso(obj.lastDate) : "";
+    document.getElementById("obj-planned").value = obj?.plannedDate ? germanToIso(obj.plannedDate) : "";
+    document.getElementById("obj-season-paused").checked = !!obj?.seasonPaused;
+    renderScopeCheckboxes(obj?.scopeSelected || []);
+    document.getElementById("scope-details").value = obj?.scope?.details || "";
     document.getElementById("object-modal").style.display = "flex";
 }
 function closeObjectModal() { document.getElementById("object-modal").style.display = "none"; }
@@ -1269,12 +1554,18 @@ function openPlanModal(custId, objId) {
     planCustomerId = custId; planObjectId = objId;
     const cust = getCustomerById(custId), obj = getObjectById(custId, objId);
     if (!cust||!obj) return;
+    ensureObjectScope(obj);
     document.getElementById("plan-object-label").textContent = cust.name + " – " + obj.name;
-    const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+1);
-    document.getElementById("plan-date").value     = tomorrow.toISOString().slice(0,10);
+    if (obj.plannedDate) {
+        document.getElementById("plan-date").value = germanToIso(obj.plannedDate);
+    } else {
+        const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+1);
+        document.getElementById("plan-date").value = tomorrow.toISOString().slice(0,10);
+    }
     document.getElementById("plan-kw-year").value  = new Date().getFullYear();
     document.getElementById("plan-kw").value       = "";
-    document.getElementById("plan-notes").value    = "";
+    document.getElementById("plan-notes").value    = obj.plannedNote || "";
+    document.getElementById("plan-remove").style.display = obj.plannedDate ? "" : "none";
     document.getElementById("plan-modal").style.display = "flex";
 }
 function closePlanModal() { document.getElementById("plan-modal").style.display = "none"; }
@@ -1319,17 +1610,39 @@ document.getElementById("search-input").addEventListener("input", e => { searchT
 document.getElementById("print-btn").addEventListener("click", () => window.print());
 
 // Tabs
-document.getElementById("tab-customers").addEventListener("click", () => {
-    document.getElementById("view-customers").style.display  = "";
-    document.getElementById("view-allobjects").style.display = "none";
-    document.getElementById("tab-customers").classList.add("active");
-    document.getElementById("tab-allobjects").classList.remove("active");
+function activateTab(tab) {
+    const views = { customers: "view-customers", allobjects: "view-allobjects", settings: "view-settings" };
+    const tabs  = { customers: "tab-customers", allobjects: "tab-allobjects", settings: "tab-settings" };
+    Object.keys(views).forEach(k => {
+        document.getElementById(views[k]).style.display = (k === tab) ? "" : "none";
+        document.getElementById(tabs[k]).classList.toggle("active", k === tab);
+    });
+    if (tab === "settings") renderSettings();
+}
+document.getElementById("tab-customers").addEventListener("click", () => activateTab("customers"));
+document.getElementById("tab-allobjects").addEventListener("click", () => activateTab("allobjects"));
+document.getElementById("tab-settings").addEventListener("click", () => activateTab("settings"));
+
+// Einstellungen: Listen-Editoren
+document.getElementById("settings-types-add").addEventListener("click", () => {
+    document.getElementById("settings-types-list").appendChild(buildSettingsRow(""));
 });
-document.getElementById("tab-allobjects").addEventListener("click", () => {
-    document.getElementById("view-customers").style.display  = "none";
-    document.getElementById("view-allobjects").style.display = "";
-    document.getElementById("tab-customers").classList.remove("active");
-    document.getElementById("tab-allobjects").classList.add("active");
+document.getElementById("settings-scope-add").addEventListener("click", () => {
+    document.getElementById("settings-scope-list").appendChild(buildSettingsRow(""));
+});
+document.getElementById("settings-types-save").addEventListener("click", () => {
+    const list = collectSettingsList("settings-types-list");
+    if (!list.length) { alert("Mindestens eine Bezeichnung angeben."); return; }
+    settings.anlagenTypes = list;
+    renderSettingsList("settings-types-list", list);
+    saveData(); renderAll(); flashSavedHint("settings-types-hint");
+});
+document.getElementById("settings-scope-save").addEventListener("click", () => {
+    const list = collectSettingsList("settings-scope-list");
+    if (!list.length) { alert("Mindestens eine Bezeichnung angeben."); return; }
+    settings.scopeItems = list;
+    renderSettingsList("settings-scope-list", list);
+    saveData(); renderAll(); flashSavedHint("settings-scope-hint");
 });
 
 // Kunde
@@ -1374,17 +1687,24 @@ document.getElementById("object-form").addEventListener("submit", e => {
     const type          = document.getElementById("obj-type").value;
     const city          = document.getElementById("obj-city").value.trim();
     const lastISO       = document.getElementById("obj-last").value;
+    const plannedISO    = document.getElementById("obj-planned").value;
+    const seasonPaused  = document.getElementById("obj-season-paused").checked;
     const intervalMonths = parseInt(document.getElementById("obj-interval").value, 10) || 0;
     const notes         = document.getElementById("obj-notes").value.trim();
     const lastGerman    = lastISO ? toGermanDate(lastISO) : "";
+    const plannedGerman = plannedISO ? toGermanDate(plannedISO) : "";
     if (!name) { alert("Bitte Objektname angeben."); return; }
+    const scopeSelected = Array.from(document.querySelectorAll(".scope-cb"))
+        .filter(cb => cb.checked).map(cb => cb.value);
+    const details = document.getElementById("scope-details").value.trim();
+    // Legacy-Booleans für Rückwärtskompatibilität spiegeln
     const scope = {
-        legionellen: document.getElementById("scope-legionellen").checked,
-        mibi:        document.getElementById("scope-mibi").checked,
-        chemie:      document.getElementById("scope-chemie").checked,
-        vorort:      document.getElementById("scope-vorort").checked,
-        sonstiges:   document.getElementById("scope-sonstiges").checked,
-        details:     document.getElementById("scope-details").value.trim()
+        legionellen: scopeSelected.includes(LEGACY_SCOPE_MAP.legionellen),
+        mibi:        scopeSelected.includes(LEGACY_SCOPE_MAP.mibi),
+        chemie:      scopeSelected.includes(LEGACY_SCOPE_MAP.chemie),
+        vorort:      scopeSelected.includes(LEGACY_SCOPE_MAP.vorort),
+        sonstiges:   scopeSelected.includes(LEGACY_SCOPE_MAP.sonstiges),
+        details
     };
     let nextGerman = "";
     if (lastISO && intervalMonths > 0) {
@@ -1393,9 +1713,17 @@ document.getElementById("object-form").addEventListener("submit", e => {
     }
     if (editingObjectId) {
         const obj = getObjectById(editingObjectCustomerId, editingObjectId);
-        if (obj) Object.assign(obj, { name, type, city, lastDate: lastGerman, intervalMonths, notes, scope, ...(nextGerman ? {nextDate: nextGerman} : {}) });
+        if (obj) Object.assign(obj, {
+            name, type, city, lastDate: lastGerman, intervalMonths, notes,
+            scope, scopeSelected, plannedDate: plannedGerman, seasonPaused,
+            ...(nextGerman ? {nextDate: nextGerman} : {})
+        });
     } else {
-        cust.objects.push({ id: nextObjectId++, name, type, city, lastDate: lastGerman, nextDate: nextGerman, intervalMonths, notes, scope, history: [] });
+        cust.objects.push({
+            id: nextObjectId++, name, type, city, lastDate: lastGerman, nextDate: nextGerman,
+            plannedDate: plannedGerman, plannedNote: "", seasonPaused,
+            intervalMonths, notes, scope, scopeSelected, history: []
+        });
     }
     closeObjectModal(); saveData(); renderAll();
 });
@@ -1417,8 +1745,17 @@ document.getElementById("plan-form").addEventListener("submit", e => {
     if (!cust||!obj) return;
     const dateISO = document.getElementById("plan-date").value;
     if (!dateISO) { alert("Bitte ein Datum auswählen."); return; }
-    obj.nextDate = toGermanDate(dateISO);
-    appointments.push({ id: nextAppointmentId++, customerId: cust.id, objectId: obj.id, dateISO, notes: document.getElementById("plan-notes").value.trim() });
+    ensureObjectScope(obj);
+    obj.plannedDate = toGermanDate(dateISO);
+    obj.plannedNote = document.getElementById("plan-notes").value.trim();
+    closePlanModal(); saveData(); renderAll();
+});
+document.getElementById("plan-remove").addEventListener("click", () => {
+    if (!planCustomerId || !planObjectId) return;
+    const obj = getObjectById(planCustomerId, planObjectId);
+    if (!obj) return;
+    if (!confirm("Bestätigten Termin entfernen? Das Objekt fällt dann auf den Turnus-Vorschlag zurück.")) return;
+    obj.plannedDate = ""; obj.plannedNote = "";
     closePlanModal(); saveData(); renderAll();
 });
 
@@ -1441,6 +1778,8 @@ document.getElementById("history-form").addEventListener("submit", e => {
         const nxt = addMonthsToIso(dateISO, obj.intervalMonths);
         if (nxt) obj.nextDate = toGermanDate(nxt);
     }
+    // Untersuchung durchgeführt -> bestätigter Termin ist erledigt, Turnus läuft weiter
+    obj.plannedDate = ""; obj.plannedNote = "";
     openHistoryModal(historyCustomerId, historyObjectId);
     saveData(); renderAll();
 });
@@ -1788,6 +2127,6 @@ document.getElementById("logout-btn").addEventListener("click", async () => {
 
 initApp();
 </script>
-<footer class="footer" id="app-footer" style="display:none;">Made with Love &copy; &ndash; Terminverwaltung NOVA Sonderobjekte V 2.2.8</footer>
+<footer class="footer" id="app-footer" style="display:none;">Made with Love &copy; &ndash; Terminverwaltung NOVA Sonderobjekte V 2.9</footer>
 </body>
 </html>
