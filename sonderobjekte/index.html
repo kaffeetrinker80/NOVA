@@ -485,20 +485,31 @@ textarea { resize: vertical; }
 }
 .history-entry:last-child { border-bottom: none; }
 .history-entry-text { flex: 1; min-width: 0; }
-.history-entry-delete {
+.history-entry-actions {
+    display: flex;
+    align-items: center;
+    gap: 3px;
     flex: 0 0 auto;
+}
+.history-entry-edit,
+.history-entry-delete {
     width: 22px;
     height: 22px;
     padding: 0;
     border: 1px solid transparent;
     border-radius: 5px;
     background: transparent;
-    color: var(--danger);
-    font-size: 17px;
+    font-size: 16px;
     line-height: 18px;
     cursor: pointer;
     transition: background .15s, border-color .15s;
 }
+.history-entry-edit { color: var(--accent); }
+.history-entry-edit:hover {
+    background: #eff6ff;
+    border-color: #bfdbfe;
+}
+.history-entry-delete { color: var(--danger); font-size: 17px; }
 .history-entry-delete:hover {
     background: #fff1f2;
     border-color: #fecaca;
@@ -909,23 +920,25 @@ tr.row-paused:hover > td { background: #f1f5f9 !important; }
     <div class="modal-content">
         <div class="modal-header">Historie</div>
         <div class="info-text" id="history-object-label" style="margin-bottom:6px; font-weight:bold;"></div>
-        <div id="history-list" style="max-height:180px; overflow-y:auto; border:1px solid #ddd; padding:6px; margin-bottom:8px; background:#fafafa; font-size:12px;"></div>
+        <div id="history-list" style="max-height:200px; overflow-y:auto; border:1px solid #ddd; padding:6px; margin-bottom:8px; background:#fafafa; font-size:12px;"></div>
         <form id="history-form">
             <label for="history-date">Datum</label>
             <input type="date" id="history-date" required>
-            <label for="history-type">Durchgeführte Untersuchung</label>
-            <select id="history-type" required>
-                <option value="">- bitte auswählen -</option>
-            </select>
-            <div class="kw-helper" style="margin-top:-4px;">Auswahl aus „Untersuchungsumfang (Probenarten)“ in den globalen Einstellungen.</div>
+            <label>Durchgeführte Parameter</label>
+            <div class="scope-checkboxes" id="history-type-checkboxes"></div>
+            <div class="kw-helper" style="margin-top:-4px;">Mehrfachauswahl aus „Untersuchungsumfang (Probenarten)“ in den globalen Einstellungen.</div>
+            <div class="kw-helper" id="history-edit-hint" style="display:none; margin-top:0;"></div>
             <label for="history-result">Ergebnis</label>
             <select id="history-result">
                 <option value="Sauber">Sauber</option>
                 <option value="Überschreitung">Überschreitung</option>
             </select>
-            <div class="modal-footer">
-                <button type="button" class="btn-secondary btn-small" id="history-cancel">Schließen</button>
-                <button type="submit" class="btn btn-small">Eintrag speichern</button>
+            <div class="modal-footer" style="justify-content:space-between;">
+                <button type="button" class="btn-secondary btn-small" id="history-reset-edit" style="display:none;">Neue Erfassung</button>
+                <span style="display:flex; gap:6px;">
+                    <button type="button" class="btn-secondary btn-small" id="history-cancel">Schließen</button>
+                    <button type="submit" class="btn btn-small" id="history-save-btn">Eintrag speichern</button>
+                </span>
             </div>
         </form>
     </div>
@@ -966,6 +979,7 @@ let planCustomerId   = null;
 let planObjectId     = null;
 let historyCustomerId = null;
 let historyObjectId   = null;
+let historyEditingIndex = null;
 let searchTerm = "";
 
 // Globale Einstellungen (Bezeichnungen). Labels werden by-value gespeichert.
@@ -991,7 +1005,7 @@ let settings = { anlagenTypes: DEFAULT_TYPES.slice(), scopeItems: DEFAULT_SCOPE.
 function buildExportPayload() {
     return {
         generatedAt: new Date().toISOString(),
-        version: "terminverwaltung-sonderobjekte-v2.9.2",
+        version: "terminverwaltung-sonderobjekte-v2.9.3",
         customers,
         appointments,
         settings,
@@ -1064,6 +1078,7 @@ function applyPayload(payload) {
         c.objects.forEach(o => {
             if (o.id && o.id > maxO) maxO = o.id;
             if (!Array.isArray(o.history)) o.history = [];
+            o.history.forEach(normalizeHistoryEntry);
             ensureObjectScope(o);
         });
     });
@@ -1472,7 +1487,7 @@ function renderAllObjectsView() {
             `<b>Routine / Intervall:</b> ${o.intervalMonths ? "alle "+o.intervalMonths+" Monate" : "-"}<br>` +
             `<b>Notizen:</b> ${escapeHtml(o.notes)||"-"}<br>` +
             (o.history&&o.history.length
-                ? `<b>Letzter Eintrag:</b> ${escapeHtml(o.history[o.history.length-1].date)} – ${escapeHtml(o.history[o.history.length-1].type)} (${escapeHtml(o.history[o.history.length-1].result)})`
+                ? `<b>Letzter Eintrag:</b> ${escapeHtml(o.history[o.history.length-1].date)} – ${escapeHtml(historyEntryTypesText(o.history[o.history.length-1]))} (${escapeHtml(o.history[o.history.length-1].result)})`
                 : `<b>Historie:</b> keine Einträge`);
 
         if (btnDetails) btnDetails.addEventListener("click", () => {
@@ -1587,44 +1602,65 @@ function renderTypeOptions(currentLabel) {
     sel.value = currentLabel || "";
 }
 // Baut die Probenart-Checkboxen aus den Einstellungen.
-// Baut die Auswahlliste für Historien-Einträge aus den globalen Probenarten.
-function renderHistoryTypeOptions(selectedValue = "") {
-    const select = document.getElementById("history-type");
-    if (!select) return;
-
-    const current = String(selectedValue || "").trim();
-    const labels = [];
+function normalizeHistoryTypes(values) {
     const seen = new Set();
-    (settings.scopeItems || []).forEach(label => {
-        const value = String(label || "").trim();
-        if (value && !seen.has(value.toLowerCase())) {
-            seen.add(value.toLowerCase());
-            labels.push(value);
-        }
-    });
+    return (Array.isArray(values) ? values : [])
+        .map(value => String(value || "").trim())
+        .filter(value => {
+            const key = value.toLowerCase();
+            if (!value || seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
+}
 
-    select.innerHTML = "";
-    const placeholder = document.createElement("option");
-    placeholder.value = "";
-    placeholder.textContent = "- bitte auswählen -";
-    select.appendChild(placeholder);
+// Kompatibel mit älteren Historien-Einträgen, die nur ein Feld "type" besitzen.
+function getHistoryEntryTypes(entry) {
+    if (!entry || typeof entry !== "object") return [];
+    const values = normalizeHistoryTypes(entry.types);
+    if (values.length) return values;
+    const legacy = String(entry.type || "").trim();
+    return legacy ? [legacy] : [];
+}
+function historyEntryTypesText(entry) {
+    const values = getHistoryEntryTypes(entry);
+    return values.length ? values.join(", ") : "– keine Angabe –";
+}
+function normalizeHistoryEntry(entry) {
+    if (!entry || typeof entry !== "object") return;
+    const values = getHistoryEntryTypes(entry);
+    entry.types = values;
+    entry.type = values.join(", "); // für ältere Exporte/Anzeige weiterhin mitführen
+    if (typeof entry.result !== "string" || !entry.result) entry.result = "Sauber";
+}
+
+function renderHistoryTypeCheckboxes(selectedValues = []) {
+    const cont = document.getElementById("history-type-checkboxes");
+    if (!cont) return;
+    cont.innerHTML = "";
+
+    const selected = normalizeHistoryTypes(selectedValues);
+    const labels = normalizeHistoryTypes(settings.scopeItems || []);
+    const known = new Set(labels.map(label => label.toLowerCase()));
+    // Alte, inzwischen entfernte Parameter sollen beim Bearbeiten nicht verschwinden.
+    selected.forEach(label => {
+        if (!known.has(label.toLowerCase())) labels.push(label);
+    });
 
     labels.forEach(label => {
-        const option = document.createElement("option");
-        option.value = label;
-        option.textContent = label;
-        select.appendChild(option);
+        const lab = document.createElement("label");
+        const cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.value = label;
+        cb.checked = selected.some(value => value.toLowerCase() === label.toLowerCase());
+        cb.className = "history-type-cb";
+        lab.appendChild(cb);
+        lab.appendChild(document.createTextNode(label));
+        cont.appendChild(lab);
     });
-
-    // Falls ein älterer, inzwischen aus den Einstellungen entfernter Wert geöffnet wird,
-    // bleibt er sichtbar und wird nicht versehentlich überschrieben.
-    if (current && !labels.some(label => label.toLowerCase() === current.toLowerCase())) {
-        const legacy = document.createElement("option");
-        legacy.value = current;
-        legacy.textContent = current + " (nicht mehr in Einstellungen)";
-        select.appendChild(legacy);
-    }
-    select.value = current;
+}
+function getSelectedHistoryTypes() {
+    return normalizeHistoryTypes(Array.from(document.querySelectorAll(".history-type-cb:checked")).map(cb => cb.value));
 }
 
 function renderScopeCheckboxes(selectedArr) {
@@ -1707,6 +1743,26 @@ function recalculateDatesFromHistory(obj) {
     }
 }
 
+function setHistoryFormMode(editIndex = null) {
+    historyEditingIndex = Number.isInteger(editIndex) ? editIndex : null;
+    const editing = historyEditingIndex !== null;
+    const hint = document.getElementById("history-edit-hint");
+    const saveBtn = document.getElementById("history-save-btn");
+    const resetBtn = document.getElementById("history-reset-edit");
+
+    hint.style.display = editing ? "" : "none";
+    hint.textContent = editing ? "✎ Bestehenden Historien-Eintrag bearbeiten" : "";
+    saveBtn.textContent = editing ? "Änderungen speichern" : "Eintrag speichern";
+    resetBtn.style.display = editing ? "" : "none";
+}
+
+function resetHistoryForm() {
+    setHistoryFormMode(null);
+    document.getElementById("history-date").value = "";
+    document.getElementById("history-result").value = "Sauber";
+    renderHistoryTypeCheckboxes([]);
+}
+
 function deleteHistoryEntry(custId, objId, historyIndex) {
     const obj = getObjectById(custId, objId);
     if (!obj || !Array.isArray(obj.history) || !obj.history[historyIndex]) return;
@@ -1720,11 +1776,27 @@ function deleteHistoryEntry(custId, objId, historyIndex) {
     openHistoryModal(custId, objId);
 }
 
+function editHistoryEntry(custId, objId, historyIndex) {
+    const obj = getObjectById(custId, objId);
+    const entry = obj?.history?.[historyIndex];
+    if (!entry) return;
+    normalizeHistoryEntry(entry);
+
+    setHistoryFormMode(historyIndex);
+    document.getElementById("history-date").value = germanToIso(entry.date);
+    document.getElementById("history-result").value = entry.result || "Sauber";
+    renderHistoryTypeCheckboxes(getHistoryEntryTypes(entry));
+    document.getElementById("history-date").focus();
+}
+
 function openHistoryModal(custId, objId) {
     historyCustomerId = custId; historyObjectId = objId;
     const cust = getCustomerById(custId), obj = getObjectById(custId, objId);
-    if (!cust||!obj) return;
+    if (!cust || !obj) return;
     ensureObjectScope(obj);
+    if (!Array.isArray(obj.history)) obj.history = [];
+    obj.history.forEach(normalizeHistoryEntry);
+
     document.getElementById("history-object-label").textContent = cust.name + " – " + obj.name;
     const listDiv = document.getElementById("history-list");
     listDiv.innerHTML = "";
@@ -1734,36 +1806,53 @@ function openHistoryModal(custId, objId) {
         d.textContent = "Umfang: " + obj.scope.details;
         listDiv.appendChild(d);
     }
-    if (obj.history && obj.history.length) {
-        obj.history.forEach((e, index) => {
+    if (obj.history.length) {
+        obj.history.forEach((entry, index) => {
+            normalizeHistoryEntry(entry);
             const row = document.createElement("div");
             row.className = "history-entry";
 
             const entryText = document.createElement("span");
             entryText.className = "history-entry-text";
-            entryText.textContent = e.date + " – " + e.type + " (" + e.result + ")";
+            entryText.textContent = entry.date + " – " + historyEntryTypesText(entry) + " (" + entry.result + ")";
+
+            const actionGroup = document.createElement("span");
+            actionGroup.className = "history-entry-actions";
+
+            const editBtn = document.createElement("button");
+            editBtn.type = "button";
+            editBtn.className = "history-entry-edit";
+            editBtn.textContent = "✎";
+            editBtn.title = "Eintrag bearbeiten";
+            editBtn.setAttribute("aria-label", `Historien-Eintrag vom ${entry.date} bearbeiten`);
+            editBtn.addEventListener("click", () => editHistoryEntry(custId, objId, index));
 
             const deleteBtn = document.createElement("button");
             deleteBtn.type = "button";
             deleteBtn.className = "history-entry-delete";
             deleteBtn.textContent = "×";
             deleteBtn.title = "Eintrag löschen";
-            deleteBtn.setAttribute("aria-label", `Historien-Eintrag vom ${e.date} löschen`);
+            deleteBtn.setAttribute("aria-label", `Historien-Eintrag vom ${entry.date} löschen`);
             deleteBtn.addEventListener("click", () => deleteHistoryEntry(custId, objId, index));
 
+            actionGroup.appendChild(editBtn);
+            actionGroup.appendChild(deleteBtn);
             row.appendChild(entryText);
-            row.appendChild(deleteBtn);
+            row.appendChild(actionGroup);
             listDiv.appendChild(row);
         });
     } else {
-        const em = document.createElement("div"); em.textContent = "Noch keine Einträge."; listDiv.appendChild(em);
+        const em = document.createElement("div");
+        em.textContent = "Noch keine Einträge.";
+        listDiv.appendChild(em);
     }
-    document.getElementById("history-date").value   = "";
-    renderHistoryTypeOptions();
-    document.getElementById("history-result").value = "Sauber";
+    resetHistoryForm();
     document.getElementById("history-modal").style.display = "flex";
 }
-function closeHistoryModal() { document.getElementById("history-modal").style.display = "none"; }
+function closeHistoryModal() {
+    historyEditingIndex = null;
+    document.getElementById("history-modal").style.display = "none";
+}
 
 // ================================================================
 // EVENT HANDLER
@@ -1934,27 +2023,47 @@ document.getElementById("plan-remove").addEventListener("click", () => {
 
 // Historie
 document.getElementById("history-cancel").addEventListener("click", closeHistoryModal);
+document.getElementById("history-reset-edit").addEventListener("click", resetHistoryForm);
 document.getElementById("history-form").addEventListener("submit", e => {
     e.preventDefault();
     if (!historyCustomerId || !historyObjectId) return;
     const cust = getCustomerById(historyCustomerId), obj = getObjectById(historyCustomerId, historyObjectId);
-    if (!cust||!obj) return;
+    if (!cust || !obj) return;
+
     const dateISO = document.getElementById("history-date").value;
-    const type    = document.getElementById("history-type").value.trim();
-    const result  = document.getElementById("history-result").value;
-    if (!dateISO || !type) { alert("Bitte Datum und Art der Untersuchung angeben."); return; }
-    const dateGerman = toGermanDate(dateISO);
-    if (!Array.isArray(obj.history)) obj.history = [];
-    obj.history.push({ date: dateGerman, type, result });
-    obj.lastDate = dateGerman;
-    if (obj.intervalMonths > 0) {
-        const nxt = addMonthsToIso(dateISO, obj.intervalMonths);
-        if (nxt) obj.nextDate = toGermanDate(nxt);
+    const types = getSelectedHistoryTypes();
+    const result = document.getElementById("history-result").value;
+    if (!dateISO || !types.length) {
+        alert("Bitte Datum und mindestens einen durchgeführten Parameter auswählen.");
+        return;
     }
-    // Untersuchung durchgeführt -> bestätigter Termin ist erledigt, Turnus läuft weiter
-    obj.plannedDate = ""; obj.plannedNote = "";
+
+    const wasEditing = historyEditingIndex !== null;
+    const entry = {
+        date: toGermanDate(dateISO),
+        types,
+        type: types.join(", "), // Kompatibilität mit bisherigen Backups
+        result
+    };
+    if (!Array.isArray(obj.history)) obj.history = [];
+
+    if (wasEditing && obj.history[historyEditingIndex]) {
+        obj.history[historyEditingIndex] = { ...obj.history[historyEditingIndex], ...entry };
+    } else {
+        obj.history.push(entry);
+    }
+    obj.history.forEach(normalizeHistoryEntry);
+    recalculateDatesFromHistory(obj);
+
+    // Nur eine neu erfasste Untersuchung erledigt einen eventuell fix geplanten Termin.
+    if (!wasEditing) {
+        obj.plannedDate = "";
+        obj.plannedNote = "";
+    }
+
+    saveData();
+    renderAll();
     openHistoryModal(historyCustomerId, historyObjectId);
-    saveData(); renderAll();
 });
 
 // Header direkt speicherbar
@@ -2300,6 +2409,6 @@ document.getElementById("logout-btn").addEventListener("click", async () => {
 
 initApp();
 </script>
-<footer class="footer" id="app-footer" style="display:none;">Made with Love &copy; &ndash; Terminverwaltung NOVA Sonderobjekte V 2.9.2</footer>
+<footer class="footer" id="app-footer" style="display:none;">Made with Love &copy; &ndash; Terminverwaltung NOVA Sonderobjekte V 2.9.3</footer>
 </body>
 </html>
