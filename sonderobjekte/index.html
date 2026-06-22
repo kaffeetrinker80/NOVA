@@ -766,6 +766,7 @@ tr.row-paused:hover > td { background: #f1f5f9 !important; }
                     <div class="settings-list" id="settings-types-list"></div>
                     <div class="settings-actions">
                         <button type="button" class="btn-secondary btn-small" id="settings-types-add">+ Hinzufügen</button>
+                        <button type="button" class="btn-secondary btn-small" id="settings-types-sort" title="Sortiert die Liste alphabetisch und speichert die Reihenfolge">↕ A–Z sortieren</button>
                         <button type="button" class="btn btn-small" id="settings-types-save">Speichern</button>
                         <span class="settings-saved-hint" id="settings-types-hint">✓ gespeichert</span>
                     </div>
@@ -776,6 +777,7 @@ tr.row-paused:hover > td { background: #f1f5f9 !important; }
                     <div class="settings-list" id="settings-scope-list"></div>
                     <div class="settings-actions">
                         <button type="button" class="btn-secondary btn-small" id="settings-scope-add">+ Hinzufügen</button>
+                        <button type="button" class="btn-secondary btn-small" id="settings-scope-sort" title="Sortiert die Liste alphabetisch und speichert die Reihenfolge">↕ A–Z sortieren</button>
                         <button type="button" class="btn btn-small" id="settings-scope-save">Speichern</button>
                         <span class="settings-saved-hint" id="settings-scope-hint">✓ gespeichert</span>
                     </div>
@@ -1005,7 +1007,7 @@ let settings = { anlagenTypes: DEFAULT_TYPES.slice(), scopeItems: DEFAULT_SCOPE.
 function buildExportPayload() {
     return {
         generatedAt: new Date().toISOString(),
-        version: "terminverwaltung-sonderobjekte-v2.9.3",
+        version: "terminverwaltung-sonderobjekte-v2.9.4",
         customers,
         appointments,
         settings,
@@ -1539,6 +1541,21 @@ function collectSettingsList(containerId) {
     });
     return out;
 }
+// Sortiert Beschriftungen deutschsprachig, unabhängig von Groß-/Kleinschreibung.
+function sortLabelsAZ(list) {
+    return (list || []).slice().sort((a, b) =>
+        String(a).localeCompare(String(b), "de", { sensitivity: "base", numeric: true })
+    );
+}
+function sortAndSaveSettingsList(containerId, settingKey, hintId) {
+    const list = sortLabelsAZ(collectSettingsList(containerId));
+    if (!list.length) { alert("Mindestens eine Bezeichnung angeben."); return; }
+    settings[settingKey] = list;
+    renderSettingsList(containerId, list);
+    saveData();
+    renderAll();
+    flashSavedHint(hintId);
+}
 function flashSavedHint(id) {
     const el = document.getElementById(id); if (!el) return;
     el.classList.add("show");
@@ -1880,6 +1897,12 @@ document.getElementById("settings-types-add").addEventListener("click", () => {
 });
 document.getElementById("settings-scope-add").addEventListener("click", () => {
     document.getElementById("settings-scope-list").appendChild(buildSettingsRow(""));
+});
+document.getElementById("settings-types-sort").addEventListener("click", () => {
+    sortAndSaveSettingsList("settings-types-list", "anlagenTypes", "settings-types-hint");
+});
+document.getElementById("settings-scope-sort").addEventListener("click", () => {
+    sortAndSaveSettingsList("settings-scope-list", "scopeItems", "settings-scope-hint");
 });
 document.getElementById("settings-types-save").addEventListener("click", () => {
     const list = collectSettingsList("settings-types-list");
@@ -2409,6 +2432,6 @@ document.getElementById("logout-btn").addEventListener("click", async () => {
 
 initApp();
 </script>
-<footer class="footer" id="app-footer" style="display:none;">Made with Love &copy; &ndash; Terminverwaltung NOVA Sonderobjekte V 2.9.3</footer>
+<footer class="footer" id="app-footer" style="display:none;">Made with Love &copy; &ndash; Terminverwaltung NOVA Sonderobjekte V 2.9.4</footer>
 </body>
 </html>
