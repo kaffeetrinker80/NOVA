@@ -723,7 +723,7 @@ tr.row-paused:hover > td { background: #f1f5f9 !important; }
             <h3>Alle Anlagen &amp; Termine</h3>
             <div class="info-text">
                 Alle Objekte, sortiert nach Termin (bestätigte zuerst, dann Turnus-Vorschläge, ohne Datum am Ende).
-                Objektname ist klickbar für die Historie. Letzte Untersuchung steht unter „Details".
+                Objektname ist klickbar für die Historie. Letzter Prüfbericht steht unter „Details".
             </div>
             <table id="allobjects-table">
                 <thead>
@@ -833,7 +833,7 @@ tr.row-paused:hover > td { background: #f1f5f9 !important; }
             </select>
             <label for="obj-city">Ort</label>
             <input type="text" id="obj-city">
-            <label for="obj-last">Letzte Untersuchung (optional)</label>
+            <label for="obj-last">Letzter Prüfbericht (optional)</label>
             <input type="date" id="obj-last">
             <label for="obj-interval">Untersuchungsroutine (Monate)</label>
             <select id="obj-interval">
@@ -913,8 +913,11 @@ tr.row-paused:hover > td { background: #f1f5f9 !important; }
         <form id="history-form">
             <label for="history-date">Datum</label>
             <input type="date" id="history-date" required>
-            <label for="history-type">Art der Untersuchung</label>
-            <input type="text" id="history-type" placeholder="z.B. Kühlwasserprüfung" required>
+            <label for="history-type">Durchgeführte Untersuchung</label>
+            <select id="history-type" required>
+                <option value="">- bitte auswählen -</option>
+            </select>
+            <div class="kw-helper" style="margin-top:-4px;">Auswahl aus „Untersuchungsumfang (Probenarten)“ in den globalen Einstellungen.</div>
             <label for="history-result">Ergebnis</label>
             <select id="history-result">
                 <option value="Sauber">Sauber</option>
@@ -988,7 +991,7 @@ let settings = { anlagenTypes: DEFAULT_TYPES.slice(), scopeItems: DEFAULT_SCOPE.
 function buildExportPayload() {
     return {
         generatedAt: new Date().toISOString(),
-        version: "terminverwaltung-sonderobjekte-v2.9.1",
+        version: "terminverwaltung-sonderobjekte-v2.9.2",
         customers,
         appointments,
         settings,
@@ -1462,7 +1465,7 @@ function renderAllObjectsView() {
 
         detTd.innerHTML =
             plannedLine +
-            `<b>Letzte Untersuchung:</b> ${escapeHtml(o.lastDate)||"-"}<br>` +
+            `<b>Letzter Prüfbericht:</b> ${escapeHtml(o.lastDate)||"-"}<br>` +
             `<b>Turnus-Vorschlag:</b> ${escapeHtml(o.nextDate)||"-"}${o.seasonPaused ? " (Saison pausiert)" : ""}<br>` +
             `<b>Umfang / Menge:</b> ${escapeHtml(scope.details)||"-"}<br>` +
             `<b>Probenarten:</b> ${scList.length ? scList.join(", ") : "-"}<br>` +
@@ -1584,6 +1587,46 @@ function renderTypeOptions(currentLabel) {
     sel.value = currentLabel || "";
 }
 // Baut die Probenart-Checkboxen aus den Einstellungen.
+// Baut die Auswahlliste für Historien-Einträge aus den globalen Probenarten.
+function renderHistoryTypeOptions(selectedValue = "") {
+    const select = document.getElementById("history-type");
+    if (!select) return;
+
+    const current = String(selectedValue || "").trim();
+    const labels = [];
+    const seen = new Set();
+    (settings.scopeItems || []).forEach(label => {
+        const value = String(label || "").trim();
+        if (value && !seen.has(value.toLowerCase())) {
+            seen.add(value.toLowerCase());
+            labels.push(value);
+        }
+    });
+
+    select.innerHTML = "";
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = "- bitte auswählen -";
+    select.appendChild(placeholder);
+
+    labels.forEach(label => {
+        const option = document.createElement("option");
+        option.value = label;
+        option.textContent = label;
+        select.appendChild(option);
+    });
+
+    // Falls ein älterer, inzwischen aus den Einstellungen entfernter Wert geöffnet wird,
+    // bleibt er sichtbar und wird nicht versehentlich überschrieben.
+    if (current && !labels.some(label => label.toLowerCase() === current.toLowerCase())) {
+        const legacy = document.createElement("option");
+        legacy.value = current;
+        legacy.textContent = current + " (nicht mehr in Einstellungen)";
+        select.appendChild(legacy);
+    }
+    select.value = current;
+}
+
 function renderScopeCheckboxes(selectedArr) {
     const cont = document.getElementById("scope-checkboxes");
     if (!cont) return;
@@ -1716,7 +1759,7 @@ function openHistoryModal(custId, objId) {
         const em = document.createElement("div"); em.textContent = "Noch keine Einträge."; listDiv.appendChild(em);
     }
     document.getElementById("history-date").value   = "";
-    document.getElementById("history-type").value   = "";
+    renderHistoryTypeOptions();
     document.getElementById("history-result").value = "Sauber";
     document.getElementById("history-modal").style.display = "flex";
 }
@@ -2257,6 +2300,6 @@ document.getElementById("logout-btn").addEventListener("click", async () => {
 
 initApp();
 </script>
-<footer class="footer" id="app-footer" style="display:none;">Made with Love &copy; &ndash; Terminverwaltung NOVA Sonderobjekte V 2.9.1</footer>
+<footer class="footer" id="app-footer" style="display:none;">Made with Love &copy; &ndash; Terminverwaltung NOVA Sonderobjekte V 2.9.2</footer>
 </body>
 </html>
