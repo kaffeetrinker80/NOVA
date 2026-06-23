@@ -372,13 +372,113 @@ tr.status-red:hover    > td { background: #ffe4e6 !important; }
 .status-icon-bad { color: var(--danger);  font-weight: 600; text-align: center; font-size: 15px; }
 
 /* ── SPLIT LAYOUT ────────────────────────────────────────── */
-.split-layout { display: flex; gap: 20px; margin-top: 12px; }
+.split-layout { display: flex; gap: 20px; margin-top: 12px; align-items: flex-start; }
 .panel { flex: 1; min-width: 0; }
-.panel-list { flex: 0 1 280px; }
+.panel-list { flex: 0 1 300px; }
 .panel-detail { flex: 1 1 560px; }
 .panel h4 { margin: 0 0 8px; font-size: 13px; font-weight: 600; color: var(--gray-700); text-transform: uppercase; letter-spacing: 0.05em; }
 .selected-row { background: var(--nova-50) !important; }
 .selected-row td { font-weight: 500; }
+.info-text { font-size: 12px; color: var(--gray-500); line-height: 1.6; }
+
+/* Kundenliste: erst bei mehr als 15 Kunden begrenzen. */
+.customer-list-scroll {
+    border-radius: var(--radius);
+    overflow: visible;
+}
+.customer-list-scroll.is-scrollable {
+    max-height: min(585px, 58vh);
+    overflow-y: auto;
+    overflow-x: auto;
+    border: 1px solid var(--gray-200);
+    background: #fff;
+    scrollbar-gutter: stable;
+    box-shadow: inset 0 -8px 12px -14px rgba(15,23,42,.6);
+}
+.customer-list-scroll.is-scrollable #customer-table { margin-top: 0; }
+.customer-list-scroll.is-scrollable thead { top: 0; }
+.customer-list-scroll.is-scrollable th:first-child { border-radius: 0; }
+.customer-list-scroll.is-scrollable th:last-child  { border-radius: 0; }
+
+/* Der ausgewählte Kunde bekommt bewusst mehr optisches Gewicht als seine Objekte. */
+.customer-detail-summary {
+    position: relative;
+    overflow: hidden;
+    padding: 18px 20px 16px;
+    margin-bottom: 16px;
+    border: 1px solid #bfdbfe;
+    border-left: 5px solid var(--accent);
+    border-radius: 10px;
+    background: linear-gradient(135deg, #f7fbff 0%, var(--nova-50) 100%);
+    box-shadow: 0 3px 10px rgba(13,110,253,.08);
+}
+.customer-detail-summary::after {
+    content: "";
+    position: absolute;
+    width: 150px;
+    height: 150px;
+    right: -65px;
+    top: -75px;
+    border-radius: 50%;
+    background: rgba(13,110,253,.06);
+    pointer-events: none;
+}
+.customer-detail-summary > * { position: relative; z-index: 1; }
+.customer-detail-kicker {
+    margin: 0 0 3px;
+    color: var(--accent);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+.customer-detail-summary #detail-customer-title {
+    margin: 0 0 7px;
+    color: var(--nova-800);
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 1.25;
+    letter-spacing: -0.35px;
+    text-transform: none;
+}
+.customer-detail-summary #detail-customer-address {
+    margin: 0;
+    color: var(--gray-700);
+    font-size: 13px;
+    font-weight: 500;
+}
+.customer-detail-summary #detail-customer-notes {
+    margin: 6px 0 0;
+    max-width: 900px;
+    color: var(--gray-500);
+}
+.customer-detail-summary .detail-actions {
+    margin: 14px 0 0;
+    padding-top: 12px;
+    border-top: 1px solid rgba(148,163,184,.25);
+}
+.customer-objects-section {
+    padding: 0 2px;
+}
+.customer-objects-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+.customer-objects-heading h4 {
+    margin: 0;
+}
+.customer-object-count {
+    padding: 3px 8px;
+    border: 1px solid var(--gray-200);
+    border-radius: 999px;
+    background: var(--gray-50);
+    color: var(--gray-500);
+    font-family: var(--mono);
+    font-size: 10px;
+    white-space: nowrap;
+}
 .info-text { font-size: 12px; color: var(--gray-500); line-height: 1.6; }
 
 /* ── DETAILS-ZEILE ───────────────────────────────────────── */
@@ -699,30 +799,41 @@ tr.row-paused:hover > td { background: #f1f5f9 !important; }
             <div class="split-layout">
                 <div class="panel panel-list">
                     <h4>Kunden</h4>
-                    <table id="customer-table">
-                        <thead><tr><th>Kunde</th><th>Anzahl Objekte</th></tr></thead>
-                        <tbody></tbody>
-                    </table>
+                    <div id="customer-list-scroll" class="customer-list-scroll" aria-label="Kundenliste">
+                        <table id="customer-table">
+                            <thead><tr><th>Kunde</th><th>Anzahl Objekte</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
                 </div>
                 <div class="panel panel-detail">
-                    <h4 id="detail-customer-title">Kein Kunde ausgewählt</h4>
-                    <p id="detail-customer-address" class="info-text"></p>
-                    <p id="detail-customer-notes" class="info-text"></p>
-                    <div class="detail-actions">
-                        <button id="new-customer-btn" class="btn btn-small">+ Neuer Kunde</button>
-                        <button id="edit-customer-btn" class="btn-secondary btn-small">Kunde bearbeiten</button>
-                        <button id="new-object-btn" class="btn btn-small">+ Objekt für diesen Kunden</button>
-                        <button id="delete-customer-btn" class="btn-danger btn-small">Kunde löschen</button>
+                    <div id="customer-detail-summary" class="customer-detail-summary">
+                        <div class="customer-detail-kicker">Kundendetails</div>
+                        <h4 id="detail-customer-title">Kein Kunde ausgewählt</h4>
+                        <p id="detail-customer-address" class="info-text"></p>
+                        <p id="detail-customer-notes" class="info-text"></p>
+                        <div class="detail-actions">
+                            <button id="new-customer-btn" class="btn btn-small">+ Neuer Kunde</button>
+                            <button id="edit-customer-btn" class="btn-secondary btn-small">Kunde bearbeiten</button>
+                            <button id="new-object-btn" class="btn btn-small">+ Objekt für diesen Kunden</button>
+                            <button id="delete-customer-btn" class="btn-danger btn-small">Kunde löschen</button>
+                        </div>
                     </div>
-                    <table id="customer-objects-table">
-                        <thead>
-                            <tr>
-                                <th>Objekt</th><th>Art</th><th>Ort</th>
-                                <th>Termin</th><th>Aktionen</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
+                    <div class="customer-objects-section">
+                        <div class="customer-objects-heading">
+                            <h4>Objekte dieses Kunden</h4>
+                            <span id="customer-object-count" class="customer-object-count">–</span>
+                        </div>
+                        <table id="customer-objects-table">
+                            <thead>
+                                <tr>
+                                    <th>Objekt</th><th>Art</th><th>Ort</th>
+                                    <th>Termin</th><th>Aktionen</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </section>
@@ -1007,7 +1118,7 @@ let settings = { anlagenTypes: DEFAULT_TYPES.slice(), scopeItems: DEFAULT_SCOPE.
 function buildExportPayload() {
     return {
         generatedAt: new Date().toISOString(),
-        version: "terminverwaltung-sonderobjekte-v2.9.4",
+        version: "terminverwaltung-sonderobjekte-v2.9.5",
         customers,
         appointments,
         settings,
@@ -1331,8 +1442,13 @@ function renderUpcoming() {
 
 function renderCustomerTable() {
     const tbody = document.querySelector("#customer-table tbody");
+    const listScroll = document.getElementById("customer-list-scroll");
     tbody.innerHTML = "";
     const sorted = customers.slice().sort((a,b) => a.name.localeCompare(b.name));
+    if (listScroll) {
+        // Bis einschließlich 15 Kunden bleibt die Liste komplett offen.
+        listScroll.classList.toggle("is-scrollable", sorted.length > 15);
+    }
     if (!selectedCustomerId && sorted.length) selectedCustomerId = sorted[0].id;
     sorted.forEach(c => {
         const tr = document.createElement("tr");
@@ -1349,6 +1465,8 @@ function renderCustomerDetail() {
     const title   = document.getElementById("detail-customer-title");
     const addrP   = document.getElementById("detail-customer-address");
     const notesP  = document.getElementById("detail-customer-notes");
+    const summary = document.getElementById("customer-detail-summary");
+    const countEl = document.getElementById("customer-object-count");
     const tbody   = document.querySelector("#customer-objects-table tbody");
     const newCust = document.getElementById("new-customer-btn");
     const editBtn = document.getElementById("edit-customer-btn");
@@ -1360,9 +1478,16 @@ function renderCustomerDetail() {
     if (!cust) {
         title.textContent = "Kein Kunde ausgewählt";
         addrP.textContent = ""; notesP.textContent = "";
+        if (summary) summary.classList.add("is-empty");
+        if (countEl) countEl.textContent = "–";
         newCust.disabled = false;
         editBtn.disabled = delBtn.disabled = newObj.disabled = true;
         return;
+    }
+    if (summary) summary.classList.remove("is-empty");
+    if (countEl) {
+        const objectCount = (cust.objects||[]).length;
+        countEl.textContent = objectCount + (objectCount === 1 ? " Objekt" : " Objekte");
     }
     title.textContent = cust.name;
     const parts = [];
@@ -2432,6 +2557,6 @@ document.getElementById("logout-btn").addEventListener("click", async () => {
 
 initApp();
 </script>
-<footer class="footer" id="app-footer" style="display:none;">Made with Love &copy; &ndash; Terminverwaltung NOVA Sonderobjekte V 2.9.4</footer>
+<footer class="footer" id="app-footer" style="display:none;">Made with Love &copy; &ndash; Terminverwaltung NOVA Sonderobjekte V 2.9.5</footer>
 </body>
 </html>
