@@ -399,6 +399,14 @@ tr.status-red:hover    > td { background: #ffe4e6 !important; }
 .customer-list-scroll.is-scrollable thead { top: 0; }
 .customer-list-scroll.is-scrollable th:first-child { border-radius: 0; }
 .customer-list-scroll.is-scrollable th:last-child  { border-radius: 0; }
+.customer-list-actions {
+    display: flex;
+    margin-top: 10px;
+}
+.customer-list-actions #new-customer-btn {
+    width: 100%;
+    justify-content: center;
+}
 
 /* Der ausgewählte Kunde bekommt bewusst mehr optisches Gewicht als seine Objekte. */
 .customer-detail-summary {
@@ -805,6 +813,9 @@ tr.row-paused:hover > td { background: #f1f5f9 !important; }
                             <tbody></tbody>
                         </table>
                     </div>
+                    <div class="customer-list-actions">
+                        <button id="new-customer-btn" class="btn btn-small">+ Neuer Kunde</button>
+                    </div>
                 </div>
                 <div class="panel panel-detail">
                     <div id="customer-detail-summary" class="customer-detail-summary">
@@ -813,9 +824,8 @@ tr.row-paused:hover > td { background: #f1f5f9 !important; }
                         <p id="detail-customer-address" class="info-text"></p>
                         <p id="detail-customer-notes" class="info-text"></p>
                         <div class="detail-actions">
-                            <button id="new-customer-btn" class="btn btn-small">+ Neuer Kunde</button>
                             <button id="edit-customer-btn" class="btn-secondary btn-small">Kunde bearbeiten</button>
-                            <button id="new-object-btn" class="btn btn-small">+ Objekt für diesen Kunden</button>
+                            <button id="new-object-btn" class="btn btn-small">+ Neues Objekt</button>
                             <button id="delete-customer-btn" class="btn-danger btn-small">Kunde löschen</button>
                         </div>
                     </div>
@@ -1118,7 +1128,7 @@ let settings = { anlagenTypes: DEFAULT_TYPES.slice(), scopeItems: DEFAULT_SCOPE.
 function buildExportPayload() {
     return {
         generatedAt: new Date().toISOString(),
-        version: "terminverwaltung-sonderobjekte-v2.9.5",
+        version: "terminverwaltung-sonderobjekte-v2.9.6",
         customers,
         appointments,
         settings,
@@ -2557,6 +2567,6 @@ document.getElementById("logout-btn").addEventListener("click", async () => {
 
 initApp();
 </script>
-<footer class="footer" id="app-footer" style="display:none;">Made with Love &copy; &ndash; Terminverwaltung NOVA Sonderobjekte V 2.9.5</footer>
+<footer class="footer" id="app-footer" style="display:none;">Made with Love &copy; &ndash; Terminverwaltung NOVA Sonderobjekte V 2.9.6</footer>
 </body>
 </html>
