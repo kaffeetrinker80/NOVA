@@ -264,6 +264,19 @@ body {
 .btn-danger:hover { background: #bb2d3b; }
 .btn-success { background: var(--success); box-shadow: 0 1px 3px rgba(25,135,84,0.25); }
 .btn-success:hover { background: #157347; box-shadow: 0 2px 6px rgba(25,135,84,0.35); }
+/* Aktion statt Status: öffnet die Erfassung der tatsächlich durchgeführten Untersuchung. */
+.btn-record {
+    background: #eff6ff;
+    color: var(--accent);
+    border: 1px solid #bfdbfe;
+    box-shadow: none;
+}
+.btn-record:hover {
+    background: #dbeafe;
+    color: var(--accent-h);
+    border-color: #93c5fd;
+    box-shadow: 0 1px 3px rgba(13,110,253,0.14);
+}
 .btn-small { padding: 5px 10px; font-size: 12px; }
 .btn:disabled { opacity: 0.55; cursor: default; transform: none; }
 .link-button {
@@ -1040,15 +1053,14 @@ tr.row-paused:hover > td { background: #f1f5f9 !important; }
     </div>
 </div>
 
-<!-- MODAL: ERLEDIGT -->
+<!-- MODAL: DURCHFÜHRUNG ERFASSEN -->
 <div class="modal" id="complete-modal">
     <div class="modal-content">
-        <div class="modal-header">Untersuchung als erledigt markieren</div>
+        <div class="modal-header">Durchführung erfassen</div>
         <form id="complete-form">
             <div class="info-text" id="complete-object-label" style="margin-bottom:8px; font-weight:bold;"></div>
             <div class="kw-helper" id="complete-turnus-hint" style="margin-top:0;">
-                Der letzte Prüftermin und der nächste Turnus werden mit dem gewählten Datum aktualisiert.
-                Ein eventuell fix geplanter Termin wird dabei entfernt.
+                Mit dem gewählten Datum wird die Durchführung eingetragen. Der letzte Prüftermin und der nächste Turnus werden aktualisiert; ein eventuell fix geplanter Termin wird entfernt.
             </div>
             <label for="complete-date">Durchgeführt am</label>
             <input type="date" id="complete-date" required>
@@ -1057,7 +1069,7 @@ tr.row-paused:hover > td { background: #f1f5f9 !important; }
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn-secondary btn-small" id="complete-cancel">Abbrechen</button>
-                <button type="submit" class="btn btn-success btn-small">✓ Als erledigt speichern</button>
+                <button type="submit" class="btn btn-small">Durchführung übernehmen</button>
             </div>
         </form>
     </div>
@@ -1155,7 +1167,7 @@ let settings = { anlagenTypes: DEFAULT_TYPES.slice(), scopeItems: DEFAULT_SCOPE.
 function buildExportPayload() {
     return {
         generatedAt: new Date().toISOString(),
-        version: "terminverwaltung-sonderobjekte-v2.9.7",
+        version: "terminverwaltung-sonderobjekte-v2.9.8",
         customers,
         appointments,
         settings,
@@ -1477,9 +1489,10 @@ function renderUpcoming() {
         tdA.className = "actions";
         const completeBtn = document.createElement("button");
         completeBtn.type = "button";
-        completeBtn.className = "btn btn-success btn-small";
-        completeBtn.textContent = "✓ Erledigt";
-        completeBtn.title = "Untersuchung als erledigt markieren";
+        completeBtn.className = "btn btn-record btn-small";
+        completeBtn.textContent = "📝 Durchführung";
+        completeBtn.title = "Durchführung mit Datum erfassen";
+        completeBtn.setAttribute("aria-label", "Durchführung mit Datum erfassen");
         completeBtn.addEventListener("click", () => openCompleteModal(o.customerId, o.objectId));
         tdA.appendChild(completeBtn);
         tr.appendChild(tdA);
@@ -1629,7 +1642,7 @@ function renderAllObjectsView() {
         const rowA = document.createElement("div"); rowA.className = "actions-row-compact";
         let btnDetails;
         const seasonLabel = o.seasonPaused ? "▶ Saison" : "⏸ Saison";
-        [["✓ Erledigt","btn btn-success btn-small",()=>openCompleteModal(o.customerId,o.objectId)],
+        [["📝 Durchführung","btn btn-record btn-small",()=>openCompleteModal(o.customerId,o.objectId)],
          ["Termin","btn-secondary btn-small",()=>openPlanModal(o.customerId,o.objectId)],
          ["Historie","btn-secondary btn-small",()=>openHistoryModal(o.customerId,o.objectId)],
          [seasonLabel,"btn-secondary btn-small",()=>toggleSeason(o.customerId,o.objectId)],
@@ -1913,7 +1926,7 @@ function openPlanModal(custId, objId) {
 function closePlanModal() { document.getElementById("plan-modal").style.display = "none"; }
 
 // ================================================================
-// MODALS – ERLEDIGT
+// MODALS – DURCHFÜHRUNG ERFASSEN
 // ================================================================
 function localTodayIso() {
     const now = new Date();
@@ -2248,7 +2261,7 @@ document.getElementById("plan-remove").addEventListener("click", () => {
     closePlanModal(); saveData(); renderAll();
 });
 
-// Erledigt
+// Durchführung erfassen
 document.getElementById("complete-cancel").addEventListener("click", closeCompleteModal);
 document.getElementById("complete-form").addEventListener("submit", e => {
     e.preventDefault();
@@ -2258,7 +2271,7 @@ document.getElementById("complete-form").addEventListener("submit", e => {
 
     const completedISO = document.getElementById("complete-date").value;
     if (!completedISO) {
-        alert("Bitte das Datum der Durchführung auswählen.");
+        alert("Bitte das Durchführungsdatum auswählen.");
         return;
     }
 
@@ -2663,6 +2676,6 @@ document.getElementById("logout-btn").addEventListener("click", async () => {
 
 initApp();
 </script>
-<footer class="footer" id="app-footer" style="display:none;">Made with Love &copy; &ndash; Terminverwaltung NOVA Sonderobjekte V 2.9.7</footer>
+<footer class="footer" id="app-footer" style="display:none;">Made with Love &copy; &ndash; Terminverwaltung NOVA Sonderobjekte V 2.9.8</footer>
 </body>
 </html>
