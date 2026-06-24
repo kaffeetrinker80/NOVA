@@ -262,6 +262,8 @@ body {
 .btn-secondary:hover { background: var(--gray-100); border-color: var(--gray-500); }
 .btn-danger { background: var(--danger); box-shadow: 0 1px 3px rgba(220,53,69,0.25); }
 .btn-danger:hover { background: #bb2d3b; }
+.btn-success { background: var(--success); box-shadow: 0 1px 3px rgba(25,135,84,0.25); }
+.btn-success:hover { background: #157347; box-shadow: 0 2px 6px rgba(25,135,84,0.35); }
 .btn-small { padding: 5px 10px; font-size: 12px; }
 .btn:disabled { opacity: 0.55; cursor: default; transform: none; }
 .link-button {
@@ -357,7 +359,7 @@ tr:last-child td { border-bottom: none; }
 .actions { min-width: 168px; }
 .actions-row { display: flex; flex-wrap: wrap; gap: 6px; }
 .actions-row button { flex: 1 1 76px; justify-content: center; margin: 0; }
-.actions-row-compact { display: flex; gap: 6px; }
+.actions-row-compact { display: flex; gap: 6px; flex-wrap: wrap; }
 .actions-row-compact button { margin: 0; }
 
 /* ── STATUS-FARBEN ───────────────────────────────────────── */
@@ -790,7 +792,7 @@ tr.row-paused:hover > td { background: #f1f5f9 !important; }
             <table id="upcoming-table">
                 <thead>
                     <tr>
-                        <th>Kunde</th><th>Objekt</th><th>Art</th><th>Ort</th><th>Termin</th>
+                        <th>Kunde</th><th>Objekt</th><th>Art</th><th>Ort</th><th>Termin</th><th>Aktion</th>
                     </tr>
                 </thead>
                 <tbody id="upcoming-tbody"></tbody>
@@ -1038,6 +1040,29 @@ tr.row-paused:hover > td { background: #f1f5f9 !important; }
     </div>
 </div>
 
+<!-- MODAL: ERLEDIGT -->
+<div class="modal" id="complete-modal">
+    <div class="modal-content">
+        <div class="modal-header">Untersuchung als erledigt markieren</div>
+        <form id="complete-form">
+            <div class="info-text" id="complete-object-label" style="margin-bottom:8px; font-weight:bold;"></div>
+            <div class="kw-helper" id="complete-turnus-hint" style="margin-top:0;">
+                Der letzte Prüftermin und der nächste Turnus werden mit dem gewählten Datum aktualisiert.
+                Ein eventuell fix geplanter Termin wird dabei entfernt.
+            </div>
+            <label for="complete-date">Durchgeführt am</label>
+            <input type="date" id="complete-date" required>
+            <div class="info-text" style="margin-top:-2px;">
+                Parameter und Ergebnis kannst du bei Bedarf später ausführlich über „Historie“ nachtragen.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary btn-small" id="complete-cancel">Abbrechen</button>
+                <button type="submit" class="btn btn-success btn-small">✓ Als erledigt speichern</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- MODAL: HISTORIE -->
 <div class="modal" id="history-modal">
     <div class="modal-content">
@@ -1100,6 +1125,8 @@ let editingObjectCustomerId = null;
 let editingObjectId  = null;
 let planCustomerId   = null;
 let planObjectId     = null;
+let completeCustomerId = null;
+let completeObjectId   = null;
 let historyCustomerId = null;
 let historyObjectId   = null;
 let historyEditingIndex = null;
@@ -1128,7 +1155,7 @@ let settings = { anlagenTypes: DEFAULT_TYPES.slice(), scopeItems: DEFAULT_SCOPE.
 function buildExportPayload() {
     return {
         generatedAt: new Date().toISOString(),
-        version: "terminverwaltung-sonderobjekte-v2.9.6",
+        version: "terminverwaltung-sonderobjekte-v2.9.7",
         customers,
         appointments,
         settings,
@@ -1446,6 +1473,16 @@ function renderUpcoming() {
         const tdT = document.createElement("td");
         tdT.innerHTML = terminCellHtml(o);
         tr.appendChild(tdT);
+        const tdA = document.createElement("td");
+        tdA.className = "actions";
+        const completeBtn = document.createElement("button");
+        completeBtn.type = "button";
+        completeBtn.className = "btn btn-success btn-small";
+        completeBtn.textContent = "✓ Erledigt";
+        completeBtn.title = "Untersuchung als erledigt markieren";
+        completeBtn.addEventListener("click", () => openCompleteModal(o.customerId, o.objectId));
+        tdA.appendChild(completeBtn);
+        tr.appendChild(tdA);
         tbody.appendChild(tr);
     });
 }
@@ -1592,14 +1629,15 @@ function renderAllObjectsView() {
         const rowA = document.createElement("div"); rowA.className = "actions-row-compact";
         let btnDetails;
         const seasonLabel = o.seasonPaused ? "▶ Saison" : "⏸ Saison";
-        [["Termin","btn-secondary btn-small",()=>openPlanModal(o.customerId,o.objectId)],
+        [["✓ Erledigt","btn btn-success btn-small",()=>openCompleteModal(o.customerId,o.objectId)],
+         ["Termin","btn-secondary btn-small",()=>openPlanModal(o.customerId,o.objectId)],
          ["Historie","btn-secondary btn-small",()=>openHistoryModal(o.customerId,o.objectId)],
          [seasonLabel,"btn-secondary btn-small",()=>toggleSeason(o.customerId,o.objectId)],
          ["Details","btn-secondary btn-small",null]
         ].forEach(([t,c,fn],i) => {
             const b = document.createElement("button"); b.textContent=t; b.className=c;
             if (fn) b.addEventListener("click",fn);
-            if (i===3) btnDetails = b;
+            if (i===4) btnDetails = b;
             rowA.appendChild(b);
         });
         tdA.appendChild(rowA);
@@ -1873,6 +1911,37 @@ function openPlanModal(custId, objId) {
     document.getElementById("plan-modal").style.display = "flex";
 }
 function closePlanModal() { document.getElementById("plan-modal").style.display = "none"; }
+
+// ================================================================
+// MODALS – ERLEDIGT
+// ================================================================
+function localTodayIso() {
+    const now = new Date();
+    return now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0") + "-" + String(now.getDate()).padStart(2, "0");
+}
+function openCompleteModal(custId, objId) {
+    completeCustomerId = custId;
+    completeObjectId = objId;
+    const cust = getCustomerById(custId);
+    const obj = getObjectById(custId, objId);
+    if (!cust || !obj) return;
+
+    ensureObjectScope(obj);
+    document.getElementById("complete-object-label").textContent = cust.name + " – " + obj.name;
+    document.getElementById("complete-date").value = obj.plannedDate ? germanToIso(obj.plannedDate) : localTodayIso();
+
+    const hint = document.getElementById("complete-turnus-hint");
+    hint.textContent = obj.intervalMonths > 0
+        ? `Der letzte Prüftermin und der nächste Turnus (alle ${obj.intervalMonths} Monate) werden mit dem gewählten Datum aktualisiert. Ein eventuell fix geplanter Termin wird dabei entfernt.`
+        : "Der letzte Prüftermin wird mit dem gewählten Datum aktualisiert. Für dieses Objekt ist keine Routine hinterlegt; deshalb wird kein nächster Turnus berechnet. Ein eventuell fix geplanter Termin wird entfernt.";
+
+    document.getElementById("complete-modal").style.display = "flex";
+}
+function closeCompleteModal() {
+    document.getElementById("complete-modal").style.display = "none";
+    completeCustomerId = null;
+    completeObjectId = null;
+}
 
 // ================================================================
 // MODALS – HISTORIE
@@ -2177,6 +2246,33 @@ document.getElementById("plan-remove").addEventListener("click", () => {
     if (!confirm("Bestätigten Termin entfernen? Das Objekt fällt dann auf den Turnus-Vorschlag zurück.")) return;
     obj.plannedDate = ""; obj.plannedNote = "";
     closePlanModal(); saveData(); renderAll();
+});
+
+// Erledigt
+document.getElementById("complete-cancel").addEventListener("click", closeCompleteModal);
+document.getElementById("complete-form").addEventListener("submit", e => {
+    e.preventDefault();
+    if (!completeCustomerId || !completeObjectId) return;
+    const obj = getObjectById(completeCustomerId, completeObjectId);
+    if (!obj) return;
+
+    const completedISO = document.getElementById("complete-date").value;
+    if (!completedISO) {
+        alert("Bitte das Datum der Durchführung auswählen.");
+        return;
+    }
+
+    ensureObjectScope(obj);
+    obj.lastDate = toGermanDate(completedISO);
+    obj.nextDate = obj.intervalMonths > 0
+        ? toGermanDate(addMonthsToIso(completedISO, obj.intervalMonths))
+        : "";
+    obj.plannedDate = "";
+    obj.plannedNote = "";
+
+    closeCompleteModal();
+    saveData();
+    renderAll();
 });
 
 // Historie
@@ -2567,6 +2663,6 @@ document.getElementById("logout-btn").addEventListener("click", async () => {
 
 initApp();
 </script>
-<footer class="footer" id="app-footer" style="display:none;">Made with Love &copy; &ndash; Terminverwaltung NOVA Sonderobjekte V 2.9.6</footer>
+<footer class="footer" id="app-footer" style="display:none;">Made with Love &copy; &ndash; Terminverwaltung NOVA Sonderobjekte V 2.9.7</footer>
 </body>
 </html>
