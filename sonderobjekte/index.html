@@ -1053,23 +1053,23 @@ tr.row-paused:hover > td { background: #f1f5f9 !important; }
     </div>
 </div>
 
-<!-- MODAL: DURCHFÜHRUNG ERFASSEN -->
+<!-- MODAL: PROBENAHME ERFASSEN -->
 <div class="modal" id="complete-modal">
     <div class="modal-content">
-        <div class="modal-header">Durchführung erfassen</div>
+        <div class="modal-header">Probenahme erfassen</div>
         <form id="complete-form">
             <div class="info-text" id="complete-object-label" style="margin-bottom:8px; font-weight:bold;"></div>
             <div class="kw-helper" id="complete-turnus-hint" style="margin-top:0;">
-                Mit dem gewählten Datum wird die Durchführung eingetragen. Der letzte Prüftermin und der nächste Turnus werden aktualisiert; ein eventuell fix geplanter Termin wird entfernt.
+                Mit dem gewählten Datum wird die Probenahme eingetragen. Der letzte Prüftermin und der nächste Turnus werden aktualisiert; ein eventuell fix geplanter Termin wird entfernt.
             </div>
-            <label for="complete-date">Durchgeführt am</label>
+            <label for="complete-date">Probenahme am</label>
             <input type="date" id="complete-date" required>
             <div class="info-text" style="margin-top:-2px;">
                 Parameter und Ergebnis kannst du bei Bedarf später ausführlich über „Historie“ nachtragen.
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn-secondary btn-small" id="complete-cancel">Abbrechen</button>
-                <button type="submit" class="btn btn-small">Durchführung übernehmen</button>
+                <button type="submit" class="btn btn-small">Übernehmen</button>
             </div>
         </form>
     </div>
@@ -1167,7 +1167,7 @@ let settings = { anlagenTypes: DEFAULT_TYPES.slice(), scopeItems: DEFAULT_SCOPE.
 function buildExportPayload() {
     return {
         generatedAt: new Date().toISOString(),
-        version: "terminverwaltung-sonderobjekte-v2.9.8",
+        version: "terminverwaltung-sonderobjekte-v2.9.9",
         customers,
         appointments,
         settings,
@@ -1490,9 +1490,9 @@ function renderUpcoming() {
         const completeBtn = document.createElement("button");
         completeBtn.type = "button";
         completeBtn.className = "btn btn-record btn-small";
-        completeBtn.textContent = "📝 Durchführung";
-        completeBtn.title = "Durchführung mit Datum erfassen";
-        completeBtn.setAttribute("aria-label", "Durchführung mit Datum erfassen");
+        completeBtn.textContent = "🧪 Probenahme";
+        completeBtn.title = "Probenahme mit Datum erfassen";
+        completeBtn.setAttribute("aria-label", "Probenahme mit Datum erfassen");
         completeBtn.addEventListener("click", () => openCompleteModal(o.customerId, o.objectId));
         tdA.appendChild(completeBtn);
         tr.appendChild(tdA);
@@ -1642,7 +1642,7 @@ function renderAllObjectsView() {
         const rowA = document.createElement("div"); rowA.className = "actions-row-compact";
         let btnDetails;
         const seasonLabel = o.seasonPaused ? "▶ Saison" : "⏸ Saison";
-        [["📝 Durchführung","btn btn-record btn-small",()=>openCompleteModal(o.customerId,o.objectId)],
+        [["🧪 Probenahme","btn btn-record btn-small",()=>openCompleteModal(o.customerId,o.objectId)],
          ["Termin","btn-secondary btn-small",()=>openPlanModal(o.customerId,o.objectId)],
          ["Historie","btn-secondary btn-small",()=>openHistoryModal(o.customerId,o.objectId)],
          [seasonLabel,"btn-secondary btn-small",()=>toggleSeason(o.customerId,o.objectId)],
@@ -2261,7 +2261,7 @@ document.getElementById("plan-remove").addEventListener("click", () => {
     closePlanModal(); saveData(); renderAll();
 });
 
-// Durchführung erfassen
+// Probenahme erfassen
 document.getElementById("complete-cancel").addEventListener("click", closeCompleteModal);
 document.getElementById("complete-form").addEventListener("submit", e => {
     e.preventDefault();
@@ -2271,7 +2271,7 @@ document.getElementById("complete-form").addEventListener("submit", e => {
 
     const completedISO = document.getElementById("complete-date").value;
     if (!completedISO) {
-        alert("Bitte das Durchführungsdatum auswählen.");
+        alert("Bitte das Probenahmedatum auswählen.");
         return;
     }
 
@@ -2676,6 +2676,6 @@ document.getElementById("logout-btn").addEventListener("click", async () => {
 
 initApp();
 </script>
-<footer class="footer" id="app-footer" style="display:none;">Made with Love &copy; &ndash; Terminverwaltung NOVA Sonderobjekte V 2.9.8</footer>
+<footer class="footer" id="app-footer" style="display:none;">Made with Love &copy; &ndash; Terminverwaltung NOVA Sonderobjekte V 2.9.9</footer>
 </body>
 </html>
