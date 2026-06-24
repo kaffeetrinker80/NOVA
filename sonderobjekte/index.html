@@ -13,11 +13,13 @@
 <meta name="theme-color" content="#172f4d">
 
 <meta charset="UTF-8">
-<title>Terminverwaltung NOVA Sonderobjekte</title>
+<title>Terminverwaltung NOVA Sonderobjekte – V 2.9.10</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<meta http-equiv="Cache-Control" content="max-age=3600">
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <!--
@@ -1167,7 +1169,7 @@ let settings = { anlagenTypes: DEFAULT_TYPES.slice(), scopeItems: DEFAULT_SCOPE.
 function buildExportPayload() {
     return {
         generatedAt: new Date().toISOString(),
-        version: "terminverwaltung-sonderobjekte-v2.9.9",
+        version: "terminverwaltung-sonderobjekte-v2.9.10",
         customers,
         appointments,
         settings,
@@ -1926,7 +1928,7 @@ function openPlanModal(custId, objId) {
 function closePlanModal() { document.getElementById("plan-modal").style.display = "none"; }
 
 // ================================================================
-// MODALS – DURCHFÜHRUNG ERFASSEN
+// MODALS – PROBENAHME ERFASSEN
 // ================================================================
 function localTodayIso() {
     const now = new Date();
@@ -2676,6 +2678,6 @@ document.getElementById("logout-btn").addEventListener("click", async () => {
 
 initApp();
 </script>
-<footer class="footer" id="app-footer" style="display:none;">Made with Love &copy; &ndash; Terminverwaltung NOVA Sonderobjekte V 2.9.9</footer>
+<footer class="footer" id="app-footer" style="display:none;">Made with Love &copy; &ndash; Terminverwaltung NOVA Sonderobjekte V 2.9.10</footer>
 </body>
 </html>
