@@ -13,7 +13,7 @@
 <meta name="theme-color" content="#172f4d">
 
 <meta charset="UTF-8">
-<title>Terminverwaltung NOVA Sonderobjekte – V 2.9.11</title>
+<title>Terminverwaltung NOVA Sonderobjekte – V 2.9.12</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -896,8 +896,8 @@ tr.row-paused:hover > td { background: #f1f5f9 !important; }
                 <thead>
                     <tr>
                         <th>Status</th><th>Kunde</th><th>Objekt (Historie)</th><th>Art</th>
-                        <th>Ort</th><th>Termin</th>
-                        <th class="sample-entry-header">Probenahme erfassen</th><th>Routine (Monate)</th><th>Aktionen</th>
+                        <th>Ort</th><th>Fälligkeit</th>
+                        <th>Routine (Monate)</th><th>Aktionen</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -1187,7 +1187,7 @@ let settings = { anlagenTypes: DEFAULT_TYPES.slice(), scopeItems: DEFAULT_SCOPE.
 function buildExportPayload() {
     return {
         generatedAt: new Date().toISOString(),
-        version: "terminverwaltung-sonderobjekte-v2.9.11",
+        version: "terminverwaltung-sonderobjekte-v2.9.12",
         customers,
         appointments,
         settings,
@@ -1659,17 +1659,13 @@ function renderAllObjectsView() {
         // Termin (Badge + Datum)
         const tdT = document.createElement("td"); tdT.innerHTML = terminCellHtml(o); tr.appendChild(tdT);
 
-        // Probenahme erfassen (bewusst eigene Spalte, damit der Haken als Eingabeaktion lesbar ist)
-        const tdP = document.createElement("td"); tdP.className = "sample-entry-cell";
-        tdP.appendChild(createSampleEntryButton(o.customerId, o.objectId));
-        tr.appendChild(tdP);
-
         // Routine
         const tdR = document.createElement("td"); tdR.textContent = o.intervalMonths ? "alle "+o.intervalMonths+" Monate" : ""; tr.appendChild(tdR);
 
-        // Weitere Aktionen
+        // Aktionen
         const tdA = document.createElement("td"); tdA.className = "actions";
         const rowA = document.createElement("div"); rowA.className = "actions-row-compact";
+        rowA.appendChild(createSampleEntryButton(o.customerId, o.objectId));
         let btnDetails;
         const seasonLabel = o.seasonPaused ? "▶ Saison" : "⏸ Saison";
         [["Termin","btn-secondary btn-small",()=>openPlanModal(o.customerId,o.objectId)],
@@ -1688,7 +1684,7 @@ function renderAllObjectsView() {
 
         // Details-Zeile
         const detTr = document.createElement("tr"); detTr.className = "details-row";
-        const detTd = document.createElement("td"); detTd.className = "details-cell"; detTd.colSpan = 9;
+        const detTd = document.createElement("td"); detTd.className = "details-cell"; detTd.colSpan = 8;
         const scope = o.scope||{};
         const scList = (Array.isArray(o.scopeSelected) ? o.scopeSelected : []).map(escapeHtml);
         const plannedLine = o.plannedDate
@@ -2705,6 +2701,6 @@ document.getElementById("logout-btn").addEventListener("click", async () => {
 
 initApp();
 </script>
-<footer class="footer" id="app-footer" style="display:none;">Made with Love &copy; &ndash; Terminverwaltung NOVA Sonderobjekte V 2.9.11</footer>
+<footer class="footer" id="app-footer" style="display:none;">Made with Love &copy; &ndash; Terminverwaltung NOVA Sonderobjekte V 2.9.12</footer>
 </body>
 </html>
