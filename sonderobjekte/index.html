@@ -13,7 +13,7 @@
 <meta name="theme-color" content="#172f4d">
 
 <meta charset="UTF-8">
-<title>Terminverwaltung NOVA Sonderobjekte – V 2.9.10</title>
+<title>Terminverwaltung NOVA Sonderobjekte – V 2.9.11</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -266,19 +266,37 @@ body {
 .btn-danger:hover { background: #bb2d3b; }
 .btn-success { background: var(--success); box-shadow: 0 1px 3px rgba(25,135,84,0.25); }
 .btn-success:hover { background: #157347; box-shadow: 0 2px 6px rgba(25,135,84,0.35); }
-/* Aktion statt Status: öffnet die Erfassung der tatsächlich durchgeführten Untersuchung. */
-.btn-record {
-    background: #eff6ff;
-    color: var(--accent);
-    border: 1px solid #bfdbfe;
+/* Neutraler Auslöser für die Probenahme-Erfassung – kein Status-Haken. */
+.sample-entry-button {
+    width: 30px;
+    height: 28px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--gray-300);
+    border-radius: 6px;
+    background: #fff;
+    color: var(--gray-500);
     box-shadow: none;
+    cursor: pointer;
+    font-family: var(--font);
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1;
+    transition: background .15s, border-color .15s, color .15s, transform .1s, box-shadow .15s;
 }
-.btn-record:hover {
-    background: #dbeafe;
-    color: var(--accent-h);
-    border-color: #93c5fd;
-    box-shadow: 0 1px 3px rgba(13,110,253,0.14);
+.sample-entry-button:hover,
+.sample-entry-button:focus-visible {
+    outline: none;
+    background: var(--nova-50);
+    color: var(--accent);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(13,110,253,.10);
 }
+.sample-entry-button:active { transform: translateY(1px); }
+.sample-entry-cell { min-width: 142px; text-align: center; white-space: nowrap; }
+th.sample-entry-header { min-width: 142px; text-align: center; }
 .btn-small { padding: 5px 10px; font-size: 12px; }
 .btn:disabled { opacity: 0.55; cursor: default; transform: none; }
 .link-button {
@@ -807,7 +825,7 @@ tr.row-paused:hover > td { background: #f1f5f9 !important; }
             <table id="upcoming-table">
                 <thead>
                     <tr>
-                        <th>Kunde</th><th>Objekt</th><th>Art</th><th>Ort</th><th>Termin</th><th>Aktion</th>
+                        <th>Kunde</th><th>Objekt</th><th>Art</th><th>Ort</th><th>Termin</th><th class="sample-entry-header">Probenahme erfassen</th>
                     </tr>
                 </thead>
                 <tbody id="upcoming-tbody"></tbody>
@@ -879,7 +897,7 @@ tr.row-paused:hover > td { background: #f1f5f9 !important; }
                     <tr>
                         <th>Status</th><th>Kunde</th><th>Objekt (Historie)</th><th>Art</th>
                         <th>Ort</th><th>Termin</th>
-                        <th>Routine (Monate)</th><th>Aktionen</th>
+                        <th class="sample-entry-header">Probenahme erfassen</th><th>Routine (Monate)</th><th>Aktionen</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -1169,7 +1187,7 @@ let settings = { anlagenTypes: DEFAULT_TYPES.slice(), scopeItems: DEFAULT_SCOPE.
 function buildExportPayload() {
     return {
         generatedAt: new Date().toISOString(),
-        version: "terminverwaltung-sonderobjekte-v2.9.10",
+        version: "terminverwaltung-sonderobjekte-v2.9.11",
         customers,
         appointments,
         settings,
@@ -1446,6 +1464,18 @@ function toggleSeason(custId, objId) {
 // ================================================================
 // RENDERING
 // ================================================================
+function createSampleEntryButton(customerId, objectId) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "sample-entry-button";
+    button.textContent = "✓";
+    button.title = "Probenahme mit Datum erfassen";
+    button.setAttribute("aria-label", "Probenahme mit Datum erfassen");
+    button.setAttribute("aria-haspopup", "dialog");
+    button.addEventListener("click", () => openCompleteModal(customerId, objectId));
+    return button;
+}
+
 function renderUpcoming() {
     const tbody = document.getElementById("upcoming-tbody");
     tbody.innerHTML = "";
@@ -1488,15 +1518,8 @@ function renderUpcoming() {
         tdT.innerHTML = terminCellHtml(o);
         tr.appendChild(tdT);
         const tdA = document.createElement("td");
-        tdA.className = "actions";
-        const completeBtn = document.createElement("button");
-        completeBtn.type = "button";
-        completeBtn.className = "btn btn-record btn-small";
-        completeBtn.textContent = "🧪 Probenahme";
-        completeBtn.title = "Probenahme mit Datum erfassen";
-        completeBtn.setAttribute("aria-label", "Probenahme mit Datum erfassen");
-        completeBtn.addEventListener("click", () => openCompleteModal(o.customerId, o.objectId));
-        tdA.appendChild(completeBtn);
+        tdA.className = "sample-entry-cell";
+        tdA.appendChild(createSampleEntryButton(o.customerId, o.objectId));
         tr.appendChild(tdA);
         tbody.appendChild(tr);
     });
@@ -1636,23 +1659,27 @@ function renderAllObjectsView() {
         // Termin (Badge + Datum)
         const tdT = document.createElement("td"); tdT.innerHTML = terminCellHtml(o); tr.appendChild(tdT);
 
+        // Probenahme erfassen (bewusst eigene Spalte, damit der Haken als Eingabeaktion lesbar ist)
+        const tdP = document.createElement("td"); tdP.className = "sample-entry-cell";
+        tdP.appendChild(createSampleEntryButton(o.customerId, o.objectId));
+        tr.appendChild(tdP);
+
         // Routine
         const tdR = document.createElement("td"); tdR.textContent = o.intervalMonths ? "alle "+o.intervalMonths+" Monate" : ""; tr.appendChild(tdR);
 
-        // Aktionen
+        // Weitere Aktionen
         const tdA = document.createElement("td"); tdA.className = "actions";
         const rowA = document.createElement("div"); rowA.className = "actions-row-compact";
         let btnDetails;
         const seasonLabel = o.seasonPaused ? "▶ Saison" : "⏸ Saison";
-        [["🧪 Probenahme","btn btn-record btn-small",()=>openCompleteModal(o.customerId,o.objectId)],
-         ["Termin","btn-secondary btn-small",()=>openPlanModal(o.customerId,o.objectId)],
+        [["Termin","btn-secondary btn-small",()=>openPlanModal(o.customerId,o.objectId)],
          ["Historie","btn-secondary btn-small",()=>openHistoryModal(o.customerId,o.objectId)],
          [seasonLabel,"btn-secondary btn-small",()=>toggleSeason(o.customerId,o.objectId)],
          ["Details","btn-secondary btn-small",null]
         ].forEach(([t,c,fn],i) => {
             const b = document.createElement("button"); b.textContent=t; b.className=c;
             if (fn) b.addEventListener("click",fn);
-            if (i===4) btnDetails = b;
+            if (i===3) btnDetails = b;
             rowA.appendChild(b);
         });
         tdA.appendChild(rowA);
@@ -1661,7 +1688,7 @@ function renderAllObjectsView() {
 
         // Details-Zeile
         const detTr = document.createElement("tr"); detTr.className = "details-row";
-        const detTd = document.createElement("td"); detTd.className = "details-cell"; detTd.colSpan = 8;
+        const detTd = document.createElement("td"); detTd.className = "details-cell"; detTd.colSpan = 9;
         const scope = o.scope||{};
         const scList = (Array.isArray(o.scopeSelected) ? o.scopeSelected : []).map(escapeHtml);
         const plannedLine = o.plannedDate
@@ -2678,6 +2705,6 @@ document.getElementById("logout-btn").addEventListener("click", async () => {
 
 initApp();
 </script>
-<footer class="footer" id="app-footer" style="display:none;">Made with Love &copy; &ndash; Terminverwaltung NOVA Sonderobjekte V 2.9.10</footer>
+<footer class="footer" id="app-footer" style="display:none;">Made with Love &copy; &ndash; Terminverwaltung NOVA Sonderobjekte V 2.9.11</footer>
 </body>
 </html>
