@@ -1105,6 +1105,33 @@
     }
     .logout-btn:active{ transform:scale(0.97); }
 
+    .sync-chip{
+      display:inline-flex; align-items:center;
+      padding:5px 10px;
+      background:rgba(255,255,255,0.08);
+      border:1px solid rgba(255,255,255,0.18);
+      border-radius:999px;
+      font-size:0.75rem; font-weight:700; color:#e5e7eb;
+    }
+    .sync-chip.sync-ok  { color:#a7f3d0; }
+    .sync-chip.sync-busy{ color:#fde68a; }
+    .sync-chip.sync-err { color:#fecaca; }
+
+    /* Admin-Bereich in Einstellungen */
+    .admin-box{
+      background:#fff7ed; border:1px solid #fed7aa;
+      border-radius:10px; padding:10px 12px; margin-top:10px;
+    }
+    .admin-box .admin-title{
+      font-weight:800; font-size:0.85rem; color:#9a3412; margin-bottom:6px;
+    }
+    .admin-box .hint{ margin-top:2px; }
+    .row-attrib{
+      display:inline-block; margin-left:6px; padding:1px 6px;
+      font-size:0.66rem; font-weight:700; color:#475569;
+      background:#e5e7eb; border-radius:999px; vertical-align:middle;
+    }
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -1142,6 +1169,7 @@
         <span class="status-dot" title="Verbunden"></span>
         <span class="account-name" id="accountName">–</span>
       </span>
+      <span id="syncStatus" class="sync-chip" title="Sync-Status"></span>
       <button type="button" id="logoutBtn" class="logout-btn">Abmelden</button>
     </div>
   </div>
@@ -1212,6 +1240,15 @@
 
         <input type="file" id="pagesImportInput" accept="application/json" style="display:none;">
         <input type="file" id="anlagenImportInput" accept="application/json" style="display:none;">
+
+        <div id="adminBox" class="admin-box" style="display:none;">
+          <div class="admin-title">🛡 Super-Admin</div>
+          <div class="hint" style="margin-top:0;">Nur für dich sichtbar. Diese Aktionen betreffen die Live-Datenbank und können nicht rückgängig gemacht werden.</div>
+          <div class="btn-row">
+            <button id="adminWipeBtn" class="btn danger">Alle Live-Daten löschen</button>
+            <button id="adminReloadBtn" class="btn">Neu aus DB laden</button>
+          </div>
+        </div>
       </div>
     </details>
   </div>
@@ -1231,7 +1268,7 @@
   <div id="tableContainer"></div>
 
   <div class="footer">
-    Anmeldung aktiv · Daten aktuell lokal im Browser · Version 3.00</div>
+    Anmeldung aktiv · Live-Sync mit Supabase · Version 3.0.1</div>
 
   <!-- Modal für Anlagenverwaltung -->
   <div id="modalOverlay" class="modal-overlay">
@@ -1276,11 +1313,18 @@
   <button id="fabPage" class="fab-page" title="Zur Seitenauswahl">☰</button>
   <script>
     // ===================================================================
-    //  SUPABASE / AUTH  (Schritt 1: nur Anmeldung + Identität)
+    //  SUPABASE / AUTH  (Live-Sync + Admin)
     //  Public Anon-Key – laut Setup-MD unbedenklich im Client.
     // ===================================================================
     const SUPABASE_URL = "https://avuimpwjslrgpdahyloa.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF2dWltcHdqc2xyZ3BkYWh5bG9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwOTc0MjAsImV4cCI6MjA5NDY3MzQyMH0.q6s3s36WOoGGLbH7gsWqyzY2b_36vUjAHqKrGrAhYEs";
+    const NOVA_TABLE = "nova_spuelprotokoll_data";
+
+    // Super-Admin-Whitelist (E-Mails). Neue Admins einfach hier ergänzen.
+    const ADMIN_EMAILS = [
+      "marco.neudecker@nova-praxis.de",
+      "marco.neudecker@gmail.com"
+    ];
 
     // Client heißt "db" (nicht "supabase"), um mit dem CDN-Global nicht zu kollidieren.
     const db = (window.supabase && typeof window.supabase.createClient === "function")
@@ -1292,6 +1336,254 @@
     // Aktuell angemeldeter Nutzer (für Schritt 2: Feld-Zuordnung).
     let currentUser = null;        // { id, email }
     let currentProfile = null;     // { id, email, display_name }
+    let isAdmin = false;
+
+    // ===================================================================
+    //  CLOUD-SYNC (v3.0.1)
+    //  - initialer Pull nach Login  -> DB-Zeilen in lokale pages mergen
+    //  - nach jedem saveState()     -> debounced Upsert je Seite
+    //  - Zeilen-Merge-Schlüssel: date | time | floor | unit
+    //  - Konflikt: neueste updated_at gewinnt
+    // ===================================================================
+    const SYNC = {
+      enabled: false,       // true nach erfolgreichem Initial-Pull
+      pullDone: false,
+      dirtyPageIds: new Set(),
+      timer: null,
+      lastStatus: "",       // "ok" | "syncing" | "error" | "offline"
+      applyingRemote: false // während wir remote-Daten einspielen: kein Upload triggern
+    };
+
+    function rowKey(row) {
+      // Natürlicher Schlüssel innerhalb einer Seite.
+      const d = String(row?.date || "").trim();
+      const t = String(row?.time || "").trim();
+      const f = String(row?.floor || "").trim().toLocaleLowerCase("de-DE");
+      const u = String(row?.unit || "").trim().toLocaleLowerCase("de-DE");
+      return `${d}|${t}|${f}|${u}`;
+    }
+
+    function stampRowAttribution(row, mode /* "created" | "edited" */) {
+      if (!row || typeof row !== "object") return;
+      if (!currentProfile) return;
+      const nowIso = new Date().toISOString();
+      const uid = currentProfile.id || null;
+      const uname = currentProfile.display_name || "";
+      if (mode === "created" && !row.flushedBy) {
+        row.flushedBy = uname;
+        row.flushedById = uid;
+        row.flushedAt = nowIso;
+      }
+      row.lastEditedBy = uname;
+      row.lastEditedById = uid;
+      row.lastEditedAt = nowIso;
+    }
+
+    function stampAllMeaningfulRowsOnLocalPage(page) {
+      if (!page || !Array.isArray(page.rows)) return;
+      page.rows.forEach(row => {
+        if (rowHasMeaningfulData(row)) {
+          const mode = row.flushedBy ? "edited" : "created";
+          stampRowAttribution(row, mode);
+        }
+      });
+    }
+
+    function pageToDbRow(page) {
+      return {
+        id: "page:" + page.id,
+        kind: "page",
+        anlage: page.anlage || null,
+        bereich: page.bereich || null,
+        page_number: getPageNumber(page) || null,
+        data: page,
+        updated_by: currentProfile ? currentProfile.id : null,
+        updated_by_name: currentProfile ? currentProfile.display_name : null
+      };
+    }
+
+    function mergePageRows(localPage, remotePage) {
+      // Zeilen aus local + remote zusammenführen. Duplikat = gleicher rowKey.
+      // Wenn beide vorhanden: neueste lastEditedAt (bzw. flushedAt) gewinnt.
+      const byKey = new Map();
+      const addRow = (r) => {
+        if (!r || !rowHasMeaningfulData(r)) return;
+        const k = rowKey(r);
+        if (!k || k === "|||") return;
+        const existing = byKey.get(k);
+        if (!existing) { byKey.set(k, r); return; }
+        const t = (x) => new Date(x?.lastEditedAt || x?.flushedAt || 0).getTime();
+        if (t(r) >= t(existing)) byKey.set(k, r);
+      };
+      (localPage.rows || []).forEach(addRow);
+      (remotePage.rows || []).forEach(addRow);
+      // Zurück in ein sortiertes Array (nach Datum+Uhrzeit).
+      const merged = Array.from(byKey.values()).sort((a, b) => {
+        const ka = (a.date || "") + " " + (a.time || "");
+        const kb = (b.date || "") + " " + (b.time || "");
+        return ka.localeCompare(kb);
+      });
+      // Neu durchnummerieren und auf 25 auffüllen.
+      merged.forEach((r, i) => r.index = i + 1);
+      const out = ensurePageRows(merged);
+      return out;
+    }
+
+    function mergeRemotePageIntoLocal(remotePage) {
+      // Suche lokale Seite mit gleicher id ODER gleicher anlage+bereich.
+      let local = pages.find(p => p.id === remotePage.id);
+      if (!local) {
+        local = pages.find(p =>
+          sameLocationName(p.anlage, remotePage.anlage) &&
+          sameLocationName(p.bereich, remotePage.bereich)
+        );
+      }
+      if (!local) {
+        // Komplett neu übernehmen.
+        const usedIds = new Set(pages.map(p => p.id));
+        const rp = {
+          ...remotePage,
+          id: makeUniquePageId(remotePage.id, usedIds),
+          rows: ensurePageRows(remotePage.rows)
+        };
+        pages.push(rp);
+        return { pageId: rp.id, added: true };
+      }
+      local.rows = mergePageRows(local, remotePage);
+      // Metadaten sanft zusammenführen.
+      if (!local.anlage && remotePage.anlage) local.anlage = remotePage.anlage;
+      if (!local.bereich && remotePage.bereich) local.bereich = remotePage.bereich;
+      if (!local.performedBy && remotePage.performedBy) local.performedBy = remotePage.performedBy;
+      return { pageId: local.id, added: false };
+    }
+
+    async function pullAllPagesFromCloud() {
+      if (!db) return { ok: false, reason: "no-db" };
+      try {
+        const { data, error } = await db
+          .from(NOVA_TABLE)
+          .select("id, data, updated_at")
+          .eq("kind", "page");
+        if (error) throw error;
+        SYNC.applyingRemote = true;
+        let added = 0, mergedRows = 0;
+        (data || []).forEach(rec => {
+          const rp = rec.data || {};
+          const beforeCount = (pages.find(p =>
+            p.id === rp.id ||
+            (sameLocationName(p.anlage, rp.anlage) && sameLocationName(p.bereich, rp.bereich))
+          )?.rows || []).filter(rowHasMeaningfulData).length;
+          const res = mergeRemotePageIntoLocal(rp);
+          if (res.added) added++;
+          const afterCount = (pages.find(p => p.id === res.pageId)?.rows || [])
+            .filter(rowHasMeaningfulData).length;
+          mergedRows += Math.max(0, afterCount - beforeCount);
+        });
+        SYNC.applyingRemote = false;
+        SYNC.enabled = true;
+        SYNC.pullDone = true;
+        setSyncStatus("ok");
+        return { ok: true, addedPages: added, mergedRows };
+      } catch (e) {
+        SYNC.applyingRemote = false;
+        console.error("Pull-Fehler:", e);
+        setSyncStatus("error");
+        return { ok: false, reason: e.message || String(e) };
+      }
+    }
+
+    function scheduleUploadForPage(pageId) {
+      if (!SYNC.enabled || SYNC.applyingRemote) return;
+      if (!pageId) return;
+      SYNC.dirtyPageIds.add(pageId);
+      if (SYNC.timer) clearTimeout(SYNC.timer);
+      SYNC.timer = setTimeout(flushUploads, 1200);
+    }
+
+    async function flushUploads() {
+      SYNC.timer = null;
+      if (!db || !SYNC.enabled) return;
+      const ids = Array.from(SYNC.dirtyPageIds);
+      SYNC.dirtyPageIds.clear();
+      if (!ids.length) return;
+      setSyncStatus("syncing");
+      try {
+        const payload = ids
+          .map(id => pages.find(p => p.id === id))
+          .filter(Boolean)
+          .map(pageToDbRow);
+        if (!payload.length) { setSyncStatus("ok"); return; }
+        const { error } = await db.from(NOVA_TABLE).upsert(payload, { onConflict: "id" });
+        if (error) throw error;
+        setSyncStatus("ok");
+      } catch (e) {
+        console.error("Upload-Fehler:", e);
+        // Wieder in Dirty aufnehmen, damit's beim nächsten Trigger nochmal versucht wird.
+        ids.forEach(id => SYNC.dirtyPageIds.add(id));
+        setSyncStatus("error");
+      }
+    }
+
+    function setSyncStatus(s) {
+      SYNC.lastStatus = s;
+      const el = document.getElementById("syncStatus");
+      if (!el) return;
+      const map = {
+        ok:      { txt: "● Synchron", cls: "sync-ok" },
+        syncing: { txt: "● Sync…",   cls: "sync-busy" },
+        error:   { txt: "● Sync-Fehler", cls: "sync-err" },
+        offline: { txt: "● Offline",  cls: "sync-err" }
+      };
+      const info = map[s] || { txt: "", cls: "" };
+      el.textContent = info.txt;
+      el.className = "sync-chip " + info.cls;
+    }
+
+    function updateAdminUi() {
+      const box = document.getElementById("adminBox");
+      if (box) box.style.display = isAdmin ? "block" : "none";
+    }
+
+    async function adminWipeAllLiveData() {
+      if (!isAdmin || !db) return;
+      const step1 = await uiConfirm(
+        "ALLE Live-Daten in der Cloud löschen?\n\nDas betrifft sämtliche Seiten von allen Nutzern. Lokale Daten auf diesem Gerät bleiben unberührt.\n\nDanach folgt eine zweite Sicherheitsabfrage.",
+        "Sicherheitsabfrage 1/2"
+      );
+      if (!step1) return;
+      const step2 = await uiConfirm(
+        "Wirklich sicher? Diese Aktion ist unwiderruflich.\n\nAlle Cloud-Zeilen mit kind='page' werden entfernt.",
+        "Sicherheitsabfrage 2/2"
+      );
+      if (!step2) return;
+      setSyncStatus("syncing");
+      try {
+        const { error } = await db.from(NOVA_TABLE).delete().eq("kind", "page");
+        if (error) throw error;
+        setSyncStatus("ok");
+        await uiAlert("Live-Daten in der Cloud wurden gelöscht. Lokal auf diesem Gerät ist alles unverändert.");
+      } catch (e) {
+        setSyncStatus("error");
+        await uiAlert("Fehler beim Löschen: " + (e.message || e));
+      }
+    }
+
+    async function adminReloadFromCloud() {
+      if (!db) return;
+      setSyncStatus("syncing");
+      const res = await pullAllPagesFromCloud();
+      if (res.ok) {
+        ensureUniquePageNumbers();
+        syncLocationsFromPages();
+        SYNC.applyingRemote = true;
+        saveState();
+        SYNC.applyingRemote = false;
+        renderAll();
+        toast(`Neu geladen: ${res.addedPages} neue Seite(n), ${res.mergedRows} neue Zeile(n).`);
+      } else {
+        await uiAlert("Neuladen fehlgeschlagen: " + res.reason);
+      }
+    }
 
     // Eigener Speicherstand für den einmaligen, kontrollierten Datenimport.
     const DEFAULT_ANLAGEN = {
@@ -2221,8 +2513,17 @@
           rows
         };
       });
+      // Attribution nur setzen, wenn wir nicht gerade remote-Daten einspielen.
+      if (!SYNC.applyingRemote) {
+        const active = pages.find(p => p.id === activePageId);
+        if (active) stampAllMeaningfulRowsOnLocalPage(active);
+      }
       const data = { pages, activePageId };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      // Cloud-Sync: nur aktive Seite anstoßen (dort wurde gerade editiert).
+      if (SYNC.enabled && !SYNC.applyingRemote && activePageId) {
+        scheduleUploadForPage(activePageId);
+      }
 }
 
     function loadState() {
@@ -3244,6 +3545,21 @@ ${label}
 });
 
 idxWrap.appendChild(idxSpan);
+
+// Dezenter Bearbeiter-Hinweis nur bei fremden Zeilen mit Inhalt
+try {
+  const flushName = String(row?.flushedBy || "").trim();
+  const myName = currentProfile?.display_name || "";
+  if (flushName && flushName !== myName && rowHasMeaningfulData(row)) {
+    const initials = flushName.split(/\s+/).filter(Boolean)
+      .slice(0, 2).map(w => w.charAt(0).toLocaleUpperCase("de-DE")).join("");
+    const badge = document.createElement("span");
+    badge.className = "row-attrib";
+    badge.textContent = initials;
+    badge.title = "Gespült von " + flushName + (row.flushedAt ? " · " + row.flushedAt.slice(0,16).replace("T"," ") : "");
+    idxWrap.appendChild(badge);
+  }
+} catch(e){}
 idxWrap.appendChild(delBtn);
 tdIdx.appendChild(idxWrap);
 tr.appendChild(tdIdx);
@@ -3797,6 +4113,22 @@ function renderAll() {
     }
 
 
+    async function askImportAssignee(fileName, rowCount) {
+      // Dropdown: alle bekannten Bearbeiter + Standard = aktueller Nutzer.
+      const options = Array.from(new Set([
+        currentProfile?.display_name,
+        ...workerList,
+        ...DEFAULT_WORKERS
+      ].filter(Boolean)));
+      const def = currentProfile?.display_name || options[0] || "";
+      return await uiSelect(
+        `Datei „${fileName}“ enthält ${rowCount} Zeile(n) mit Daten.\n\nWem sollen Zeilen zugeordnet werden, die keine eigene Zuordnung tragen?\n(Zeilen mit „performedBy“-Angabe in der Datei behalten diese.)`,
+        options,
+        def,
+        "Bestand zuordnen"
+      );
+    }
+
     function importPagesJSONFile(file) {
       const reader = new FileReader();
       reader.onload = async e => {
@@ -3811,20 +4143,12 @@ function renderAll() {
             return;
           }
 
-          if (pages.length) {
-            const confirmed = await uiConfirm(
-              `Der Import ersetzt die aktuell gespeicherten ${pages.length} Seite(n) vollständig. Fortfahren?`,
-              "Seiten importieren"
-            );
-            if (!confirmed) return;
-          }
-
-          const usedIds = new Set();
-          pages = importedPages
+          // 1) Vorbereiten
+          const normalizedImports = importedPages
             .filter(page => page && typeof page === "object")
             .map((page, index) => ({
               ...page,
-              id: makeUniquePageId(page.id, usedIds),
+              id: page.id || null,
               pageNumber: Number.isInteger(Number(page.pageNumber)) && Number(page.pageNumber) > 0
                 ? Number(page.pageNumber)
                 : index + 1,
@@ -3835,10 +4159,44 @@ function renderAll() {
               rows: ensurePageRows(page.rows)
             }));
 
-          if (!pages.length) {
-            await uiAlert("In der Datei wurden keine verwendbaren Protokollseiten gefunden.");
-            return;
-          }
+          const totalRows = normalizedImports.reduce(
+            (n, p) => n + (p.rows || []).filter(rowHasMeaningfulData).length, 0);
+
+          // 2) Nutzer-Zuordnung erfragen
+          const assignee = await askImportAssignee(file.name, totalRows);
+          if (!assignee) return;
+          const canonAssignee = canonicalWorkerName(assignee);
+
+          // 3) Zeilen taggen: existierende performedBy respektieren, sonst assignee.
+          const nowIso = new Date().toISOString();
+          normalizedImports.forEach(page => {
+            const pagePerformer = canonicalWorkerName(page.performedBy) || canonAssignee;
+            page.performedBy = pagePerformer;
+            page.rows.forEach(row => {
+              if (!rowHasMeaningfulData(row)) return;
+              const rowPerformer = canonicalWorkerName(row.flushedBy || row.performedBy) || pagePerformer;
+              row.flushedBy = rowPerformer;
+              // ID lassen wir leer bei importierten Alt-Daten (Migration).
+              if (!row.flushedAt) row.flushedAt = (row.date && row.time)
+                ? new Date(`${row.date}T${row.time}:00`).toISOString()
+                : nowIso;
+            });
+          });
+
+          // 4) Zeilenweise in lokale pages mergen (statt "ersetzen")
+          SYNC.applyingRemote = true;   // wir wollen erst manuell hochschieben
+          let addedPages = 0, mergedRows = 0;
+          normalizedImports.forEach(rp => {
+            const beforeCount = (pages.find(p =>
+              p.id === rp.id ||
+              (sameLocationName(p.anlage, rp.anlage) && sameLocationName(p.bereich, rp.bereich))
+            )?.rows || []).filter(rowHasMeaningfulData).length;
+            const res = mergeRemotePageIntoLocal(rp);
+            if (res.added) addedPages++;
+            const afterCount = (pages.find(p => p.id === res.pageId)?.rows || [])
+              .filter(rowHasMeaningfulData).length;
+            mergedRows += Math.max(0, afterCount - beforeCount);
+          });
 
           ensureUniquePageNumbers();
           migrateSchenkAreaInPages();
@@ -3847,33 +4205,26 @@ function renderAll() {
           if (Array.isArray(data?.workerList)) {
             data.workerList.forEach(name => addWorkerToList(name));
           }
-          pages.forEach(page => {
-            const importedName = canonicalWorkerName(page.performedBy);
-            if (importedName) addWorkerToList(importedName);
-          });
+          if (!getActivePage() && pages.length) activePageId = pages[0].id;
 
-          if (!normalizeWorkerName(workerName)) {
-            workerName = canonicalWorkerName(data?.defaultPerformedBy) || findBestStoredWorkerName(pages);
-            if (workerName) saveWorkerName();
-          }
-          syncWorkerAcrossPages();
-
-          const requestedActiveId = data?.activePageId;
-          activePageId = pages.some(page => page.id === requestedActiveId)
-            ? requestedActiveId
-            : pages.slice().sort((a, b) => getPageNumber(a) - getPageNumber(b))[0].id;
-
-          saveState();
+          saveState();          // schreibt lokal, kein Upload (applyingRemote=true)
+          SYNC.applyingRemote = false;
           initAnlageDropdowns();
           renderWorkerPickers();
           renderAll();
-          await uiAlert(
-            `${pages.length} Protokollseite(n) wurden erfolgreich importiert.
 
-Dr.-Schenk-Stift wird dabei dem Bereich „Betreutes Wohnen“ zugeordnet.`,
+          // 5) In die Cloud schieben (alle betroffenen Seiten hochladen)
+          if (SYNC.enabled) {
+            pages.forEach(p => SYNC.dirtyPageIds.add(p.id));
+            await flushUploads();
+          }
+
+          await uiAlert(
+            `Import abgeschlossen.\n\n${addedPages} neue Seite(n), ${mergedRows} neue Zeile(n).\nZeilen ohne eigene Zuordnung wurden „${canonAssignee}“ zugeordnet.`,
             "Import erfolgreich"
           );
         } catch (err) {
+          SYNC.applyingRemote = false;
           console.error("Fehler beim Seiten-Import:", err);
           await uiAlert("Fehler beim Seiten-Import: " + err.message);
         }
@@ -4277,6 +4628,12 @@ case "4":
         anlagenImportInput.value = "";
       });
 
+      // Admin-Aktionen (nur sichtbar bei isAdmin, aber Handler dennoch registrieren)
+      const wipeBtn = document.getElementById("adminWipeBtn");
+      if (wipeBtn) wipeBtn.addEventListener("click", adminWipeAllLiveData);
+      const reloadBtn = document.getElementById("adminReloadBtn");
+      if (reloadBtn) reloadBtn.addEventListener("click", adminReloadFromCloud);
+
       // Share (Google Drive via Share Sheet)
 
       document.getElementById("addAnlageBtn").addEventListener("click", async () => {
@@ -4545,10 +4902,38 @@ case "4":
 
     async function enterApp() {
       await loadCurrentProfile();
+      // Admin-Erkennung
+      const em = (currentUser && currentUser.email || "").toLocaleLowerCase("de-DE");
+      isAdmin = ADMIN_EMAILS.map(s => s.toLocaleLowerCase("de-DE")).includes(em);
       updateAccountBar();
       const ov = document.getElementById("loginOverlay");
       if (ov) ov.style.display = "none";
       startApp();
+      // Nach dem Rendern: Cloud-Daten ziehen und mergen.
+      setSyncStatus("syncing");
+      const res = await pullAllPagesFromCloud();
+      if (res.ok) {
+        ensureUniquePageNumbers();
+        migrateSchenkAreaInPages();
+        syncLocationsFromPages();
+        if (!getActivePage() && pages.length) activePageId = pages[0].id;
+        // Lokal speichern (ohne Cloud-Trigger – applyingRemote steht false, ist ok:
+        // wir wollen NICHT hochladen, was wir gerade runter geladen haben; deshalb
+        // scheduleUploadForPage-Aufruf in saveState() prüft SYNC.applyingRemote.
+        // Jetzt kurz auf true setzen für diesen einen Save.
+        SYNC.applyingRemote = true;
+        saveState();
+        SYNC.applyingRemote = false;
+        renderAll();
+        if (res.addedPages || res.mergedRows) {
+          toast(`Live-Daten geladen: ${res.addedPages} neue Seite(n), ${res.mergedRows} neue Zeile(n).`);
+        }
+      } else {
+        // Ohne DB weiterarbeiten – lokal geht alles wie bisher.
+        SYNC.enabled = false;
+        setSyncStatus("offline");
+      }
+      updateAdminUi();
     }
 
     async function handleLogin() {
