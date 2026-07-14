@@ -1147,23 +1147,7 @@
   </div>
 
 
-  <div id="mobileWorkerBar" class="mobile-worker-box" style="display:none;">
-    <label for="workerNameInline">👤 Wer arbeitet hier</label>
-    <select id="workerNameInline" aria-label="Bearbeiter auswählen"></select>
-    <div class="mobile-worker-hint">Neue Namen können über „Bearbeiter hinzufügen…“ einmal bestätigt und dauerhaft ergänzt werden.</div>
-  </div>
-
   <div class="toolbar-grid">
-    <div class="card highlight-card">
-      <div class="card-title">Spülprotokoll abgeben</div>
-      <div class="card-body">
-        <div class="hint" style="margin-top:0;">Exportiert die Spüldaten dieser Seite(n) zur Auswertung.</div>
-        <div class="btn-row">
-          <button id="exportPagesBtn" class="btn primary">Exportieren</button>
-        </div>
-      </div>
-    </div>
-
     <div class="card">
       <div class="card-title">Suche</div>
       <div class="card-body">
@@ -1213,16 +1197,15 @@
 
         <div class="divider"></div>
 
-        <div class="subhead">Sicherung (weitere Optionen)</div>
-        <div class="worker-desktop-box" style="background:#eef3ff; border:2px solid #2563eb; border-radius:10px; padding:10px 12px; margin-bottom:10px;">
-          <div style="font-weight:700; font-size:0.9rem; margin-bottom:6px; color:#1e3a8a;">👤 Bearbeiter</div>
-          <select id="workerNameInput" aria-label="Bearbeiter auswählen"
-            style="width:100%; box-sizing:border-box; padding:9px 10px; border-radius:8px; border:1px solid #93c5fd; background:#fff; font-size:0.95rem; outline:none;"></select>
-          <div style="font-size:0.78rem; color:#6b7280; margin-top:5px;">Auswahl gilt für alle Seiten. Neue Namen werden nach einmaliger Bestätigung dauerhaft ergänzt.</div>
-        </div>
-        <div class="hint" style="margin-top:0;">Import brauchst du normalerweise nur, wenn Marco dich konkret darauf hinweist.</div>
+        <div class="subhead">Sicherung &amp; Backup</div>
+        <div class="hint" style="margin-top:0;">Der JSON-Export ist die manuelle Abgabe / das Backup der Spüldaten. (Der automatische Live-Sync in die Datenbank folgt – danach dient dieser Export nur noch als Backup.)</div>
         <div class="btn-row">
+          <button id="exportPagesBtn" class="btn primary">Spülprotokoll exportieren</button>
           <button id="importPagesBtn" class="btn">Seiten Import</button>
+        </div>
+
+        <div class="hint">Anlagen-Struktur separat sichern (nur bei Bedarf):</div>
+        <div class="btn-row">
           <button id="exportAnlagenBtn" class="btn">Anlagen Export</button>
           <button id="importAnlagenBtn" class="btn">Anlagen Import</button>
         </div>
