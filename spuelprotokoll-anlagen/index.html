@@ -1,0 +1,4596 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+<link rel="shortcut icon" href="favicon.ico">
+<link rel="manifest" href="site.webmanifest">
+<meta name="theme-color" content="#1f2937">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Spülprotokoll – Kontrolle der Wassertemperaturen</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 16px;
+      background: #f5f5f5;
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 800px) {
+      body { margin: 8px; }
+    }
+
+    .location-panel{
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 12px;
+      margin: 10px 0 4px 0;
+      box-shadow: var(--shadow);
+    }
+    .location-panel-info{
+      font-size: 0.85rem;
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+    .location-panel-info span{ font-weight: bold; }
+    .location-switch-btn{
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+    .location-switch-btn.location-switch-cta{
+      flex: 1 1 100%;
+      text-align: center;
+      font-size: 1rem;
+      padding: 12px;
+    }
+    .location-panel-actions{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      align-items:center;
+      margin-left:auto;
+    }
+    .location-panel-actions.location-panel-empty{
+      flex:1 1 100%;
+    }
+    .location-panel-actions.location-panel-empty .location-switch-btn{
+      flex:1 1 220px;
+    }
+    .location-recovery-btn{
+      display:none;
+      flex:1 1 220px;
+    }
+
+     .page-list {
+      margin: 6px 0 4px 0;
+      font-size: 0.8rem;
+    }
+
+    .page-list-toggle{
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+    .page-list-toggle-note{
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+
+    .page-badge {
+      display: inline-block;
+      margin: 2px 4px 2px 0;
+      padding: 3px 6px;
+      border-radius: 4px;
+      background: #e0e0e0;
+      cursor: pointer;
+    }
+
+    .page-badge.active {
+      background: #4caf50;
+      color: #fff;
+      font-weight: bold;
+    }
+
+    .info-line {
+      margin: 6px 0;
+      font-size: 0.85rem;
+    }
+
+    .table-wrapper {
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      font-size: 0.8rem;
+    }
+
+    thead {
+      background: #e8f4ff;
+    }
+
+    th, td {
+      border: 1px solid #ccc;
+      padding: 4px 6px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th.small, td.small {
+      width: 26px;
+      text-align: center;
+    }
+
+    th.date, td.date {
+      width: 78px;
+    }
+
+    th.time, td.time {
+      width: 68px;
+    }
+
+    th.temp, td.temp {
+      width: 78px;
+      min-width: 78px;
+      text-align: center;
+    }
+
+    th.roomtype, td.roomtype {
+      width: 126px;
+      min-width: 126px;
+    }
+
+    th.unitcol, td.unitcol {
+      width: 152px;
+      min-width: 152px;
+    }
+
+    th.turbcol, td.turbcol {
+      width: 230px;
+      min-width: 230px;
+      text-align: left;
+      white-space: normal;
+    }
+
+    th.notescol, td.notescol {
+      min-width: 210px;
+    }
+
+    input[type="date"],
+    input[type="time"],
+    input[type="number"],
+    input[type="text"],
+    select,
+    textarea {
+      width: 100%;
+      box-sizing: border-box;
+      font-size: 0.8rem;
+    }
+
+    input[type="number"] {
+      max-width: 70px;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 2.1em;
+      max-height: 6em;
+    }
+
+    input[type="checkbox"] {
+      transform: scale(1.1);
+      margin-right: 2px;
+    }
+
+    .kw-cell-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      width: 100%;
+    }
+
+    .kw-only-wrap {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.76rem;
+      line-height: 1.1;
+      white-space: nowrap;
+    }
+
+    .temp-mode-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 3px;
+      margin-top: 4px;
+      min-width: 118px;
+    }
+
+    .temp-mode-option {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      padding: 3px 4px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      background: #fff;
+      font-size: 0.66rem;
+      line-height: 1.05;
+      white-space: normal;
+      overflow-wrap: anywhere;
+      cursor: pointer;
+    }
+
+    .temp-mode-option:has(input:checked) {
+      border-color: var(--primary);
+      background: #eff6ff;
+      color: #1d4ed8;
+      font-weight: 700;
+    }
+
+    .temp-mode-option input {
+      width: 13px !important;
+      height: 13px;
+      margin: 0;
+      accent-color: var(--primary);
+      flex: 0 0 auto;
+    }
+
+    .temp-mode-help {
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 0.64rem;
+      line-height: 1.15;
+    }
+
+    .kw-only-toggle {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin-top: 5px;
+      padding: 5px 6px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      background: #fff;
+      font-size: 0.7rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .kw-only-toggle:has(input:checked) {
+      border-color: var(--primary);
+      background: #eff6ff;
+      color: #1d4ed8;
+    }
+
+    .kw-only-toggle input {
+      width: 14px !important;
+      height: 14px;
+      margin: 0;
+      accent-color: var(--primary);
+    }
+
+    .temp-mode-grid .kw-only-toggle {
+      margin-top: 0;
+      min-width: 0;
+    }
+
+
+    .temp-location-other {
+      display: none;
+      margin-top: 4px;
+    }
+
+    .temp-location-other input,
+    .temp-location-other select {
+      width: 100%;
+      padding: 4px 5px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      background: #fff;
+      font-size: 0.7rem;
+      box-sizing: border-box;
+    }
+
+    .issue-picker {
+      display: grid;
+      gap: 5px;
+      min-width: 210px;
+    }
+
+    .issue-toggle {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.72rem;
+      line-height: 1.2;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .issue-toggle input[type="checkbox"] {
+      margin: 0;
+      flex: 0 0 auto;
+    }
+
+    .issue-select {
+      display: none;
+      width: 100%;
+      padding: 5px 6px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      background: #fff;
+      font-size: 0.7rem;
+      box-sizing: border-box;
+    }
+
+    .issue-other-input {
+      display: none;
+      width: 100% !important;
+      padding: 5px 6px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 0.7rem;
+      box-sizing: border-box;
+    }
+
+    .temp-disabled input {
+      background: #f2f2f2;
+      color: #777;
+      cursor: not-allowed;
+    }
+
+    .notes-input {
+      width: 100%;
+    }
+
+    .temp-warning input {
+      background: #ffe5e5;
+      border-color: #ff9999;
+    }
+
+    .footer {
+      margin-top: 8px;
+      font-size: 0.75rem;
+      color: #777;
+      text-align: right;
+    }
+
+    .search-results {
+      margin: 10px 0 0;
+      font-size: 0.85rem;
+    }
+
+    .search-results-item {
+      margin-bottom: 4px;
+    }
+
+    .search-link {
+      color: #0645ad;
+      text-decoration: none;
+    }
+
+    .search-link:hover {
+      text-decoration: underline;
+    }
+
+    .search-highlight {
+      background: #fff9c4 !important;
+    }
+
+    /* Smartphone-Ansicht: jede Zeile als „Karte“ */
+    @media (max-width: 800px) {
+      .table-wrapper {
+        overflow-x: visible;
+      }
+
+      table, thead, tbody, th, td, tr {
+        display: block;
+      }
+
+      thead {
+        display: none;
+      }
+
+      tr {
+        border: 1px solid #ccc;
+        margin-bottom: 8px;
+        background: #fff;
+      }
+
+      td {
+        border: none;
+        border-bottom: 1px solid #eee;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 3px 6px;
+      }
+
+      td:last-child {
+        border-bottom: none;
+      }
+
+      td::before {
+        content: attr(data-label);
+        font-weight: bold;
+        margin-right: 6px;
+        flex: 0 0 38%;
+      }
+
+      td.small {
+        justify-content: flex-start;
+      }
+
+      td.small::before {
+        flex: 0 0 auto;
+        margin-right: 4px;
+      }
+
+      td.roomtype::before,
+      td.unitcol::before,
+      td.temp::before {
+        flex: 0 0 34%;
+      }
+
+      td input,
+      td select,
+      td textarea {
+        width: 62%;
+        max-width: none;
+      }
+
+      td.roomtype select,
+      td.unitcol input,
+      td.temp input {
+        width: 66%;
+        max-width: none;
+      }
+
+      .kw-cell-wrap {
+        width: 66%;
+      }
+
+      .kw-only-wrap {
+        margin-top: 4px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 0.78rem;
+        justify-content: flex-start;
+      }
+
+      .temp-disabled input {
+        background: #f2f2f2;
+        color: #777;
+      }
+    }
+
+    @media print {
+      body {
+        margin: 10mm;
+        background: #fff;
+      }
+
+      .page-list,
+      .search-results,
+      .modal-overlay {
+        display: none !important;
+      }
+
+      table {
+        font-size: 0.8rem;
+      }
+
+      .footer {
+        position: fixed;
+        bottom: 5mm;
+        right: 10mm;
+      }
+    }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      padding: 14px;
+      background: rgba(0,0,0,0.55);
+      backdrop-filter: blur(2px);
+    }
+
+    .modal {
+      width: min(560px, 96vw);
+      padding: 16px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.32);
+      font-size: 0.9rem;
+    }
+
+    .modal h2 {
+      margin: 0 0 8px;
+      color: var(--text);
+      font-size: 1.08rem;
+      font-weight: 800;
+    }
+
+    .modal label {
+      display: block;
+      margin-bottom: 10px;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    .modal select,
+    .modal input[type="text"] {
+      width: 100%;
+      padding: 10px;
+      box-sizing: border-box;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #fff;
+      color: var(--text);
+      font-size: 0.95rem;
+      outline: none;
+    }
+
+    .modal select:focus,
+    .modal input[type="text"]:focus {
+      border-color: rgba(37,99,235,.6);
+      box-shadow: 0 0 0 3px rgba(37,99,235,.15);
+    }
+
+    .modal-buttons {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    :root{
+      --bg:#f3f4f6;
+      --card:#ffffff;
+      --text:#111827;
+      --muted:#6b7280;
+      --border:#e5e7eb;
+      --shadow: 0 1px 2px rgba(0,0,0,.06), 0 8px 24px rgba(0,0,0,.06);
+      --primary:#2563eb;
+      --danger:#dc2626;
+    }
+
+    body{
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .toolbar-grid{
+      display:flex;
+      flex-direction: column;
+      gap: 10px;
+      margin: 12px 0 8px 0;
+    }
+
+    .card{
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      padding: 12px;
+    }
+    .card-title{
+      font-weight: 700;
+      font-size: 0.95rem;
+      margin-bottom: 8px;
+    }
+    .card-body{ font-size: 0.9rem; }
+
+    .highlight-card{
+      border: 2px solid var(--primary);
+      background: #eff6ff;
+    }
+    .highlight-card .card-title{ color: #1d4ed8; }
+
+    .settings-details.card{ padding: 0; }
+    .settings-details > .settings-summary{
+      cursor: pointer;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px;
+      font-weight: 700;
+      font-size: 0.95rem;
+    }
+    .settings-details > .settings-summary::-webkit-details-marker{ display: none; }
+    .settings-details > .settings-summary::after{
+      content: "▸";
+      margin-left: auto;
+      color: var(--muted);
+      transition: transform .15s;
+    }
+    .settings-details[open] > .settings-summary::after{ transform: rotate(90deg); }
+    .settings-details > .card-body{ padding: 0 12px 12px 12px; }
+
+    .field-row{
+      display:flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .field{
+      display:flex;
+      flex-direction: column;
+      gap: 4px;
+      flex: 1 1 200px;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    .field span{ color: var(--muted); }
+    .field select, .field input{
+      padding: 10px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #fff;
+      font-size: 0.95rem;
+      color: var(--text);
+      outline: none;
+    }
+    .field select:focus, .field input:focus{
+      border-color: rgba(37,99,235,.6);
+      box-shadow: 0 0 0 3px rgba(37,99,235,.15);
+    }
+
+    .btn-row{
+      display:flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+    .btn{
+      border: 1px solid var(--border);
+      background: #fff;
+      border-radius: 10px;
+      padding: 9px 12px;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    .btn:hover{ filter: brightness(.98); }
+    .btn.primary{
+      background: var(--primary);
+      border-color: rgba(37,99,235,.2);
+      color: #fff;
+    }
+    .btn.danger{
+      background: var(--danger);
+      border-color: rgba(220,38,38,.2);
+      color: #fff;
+    }
+    .btn.small{
+      padding: 7px 10px;
+      font-size: 0.82rem;
+      border-radius: 9px;
+    }
+
+    .hint{
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 0.82rem;
+      line-height: 1.3;
+    }
+
+    .divider{
+      height:1px;
+      background: var(--border);
+      margin: 10px 0;
+    }
+    .subhead{
+      font-weight: 700;
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    @media print{
+      .toolbar-grid{ display:none !important; }
+      #searchResults{ display:none !important; }
+    }
+
+
+    /* Hinweisbanner */
+    .toast{
+      position: fixed;
+      left: 50%;
+      bottom: 18px;
+      transform: translateX(-50%);
+      background: rgba(17,24,39,.92);
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .18s ease;
+      z-index: 9999;
+      max-width: min(92vw, 720px);
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+    }
+    .toast.show{ opacity: 1; }
+
+
+  .header { border-radius: 0 0 16px 16px;
+    background: #1f2327;
+    color: #fff;
+    padding: 18px 16px;
+    box-shadow: 0 8px 18px rgba(0,0,0,0.28);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .header-title {
+    font-size: 1.55rem;
+    font-weight: 750;
+    letter-spacing: 0.2px;
+  }
+  .header-sub {
+    font-size: 0.95rem;
+    opacity: 0.88;
+    overflow-wrap: anywhere;
+  }
+  .header-worker {
+    margin-top: 5px;
+    font-size: 0.86rem;
+    font-weight: 700;
+    color: rgba(255,255,255,0.96);
+    overflow-wrap: anywhere;
+  }
+  .row-idx-wrap{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+  }
+  .row-del-btn{
+    border: none;
+    background: rgba(255,255,255,0.08);
+    color: #fff;
+    width: 30px;
+    height: 30px;
+    border-radius: 10px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    user-select:none;
+  }
+  .row-del-btn:active{
+    transform: scale(0.98);
+  }
+  .row-del-btn:hover{
+    background: rgba(255,255,255,0.14);
+  }
+
+.table-actions{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-top: 12px;
+}
+.dialog-overlay{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(2px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 14px;
+}
+.dialog{
+  width: min(560px, 96vw);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.32);
+  overflow: hidden;
+}
+.dialog-header{
+  padding: 14px 16px 10px 16px;
+  background: #fff;
+}
+.dialog-title{
+  font-size: 1.08rem;
+  font-weight: 800;
+  margin: 0;
+  color: var(--text);
+}
+.dialog-body{
+  padding: 10px 16px 2px 16px;
+  color: var(--text);
+  font-size: 0.95rem;
+  line-height: 1.35;
+  white-space: pre-wrap;
+}
+.dialog-input-wrap{
+  padding: 10px 16px 0 16px;
+}
+.dialog-input{
+  width: 100%;
+  padding: 10px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  font-size: 0.95rem;
+  outline: none;
+}
+.dialog-input:focus{
+  border-color: rgba(37,99,235,.6);
+  box-shadow: 0 0 0 3px rgba(37,99,235,.15);
+}
+.dialog-actions{
+  display:flex;
+  justify-content:flex-end;
+  gap: 10px;
+  padding: 14px 16px 16px 16px;
+}
+.dialog-actions .btn{
+  border-radius: 12px;
+}
+
+
+/* Fixierte Tabellenüberschrift */
+@media (min-width: 801px){
+  .table-wrapper{
+    overflow-x: auto;
+    overflow-y: visible;
+  }
+  thead th{
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: #e8f4ff;
+    box-shadow: 0 1px 0 #cfd8e3;
+  }
+}
+
+
+.page-anlage-block{
+  margin: 8px 0 12px 0;
+}
+.page-anlage-title{
+  font-weight: 900;
+  margin: 10px 0 6px 0;
+}
+.page-group-row{
+  display:flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-start;
+}
+.page-dd{
+  display:inline-block;
+  position: relative;
+}
+.page-dd summary{
+  list-style:none;
+  cursor:pointer;
+}
+.page-dd summary::-webkit-details-marker{ display:none; }
+.page-dd .dd-badge{
+  display:inline-block;
+  margin: 2px 0;
+  padding: 3px 6px;
+  border-radius: 6px;
+  background: #e0e0e0;
+  cursor: pointer;
+  user-select:none;
+  white-space: nowrap;
+}
+.page-dd .dd-badge.active{
+  background: #4caf50;
+  color:#fff;
+  font-weight: 800;
+}
+.page-dd[open] .dd-panel{
+  display:block;
+}
+.dd-panel{
+  display:none;
+  position:absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 260px;
+  max-width: min(78vw, 520px);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 18px 48px rgba(0,0,0,0.22);
+  padding: 10px;
+  z-index: 999;
+}
+.dd-title{
+  font-weight: 900;
+  margin-bottom: 6px;
+}
+.dd-sub{
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.dd-badges{
+  display:flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.dd-badges .page-badge{
+  margin:0;
+}
+
+
+    @media (max-width: 800px){
+      .mobile-worker-box{display:grid;gap:6px;margin:8px 0 10px 0;padding:10px;background:#fff;border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow)}
+      .mobile-worker-box label{font-size:.8rem;font-weight:700;color:var(--muted)}
+      .mobile-worker-box input,.mobile-worker-box select{width:100%;min-height:40px;border:1px solid var(--border);border-radius:10px;padding:9px 10px;background:#fff;font-size:.92rem}
+      .mobile-worker-hint{font-size:.76rem;color:var(--muted);line-height:1.35}
+
+      .worker-desktop-box{display:none !important;}
+      tbody.mobile-worklist{display:grid !important;gap:10px}
+      tbody.mobile-worklist tr,tbody.mobile-worklist td{display:block !important;border:none !important;padding:0 !important;background:transparent !important}
+      tbody.mobile-worklist td::before{display:none !important;content:none !important}
+      .mobile-row-card{background:#fff;border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);overflow:hidden;margin-bottom:2px}
+      .mobile-row-head{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;padding:10px;background:linear-gradient(180deg,#1f2937,#111827);color:#fff}
+      .mobile-row-no{font-size:.9rem;font-weight:800;white-space:nowrap}
+      .mobile-row-when{display:grid;grid-template-columns:1fr 1fr;gap:6px;min-width:0}
+      .mobile-row-when input{width:100%;min-height:36px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.10);color:#fff;border-radius:10px;padding:7px 9px}
+      .mobile-row-when input::-webkit-calendar-picker-indicator{filter:invert(1);opacity:.95}
+      .mobile-del-btn{width:34px;height:34px;border:none;border-radius:10px;background:rgba(220,38,38,.88);color:#fff;font-size:1.15rem}
+      .mobile-row-body{display:grid;gap:12px;padding:12px}
+      .mobile-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+      .mobile-location-grid{grid-template-columns:minmax(0,1fr) minmax(0,2fr)}
+      .mobile-stack{display:grid;gap:4px;min-width:0}
+      .mobile-stack > span{font-size:.77rem;font-weight:700;color:var(--muted)}
+      .mobile-stack input,.mobile-stack select,.mobile-stack textarea{width:100%;min-height:40px;border:1px solid var(--border);border-radius:10px;background:#fff;padding:8px 10px;font-size:.92rem}
+      .mobile-stack textarea{min-height:72px;resize:vertical}
+      .mobile-temps{border:1px solid var(--border);border-radius:12px;background:#f8fafc;padding:10px;display:grid;gap:10px}
+      .mobile-temps-title{font-size:.77rem;font-weight:800;color:var(--muted)}
+      .mobile-temp-mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+      .mobile-temp-mode-option{display:flex;align-items:center;gap:6px;min-height:38px;border:1px solid var(--border);border-radius:10px;background:#fff;padding:6px 8px;font-size:.8rem;font-weight:700;cursor:pointer}
+      .mobile-temp-mode-option:has(input:checked){border-color:var(--primary);background:#eff6ff;color:#1d4ed8}
+      .mobile-temp-mode-option input{width:17px!important;height:17px;margin:0;accent-color:var(--primary)}
+      .mobile-temp-mode-option{white-space:normal;overflow-wrap:anywhere}
+      .mobile-kw-only-toggle{display:flex;align-items:center;gap:8px;min-height:40px;border:1px solid var(--border);border-radius:10px;background:#fff;padding:7px 10px;font-size:.82rem;font-weight:800;cursor:pointer;white-space:normal;overflow-wrap:anywhere;min-width:0}
+      .mobile-kw-only-toggle:has(input:checked){border-color:var(--primary);background:#eff6ff;color:#1d4ed8}
+      .mobile-kw-only-toggle input{width:18px!important;height:18px;margin:0;accent-color:var(--primary)}
+      .mobile-temp-note{font-size:.72rem;color:var(--muted);line-height:1.3}
+      .mobile-temp-location{display:none}
+      .mobile-status-block{border:1px solid var(--border);border-radius:12px;background:#f8fafc;padding:8px;display:grid;gap:7px}
+      .mobile-status-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px;align-items:stretch}
+      .mobile-issues{display:grid;gap:6px;min-width:0}
+      .mobile-issue-toggle{display:flex;align-items:center;gap:6px;min-height:42px;border:1px solid var(--border);border-radius:10px;background:#fff;padding:5px 7px;font-size:.77rem;line-height:1.08;font-weight:700;cursor:pointer;white-space:normal}
+      .mobile-issue-toggle input{width:17px!important;height:17px;margin:0;flex:0 0 auto;accent-color:var(--primary)}
+      .mobile-issue-select{display:none;width:100%;min-height:38px;border:1px solid var(--border);border-radius:10px;background:#fff;padding:7px 8px;font-size:.82rem}
+      .mobile-issue-other{display:none}
+      .mobile-aerator-compact{min-width:0;border:1px solid var(--border);border-radius:10px;background:#fff;padding:5px 6px;display:grid;gap:3px}
+      .mobile-aerator-title{font-size:.71rem;line-height:1.05;font-weight:700;color:var(--text)}
+      .mobile-aerator-controls{display:grid;grid-template-columns:minmax(0,1fr) 46px;gap:4px;align-items:center}
+      .mobile-aerator-count{width:100%!important;min-height:30px!important;text-align:center;padding:2px!important;font-size:.82rem!important;border:1px solid var(--primary)!important;border-radius:6px!important}
+      .mobile-check{display:flex;align-items:center;gap:3px;min-height:30px;border:1px solid var(--border);border-radius:8px;background:#fff;padding:1px 4px;justify-content:flex-start;overflow:visible;white-space:nowrap;font-size:.78rem;color:var(--text);font-weight:600}
+      .mobile-check input{width:17px;height:17px}
+    }
+
+
+    .fab-up{ position:fixed; right:20px; bottom:20px; width:56px; height:56px; border-radius:50%; background:#1f2937; color:#fff; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 12px rgba(0,0,0,0.3); z-index:9999; cursor:pointer; font-size:24px; transition:opacity 0.2s, transform 0.2s; opacity:0; pointer-events:none; }
+    .fab-up.visible{ opacity:1; pointer-events:auto; }
+
+    .fab-next{ position:fixed; right:20px; bottom:86px; width:56px; height:56px; border-radius:50%; background:#2563eb; color:#fff; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 12px rgba(37,99,235,0.45); z-index:9999; cursor:pointer; font-size:22px; transition:opacity 0.2s, transform 0.2s; opacity:0; pointer-events:none; border:none; }
+    .fab-next.visible{ opacity:1; pointer-events:auto; }
+    .fab-next:active{ transform: scale(0.95); }
+
+    /* FAB Seite – grün wie aktive Badges, rund wie die anderen FABs */
+    .fab-page{
+      position:fixed; right:20px; bottom:152px;
+      width:56px; height:56px; border-radius:50%;
+      background:#4caf50; color:#fff;
+      display:flex; align-items:center; justify-content:center;
+      box-shadow:0 4px 12px rgba(76,175,80,0.55);
+      z-index:9999; cursor:pointer; border:none;
+      font-size:22px;
+      transition:opacity 0.2s, transform 0.2s;
+      opacity:0; pointer-events:none;
+    }
+    .fab-page.visible{ opacity:1; pointer-events:auto; }
+    .fab-page:active{ transform: scale(0.95); }
+    @media (min-width:801px){ .fab-page{ display:none !important; } }
+
+    /* ===== Login-Gate (Supabase Auth) ===== */
+    .login-overlay{
+      position:fixed; inset:0; z-index:100000;
+      display:flex; align-items:center; justify-content:center;
+      padding:20px;
+      background:#1f2327;
+      background-image:radial-gradient(circle at 30% 20%, #2b3138 0%, #1f2327 60%);
+    }
+    .login-card{
+      width:100%; max-width:380px;
+      background:#ffffff;
+      border-radius:16px;
+      box-shadow:0 20px 60px rgba(0,0,0,0.45);
+      padding:22px 20px 20px 20px;
+      box-sizing:border-box;
+    }
+    .login-brand{
+      font-size:1.25rem; font-weight:750; color:#111827;
+      margin-bottom:2px;
+    }
+    .login-sub{ font-size:0.85rem; color:#6b7280; margin-bottom:16px; }
+    .login-field{ display:block; margin-bottom:12px; }
+    .login-field span{
+      display:block; font-size:0.8rem; font-weight:700;
+      color:#374151; margin-bottom:5px;
+    }
+    .login-field input{
+      width:100%; box-sizing:border-box;
+      padding:11px 12px; font-size:1rem;
+      border:1px solid #cbd5e1; border-radius:10px;
+      background:#fff; outline:none;
+    }
+    .login-field input:focus{ border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,0.15); }
+    .login-btn{
+      width:100%; box-sizing:border-box;
+      padding:12px; font-size:1rem; font-weight:700;
+      border:none; border-radius:10px; cursor:pointer;
+      background:#2563eb; color:#fff; margin-top:4px;
+    }
+    .login-btn:disabled{ opacity:0.6; cursor:default; }
+    .login-error{
+      display:none; margin-top:12px; padding:9px 11px;
+      background:#fef2f2; border:1px solid #fecaca; color:#b91c1c;
+      border-radius:9px; font-size:0.82rem;
+    }
+    .login-error.show{ display:block; }
+    .login-status{ margin-top:12px; font-size:0.8rem; color:#6b7280; text-align:center; }
+
+    /* Angemeldet-als-Leiste im Header */
+    .account-bar{
+      display:flex; align-items:center; justify-content:space-between;
+      gap:10px; flex-wrap:wrap; margin-top:8px;
+      font-size:0.82rem; color:rgba(255,255,255,0.92);
+    }
+    .account-bar .account-who{ overflow-wrap:anywhere; }
+    .account-bar .account-who b{ font-weight:750; }
+    .logout-btn{
+      flex-shrink:0;
+      background:rgba(255,255,255,0.12);
+      color:#fff; border:1px solid rgba(255,255,255,0.25);
+      border-radius:8px; padding:6px 12px;
+      font-size:0.8rem; font-weight:700; cursor:pointer;
+    }
+    .logout-btn:active{ transform:scale(0.97); }
+
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <!-- ===== Login-Gate (Supabase Auth) ===== -->
+  <div id="loginOverlay" class="login-overlay">
+    <div class="login-card">
+      <div class="login-brand">Spülprotokoll – Anlagen</div>
+      <div class="login-sub">NOVA Tools · Anmeldung erforderlich</div>
+      <label class="login-field">
+        <span>E-Mail</span>
+        <input type="email" id="loginEmail" autocomplete="username" inputmode="email" autocapitalize="none" spellcheck="false">
+      </label>
+      <label class="login-field">
+        <span>Passwort</span>
+        <input type="password" id="loginPassword" autocomplete="current-password">
+      </label>
+      <button type="button" id="loginBtn" class="login-btn">Anmelden</button>
+      <div id="loginError" class="login-error"></div>
+      <div id="loginStatus" class="login-status">Verbinde mit Datenbank…</div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" aria-live="polite"></div>
+  <div class="header">
+    <div class="header-title">Spülprotokoll – Kontrolle der Wassertemperaturen</div>
+    <div class="header-sub">Objektbezogene Hygienespülungen</div>
+    <div class="header-sub" id="headerContext">Anlage &amp; Bereich</div>
+    <div class="header-worker" id="headerWorker"></div>
+    <div class="account-bar" id="accountBar" style="display:none;">
+      <div class="account-who">Angemeldet als <b id="accountName">–</b></div>
+      <button type="button" id="logoutBtn" class="logout-btn">Abmelden</button>
+    </div>
+  </div>
+
+
+  <div id="mobileWorkerBar" class="mobile-worker-box" style="display:none;">
+    <label for="workerNameInline">👤 Wer arbeitet hier</label>
+    <select id="workerNameInline" aria-label="Bearbeiter auswählen"></select>
+    <div class="mobile-worker-hint">Neue Namen können über „Bearbeiter hinzufügen…“ einmal bestätigt und dauerhaft ergänzt werden.</div>
+  </div>
+
+  <div class="toolbar-grid">
+    <div class="card highlight-card">
+      <div class="card-title">Spülprotokoll abgeben</div>
+      <div class="card-body">
+        <div class="hint" style="margin-top:0;">Exportiert die Spüldaten dieser Seite(n) zur Auswertung.</div>
+        <div class="btn-row">
+          <button id="exportPagesBtn" class="btn primary">Exportieren</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Suche</div>
+      <div class="card-body">
+        <label class="field">
+          <span>Haus / App.-Nr. / Zimmer</span>
+          <input type="text" id="searchInput" placeholder="z. B. 12 oder 4B">
+        </label>
+        <div class="btn-row">
+          <button id="searchBtn" class="btn primary">Suchen</button>
+          <button id="clearSearchBtn" class="btn">Zurücksetzen</button>
+        </div>
+      <div id="searchResults" class="search-results"></div>
+      </div>
+    </div>
+
+    <details class="card settings-details">
+      <summary class="settings-summary">Einstellungen</summary>
+      <div class="card-body">
+
+        <div class="subhead">Standort verwalten</div>
+        <div class="field-row">
+          <label class="field">
+            <span>Anlage</span>
+            <select id="anlageSelect"></select>
+          </label>
+
+          <label class="field">
+            <span>Bereich</span>
+            <select id="bereichSelect"></select>
+          </label>
+        </div>
+
+        <div class="btn-row">
+          <button id="addAnlageBtn" class="btn">+ Anlage/Bereich hinzufügen</button>
+          <button id="manageAnlagenBtn" class="btn">Verwalten</button>
+        </div>
+        <div class="hint">Tipp: Zum Wechseln des aktuellen Standorts lieber den Button „Standort wechseln“ bei der aktiven Seite nutzen – hier geht es nur um das Anlegen/Umbenennen/Löschen von Anlagen und Bereichen selbst.</div>
+
+        <div class="divider"></div>
+
+        <div class="subhead">Spülprotokoll-Seiten</div>
+        <div class="btn-row">
+          <button id="newPageBtn" class="btn">Seite öffnen / neu anlegen</button>
+          <button id="deletePageBtn" class="btn danger">Seite löschen</button>
+        </div>
+        <div class="hint">Seiten sind nach Anlage/Bereich gruppiert. Tippe unten auf eine Seite, um sie zu öffnen.</div>
+
+        <div class="divider"></div>
+
+        <div class="subhead">Sicherung (weitere Optionen)</div>
+        <div class="worker-desktop-box" style="background:#eef3ff; border:2px solid #2563eb; border-radius:10px; padding:10px 12px; margin-bottom:10px;">
+          <div style="font-weight:700; font-size:0.9rem; margin-bottom:6px; color:#1e3a8a;">👤 Bearbeiter</div>
+          <select id="workerNameInput" aria-label="Bearbeiter auswählen"
+            style="width:100%; box-sizing:border-box; padding:9px 10px; border-radius:8px; border:1px solid #93c5fd; background:#fff; font-size:0.95rem; outline:none;"></select>
+          <div style="font-size:0.78rem; color:#6b7280; margin-top:5px;">Auswahl gilt für alle Seiten. Neue Namen werden nach einmaliger Bestätigung dauerhaft ergänzt.</div>
+        </div>
+        <div class="hint" style="margin-top:0;">Import brauchst du normalerweise nur, wenn Marco dich konkret darauf hinweist.</div>
+        <div class="btn-row">
+          <button id="importPagesBtn" class="btn">Seiten Import</button>
+          <button id="exportAnlagenBtn" class="btn">Anlagen Export</button>
+          <button id="importAnlagenBtn" class="btn">Anlagen Import</button>
+        </div>
+
+        <input type="file" id="pagesImportInput" accept="application/json" style="display:none;">
+        <input type="file" id="anlagenImportInput" accept="application/json" style="display:none;">
+      </div>
+    </details>
+  </div>
+
+  <div class="location-panel" id="locationPanel">
+    <div class="location-panel-info">
+      <span>Aktive Seite:</span>
+      <span id="pageInfo"></span>
+    </div>
+    <div class="location-panel-actions" id="locationPanelActions">
+      <button type="button" id="locationSwitchBtn" class="btn primary location-switch-btn">Standort wechseln</button>
+      <button type="button" id="quickImportPagesBtn" class="btn location-recovery-btn">Vorhandene Seiten importieren</button>
+    </div>
+  </div>
+
+  <div class="page-list" id="pageList"></div>
+  <div id="tableContainer"></div>
+
+  <div class="footer">
+    Anmeldung aktiv · Daten aktuell lokal im Browser · Version 3.00</div>
+
+  <!-- Modal für Anlagenverwaltung -->
+  <div id="modalOverlay" class="modal-overlay">
+    <div class="modal">
+      <h2>Anlagen verwalten</h2>
+
+      <label>
+        Aktion:
+        <select id="modalAction">
+          <option value="1">Anlage löschen</option>
+          <option value="2">Anlage umbenennen</option>
+          <option value="3">Bereich löschen</option>
+          <option value="4">Bereich umbenennen</option>
+          <option value="5">Bereich hinzufügen</option>
+        </select>
+      </label>
+
+      <label>
+        Anlage:
+        <select id="modalAnlageSelect"></select>
+      </label>
+
+      <label id="modalBereichRow">
+        Bereich:
+        <select id="modalBereichSelect"></select>
+      </label>
+
+      <label id="modalNewNameRow">
+        Neuer Name:
+        <input type="text" id="modalNewName">
+      </label>
+
+      <div class="modal-buttons">
+        <button id="modalCancelBtn" class="btn">Abbrechen</button>
+        <button id="modalConfirmBtn" class="btn primary">Übernehmen</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="fabUp" class="fab-up" title="Nach oben">↑</div>
+  <button id="fabNext" class="fab-next" title="Zur nächsten freien Zeile">⬇︎</button>
+  <button id="fabPage" class="fab-page" title="Zur Seitenauswahl">☰</button>
+  <script>
+    // ===================================================================
+    //  SUPABASE / AUTH  (Schritt 1: nur Anmeldung + Identität)
+    //  Public Anon-Key – laut Setup-MD unbedenklich im Client.
+    // ===================================================================
+    const SUPABASE_URL = "https://avuimpwjslrgpdahyloa.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF2dWltcHdqc2xyZ3BkYWh5bG9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwOTc0MjAsImV4cCI6MjA5NDY3MzQyMH0.q6s3s36WOoGGLbH7gsWqyzY2b_36vUjAHqKrGrAhYEs";
+
+    // Client heißt "db" (nicht "supabase"), um mit dem CDN-Global nicht zu kollidieren.
+    const db = (window.supabase && typeof window.supabase.createClient === "function")
+      ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+          auth: { persistSession: true, autoRefreshToken: true }
+        })
+      : null;
+
+    // Aktuell angemeldeter Nutzer (für Schritt 2: Feld-Zuordnung).
+    let currentUser = null;        // { id, email }
+    let currentProfile = null;     // { id, email, display_name }
+
+    // Eigener Speicherstand für den einmaligen, kontrollierten Datenimport.
+    const DEFAULT_ANLAGEN = {
+      "Anna-Hintermayr-Stift": [
+        "Bungalows"
+      ],
+      "Servatius-Stift": [
+        "Westflügel",
+        "Neubau mit Praxen"
+      ],
+      "Dr.-Schenk-Stift": [
+        "Betreutes Wohnen",
+        "Neidhart-Wohnungen"
+      ],
+      "Hospital-Stift": [
+        "Beim Rabenbad 1,1a (Hospital-Stift Kindergarten, Wohnungen)",
+        "Beim Rabenbad 2-4 Steindlhaus (Martinsstiftung, Wohnungen)",
+        "Beim Rabenbad 5 (Pflege)",
+        "Beim Rabenbad 6 (Betreutes Wohnen)",
+        "Spitalgasse 3-7 Hospital-Stift (Kindergarten, Wohnungen)",
+        "Spitalgasse 7-11 (Puppenkiste+4WE)"
+      ],
+      "Jakobs-Stift": [
+        "Hofhäuser",
+        "Oberer Graben 4",
+        "Oberer Graben 8",
+        "Verwaltung"
+      ],
+      "Sander-Stift": [
+        "Betreutes Wohnen Haus 81a",
+        "Betreutes Wohnen Haus 81b",
+        "Betreutes Wohnen Haus 81c",
+        "Betreutes Wohnen Haus 81d",
+        "Altenheim",
+        "Pflege"
+      ]
+    };
+
+    const STORAGE_KEY = "spuelprotokoll_pages_v4_clean";
+    // Vorhandene Protokolle werden einmalig kontrolliert per JSON importiert.
+    const ANLAGEN_KEY = "spuelprotokoll_anlagen_v2";
+    const WORKER_NAME_KEY = "spuelprotokoll_worker_name_v1";
+    const WORKER_LIST_KEY = "spuelprotokoll_worker_list_v1";
+    const DEFAULT_WORKERS = ["Marco Neudecker", "Marcel Blum", "Mirja Nowak"];
+    const MANUAL_WORKER_VALUE = "__manual_worker__";
+
+    let anlagenData = {};
+
+    let pages = [];
+    let activePageId = null;
+    let workerName = "";
+    let workerList = [];
+
+    let searchHighlightPageId = null;
+    let searchHighlightRowIndex = null;
+    // Standardmäßig wird nur der aktuelle Standort in der Seitenliste angezeigt.
+    let showAllLocationsInList = false;
+
+    const SCHENK_ANLAGE = "Dr.-Schenk-Stift";
+    const SCHENK_OLD_BEREICH = "Dr.-Schenk-Stift";
+    const SCHENK_NEW_BEREICH = "Betreutes Wohnen";
+
+    function cleanLocationLabel(value) {
+      return String(value ?? "").trim().replace(/\s+/g, " ");
+    }
+
+    function locationCompareKey(value) {
+      return cleanLocationLabel(value)
+        .toLocaleLowerCase("de-DE")
+        .replace(/[^a-z0-9äöüß]/gi, "");
+    }
+
+    function sameLocationName(a, b) {
+      return locationCompareKey(a) === locationCompareKey(b);
+    }
+
+    function samePageLocation(page, anlage, bereich) {
+      return !!page && sameLocationName(page.anlage, anlage) && sameLocationName(page.bereich, bereich);
+    }
+
+    function findPagesForLocation(anlage, bereich) {
+      return pages.filter(page => samePageLocation(page, anlage, bereich));
+    }
+
+    function dedupeNames(values) {
+      const result = [];
+      const seen = new Set();
+      (Array.isArray(values) ? values : []).forEach(value => {
+        const name = cleanLocationLabel(value);
+        const key = locationCompareKey(name);
+        if (!name || !key || seen.has(key)) return;
+        seen.add(key);
+        result.push(name);
+      });
+      return result;
+    }
+
+    function normalizeAnlagenStructure(source) {
+      const result = {};
+      const canonicalByKey = new Map();
+      Object.entries(source && typeof source === "object" ? source : {}).forEach(([rawAnlage, rawBereiche]) => {
+        const anlage = cleanLocationLabel(rawAnlage);
+        const key = locationCompareKey(anlage);
+        if (!anlage || !key) return;
+        let canonical = canonicalByKey.get(key);
+        if (!canonical) {
+          canonical = anlage;
+          canonicalByKey.set(key, canonical);
+          result[canonical] = [];
+        }
+        result[canonical] = dedupeNames([...(result[canonical] || []), ...(Array.isArray(rawBereiche) ? rawBereiche : [])]);
+      });
+      return result;
+    }
+
+    function migrateSchenkAreaInAnlagen() {
+      let changed = false;
+      Object.keys(anlagenData || {}).forEach(anlage => {
+        if (!sameLocationName(anlage, SCHENK_ANLAGE)) return;
+        const before = Array.isArray(anlagenData[anlage]) ? anlagenData[anlage] : [];
+        const after = dedupeNames(before.map(bereich =>
+          sameLocationName(bereich, SCHENK_OLD_BEREICH) ? SCHENK_NEW_BEREICH : bereich
+        ));
+        if (JSON.stringify(before) !== JSON.stringify(after)) changed = true;
+        anlagenData[anlage] = after;
+      });
+      return changed;
+    }
+
+    function migrateSchenkAreaInPages() {
+      let changed = false;
+      pages.forEach(page => {
+        if (sameLocationName(page.anlage, SCHENK_ANLAGE) && sameLocationName(page.bereich, SCHENK_OLD_BEREICH)) {
+          page.bereich = SCHENK_NEW_BEREICH;
+          changed = true;
+        }
+      });
+      return changed;
+    }
+
+    function getPageNumber(page) {
+      const value = Number(page && page.pageNumber);
+      if (Number.isInteger(value) && value > 0) return value;
+      const index = pages.findIndex(item => item && page && item.id === page.id);
+      return index >= 0 ? index + 1 : 0;
+    }
+
+    function getSmallestFreePageNumber() {
+      const used = new Set();
+      pages.forEach(page => {
+        const value = Number(page && page.pageNumber);
+        if (Number.isInteger(value) && value > 0) used.add(value);
+      });
+      let candidate = 1;
+      while (used.has(candidate)) candidate += 1;
+      return candidate;
+    }
+
+    function ensureUniquePageNumbers() {
+      const used = new Set();
+      pages.forEach(page => {
+        let value = Number(page && page.pageNumber);
+        if (!Number.isInteger(value) || value <= 0 || used.has(value)) {
+          value = 1;
+          while (used.has(value)) value += 1;
+          page.pageNumber = value;
+        }
+        used.add(value);
+      });
+    }
+
+    // --- Unified Dialog helpers (Material-ish) ---
+    const _dialog = {
+      overlay: null, title: null, msg: null, inputWrap: null, input: null, actions: null,
+      init(){
+        if (this.overlay) return;
+        this.overlay = document.getElementById("dialogOverlay");
+        this.title = document.getElementById("dialogTitle");
+        this.msg = document.getElementById("dialogMessage");
+        this.inputWrap = document.getElementById("dialogInputWrap");
+        this.input = document.getElementById("dialogInput");
+        this.select = document.getElementById("dialogSelect");
+        this.actions = document.getElementById("dialogActions");
+
+        // click outside closes only for alert (handled per call via flag)
+        this.overlay.addEventListener("click", (e) => {
+          if (e.target === this.overlay && this._outsideCloseFn){
+            this._outsideCloseFn();
+          }
+        });
+        // ESC handling
+        window.addEventListener("keydown", (e) => {
+          if (e.key === "Escape" && this.overlay?.style.display === "flex" && this._escCloseFn){
+            this._escCloseFn();
+          }
+        });
+      },
+      open({title="Hinweis", message="", input=false, inputValue="", selectOptions=null, selectValue=null, buttons=[], outsideClose=false}){
+        this.init();
+        this.title.textContent = title;
+        this.msg.textContent = message;
+
+        // input / select
+        this.inputWrap.style.display = (input || selectOptions) ? "block" : "none";
+        if (selectOptions){
+          // show select, hide text input
+          if (this.input) this.input.style.display = "none";
+          if (this.select){
+            this.select.style.display = "block";
+            this.select.innerHTML = "";
+            (selectOptions || []).forEach(opt => {
+              const o = document.createElement("option");
+              o.value = String(opt);
+              o.textContent = String(opt);
+              this.select.appendChild(o);
+            });
+            if (selectValue !== undefined && selectValue !== null){
+              this.select.value = String(selectValue);
+            }
+          }
+        } else {
+          // show text input, hide select
+          if (this.select) this.select.style.display = "none";
+          if (this.input){
+            this.input.style.display = "block";
+            this.input.value = inputValue ?? "";
+          }
+        }
+
+        // actions
+        this.actions.innerHTML = "";
+        buttons.forEach(b => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "btn" + (b.variant ? (" " + b.variant) : "");
+          btn.textContent = b.label;
+          btn.addEventListener("click", () => b.onClick?.());
+          this.actions.appendChild(btn);
+        });
+
+        this.overlay.style.display = "flex";
+        this.overlay.setAttribute("aria-hidden", "false");
+
+        // outside/esc closers
+        this._outsideCloseFn = outsideClose ? (() => buttons[0]?.onClick?.()) : null;
+        this._escCloseFn = (() => buttons[0]?.onClick?.());
+
+        // focus
+        setTimeout(() => {
+          try{
+            if (input) this.input.focus();
+            else this.actions.querySelector("button")?.focus();
+          }catch(e){}
+        }, 10);
+      },
+      close(){
+        if (!this.overlay) return;
+        this.overlay.style.display = "none";
+        this.overlay.setAttribute("aria-hidden", "true");
+        this._outsideCloseFn = null;
+        this._escCloseFn = null;
+      }
+    };
+
+    function uiAlert(message, title="Hinweis"){
+      return new Promise((resolve) => {
+        _dialog.open({
+          title,
+          message,
+          input: false,
+          buttons: [{
+            label: "OK",
+            variant: "primary",
+            onClick: () => { _dialog.close(); resolve(true); }
+          }],
+          outsideClose: true
+        });
+      });
+    }
+
+    function uiConfirm(message, title="Bestätigen"){
+      return new Promise((resolve) => {
+        _dialog.open({
+          title,
+          message,
+          input: false,
+          buttons: [
+            { label: "Abbrechen", onClick: () => { _dialog.close(); resolve(false); } },
+            { label: "OK", variant: "primary", onClick: () => { _dialog.close(); resolve(true); } }
+          ],
+          outsideClose: false
+        });
+      });
+    }
+
+    function uiPrompt(message, defaultValue="", title="Eingabe"){
+      return new Promise((resolve) => {
+        _dialog.open({
+          title,
+          message,
+          input: true,
+          inputValue: defaultValue,
+          buttons: [
+            { label: "Abbrechen", onClick: () => { _dialog.close(); resolve(null); } },
+            { label: "OK", variant: "primary", onClick: () => {
+                const val = _dialog.input.value;
+                _dialog.close();
+                resolve(val);
+              }
+            }
+          ],
+          outsideClose: false
+        });
+
+        // Enter submits
+        setTimeout(() => {
+          try{
+            _dialog.input.onkeydown = (e) => {
+              if (e.key === "Enter"){
+                e.preventDefault();
+                const val = _dialog.input.value;
+                _dialog.close();
+                resolve(val);
+              }
+            };
+          }catch(e){}
+        }, 0);
+      });
+    }
+
+    function uiSelect(message, options, defaultValue=null, title="Auswahl"){
+      return new Promise((resolve) => {
+        const safeOpts = Array.isArray(options) ? options : [];
+        _dialog.open({
+          title,
+          message,
+          input: false,
+          selectOptions: safeOpts,
+          selectValue: defaultValue ?? (safeOpts[0] ?? ""),
+          buttons: [
+            { label: "Abbrechen", onClick: () => { _dialog.close(); resolve(null); } },
+            { label: "OK", variant: "primary", onClick: () => {
+                const val = _dialog.select ? _dialog.select.value : null;
+                _dialog.close();
+                resolve(val);
+              }
+            }
+          ],
+          outsideClose: false
+        });
+
+        // Enter submits
+        setTimeout(() => {
+          try{
+            if (_dialog.select){
+              _dialog.select.onkeydown = (e) => {
+                if (e.key === "Enter"){
+                  e.preventDefault();
+                  const val = _dialog.select.value;
+                  _dialog.close();
+                  resolve(val);
+                }
+              };
+            }
+          }catch(e){}
+        }, 0);
+      });
+    }
+
+
+    function clone(obj) {
+      return JSON.parse(JSON.stringify(obj));
+    }
+
+    function normalizeWorkerName(value) {
+      return String(value ?? "").replace(/\s+/g, " ").trim();
+    }
+
+    function canonicalWorkerName(value) {
+      const name = normalizeWorkerName(value);
+      const key = name.toLocaleLowerCase("de-DE");
+      const aliases = {
+        "m": "Marco Neudecker",
+        "ma": "Marco Neudecker",
+        "mar": "Marco Neudecker",
+        "marco": "Marco Neudecker",
+        "marcel": "Marcel Blum",
+        "mirja": "Mirja Nowak"
+      };
+      return aliases[key] || name;
+    }
+
+    function loadWorkerName() {
+      try {
+        const stored = normalizeWorkerName(localStorage.getItem(WORKER_NAME_KEY) || "");
+        workerName = canonicalWorkerName(stored);
+        if (workerName && workerName !== stored) localStorage.setItem(WORKER_NAME_KEY, workerName);
+      } catch (e) { workerName = ""; }
+    }
+
+    function saveWorkerName() {
+      try { localStorage.setItem(WORKER_NAME_KEY, canonicalWorkerName(workerName)); }
+      catch (e) {}
+    }
+
+    function loadWorkerList() {
+      let saved = [];
+      try {
+        const raw = localStorage.getItem(WORKER_LIST_KEY);
+        const parsed = raw ? JSON.parse(raw) : [];
+        if (Array.isArray(parsed)) saved = parsed;
+      } catch (e) {}
+
+      const combined = [...DEFAULT_WORKERS, ...saved.map(canonicalWorkerName)];
+      if (workerName) combined.push(canonicalWorkerName(workerName));
+
+      const seen = new Set();
+      workerList = combined.filter(name => {
+        const clean = normalizeWorkerName(name);
+        if (!clean) return false;
+        const key = clean.toLocaleLowerCase("de-DE");
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      saveWorkerList();
+    }
+
+    function saveWorkerList() {
+      try { localStorage.setItem(WORKER_LIST_KEY, JSON.stringify(workerList)); }
+      catch (e) {}
+    }
+
+    function addWorkerToList(value) {
+      const name = canonicalWorkerName(value);
+      if (!name) return "";
+      const existing = workerList.find(item => item.toLocaleLowerCase("de-DE") === name.toLocaleLowerCase("de-DE"));
+      if (existing) return existing;
+      workerList.push(name);
+      const fixed = workerList.filter(item => DEFAULT_WORKERS.includes(item));
+      const custom = workerList.filter(item => !DEFAULT_WORKERS.includes(item)).sort((a,b) => a.localeCompare(b, "de"));
+      workerList = [...DEFAULT_WORKERS.filter(item => fixed.includes(item)), ...custom];
+      saveWorkerList();
+      return name;
+    }
+
+    function populateWorkerSelect(select) {
+      if (!select) return;
+      const current = canonicalWorkerName(workerName);
+      select.innerHTML = "";
+
+      if (!current) {
+        const placeholder = document.createElement("option");
+        placeholder.value = "";
+        placeholder.textContent = "Bearbeiter auswählen…";
+        placeholder.disabled = true;
+        placeholder.selected = true;
+        select.appendChild(placeholder);
+      }
+
+      workerList.forEach(name => {
+        const option = document.createElement("option");
+        option.value = name;
+        option.textContent = name;
+        select.appendChild(option);
+      });
+
+      const manual = document.createElement("option");
+      manual.value = MANUAL_WORKER_VALUE;
+      manual.textContent = "+ Bearbeiter hinzufügen…";
+      select.appendChild(manual);
+
+      if (current && workerList.includes(current)) select.value = current;
+    }
+
+    function renderWorkerPickers() {
+      populateWorkerSelect(document.getElementById("workerNameInput"));
+      populateWorkerSelect(document.getElementById("workerNameInline"));
+    }
+
+    function getPageWorker(page) {
+      const globalName = canonicalWorkerName(workerName);
+      if (globalName) return globalName;
+      if (!page || typeof page !== "object") return "";
+      return canonicalWorkerName(page.performedBy || "");
+    }
+
+    function setPageWorker(page, value) {
+      if (!page || typeof page !== "object") return;
+      page.performedBy = canonicalWorkerName(value);
+    }
+
+    function findBestStoredWorkerName(pageList) {
+      const names = (Array.isArray(pageList) ? pageList : [])
+        .map(p => canonicalWorkerName(p && p.performedBy))
+        .filter(Boolean);
+      if (!names.length) return "";
+      return names.sort((a, b) => b.length - a.length || a.localeCompare(b))[0];
+    }
+
+    function syncWorkerAcrossPages() {
+      const globalName = canonicalWorkerName(workerName);
+      if (!globalName) return;
+      pages.forEach(p => setPageWorker(p, globalName));
+    }
+
+    function applyWorkerName(value, { announce = false } = {}) {
+      const selected = addWorkerToList(value);
+      if (!selected) {
+        renderWorkerPickers();
+        return;
+      }
+      workerName = selected;
+      saveWorkerName();
+      syncWorkerAcrossPages();
+      saveState();
+      renderWorkerPickers();
+      renderPageInfo();
+      updateHeaderContext();
+      if (announce) toast(`Bearbeiter „${selected}“ wurde hinzugefügt und ausgewählt.`);
+    }
+
+    async function handleWorkerPickerChange(select) {
+      if (!select) return;
+      const value = select.value;
+      if (value !== MANUAL_WORKER_VALUE) {
+        applyWorkerName(value);
+        return;
+      }
+
+      const entered = await uiPrompt("Vor- und Nachname des neuen Bearbeiters:", "", "Bearbeiter hinzufügen");
+      if (entered === null) {
+        renderWorkerPickers();
+        return;
+      }
+      const candidate = canonicalWorkerName(entered);
+      if (!candidate) {
+        await uiAlert("Bitte einen Namen eingeben.", "Bearbeiter hinzufügen");
+        renderWorkerPickers();
+        return;
+      }
+
+      const existing = workerList.find(item => item.toLocaleLowerCase("de-DE") === candidate.toLocaleLowerCase("de-DE"));
+      if (existing) {
+        applyWorkerName(existing);
+        toast(`„${existing}“ ist bereits vorhanden und wurde ausgewählt.`);
+        return;
+      }
+
+      const confirmed = await uiConfirm(
+        `„${candidate}“ als neuen Bearbeiter hinzufügen?\n\nDer Name wird künftig dauerhaft im Picker angeboten.`,
+        "Neuen Bearbeiter bestätigen"
+      );
+      if (!confirmed) {
+        renderWorkerPickers();
+        return;
+      }
+      applyWorkerName(candidate, { announce: true });
+    }
+
+    function initWorkerPickers() {
+      [document.getElementById("workerNameInput"), document.getElementById("workerNameInline")].forEach(select => {
+        if (!select || select.dataset.workerPickerReady === "1") return;
+        select.dataset.workerPickerReady = "1";
+        select.addEventListener("change", () => handleWorkerPickerChange(select));
+      });
+      renderWorkerPickers();
+    }
+
+    function loadAnlagen() {
+      const raw = localStorage.getItem(ANLAGEN_KEY);
+      if (raw) {
+        try {
+          const data = JSON.parse(raw);
+          if (data && typeof data === "object") {
+            anlagenData = normalizeAnlagenStructure(data);
+          }
+        } catch (e) {}
+      }
+      if (!Object.keys(anlagenData).length) {
+        anlagenData = clone(DEFAULT_ANLAGEN);
+      }
+      anlagenData = normalizeAnlagenStructure(anlagenData);
+      if (migrateSchenkAreaInAnlagen()) {
+        console.info("Dr.-Schenk-Stift: Bereich wurde in Betreutes Wohnen umbenannt.");
+      }
+      saveAnlagen();
+    }
+
+    function saveAnlagen() {
+      anlagenData = normalizeAnlagenStructure(anlagenData);
+      migrateSchenkAreaInAnlagen();
+      localStorage.setItem(ANLAGEN_KEY, JSON.stringify(anlagenData));
+}
+
+    function todayISO() {
+      return new Date().toISOString().slice(0, 10);
+    }
+    function filenameTimestamp() {
+      const d = new Date();
+      const date = d.toISOString().slice(0, 10);
+      const hh = String(d.getHours()).padStart(2, "0");
+      const mm = String(d.getMinutes()).padStart(2, "0");
+      return `${date}_${hh}${mm}`;
+    }
+    function timeHM() {
+      const d = new Date();
+      return d.toTimeString().slice(0,5);
+    }
+
+    function timestampString() {
+      const d = new Date();
+      const date = d.toISOString().slice(0,10);
+      const time = d.toTimeString().slice(0,8);
+      return `${date} ${time}`;
+    }
+
+    const TEMP_MODES = ["kitchenBath", "bath", "other"];
+    const ISSUE_TYPES = ["turbidity", "fixtureDefect", "aeratorStuck", "longTkmax", "other"];
+
+    // Raumtyp beschreibt ausschließlich die Art des Raums/Bereichs.
+    const ROOM_TYPE_OPTIONS = [
+      "Behandlungsraum / Untersuchungsraum",
+      "Bewohner- / Patientenzimmer",
+      "Hausanschlussraum",
+      "Kantine / Großküche",
+      "Lüftungszentrale",
+      "Pausenraum / Aufenthaltsraum",
+      "Personal-WC / Patienten-WC / Besucher-WC",
+      "Pflegebad",
+      "Putzraum / Reinigungsraum",
+      "Sanitär- & Personalbereich",
+      "Sanitärraum WC/Bad",
+      "Sonstiger Raum / Bereich",
+      "Teeküche / Stationsküche",
+      "Umkleide (mit integriertem Waschbereich)",
+      "Unreinraum",
+      "Waschküche",
+      "Waschraum / Duschraum",
+      "Zentrale Trinkwassererwärmung"
+    ];
+
+    const GENERIC_EXTRACTION_POINTS = [
+      "Ausgussbecken",
+      "Dusche",
+      "Reihen-WB",
+      "Sonstige Entnahmestelle",
+      "Spüle",
+      "Waschbecken"
+    ];
+
+    function populateRoomTypeSelect(select, currentValue = "") {
+      const current = String(currentValue ?? "").trim();
+      select.innerHTML = "";
+
+      const placeholder = document.createElement("option");
+      placeholder.value = "";
+      placeholder.textContent = "–";
+      select.appendChild(placeholder);
+
+      const options = current && !ROOM_TYPE_OPTIONS.includes(current)
+        ? [...ROOM_TYPE_OPTIONS, current].sort((a, b) => a.localeCompare(b, "de"))
+        : ROOM_TYPE_OPTIONS;
+
+      options.forEach(label => {
+        const option = document.createElement("option");
+        option.value = label;
+        option.textContent = label;
+        select.appendChild(option);
+      });
+
+      select.value = current;
+    }
+
+    function getExtractionPointOptions(roomType = "") {
+      switch (String(roomType || "").trim()) {
+        case "Zentrale Trinkwassererwärmung":
+          return ["WW-Abgang", "Zirkulations-RL", "KW"];
+        case "Hausanschlussraum":
+          return ["Probenahmehahn nach dem Wasserzähler", "Sonstige Entnahmestelle"];
+        default:
+          return GENERIC_EXTRACTION_POINTS;
+      }
+    }
+
+    function populateExtractionPointSelect(select, roomType = "", currentValue = "") {
+      const current = String(currentValue ?? "").trim();
+      const options = getExtractionPointOptions(roomType);
+      select.innerHTML = "";
+
+      const placeholder = document.createElement("option");
+      placeholder.value = "";
+      placeholder.textContent = "Bitte auswählen …";
+      select.appendChild(placeholder);
+
+      if (current && !options.includes(current)) {
+        const existingOption = document.createElement("option");
+        existingOption.value = current;
+        existingOption.textContent = current;
+        select.appendChild(existingOption);
+      }
+
+      options.forEach(label => {
+        const option = document.createElement("option");
+        option.value = label;
+        option.textContent = label;
+        select.appendChild(option);
+      });
+
+      select.value = current;
+    }
+
+    function normalizeTemperatureMode(row) {
+      if (!row || typeof row !== "object") return "kitchenBath";
+      // Frühere Daten mit „Nur KW“ hatten noch keinen getrennten Standortmodus.
+      // Wenn möglich wird die einzelne Entnahmestelle übernommen, sonst „Bad“.
+      if (row.tempMode === "kw") {
+        if (TEMP_MODES.includes(row.tempBaseMode)) return row.tempBaseMode;
+        if (String(row.tempLocationOther ?? "").trim() !== "") return "other";
+        return "bath";
+      }
+      if (row.tempMode === "washbasin" || row.tempMode === "bath") return "bath";
+      if (TEMP_MODES.includes(row.tempMode)) return row.tempMode;
+      if (String(row.tempLocationOther ?? "").trim() !== "") return "other";
+
+      const hasKitchen = String(row.wwKitchen ?? "").trim() !== "";
+      const hasBath = String(row.wwBath ?? "").trim() !== "";
+      if (hasBath && !hasKitchen) return "bath";
+      return "kitchenBath";
+    }
+
+    function normalizeKwOnly(row) {
+      if (!row || typeof row !== "object") return false;
+      return row.kwOnly === true || row.tempMode === "kw";
+    }
+
+    function normalizeIssueType(row) {
+      if (!row || typeof row !== "object") return "";
+      if (ISSUE_TYPES.includes(row.issueType)) return row.issueType;
+      if (row.turbidityFlag) return "turbidity";
+      if (row.fixtureDefectFlag) return "fixtureDefect";
+      if (row.aeratorStuckFlag) return "aeratorStuck";
+      if (row.longTkmaxFlag) return "longTkmax";
+      if (row.otherIssueFlag || String(row.otherIssueText ?? "").trim() !== "") return "other";
+      return "";
+    }
+
+    function syncIssueCompatibilityFlags(row, issueType) {
+      row.turbidityFlag = issueType === "turbidity";
+      row.fixtureDefectFlag = issueType === "fixtureDefect";
+      row.aeratorStuckFlag = issueType === "aeratorStuck";
+      row.longTkmaxFlag = issueType === "longTkmax";
+      row.otherIssueFlag = issueType === "other";
+    }
+
+    function normalizeRowData(row, fallbackIndex) {
+      const source = (row && typeof row === "object") ? row : {};
+      const mode = normalizeTemperatureMode(source);
+      const kwOnly = normalizeKwOnly(source);
+      const issueType = normalizeIssueType(source);
+      const issuePresent = typeof source.issuePresent === "boolean"
+        ? source.issuePresent
+        : !!issueType;
+      return {
+        ...createEmptyRow(source.index || fallbackIndex),
+        ...source,
+        index: source.index || fallbackIndex,
+        tempMode: mode,
+        issueType,
+        issuePresent,
+        // Wasserart ist unabhängig von der gewählten Entnahmestelle.
+        kwOnly
+      };
+    }
+
+    function rowHasMeaningfulData(row) {
+      if (!row || typeof row !== "object") return false;
+      const textFields = [
+        "date", "time", "floor", "roomType", "unit", "kwTemp",
+        "tempLocationOther", "wwKitchen", "wwBath", "issueType",
+        "otherIssueText", "aeratorChangedCount", "notes"
+      ];
+      const hasText = textFields.some(key => String(row[key] ?? "").trim() !== "");
+      const hasFlag = [
+        "issuePresent", "turbidityFlag", "fixtureDefectFlag",
+        "aeratorStuckFlag", "longTkmaxFlag", "otherIssueFlag",
+        "aeratorChanged"
+      ].some(key => row[key] === true);
+      const changedMode = normalizeTemperatureMode(row) !== "kitchenBath";
+      const kwOnly = normalizeKwOnly(row);
+      return hasText || hasFlag || changedMode || kwOnly;
+    }
+
+    function pageHasMeaningfulData(page) {
+      return Array.isArray(page?.rows) && page.rows.some(rowHasMeaningfulData);
+    }
+
+    function ensurePageRows(rows) {
+      const normalized = Array.isArray(rows)
+        ? rows.map((row, index) => normalizeRowData(row, index + 1))
+        : [];
+      while (normalized.length < 25) normalized.push(createEmptyRow(normalized.length + 1));
+      return normalized;
+    }
+
+    function makeUniquePageId(rawId, usedIds) {
+      let candidate = cleanLocationLabel(rawId);
+      if (!candidate || usedIds.has(candidate)) {
+        do {
+          candidate = "P" + Date.now() + "_" + Math.random().toString(36).slice(2, 9);
+        } while (usedIds.has(candidate));
+      }
+      usedIds.add(candidate);
+      return candidate;
+    }
+
+    function syncLocationsFromPages() {
+      pages.forEach(page => {
+        const anlage = cleanLocationLabel(page?.anlage);
+        const bereich = cleanLocationLabel(page?.bereich);
+        if (!anlage || !bereich) return;
+        const existingAnlage = Object.keys(anlagenData).find(name => sameLocationName(name, anlage));
+        const canonicalAnlage = existingAnlage || anlage;
+        if (!anlagenData[canonicalAnlage]) anlagenData[canonicalAnlage] = [];
+        if (!anlagenData[canonicalAnlage].some(name => sameLocationName(name, bereich))) {
+          anlagenData[canonicalAnlage].push(bereich);
+        }
+        page.anlage = canonicalAnlage;
+        const canonicalBereich = anlagenData[canonicalAnlage].find(name => sameLocationName(name, bereich)) || bereich;
+        page.bereich = canonicalBereich;
+      });
+      anlagenData = normalizeAnlagenStructure(anlagenData);
+      migrateSchenkAreaInAnlagen();
+      saveAnlagen();
+    }
+
+    function createEmptyRow(index) {
+      return {
+        index,
+        date: "",
+        time: "",
+        floor: "",
+        roomType: "",
+        unit: "",
+        kwTemp: "",
+        tempMode: "kitchenBath",
+        tempLocationOther: "",
+        kwOnly: false,
+        wwKitchen: "",
+        wwBath: "",
+        issuePresent: false,
+        issueType: "",
+        turbidityFlag: false,
+        fixtureDefectFlag: false,
+        aeratorStuckFlag: false,
+        longTkmaxFlag: false,
+        otherIssueFlag: false,
+        otherIssueText: "",
+        aeratorChanged: false,
+        aeratorChangedCount: "",
+        notes: ""
+      };
+    }
+
+    function createNewPage(anlage, bereich) {
+      const cleanAnlage = cleanLocationLabel(anlage);
+      const cleanBereich = cleanLocationLabel(bereich);
+      const id = "P" + Date.now() + "_" + Math.random().toString(36).slice(2, 7);
+      const rows = [];
+      for (let i = 1; i <= 25; i++) {
+        rows.push(createEmptyRow(i));
+      }
+      const page = {
+        id,
+        pageNumber: getSmallestFreePageNumber(),
+        anlage: cleanAnlage,
+        bereich: cleanBereich,
+        created: timestampString(),
+        performedBy: normalizeWorkerName(workerName),
+        rows
+      };
+      pages.push(page);
+      activePageId = id;
+      saveState();
+      renderAll();
+      return page;
+    }
+
+    function duplicateActivePage() {
+      promptNewPageSameObject();
+    }
+
+    async function deleteActivePage() {
+      const page = pages.find(p => p.id === activePageId);
+      if (!page) return;
+      const index = getPageNumber(page);
+      const ok = await uiConfirm(
+        `Achtung:\n\nSoll die Seite ${index} für\n${page.anlage} – ${page.bereich}\nwirklich gelöscht werden?\n\nDiese Aktion kann nicht rückgängig gemacht werden.`
+      );
+      if (!ok) return;
+      const sameLocationPages = findPagesForLocation(page.anlage, page.bereich).filter(p => p.id !== page.id);
+      pages = pages.filter(p => p.id !== page.id);
+      const fallback = sameLocationPages[0] || pages.slice().sort((a, b) => getPageNumber(a) - getPageNumber(b))[0] || null;
+      activePageId = fallback ? fallback.id : null;
+      saveState();
+      renderAll();
+    }
+
+    function saveState() {
+      const globalName = normalizeWorkerName(workerName);
+      ensureUniquePageNumbers();
+      pages = pages.map(p => {
+        const rows = Array.isArray(p?.rows) ? p.rows : [];
+        rows.forEach((row, i) => {
+          if (!row || typeof row !== "object") return;
+          row.index = row.index || (i + 1);
+          const legacyKwOnly = normalizeKwOnly(row);
+          row.tempMode = normalizeTemperatureMode(row);
+          row.kwOnly = legacyKwOnly;
+        });
+        return {
+          ...p,
+          pageNumber: getPageNumber(p),
+          anlage: cleanLocationLabel(p && p.anlage),
+          bereich: cleanLocationLabel(p && p.bereich),
+          performedBy: globalName || normalizeWorkerName(p && p.performedBy),
+          rows
+        };
+      });
+      const data = { pages, activePageId };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+    function loadState() {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return false;
+
+      let selectedData;
+      try {
+        const parsed = JSON.parse(raw);
+        const candidatePages = Array.isArray(parsed)
+          ? parsed
+          : (Array.isArray(parsed && parsed.pages) ? parsed.pages : null);
+        if (!candidatePages || !candidatePages.length) return false;
+        selectedData = Array.isArray(parsed) ? { pages: parsed, activePageId: null } : parsed;
+      } catch (e) {
+        console.warn("Gespeicherte Daten konnten nicht gelesen werden.", e);
+        return false;
+      }
+
+      try {
+        pages = selectedData.pages.map(p => ({
+          ...p,
+          pageNumber: Number.isInteger(Number(p && p.pageNumber)) && Number(p.pageNumber) > 0 ? Number(p.pageNumber) : null,
+          created: cleanLocationLabel(p && p.created) || timestampString(),
+          anlage: cleanLocationLabel(p && p.anlage),
+          bereich: cleanLocationLabel(p && p.bereich),
+          performedBy: normalizeWorkerName(p && p.performedBy),
+          rows: ensurePageRows(p?.rows)
+        }));
+        ensureUniquePageNumbers();
+        migrateSchenkAreaInPages();
+
+        // Falls der globale Name noch leer ist, aus den vorhandenen Seiten
+        // den vollständigsten Namen übernehmen. Anschließend alle Seiten
+        // vereinheitlichen, damit jede Anlage denselben Bearbeiter zeigt.
+        if (!normalizeWorkerName(workerName)) {
+          workerName = findBestStoredWorkerName(pages);
+          if (workerName) saveWorkerName();
+        }
+        syncWorkerAcrossPages();
+
+        const requestedActiveId = selectedData.activePageId || null;
+        activePageId = pages.some(p => p.id === requestedActiveId)
+          ? requestedActiveId
+          : (pages[0] && pages[0].id);
+
+        ensureUniquePageNumbers();
+
+        saveState();
+        return true;
+      } catch (e) {
+        console.error("Fehler beim Laden:", e);
+        pages = [];
+        activePageId = null;
+        return false;
+      }
+    }
+
+    function initAnlageDropdowns() {
+      const anlageSelect = document.getElementById("anlageSelect");
+      const bereichSelect = document.getElementById("bereichSelect");
+
+      const currentAnlage = anlageSelect.value;
+      const currentBereich = bereichSelect.value;
+
+      anlageSelect.innerHTML = "";
+      Object.keys(anlagenData).forEach(name => {
+        const opt = document.createElement("option");
+        opt.value = name;
+        opt.textContent = name;
+        anlageSelect.appendChild(opt);
+      });
+
+      if (currentAnlage && anlagenData[currentAnlage]) {
+        anlageSelect.value = currentAnlage;
+      }
+
+      function refreshBereichOptions() {
+        const anlage = anlageSelect.value;
+        const bereiche = anlagenData[anlage] || [];
+        bereichSelect.innerHTML = "";
+        bereiche.forEach(b => {
+          const opt = document.createElement("option");
+          opt.value = b;
+          opt.textContent = b;
+          bereichSelect.appendChild(opt);
+        });
+
+        if (bereiche.includes(currentBereich)) {
+          bereichSelect.value = currentBereich;
+        }
+      }
+
+      anlageSelect.addEventListener("change", () => {
+        refreshBereichOptions();
+      });
+
+      refreshBereichOptions();
+    }
+
+    function renderPageList() {
+      const container = document.getElementById("pageList");
+      container.innerHTML = "";
+      if (!pages.length) {
+        container.textContent = "Noch keine Seiten angelegt.";
+        return;
+      }
+
+      const active = getActivePage();
+
+      // Sort pages by Anlage / Bereich / created
+      const sorted = [...pages].sort((a, b) => {
+        const anA = a.anlage || "";
+        const anB = b.anlage || "";
+        if (anA !== anB) return anA.localeCompare(anB);
+        const beA = a.bereich || "";
+        const beB = b.bereich || "";
+        if (beA !== beB) return beA.localeCompare(beB);
+        const crA = a.created || "";
+        const crB = b.created || "";
+        return crA.localeCompare(crB);
+      });
+
+      const activeAnlage = active ? (active.anlage || "(ohne Anlage)") : null;
+      const activeBereich = active ? (active.bereich || "(ohne Bereich)") : null;
+      const filterActive = !!active && !showAllLocationsInList;
+      const hiddenAnlagenBereiche = new Set();
+
+      // Build groups: Anlage -> Bereich -> pages[]
+      const anlageMap = new Map();
+      sorted.forEach(p => {
+        const anlage = p.anlage || "(ohne Anlage)";
+        const bereich = p.bereich || "(ohne Bereich)";
+        if (filterActive && (anlage !== activeAnlage || bereich !== activeBereich)) {
+          hiddenAnlagenBereiche.add(anlage + "||" + bereich);
+          return;
+        }
+        if (!anlageMap.has(anlage)) anlageMap.set(anlage, new Map());
+        const bMap = anlageMap.get(anlage);
+        if (!bMap.has(bereich)) bMap.set(bereich, []);
+        bMap.get(bereich).push(p);
+      });
+
+      // Umschalter: nur aktueller Standort <-> alle Standorte
+      if (active) {
+        const toggleRow = document.createElement("div");
+        toggleRow.className = "page-list-toggle";
+
+        const toggleBtn = document.createElement("button");
+        toggleBtn.type = "button";
+        toggleBtn.className = "btn small";
+        toggleBtn.textContent = showAllLocationsInList ? "Nur aktuellen Standort anzeigen" : "Alle Standorte anzeigen";
+        toggleBtn.addEventListener("click", () => {
+          showAllLocationsInList = !showAllLocationsInList;
+          renderPageList();
+        });
+        toggleRow.appendChild(toggleBtn);
+
+        if (filterActive && hiddenAnlagenBereiche.size) {
+          const note = document.createElement("span");
+          note.className = "page-list-toggle-note";
+          note.textContent = `${hiddenAnlagenBereiche.size} weitere${hiddenAnlagenBereiche.size === 1 ? "r" : ""} Standort${hiddenAnlagenBereiche.size === 1 ? "" : "e"} ausgeblendet`;
+          toggleRow.appendChild(note);
+        }
+
+        container.appendChild(toggleRow);
+      }
+
+      if (!anlageMap.size) {
+        const empty = document.createElement("div");
+        empty.className = "hint";
+        empty.textContent = "Keine Seiten für den aktuellen Standort.";
+        container.appendChild(empty);
+        return;
+      }
+
+      const activeKey = active ? (activeAnlage + "||" + activeBereich) : null;
+
+      // Render each Anlage block
+      anlageMap.forEach((bMap, anlageName) => {
+        const block = document.createElement("div");
+        block.className = "page-anlage-block";
+
+        const title = document.createElement("div");
+        title.className = "page-anlage-title";
+        title.textContent = anlageName;
+        block.appendChild(title);
+
+        const row = document.createElement("div");
+        row.className = "page-group-row";
+
+        bMap.forEach((arr, bereichName) => {
+          const key = anlageName + "||" + bereichName;
+          const hasActive = arr.some(p => p.id === activePageId);
+          const hasSearch = arr.some(p => p.id === searchHighlightPageId);
+
+          // Choose which page to show on the badge:
+          // active if in group, else latest (last by created)
+          let primary = arr[arr.length - 1];
+          const activeInGroup = arr.find(p => p.id === activePageId);
+          if (activeInGroup) primary = activeInGroup;
+
+          const primaryGlobalIndex = getPageNumber(primary);
+          const primaryLocalIndex = arr.indexOf(primary) + 1;
+
+          if (arr.length === 1) {
+            // Simple badge (no dropdown needed)
+            const span = document.createElement("span");
+            span.className = "page-badge" + (primary.id === activePageId ? " active" : "");
+            // Display local numbering per Bereich (always 1 here)
+            span.textContent = `${primaryGlobalIndex}: ${bereichName}`;
+            span.title = `Erstellt: ${primary.created}`;
+            span.addEventListener("click", () => {
+              activePageId = primary.id;
+              saveState();
+              renderAll();
+            });
+            row.appendChild(span);
+            return;
+          }
+
+          // Dropdown for history within this Bereich
+          const dd = document.createElement("details");
+          dd.className = "page-dd";
+          dd.open = !!(hasActive || hasSearch);
+
+          const summary = document.createElement("summary");
+
+          const badge = document.createElement("span");
+          badge.className = "dd-badge" + (primary.id === activePageId ? " active" : "");
+          // Keep the original global number in front (so it matches your "Nr. X" above)
+          badge.textContent = `${primaryGlobalIndex}: ${bereichName}`;
+          badge.title = `Aktiv: Seite ${primaryLocalIndex} von ${arr.length}\nErstellt: ${primary.created}\n(Klick: Historie öffnen)`;
+
+          summary.appendChild(badge);
+          dd.appendChild(summary);
+
+          const panel = document.createElement("div");
+          panel.className = "dd-panel";
+
+          const t = document.createElement("div");
+          t.className = "dd-title";
+          t.textContent = bereichName;
+          panel.appendChild(t);
+
+          const sub = document.createElement("div");
+          sub.className = "dd-sub";
+          sub.textContent = `Historie: ${arr.length} Seiten (aktive ist grün)`;
+          panel.appendChild(sub);
+
+          const badgesWrap = document.createElement("div");
+          badgesWrap.className = "dd-badges";
+
+          // Active first, then others by created order
+          const ordered = [];
+          arr.forEach(p => { if (p.id === activePageId) ordered.push(p); });
+          arr.forEach(p => { if (p.id !== activePageId) ordered.push(p); });
+
+          ordered.forEach((p) => {
+            const idxGlobal = getPageNumber(p);
+            const idxLocal = arr.indexOf(p) + 1;
+            const b = document.createElement("span");
+            b.className = "page-badge" + (p.id === activePageId ? " active" : "");
+            // Compact display: local number, but tooltip includes global
+            b.textContent = `Seite ${idxLocal}`;
+            b.title = `Global Nr. ${idxGlobal}\nErstellt: ${p.created}`;
+            b.addEventListener("click", (ev) => {
+              ev.preventDefault();
+              ev.stopPropagation();
+              activePageId = p.id;
+              saveState();
+              renderAll();
+              dd.open = false;
+            });
+            badgesWrap.appendChild(b);
+          });
+
+          panel.appendChild(badgesWrap);
+          dd.appendChild(panel);
+
+          // Close dropdown when clicking outside
+          document.addEventListener("click", (e) => {
+            if (!dd.open) return;
+            if (dd.contains(e.target)) return;
+            dd.open = false;
+          }, { capture: true });
+
+          row.appendChild(dd);
+        });
+
+        block.appendChild(row);
+        container.appendChild(block);
+      });
+    }
+
+
+    function getActivePage() {
+      return pages.find(p => p.id === activePageId) || null;
+    }
+    // Wählt einen Standort und öffnet das passende vorhandene Protokoll.
+    async function openStandortWechsel() {
+      const anlagen = Object.keys(anlagenData || {});
+      if (!anlagen.length) {
+        uiAlert("Es sind noch keine Anlagen hinterlegt. Bitte zuerst unter „Einstellungen → Verwalten“ eine Anlage anlegen.");
+        return;
+      }
+
+      const current = getActivePage();
+      const defaultAnlage = (current && anlagenData[current.anlage]) ? current.anlage : anlagen[0];
+
+      const anlage = await uiSelect("Welche Anlage?", anlagen, defaultAnlage, "Wo arbeitest du gerade?");
+      if (anlage === null) return;
+
+      const bereiche = anlagenData[anlage] || [];
+      if (!bereiche.length) {
+        uiAlert(`Für „${anlage}“ sind noch keine Bereiche hinterlegt. Bitte zuerst unter „Einstellungen → Verwalten“ einen Bereich anlegen.`);
+        return;
+      }
+      const defaultBereich = (current && current.anlage === anlage && bereiche.includes(current.bereich))
+        ? current.bereich
+        : bereiche[0];
+
+      const bereich = await uiSelect("Welcher Bereich?", bereiche, defaultBereich, "Wo arbeitest du gerade?");
+      if (bereich === null) return;
+
+      // Anlage/Bereich-Dropdowns in den Einstellungen synchron halten
+      try {
+        const as = document.getElementById("anlageSelect");
+        const bs = document.getElementById("bereichSelect");
+        if (as) { as.value = anlage; as.dispatchEvent(new Event("change")); }
+        if (bs) { bs.value = bereich; }
+      } catch (e) {}
+
+      await routeToLocation(anlage, bereich);
+    }
+
+    // Standortwechsel erzeugt niemals eine zweite Seite für einen bereits
+    // vorhandenen Standort. Neue Fortsetzungsseiten gibt es nur bewusst über
+    // „Neue Seite (gleiches Objekt)“ in der geöffneten Seite.
+    async function routeToLocation(anlage, bereich) {
+      const matches = findPagesForLocation(anlage, bereich);
+
+      if (matches.length === 0) {
+        createNewPage(anlage, bereich);
+        toast(`Neue Seite für ${anlage} · ${bereich} angelegt.`);
+        return;
+      }
+
+      if (matches.length === 1) {
+        activePageId = matches[0].id;
+        saveState();
+        renderAll();
+        toast(`Vorhandene Seite ${getPageNumber(matches[0])} geöffnet.`);
+        return;
+      }
+
+      const sorted = [...matches].sort((a, b) => {
+        const dataDiff = Number(pageHasMeaningfulData(b)) - Number(pageHasMeaningfulData(a));
+        if (dataDiff) return dataDiff;
+        return (b.created || "").localeCompare(a.created || "");
+      });
+      const labels = sorted.map(p => {
+        const status = pageHasMeaningfulData(p) ? "mit Einträgen" : "leer";
+        return `Seite ${getPageNumber(p)} · ${status} · erstellt ${p.created || "-"}`;
+      });
+
+      const choice = await uiSelect(
+        `${matches.length} vorhandene Seiten für ${anlage} · ${bereich} gefunden. Welche öffnen?`,
+        labels,
+        labels[0],
+        "Vorhandene Seite wählen"
+      );
+      if (choice === null) return;
+
+      const idx = labels.indexOf(choice);
+      activePageId = sorted[idx].id;
+      saveState();
+      renderAll();
+    }
+
+    function renderLocationPanel(){
+      const btn = document.getElementById("locationSwitchBtn");
+      const recoveryBtn = document.getElementById("quickImportPagesBtn");
+      const actions = document.getElementById("locationPanelActions");
+      if (!btn) return;
+      const page = getActivePage();
+      if (!page){
+        btn.textContent = "Wo arbeitest du gerade?";
+        btn.classList.add("location-switch-cta");
+        if (recoveryBtn) recoveryBtn.style.display = "inline-flex";
+        if (actions) actions.classList.add("location-panel-empty");
+      } else {
+        btn.textContent = "Standort wechseln";
+        btn.classList.remove("location-switch-cta");
+        if (recoveryBtn) recoveryBtn.style.display = "none";
+        if (actions) actions.classList.remove("location-panel-empty");
+      }
+    }
+
+    function renderPageInfo() {
+      const info = document.getElementById("pageInfo");
+      const page = getActivePage();
+      if (!page) {
+        info.textContent = "keine Seite ausgewählt";
+        return;
+      }
+      const index = getPageNumber(page);
+      info.textContent = `Nr. ${index} – ${page.anlage} / ${page.bereich}${getPageWorker(page) ? " · " + getPageWorker(page) : ""} (erstellt: ${page.created})`;
+    }
+
+
+    function toast(message, actionLabel = null, actionFn = null, duration = 5000){
+      const el = document.getElementById("toast");
+      if (!el) return;
+
+      el.innerHTML = "";
+      const msg = document.createElement("div");
+      msg.className = "toast-msg";
+      msg.textContent = message;
+      el.appendChild(msg);
+
+      let timer = null;
+
+      if (actionLabel && typeof actionFn === "function"){
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "toast-action";
+        btn.textContent = actionLabel;
+        btn.addEventListener("click", () => {
+          try { actionFn(); } finally { el.classList.remove("show"); }
+        });
+        el.appendChild(btn);
+      }
+
+      el.classList.add("show");
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => el.classList.remove("show"), duration);
+    }
+
+    function updateHeaderContext(){
+      const el = document.getElementById("headerContext");
+      const workerEl = document.getElementById("headerWorker");
+      if (!el) return;
+      const page = getActivePage();
+      if (!page){
+        el.textContent = "Anlage & Bereich";
+        if (workerEl) workerEl.textContent = normalizeWorkerName(workerName) ? `Bearbeiter: ${normalizeWorkerName(workerName)}` : "";
+        return;
+      }
+      const pageIndex = getPageNumber(page);
+      el.textContent = `${page.anlage} · ${page.bereich} · Seite ${pageIndex}`;
+      if (workerEl) {
+        const name = getPageWorker(page);
+        workerEl.textContent = name ? `Bearbeiter: ${name}` : "";
+      }
+    }
+
+    function isRowFilled(row){
+      // Any meaningful content besides index?
+      const keys = Object.keys(row || {}).filter(k => k !== "index");
+      return keys.some(k => {
+        const v = row[k];
+        if (v === null || v === undefined) return false;
+        if (typeof v === "boolean") return v === true;
+        return String(v).trim() !== "";
+      });
+    }
+
+    async function promptNewPageSameObject() {
+      const page = getActivePage();
+      if (!page) return;
+
+      if (!pageHasMeaningfulData(page)) {
+        await uiAlert(`Seite ${getPageNumber(page)} ist noch leer. Bitte zuerst diese Seite verwenden, statt eine weitere leere Seite anzulegen.`, "Keine doppelte Leerseite");
+        return;
+      }
+
+      const existingEmpty = findPagesForLocation(page.anlage, page.bereich)
+        .filter(candidate => candidate.id !== page.id && !pageHasMeaningfulData(candidate))
+        .sort((a, b) => getPageNumber(a) - getPageNumber(b))[0];
+      if (existingEmpty) {
+        activePageId = existingEmpty.id;
+        saveState();
+        renderAll();
+        await uiAlert(`Es gibt bereits die leere Seite ${getPageNumber(existingEmpty)} für diesen Standort. Sie wurde geöffnet.`, "Vorhandene Seite geöffnet");
+        return;
+      }
+
+      const nextNumber = getSmallestFreePageNumber();
+      const ok = await uiConfirm(`Neue Fortsetzungsseite ${nextNumber} erstellen und mit ${page.anlage} / ${page.bereich} fortfahren?`, "Neue Protokollseite");
+      if (!ok) return;
+      createNewPage(page.anlage, page.bereich);
+      // createNewPage does renderAll already
+      setTimeout(() => {
+        try{
+          // focus first date field if present
+          const first = document.querySelector("#tableContainer tbody tr input[type='date']");
+          if (first) first.focus();
+        }catch(e){}
+      }, 50);
+    }
+
+    function addRowToActivePage(){
+      const page = getActivePage();
+      if (!page) return;
+      const nextIndex = (page.rows?.length || 0) + 1;
+      page.rows.push(createEmptyRow(nextIndex));
+      saveState();
+      renderTable();
+      toast("Neue Zeile hinzugefügt.");
+      setTimeout(() => {
+        const lastRow = document.querySelector("#tableContainer tbody tr:last-child input[type='date']");
+        if (lastRow) lastRow.focus();
+      }, 50);
+    }
+
+    function clearRowData(row){
+      // Keep row.index; wipe the editable fields
+      const keep = { index: row.index };
+      Object.keys(row).forEach(k => delete row[k]);
+      Object.assign(row, keep, {
+        date: "",
+        time: "",
+        floor: "",
+        roomType: "",
+        unit: "",
+        kwTemp: "",
+        tempMode: "kitchenBath",
+        tempLocationOther: "",
+        kwOnly: false,
+        wwKitchen: "",
+        wwBath: "",
+        issuePresent: false,
+        issueType: "",
+        turbidityFlag: false,
+        fixtureDefectFlag: false,
+        aeratorStuckFlag: false,
+        longTkmaxFlag: false,
+        otherIssueFlag: false,
+        otherIssueText: "",
+        aeratorChanged: false,
+        aeratorChangedCount: "",
+        notes: ""
+      });
+    }
+
+    function renderTable() {
+      const container = document.getElementById("tableContainer");
+      const page = getActivePage();
+      container.innerHTML = "";
+
+      if (!page) {
+        container.textContent = "Keine aktive Seite. Bitte zuerst eine Seite anlegen.";
+        return;
+      }
+
+      const infoDiv = document.createElement("div");
+      infoDiv.className = "info-line";
+      infoDiv.textContent =
+        `Kontrolle der Wassertemperaturen – Objekt: ${page.anlage}, Bereich: ${page.bereich}`;
+      container.appendChild(infoDiv);
+
+      const wrapper = document.createElement("div");
+      wrapper.className = "table-wrapper";
+
+      const table = document.createElement("table");
+
+      const thead = document.createElement("thead");
+      const headerRow = document.createElement("tr");
+      const headers = [
+        { text: "Nr.", cls: "small" },
+        { text: "Datum", cls: "date" },
+        { text: "Uhrzeit", cls: "time" },
+        { text: "Stockwerk" },
+        { text: "Raumtyp", cls: "roomtype" },
+        { text: "Haus / App.-Nr. / Zimmer", cls: "unitcol" },
+        { text: "KW Temp. [°C]", cls: "temp" },
+        { text: "WW Küche [°C]", cls: "temp" },
+        { text: "WW Bad / sonst. [°C]", cls: "temp" },
+        { text: "Auffälligkeit / Defekt", cls: "turbcol" },
+        { text: "Strahlregler getauscht / Anzahl" },
+        { text: "Bemerkung", cls: "notescol" }
+      ];
+      headers.forEach(h => {
+        const th = document.createElement("th");
+        th.innerHTML = h.text;
+        if (h.cls) th.classList.add(h.cls);
+        headerRow.appendChild(th);
+      });
+      thead.appendChild(headerRow);
+      table.appendChild(thead);
+      // Die aktive Seite verwendet den global ausgewählten Bearbeiter.
+      if (page && !page.performedBy && workerName) {
+        setPageWorker(page, workerName);
+      }
+
+      const tbody = document.createElement("tbody");
+      if (window.innerWidth <= 800) tbody.className = "mobile-worklist";
+
+      page.rows.forEach((row) => {
+        const tr = document.createElement("tr");
+
+        let dateInput, timeInput, kwInput;
+        let tdWWK, tdWWB, wwKInput, wwBInput;
+
+        function ensureDateTime() {
+          if (!row.date) {
+            row.date = todayISO();
+            if (dateInput) dateInput.value = row.date;
+          }
+          if (!row.time) {
+            row.time = timeHM();
+            if (timeInput) timeInput.value = row.time;
+          }
+          if (!row.kwTemp) {
+            row.kwTemp = "20,0";
+            if (kwInput && !kwInput.value) {
+              kwInput.value = row.kwTemp;
+            }
+          }
+        }
+
+        if (page.id === searchHighlightPageId && row.index === searchHighlightRowIndex) {
+          tr.classList.add("search-highlight");
+        }
+
+        if (window.innerWidth <= 800) {
+          const tr = document.createElement("tr");
+          const td = document.createElement("td");
+          const card = document.createElement("div");
+          card.className = "mobile-row-card";
+          if (page.id === searchHighlightPageId && row.index === searchHighlightRowIndex) card.classList.add("search-highlight");
+          if (!row.date && !row.time) card.setAttribute("data-free-row", "true");
+
+          const head = document.createElement("div");
+          head.className = "mobile-row-head";
+          const no = document.createElement("div");
+          no.className = "mobile-row-no";
+          no.textContent = `Nr. ${row.index}`;
+          const when = document.createElement("div");
+          when.className = "mobile-row-when";
+          dateInput = document.createElement("input");
+          dateInput.type = "date";
+          dateInput.value = row.date || "";
+          dateInput.addEventListener("change", () => { row.date = dateInput.value; saveState(); });
+          timeInput = document.createElement("input");
+          timeInput.type = "time";
+          timeInput.value = row.time || "";
+          timeInput.addEventListener("change", () => { row.time = timeInput.value; saveState(); });
+          when.appendChild(dateInput); when.appendChild(timeInput);
+          const delBtn = document.createElement("button");
+          delBtn.type = "button"; delBtn.className = "mobile-del-btn"; delBtn.textContent = "×"; delBtn.title = "Zeile leeren";
+          delBtn.addEventListener("click", async (ev) => {
+            ev.preventDefault(); ev.stopPropagation();
+            const label = `${page.anlage} / ${page.bereich} – Nr. ${row.index}`;
+            const ok = await uiConfirm(`Daten dieser Zeile wirklich löschen?\n\n${label}\n\n(Die Zeile bleibt bestehen, nur die Eingaben werden geleert.)`);
+            if (!ok) return;
+            const snapshot = JSON.parse(JSON.stringify(row));
+            clearRowData(row); saveState(); renderTable();
+            toast("Zeile geleert.", "Rückgängig", () => { Object.keys(row).forEach(k => delete row[k]); Object.assign(row, snapshot); saveState(); renderTable(); });
+          });
+          head.appendChild(no); head.appendChild(when); head.appendChild(delBtn);
+
+          const body = document.createElement("div");
+          body.className = "mobile-row-body";
+          const row1 = document.createElement("div"); row1.className = "mobile-grid-2 mobile-location-grid";
+
+          const floorWrap = document.createElement("label"); floorWrap.className = "mobile-stack"; floorWrap.innerHTML = '<span>Stockwerk</span>';
+          const floorSelect = document.createElement("select");
+          ["", "UG", "EG", "1. OG", "2. OG", "3. OG", "4. OG", "5. OG", "6. OG", "7. OG"].forEach(f => { const opt = document.createElement("option"); opt.value = f; opt.textContent = f || "–"; floorSelect.appendChild(opt); });
+          floorSelect.value = row.floor || "";
+          floorSelect.addEventListener("change", () => { ensureDateTime(); row.floor = floorSelect.value; saveState(); });
+          floorWrap.appendChild(floorSelect);
+
+          let updateMobileTempMode = () => {};
+
+          const roomWrap = document.createElement("label"); roomWrap.className = "mobile-stack"; roomWrap.innerHTML = '<span>Raumtyp</span>';
+          const roomTypeSelect = document.createElement("select");
+          populateRoomTypeSelect(roomTypeSelect, row.roomType || "");
+          roomTypeSelect.addEventListener("change", () => {
+            ensureDateTime();
+            row.roomType = roomTypeSelect.value;
+            if (row.roomType === "Zentrale Trinkwassererwärmung" && row.tempMode === "kitchenBath" && !row.wwKitchen && !row.wwBath) {
+              row.tempMode = "other";
+              row.kwOnly = false;
+            }
+            populateExtractionPointSelect(otherLocationSelect, row.roomType, row.tempLocationOther || "");
+            updateMobileTempMode();
+            saveState();
+          });
+          roomWrap.appendChild(roomTypeSelect);
+          row1.appendChild(floorWrap); row1.appendChild(roomWrap);
+
+          const unitWrap = document.createElement("label"); unitWrap.className = "mobile-stack"; unitWrap.innerHTML = '<span>Haus / App.-Nr. / Zimmer</span>';
+          const unitInput = document.createElement("input"); unitInput.type = "text"; unitInput.value = row.unit || ""; unitInput.placeholder = "z. B. Haus 4 · App. 2";
+          unitInput.addEventListener("input", () => { ensureDateTime(); row.unit = unitInput.value; saveState(); }); unitWrap.appendChild(unitInput);
+
+          const legacyKwOnly = normalizeKwOnly(row);
+          row.tempMode = normalizeTemperatureMode(row);
+          row.kwOnly = legacyKwOnly;
+
+          const temps = document.createElement("div"); temps.className = "mobile-temps";
+          const tempsTitle = document.createElement("div"); tempsTitle.className = "mobile-temps-title"; tempsTitle.textContent = "Temperaturen"; temps.appendChild(tempsTitle);
+
+          const modeGrid = document.createElement("div");
+          modeGrid.className = "mobile-temp-mode-grid";
+          const modeRadios = [];
+          [
+            ["kitchenBath", "Küche + Bad"],
+            ["bath", "Bad"],
+            ["other", "Einzelne Entnahmestelle"]
+          ].forEach(([value, label]) => {
+            const option = document.createElement("label");
+            option.className = "mobile-temp-mode-option";
+            const radio = document.createElement("input");
+            radio.type = "radio";
+            radio.name = `temp-mode-${page.id}-${row.index}`;
+            radio.value = value;
+            radio.checked = row.tempMode === value;
+            const text = document.createElement("span");
+            text.textContent = label;
+            radio.addEventListener("change", () => {
+              if (!radio.checked) return;
+              ensureDateTime();
+              row.tempMode = value;
+              updateMobileTempMode();
+              saveState();
+            });
+            option.appendChild(radio);
+            option.appendChild(text);
+            modeGrid.appendChild(option);
+            modeRadios.push(radio);
+          });
+          temps.appendChild(modeGrid);
+
+          const mobileKwOnlyToggle = document.createElement("label");
+          mobileKwOnlyToggle.className = "mobile-kw-only-toggle";
+          const mobileKwOnlyCheckbox = document.createElement("input");
+          mobileKwOnlyCheckbox.type = "checkbox";
+          mobileKwOnlyCheckbox.checked = row.kwOnly === true;
+          const mobileKwOnlyText = document.createElement("span");
+          mobileKwOnlyText.textContent = "KW";
+          mobileKwOnlyCheckbox.addEventListener("change", () => {
+            ensureDateTime();
+            row.kwOnly = mobileKwOnlyCheckbox.checked;
+            updateMobileTempMode();
+            saveState();
+          });
+          mobileKwOnlyToggle.appendChild(mobileKwOnlyCheckbox);
+          mobileKwOnlyToggle.appendChild(mobileKwOnlyText);
+          modeGrid.appendChild(mobileKwOnlyToggle);
+
+          const modeNote = document.createElement("div");
+          modeNote.className = "mobile-temp-note";
+          modeNote.textContent = "Stelle auswählen; „KW“ blendet die Warmwasserfelder aus. Vorhandene Werte bleiben gespeichert.";
+          temps.appendChild(modeNote);
+
+          const otherLocationWrap = document.createElement("label");
+          otherLocationWrap.className = "mobile-stack mobile-temp-location";
+          const otherLocationLabel = document.createElement("span");
+          otherLocationLabel.textContent = "Entnahmestelle";
+          const otherLocationSelect = document.createElement("select");
+          populateExtractionPointSelect(otherLocationSelect, row.roomType, row.tempLocationOther || "");
+          otherLocationSelect.addEventListener("change", () => {
+            ensureDateTime();
+            row.tempLocationOther = otherLocationSelect.value;
+            if (row.roomType === "Zentrale Trinkwassererwärmung") {
+              if (row.tempLocationOther === "KW") row.kwOnly = true;
+              if (row.tempLocationOther === "WW-Abgang" || row.tempLocationOther === "Zirkulations-RL") row.kwOnly = false;
+              mobileKwOnlyCheckbox.checked = row.kwOnly === true;
+            }
+            updateMobileTempMode();
+            saveState();
+          });
+          otherLocationWrap.appendChild(otherLocationLabel);
+          otherLocationWrap.appendChild(otherLocationSelect);
+          temps.appendChild(otherLocationWrap);
+
+          const kwWrap = document.createElement("label"); kwWrap.className = "mobile-stack"; kwWrap.innerHTML = '<span>KW min.</span>';
+          kwInput = document.createElement("input"); kwInput.type = "number"; kwInput.step = "0.1"; kwInput.value = row.kwTemp || ""; kwInput.placeholder = "20,0";
+          kwInput.addEventListener("input", () => { ensureDateTime(); row.kwTemp = kwInput.value; saveState(); }); kwWrap.appendChild(kwInput); temps.appendChild(kwWrap);
+
+          const wwRow = document.createElement("div"); wwRow.className = "mobile-grid-2";
+          const wwKWrap = document.createElement("label"); wwKWrap.className = "mobile-stack";
+          const wwKLabel = document.createElement("span"); wwKLabel.textContent = "WW Küche max."; wwKWrap.appendChild(wwKLabel);
+          wwKInput = document.createElement("input"); wwKInput.type = "number"; wwKInput.step = "0.1"; wwKInput.value = row.wwKitchen || ""; wwKInput.placeholder = "60,0";
+          wwKInput.addEventListener("input", () => { ensureDateTime(); row.wwKitchen = wwKInput.value; saveState(); }); wwKWrap.appendChild(wwKInput);
+          const wwBWrap = document.createElement("label"); wwBWrap.className = "mobile-stack";
+          const wwBLabel = document.createElement("span"); wwBLabel.textContent = "WW Bad max."; wwBWrap.appendChild(wwBLabel);
+          wwBInput = document.createElement("input"); wwBInput.type = "number"; wwBInput.step = "0.1"; wwBInput.value = row.wwBath || ""; wwBInput.placeholder = "60,0";
+          wwBInput.addEventListener("input", () => { ensureDateTime(); row.wwBath = wwBInput.value; saveState(); }); wwBWrap.appendChild(wwBInput);
+          wwRow.appendChild(wwKWrap); wwRow.appendChild(wwBWrap); temps.appendChild(wwRow);
+
+          updateMobileTempMode = () => {
+            const mode = normalizeTemperatureMode(row);
+            row.tempMode = mode;
+            row.kwOnly = normalizeKwOnly(row);
+            modeRadios.forEach(radio => { radio.checked = radio.value === mode; });
+            mobileKwOnlyCheckbox.checked = row.kwOnly;
+
+            const isCentralHeater = row.roomType === "Zentrale Trinkwassererwärmung";
+            const point = String(row.tempLocationOther || "");
+            const centralKw = isCentralHeater && point === "KW";
+            const centralWw = isCentralHeater && (point === "WW-Abgang" || point === "Zirkulations-RL");
+            if (mode === "other" && centralKw) row.kwOnly = true;
+            if (mode === "other" && centralWw) row.kwOnly = false;
+            mobileKwOnlyCheckbox.checked = row.kwOnly;
+            mobileKwOnlyCheckbox.disabled = mode === "other" && isCentralHeater && !!point;
+
+            let kwActive = true;
+            let kitchenActive = !row.kwOnly && mode === "kitchenBath";
+            let bathActive = !row.kwOnly && (mode === "bath" || mode === "other" || mode === "kitchenBath");
+
+            if (mode === "other" && isCentralHeater && point) {
+              kwActive = row.kwOnly || centralKw;
+              kitchenActive = false;
+              bathActive = !row.kwOnly && centralWw;
+            }
+
+            otherLocationLabel.textContent = isCentralHeater ? "Probenahmeventil" : "Entnahmestelle";
+            otherLocationWrap.style.display = mode === "other" ? "grid" : "none";
+            kwWrap.style.display = kwActive ? "grid" : "none";
+            wwKWrap.style.display = kitchenActive ? "grid" : "none";
+            wwBWrap.style.display = bathActive ? "grid" : "none";
+            wwRow.style.display = (kitchenActive || bathActive) ? "grid" : "none";
+            wwRow.style.gridTemplateColumns = (kitchenActive && bathActive) ? "1fr 1fr" : "1fr";
+
+            if (centralKw) kwWrap.querySelector("span").textContent = "KW Probenahmeventil";
+            else if (row.kwOnly && mode === "bath") kwWrap.querySelector("span").textContent = "KW Bad min.";
+            else if (row.kwOnly && mode === "other") kwWrap.querySelector("span").textContent = "KW Entnahmestelle min.";
+            else kwWrap.querySelector("span").textContent = "KW min.";
+            wwKLabel.textContent = "WW Küche max.";
+            if (mode === "bath") wwBLabel.textContent = "WW Bad max.";
+            else if (centralWw) wwBLabel.textContent = point === "WW-Abgang" ? "WW-Abgang max." : "Zirkulations-RL max.";
+            else if (mode === "other") wwBLabel.textContent = "WW Entnahmestelle max.";
+            else wwBLabel.textContent = "WW Bad max.";
+          };
+          updateMobileTempMode();
+
+          row.issueType = normalizeIssueType(row);
+          if (typeof row.issuePresent !== "boolean") row.issuePresent = !!row.issueType;
+
+          const statusBlock = document.createElement("div");
+          statusBlock.className = "mobile-status-block";
+          const statusRow = document.createElement("div");
+          statusRow.className = "mobile-status-row";
+
+          const issues = document.createElement("div");
+          issues.className = "mobile-issues";
+
+          const mobileIssueToggle = document.createElement("label");
+          mobileIssueToggle.className = "mobile-issue-toggle";
+          const mobileIssueCb = document.createElement("input");
+          mobileIssueCb.type = "checkbox";
+          mobileIssueCb.checked = !!row.issuePresent;
+          const mobileIssueToggleText = document.createElement("span");
+          mobileIssueToggleText.textContent = "Auffälligkeit / Defekt";
+          mobileIssueToggle.appendChild(mobileIssueCb);
+          mobileIssueToggle.appendChild(mobileIssueToggleText);
+          issues.appendChild(mobileIssueToggle);
+
+          const aerCompact = document.createElement("div");
+          aerCompact.className = "mobile-aerator-compact";
+          const aerTitle = document.createElement("div");
+          aerTitle.className = "mobile-aerator-title";
+          aerTitle.textContent = "Strahlregler getauscht";
+          const aerControls = document.createElement("div");
+          aerControls.className = "mobile-aerator-controls";
+          const aerCheck = document.createElement("label");
+          aerCheck.className = "mobile-check";
+          const aerCb = document.createElement("input");
+          aerCb.type = "checkbox";
+          aerCb.checked = !!row.aeratorChanged;
+          aerCb.style.accentColor = "var(--primary)";
+          aerCb.addEventListener("change", () => {
+            ensureDateTime();
+            row.aeratorChanged = aerCb.checked;
+            saveState();
+          });
+          const aerText = document.createElement("span");
+          aerText.textContent = "ja";
+          aerCheck.appendChild(aerCb);
+          aerCheck.appendChild(aerText);
+          const aerCount = document.createElement("input");
+          aerCount.type = "number";
+          aerCount.min = "0";
+          aerCount.step = "1";
+          aerCount.value = row.aeratorChangedCount || "";
+          aerCount.placeholder = "Anz.";
+          aerCount.className = "mobile-aerator-count";
+          aerCount.addEventListener("input", () => {
+            ensureDateTime();
+            row.aeratorChangedCount = aerCount.value;
+            saveState();
+          });
+          aerControls.appendChild(aerCheck);
+          aerControls.appendChild(aerCount);
+          aerCompact.appendChild(aerTitle);
+          aerCompact.appendChild(aerControls);
+
+          statusRow.appendChild(issues);
+          statusRow.appendChild(aerCompact);
+          statusBlock.appendChild(statusRow);
+
+          const mobileIssueSelect = document.createElement("select");
+          mobileIssueSelect.className = "mobile-issue-select";
+          [
+            ["", "Bitte auswählen …"],
+            ["turbidity", "Trübung / Färbung"],
+            ["fixtureDefect", "Armatur defekt (Verdacht auf KW-Übertrag)"],
+            ["aeratorStuck", "Strahlregler fest"],
+            ["longTkmax", "Lange Ablaufzeit bis TKmax"],
+            ["other", "Sonstiges"]
+          ].forEach(([value, labelText]) => {
+            const option = document.createElement("option");
+            option.value = value;
+            option.textContent = labelText;
+            mobileIssueSelect.appendChild(option);
+          });
+          mobileIssueSelect.value = row.issueType || "";
+          statusBlock.appendChild(mobileIssueSelect);
+
+          const mobileOtherIssueWrap = document.createElement("label");
+          mobileOtherIssueWrap.className = "mobile-stack mobile-issue-other";
+          mobileOtherIssueWrap.innerHTML = '<span>Sonstige Auffälligkeit</span>';
+          const mobileOtherIssueInput = document.createElement("input");
+          mobileOtherIssueInput.type = "text";
+          mobileOtherIssueInput.value = row.otherIssueText || "";
+          mobileOtherIssueInput.placeholder = "kurz beschreiben";
+          mobileOtherIssueInput.addEventListener("input", () => {
+            ensureDateTime();
+            row.otherIssueText = mobileOtherIssueInput.value;
+            saveState();
+          });
+          mobileOtherIssueWrap.appendChild(mobileOtherIssueInput);
+          statusBlock.appendChild(mobileOtherIssueWrap);
+
+          function updateMobileIssueState() {
+            const active = !!row.issuePresent;
+            mobileIssueCb.checked = active;
+            mobileIssueSelect.style.display = active ? "block" : "none";
+            mobileOtherIssueWrap.style.display = active && row.issueType === "other" ? "grid" : "none";
+          }
+
+          mobileIssueCb.addEventListener("change", () => {
+            ensureDateTime();
+            row.issuePresent = mobileIssueCb.checked;
+            if (!row.issuePresent) {
+              row.issueType = "";
+              mobileIssueSelect.value = "";
+              syncIssueCompatibilityFlags(row, "");
+            }
+            updateMobileIssueState();
+            saveState();
+            if (row.issuePresent) setTimeout(() => mobileIssueSelect.focus(), 0);
+          });
+
+          mobileIssueSelect.addEventListener("change", () => {
+            ensureDateTime();
+            row.issueType = mobileIssueSelect.value;
+            row.issuePresent = true;
+            syncIssueCompatibilityFlags(row, row.issueType);
+            updateMobileIssueState();
+            saveState();
+            if (row.issueType === "other") setTimeout(() => mobileOtherIssueInput.focus(), 0);
+          });
+
+          updateMobileIssueState();
+
+          const notesWrap = document.createElement("label"); notesWrap.className = "mobile-stack"; notesWrap.innerHTML = '<span>Bemerkung</span>';
+          const notesInput = document.createElement("textarea"); notesInput.rows = 3; notesInput.value = row.notes || ""; notesInput.placeholder = "Nur Auffälligkeiten oder Besonderheiten"; notesInput.style.fontSize = "0.9rem";
+          notesInput.addEventListener("input", () => { ensureDateTime(); row.notes = notesInput.value; saveState(); });
+          notesInput.addEventListener("keydown", (ev) => { if (ev.key === "Enter" && (ev.ctrlKey || ev.metaKey) && row.index === page.rows.length) { ev.preventDefault(); promptNewPageSameObject(); } });
+          notesInput.addEventListener("blur", () => { if (row.index === page.rows.length && isRowFilled(row)) promptNewPageSameObject(); });
+          notesWrap.appendChild(notesInput);
+
+          body.appendChild(row1); body.appendChild(unitWrap); body.appendChild(temps); body.appendChild(statusBlock); body.appendChild(notesWrap);
+          card.appendChild(head); card.appendChild(body); td.appendChild(card); tr.appendChild(td); tbody.appendChild(tr);
+          return;
+        }
+
+        const tdIdx = document.createElement("td");
+tdIdx.classList.add("small");
+tdIdx.dataset.label = "Nr.";
+
+const idxWrap = document.createElement("div");
+idxWrap.className = "row-idx-wrap";
+
+const idxSpan = document.createElement("span");
+idxSpan.textContent = row.index;
+
+const delBtn = document.createElement("button");
+delBtn.type = "button";
+delBtn.className = "row-del-btn";
+delBtn.title = "Zeile leeren";
+delBtn.innerHTML = "🗑️";
+delBtn.addEventListener("click", async (ev) => {
+  ev.preventDefault();
+  ev.stopPropagation();
+
+  const label = `${page.anlage} / ${page.bereich} – Nr. ${row.index}`;
+  const ok = await uiConfirm(`Daten dieser Zeile wirklich löschen?
+
+${label}
+
+(Die Zeile bleibt bestehen, nur die Eingaben werden geleert.)`);
+  if (!ok) return;
+
+  const snapshot = JSON.parse(JSON.stringify(row));
+  clearRowData(row);
+  saveState();
+  renderTable();
+  toast("Zeile geleert.", "Rückgängig", () => {
+    Object.keys(row).forEach(k => delete row[k]);
+    Object.assign(row, snapshot);
+    saveState();
+    renderTable();
+  });
+});
+
+idxWrap.appendChild(idxSpan);
+idxWrap.appendChild(delBtn);
+tdIdx.appendChild(idxWrap);
+tr.appendChild(tdIdx);
+
+        const tdDate = document.createElement("td");
+        tdDate.classList.add("date");
+        tdDate.dataset.label = "Datum";
+        dateInput = document.createElement("input");
+        dateInput.type = "date";
+        dateInput.value = row.date || "";
+        dateInput.addEventListener("change", () => {
+          row.date = dateInput.value;
+          saveState();
+        });
+        tdDate.appendChild(dateInput);
+        tr.appendChild(tdDate);
+
+        const tdTime = document.createElement("td");
+        tdTime.classList.add("time");
+        tdTime.dataset.label = "Uhrzeit";
+        timeInput = document.createElement("input");
+        timeInput.type = "time";
+        timeInput.value = row.time || "";
+        timeInput.addEventListener("change", () => {
+          row.time = timeInput.value;
+          saveState();
+        });
+        tdTime.appendChild(timeInput);
+        tr.appendChild(tdTime);
+
+        const tdFloor = document.createElement("td");
+        tdFloor.dataset.label = "Stockwerk";
+        const floorSelect = document.createElement("select");
+        const floors = ["", "UG", "EG", "1. OG", "2. OG", "3. OG", "4. OG", "5. OG", "6. OG", "7. OG"];
+        floors.forEach(f => {
+          const opt = document.createElement("option");
+          opt.value = f;
+          opt.textContent = f || "–";
+          floorSelect.appendChild(opt);
+        });
+        floorSelect.value = row.floor || "";
+        floorSelect.addEventListener("change", () => {
+          ensureDateTime();
+          row.floor = floorSelect.value;
+          saveState();
+          updateKwWarning();
+        });
+        tdFloor.appendChild(floorSelect);
+        tr.appendChild(tdFloor);
+
+        const tdRoomType = document.createElement("td");
+        tdRoomType.classList.add("roomtype");
+        tdRoomType.dataset.label = "Raumtyp";
+        const roomTypeSelect = document.createElement("select");
+        populateRoomTypeSelect(roomTypeSelect, row.roomType || "");
+        roomTypeSelect.addEventListener("change", () => {
+          ensureDateTime();
+          row.roomType = roomTypeSelect.value;
+          if (row.roomType === "Zentrale Trinkwassererwärmung" && row.tempMode === "kitchenBath" && !row.wwKitchen && !row.wwBath) {
+            row.tempMode = "other";
+            row.kwOnly = false;
+          }
+          populateExtractionPointSelect(otherLocationSelect, row.roomType, row.tempLocationOther || "");
+          saveState();
+          updateTemperatureModeState();
+        });
+        tdRoomType.appendChild(roomTypeSelect);
+        tr.appendChild(tdRoomType);
+
+        const tdUnit = document.createElement("td");
+        tdUnit.classList.add("unitcol");
+        tdUnit.classList.add("unitcol");
+        tdUnit.dataset.label = "Haus / App.-Nr. / Zimmer";
+        const unitInput = document.createElement("input");
+        unitInput.type = "text";
+        unitInput.value = row.unit || "";
+        unitInput.addEventListener("input", () => {
+          ensureDateTime();
+          row.unit = unitInput.value;
+          saveState();
+          updateKwWarning();
+        });
+        tdUnit.appendChild(unitInput);
+        tr.appendChild(tdUnit);
+
+        const tdKW = document.createElement("td");
+        tdKW.classList.add("temp");
+        tdKW.dataset.label = "KW [°C]";
+        kwInput = document.createElement("input");
+        kwInput.type = "number";
+        kwInput.step = "0.1";
+        kwInput.value = row.kwTemp;
+        kwInput.placeholder = "20,0";
+
+        function kwNumeric() {
+          const v = parseFloat(String(kwInput.value).replace(",", "."));
+          return isNaN(v) ? null : v;
+        }
+
+        function updateKwWarning() {
+          const v = kwNumeric();
+          if (v !== null && v > 25) {
+            tdKW.classList.add("temp-warning");
+            kwInput.title = "Achtung: Kaltwasser > 25 °C";
+          } else {
+            tdKW.classList.remove("temp-warning");
+            kwInput.title = "";
+          }
+        }
+
+        kwInput.addEventListener("input", () => {
+          ensureDateTime();
+          row.kwTemp = kwInput.value;
+          saveState();
+          updateKwWarning();
+        });
+
+        const legacyKwOnly = normalizeKwOnly(row);
+        row.tempMode = normalizeTemperatureMode(row);
+        row.kwOnly = legacyKwOnly;
+
+        function updateTemperatureModeState() {
+          const mode = normalizeTemperatureMode(row);
+          row.tempMode = mode;
+          row.kwOnly = normalizeKwOnly(row);
+
+          const isCentralHeater = row.roomType === "Zentrale Trinkwassererwärmung";
+          const point = String(row.tempLocationOther || "");
+          const centralKw = isCentralHeater && point === "KW";
+          const centralWw = isCentralHeater && (point === "WW-Abgang" || point === "Zirkulations-RL");
+          if (mode === "other" && centralKw) row.kwOnly = true;
+          if (mode === "other" && centralWw) row.kwOnly = false;
+          kwOnlyCheckbox.checked = row.kwOnly;
+          kwOnlyCheckbox.disabled = mode === "other" && isCentralHeater && !!point;
+
+          let kwActive = true;
+          let kitchenActive = !row.kwOnly && mode === "kitchenBath";
+          let bathActive = !row.kwOnly && (mode === "bath" || mode === "other" || mode === "kitchenBath");
+          if (mode === "other" && isCentralHeater && point) {
+            kwActive = row.kwOnly || centralKw;
+            kitchenActive = false;
+            bathActive = !row.kwOnly && centralWw;
+          }
+
+          if (otherLocationWrap) otherLocationWrap.style.display = mode === "other" ? "block" : "none";
+          otherLocationSelect.title = isCentralHeater ? "Probenahmeventil auswählen" : "Entnahmestelle auswählen";
+          kwInput.disabled = !kwActive;
+          wwKInput.disabled = !kitchenActive;
+          wwBInput.disabled = !bathActive;
+          tdWWK.classList.toggle("temp-disabled", !kitchenActive);
+          tdWWB.classList.toggle("temp-disabled", !bathActive);
+
+          // Werte bleiben im Datenmodell erhalten, werden in inaktiven Feldern aber nicht angezeigt.
+          kwInput.value = kwActive ? (row.kwTemp || "") : "";
+          wwKInput.value = kitchenActive ? (row.wwKitchen || "") : "";
+          wwBInput.value = bathActive ? (row.wwBath || "") : "";
+          kwInput.placeholder = kwActive ? "20,0" : "—";
+          wwKInput.placeholder = kitchenActive ? "60,0" : "—";
+          wwBInput.placeholder = bathActive ? "60,0" : "—";
+
+          modeRadios.forEach(radio => { radio.checked = radio.value === mode; });
+          kwOnlyCheckbox.checked = row.kwOnly;
+          updateExtractionLabels();
+        }
+
+        const kwWrap = document.createElement("div");
+        kwWrap.className = "kw-cell-wrap";
+        kwWrap.appendChild(kwInput);
+
+        const modeGrid = document.createElement("div");
+        modeGrid.className = "temp-mode-grid";
+        const modeRadios = [];
+        [
+          ["kitchenBath", "Küche + Bad"],
+          ["bath", "Bad"],
+          ["other", "Einzelne Entnahmestelle"]
+        ].forEach(([value, label]) => {
+          const option = document.createElement("label");
+          option.className = "temp-mode-option";
+          const radio = document.createElement("input");
+          radio.type = "radio";
+          radio.name = `temp-mode-${page.id}-${row.index}`;
+          radio.value = value;
+          radio.checked = row.tempMode === value;
+          const text = document.createElement("span");
+          text.textContent = label;
+          radio.addEventListener("change", () => {
+            if (!radio.checked) return;
+            ensureDateTime();
+            row.tempMode = value;
+            updateTemperatureModeState();
+            saveState();
+          });
+          option.appendChild(radio);
+          option.appendChild(text);
+          modeGrid.appendChild(option);
+          modeRadios.push(radio);
+        });
+        kwWrap.appendChild(modeGrid);
+
+        const kwOnlyToggle = document.createElement("label");
+        kwOnlyToggle.className = "kw-only-toggle";
+        const kwOnlyCheckbox = document.createElement("input");
+        kwOnlyCheckbox.type = "checkbox";
+        kwOnlyCheckbox.checked = row.kwOnly === true;
+        const kwOnlyText = document.createElement("span");
+        kwOnlyText.textContent = "KW";
+        kwOnlyCheckbox.addEventListener("change", () => {
+          ensureDateTime();
+          row.kwOnly = kwOnlyCheckbox.checked;
+          updateTemperatureModeState();
+          saveState();
+        });
+        kwOnlyToggle.appendChild(kwOnlyCheckbox);
+        kwOnlyToggle.appendChild(kwOnlyText);
+        modeGrid.appendChild(kwOnlyToggle);
+
+        const otherLocationWrap = document.createElement("div");
+        otherLocationWrap.className = "temp-location-other";
+        const otherLocationSelect = document.createElement("select");
+        otherLocationSelect.title = "Entnahmestelle auswählen";
+        populateExtractionPointSelect(otherLocationSelect, row.roomType, row.tempLocationOther || "");
+        otherLocationSelect.addEventListener("change", () => {
+          ensureDateTime();
+          row.tempLocationOther = otherLocationSelect.value;
+          if (row.roomType === "Zentrale Trinkwassererwärmung") {
+            if (row.tempLocationOther === "KW") row.kwOnly = true;
+            if (row.tempLocationOther === "WW-Abgang" || row.tempLocationOther === "Zirkulations-RL") row.kwOnly = false;
+            kwOnlyCheckbox.checked = row.kwOnly === true;
+          }
+          updateTemperatureModeState();
+          saveState();
+        });
+        otherLocationWrap.appendChild(otherLocationSelect);
+        kwWrap.appendChild(otherLocationWrap);
+
+        const modeHelp = document.createElement("div");
+        modeHelp.className = "temp-mode-help";
+        modeHelp.textContent = "Werte bleiben beim Wechsel erhalten";
+        kwWrap.appendChild(modeHelp);
+
+        tdKW.appendChild(kwWrap);
+        tr.appendChild(tdKW);
+
+        tdWWK = document.createElement("td");
+        tdWWK.classList.add("temp");
+        tdWWK.dataset.label = "WW Küche";
+        wwKInput = document.createElement("input");
+        wwKInput.type = "number";
+        wwKInput.step = "0.1";
+        wwKInput.value = row.wwKitchen;
+        wwKInput.placeholder = "60,0";
+        wwKInput.addEventListener("input", () => {
+          ensureDateTime();
+          row.wwKitchen = wwKInput.value;
+          saveState();
+          updateKwWarning();
+        });
+        tdWWK.appendChild(wwKInput);
+        tr.appendChild(tdWWK);
+
+        const tdWWBContainerLabel = "WW Bad";
+
+        tdWWB = document.createElement("td");
+        tdWWB.classList.add("temp");
+        tdWWB.dataset.label = tdWWBContainerLabel;
+        wwBInput = document.createElement("input");
+        wwBInput.type = "number";
+        wwBInput.step = "0.1";
+        wwBInput.value = row.wwBath;
+        wwBInput.placeholder = "60,0";
+        wwBInput.addEventListener("input", () => {
+          ensureDateTime();
+          row.wwBath = wwBInput.value;
+          saveState();
+          updateKwWarning();
+        });
+        tdWWB.appendChild(wwBInput);
+        tr.appendChild(tdWWB);
+
+        function updateExtractionLabels() {
+          const mode = normalizeTemperatureMode(row);
+          const isCentralHeater = row.roomType === "Zentrale Trinkwassererwärmung";
+          const point = String(row.tempLocationOther || "");
+          const centralKw = isCentralHeater && point === "KW";
+          const centralWw = isCentralHeater && (point === "WW-Abgang" || point === "Zirkulations-RL");
+          const kitchenActive = mode === "kitchenBath";
+          const bathActive = mode === "bath" || mode === "other" || mode === "kitchenBath";
+
+          if (centralKw) tdKW.dataset.label = "KW Probenahmeventil";
+          else if (row.kwOnly && mode === "bath") tdKW.dataset.label = "KW Bad";
+          else if (row.kwOnly && mode === "other") tdKW.dataset.label = "KW Entnahmestelle";
+          else tdKW.dataset.label = "KW [°C]";
+          tdWWK.dataset.label = "WW Küche";
+          if (mode === "bath") tdWWB.dataset.label = "WW Bad";
+          else if (centralWw) tdWWB.dataset.label = point;
+          else if (mode === "other") tdWWB.dataset.label = "WW Entnahmestelle";
+          else tdWWB.dataset.label = "WW Bad";
+
+          if (kitchenActive && !row.wwKitchen) wwKInput.placeholder = "60,0";
+          if (bathActive && !row.wwBath) wwBInput.placeholder = centralWw && point === "Zirkulations-RL" ? "55,0" : "60,0";
+        }
+
+        updateKwWarning();
+        updateTemperatureModeState();
+
+        row.issueType = normalizeIssueType(row);
+        if (typeof row.issuePresent !== "boolean") row.issuePresent = !!row.issueType;
+
+        const tdTurb = document.createElement("td");
+        tdTurb.classList.add("turbcol");
+        tdTurb.dataset.label = "Auffälligkeit / Defekt";
+
+        const issuePicker = document.createElement("div");
+        issuePicker.className = "issue-picker";
+
+        const desktopIssueToggle = document.createElement("label");
+        desktopIssueToggle.className = "issue-toggle";
+        const desktopIssueCb = document.createElement("input");
+        desktopIssueCb.type = "checkbox";
+        desktopIssueCb.checked = !!row.issuePresent;
+        const desktopIssueToggleText = document.createElement("span");
+        desktopIssueToggleText.textContent = "ja";
+        desktopIssueToggle.appendChild(desktopIssueCb);
+        desktopIssueToggle.appendChild(desktopIssueToggleText);
+        issuePicker.appendChild(desktopIssueToggle);
+
+        const desktopIssueSelect = document.createElement("select");
+        desktopIssueSelect.className = "issue-select";
+        [
+          ["", "Bitte auswählen …"],
+          ["turbidity", "Trübung / Färbung"],
+          ["fixtureDefect", "Armatur defekt (Verdacht auf KW-Übertrag)"],
+          ["aeratorStuck", "Strahlregler fest"],
+          ["longTkmax", "Lange Ablaufzeit bis TKmax"],
+          ["other", "Sonstiges"]
+        ].forEach(([value, labelText]) => {
+          const option = document.createElement("option");
+          option.value = value;
+          option.textContent = labelText;
+          desktopIssueSelect.appendChild(option);
+        });
+        desktopIssueSelect.value = row.issueType || "";
+        issuePicker.appendChild(desktopIssueSelect);
+
+        const desktopOtherIssueInput = document.createElement("input");
+        desktopOtherIssueInput.type = "text";
+        desktopOtherIssueInput.className = "issue-other-input";
+        desktopOtherIssueInput.value = row.otherIssueText || "";
+        desktopOtherIssueInput.placeholder = "Sonstiges kurz beschreiben";
+        desktopOtherIssueInput.addEventListener("input", () => { ensureDateTime(); row.otherIssueText = desktopOtherIssueInput.value; saveState(); });
+        issuePicker.appendChild(desktopOtherIssueInput);
+
+        function updateDesktopIssueState() {
+          const active = !!row.issuePresent;
+          desktopIssueCb.checked = active;
+          desktopIssueSelect.style.display = active ? "block" : "none";
+          desktopOtherIssueInput.style.display = active && row.issueType === "other" ? "block" : "none";
+        }
+
+        desktopIssueCb.addEventListener("change", () => {
+          ensureDateTime();
+          row.issuePresent = desktopIssueCb.checked;
+          if (!row.issuePresent) {
+            row.issueType = "";
+            desktopIssueSelect.value = "";
+            syncIssueCompatibilityFlags(row, "");
+          }
+          updateDesktopIssueState();
+          saveState();
+          if (row.issuePresent) setTimeout(() => desktopIssueSelect.focus(), 0);
+        });
+
+        desktopIssueSelect.addEventListener("change", () => {
+          ensureDateTime();
+          row.issueType = desktopIssueSelect.value;
+          row.issuePresent = true;
+          syncIssueCompatibilityFlags(row, row.issueType);
+          updateDesktopIssueState();
+          saveState();
+          if (row.issueType === "other") setTimeout(() => desktopOtherIssueInput.focus(), 0);
+        });
+
+        updateDesktopIssueState();
+        tdTurb.appendChild(issuePicker);
+        tr.appendChild(tdTurb);
+
+        const tdAer = document.createElement("td");
+        tdAer.dataset.label = "Strahlregler / Anzahl";
+        const aerLabel = document.createElement("label");
+        const aerCb = document.createElement("input");
+        aerCb.type = "checkbox";
+        aerCb.checked = row.aeratorChanged;
+        const aerText = document.createElement("span");
+        aerText.textContent = " getauscht";
+        const aerCount = document.createElement("input");
+        aerCount.type = "number";
+        aerCount.min = "0";
+        aerCount.step = "1";
+        aerCount.style.maxWidth = "60px";
+        aerCount.value = row.aeratorChangedCount || "";
+        aerCount.placeholder = "Anz.";
+
+        aerCb.addEventListener("change", () => {
+          ensureDateTime();
+          row.aeratorChanged = aerCb.checked;
+          saveState();
+          updateKwWarning();
+        });
+
+        aerCount.addEventListener("input", () => {
+          ensureDateTime();
+          row.aeratorChangedCount = aerCount.value;
+          saveState();
+          updateKwWarning();
+        });
+
+        aerLabel.appendChild(aerCb);
+        aerLabel.appendChild(aerText);
+        tdAer.appendChild(aerLabel);
+        tdAer.appendChild(aerCount);
+        tr.appendChild(tdAer);
+
+        const tdNotes = document.createElement("td");
+        tdNotes.classList.add("notescol");
+        tdNotes.dataset.label = "Bemerkung";
+        const notesInput = document.createElement("textarea");
+        notesInput.className = "notes-input";
+        notesInput.rows = 2;
+        notesInput.value = row.notes || "";
+        tdNotes.title = row.notes || "";
+        notesInput.addEventListener("input", () => {
+          ensureDateTime();
+          row.notes = notesInput.value;
+          tdNotes.title = notesInput.value || "";
+          saveState();
+          updateKwWarning();
+        });
+
+notesInput.addEventListener("keydown", (ev) => {
+  if (ev.key === "Enter" && (ev.ctrlKey || ev.metaKey)) {
+    // Ctrl+Enter creates new page (pro mode)
+    if (row.index === page.rows.length) {
+      ev.preventDefault();
+      promptNewPageSameObject();
+    }
+  }
+});
+
+notesInput.addEventListener("blur", () => {
+  // When leaving the last row, offer creating a continuation page
+  if (row.index === page.rows.length && isRowFilled(row)) {
+    promptNewPageSameObject();
+  }
+});
+        tdNotes.appendChild(notesInput);
+        tr.appendChild(tdNotes);
+
+        tbody.appendChild(tr);
+
+        // Beim Laden einmal prüfen
+        updateKwWarning();
+        updateExtractionLabels();
+      });
+
+      table.appendChild(tbody);
+      wrapper.appendChild(table);
+
+  container.appendChild(wrapper);
+
+
+const actions = document.createElement("div");
+  actions.className = "table-actions";
+
+  const btnNewPage = document.createElement("button");
+  btnNewPage.className = "btn primary";
+  btnNewPage.type = "button";
+  btnNewPage.textContent = "➕ Neue Seite (gleiches Objekt)";
+  btnNewPage.addEventListener("click", promptNewPageSameObject);
+
+  actions.appendChild(btnNewPage);
+  container.appendChild(actions);
+
+  updateHeaderContext();
+}
+function renderAll() {
+      renderPageList();
+      renderPageInfo();
+      renderLocationPanel();
+      renderTable();
+      updateHeaderContext();
+      renderWorkerPickers();
+    }
+
+
+    // --- Save-As (File System Access API) ---
+    function supportsSavePicker(){
+      return !!(window.showSaveFilePicker);
+    }
+
+    async function saveWithPicker(filename, blob){
+      // Opens a "save as" picker (where available). Falls back to download.
+      try{
+        if (supportsSavePicker()){
+          const handle = await window.showSaveFilePicker({
+            suggestedName: filename,
+            types: [{
+              description: "JSON",
+              accept: { "application/json": [".json"] }
+            }]
+          });
+          const writable = await handle.createWritable();
+          await writable.write(blob);
+          await writable.close();
+          toast("Export gespeichert.");
+          return true;
+        }
+      }catch(e){
+        // user cancelled or API failed -> fall back to download
+      }
+      // fallback: download
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast("Export heruntergeladen.");
+      return false;
+    }
+
+
+    function exportPagesJSON() {
+      const inp = document.getElementById("workerNameInput");
+      if (inp && inp.value && inp.value !== MANUAL_WORKER_VALUE) workerName = canonicalWorkerName(inp.value);
+      const workerNameStr = normalizeWorkerName(workerName || "ohne_bearbeiter");
+      const workerPart = workerNameStr.replace(/[^a-zA-Z0-9äöüÄÖÜß_-]+/g, "_").replace(/_+/g, "_").replace(/^_+|_+$/g, "");
+      const stamp = filenameTimestamp();
+      const pagesObj = {
+        pages: pages.map(p => ({ ...p, performedBy: workerNameStr })),
+        activePageId,
+        exportedAt: timestampString(),
+        defaultPerformedBy: workerNameStr,
+        workerList: [...workerList]
+      };
+      const blob = new Blob([JSON.stringify(pagesObj, null, 2)], { type: "application/json" });
+      const filename = `spuelprotokoll_seiten_${stamp}_${workerPart}.json`;
+      saveWithPicker(filename, blob);
+    }
+
+
+    function importPagesJSONFile(file) {
+      const reader = new FileReader();
+      reader.onload = async e => {
+        try {
+          const data = JSON.parse(e.target.result);
+          const importedPages = Array.isArray(data)
+            ? data
+            : (Array.isArray(data?.pages) ? data.pages : null);
+
+          if (!importedPages || !importedPages.length) {
+            await uiAlert("Datei enthält keine gültigen Seitendaten.");
+            return;
+          }
+
+          if (pages.length) {
+            const confirmed = await uiConfirm(
+              `Der Import ersetzt die aktuell gespeicherten ${pages.length} Seite(n) vollständig. Fortfahren?`,
+              "Seiten importieren"
+            );
+            if (!confirmed) return;
+          }
+
+          const usedIds = new Set();
+          pages = importedPages
+            .filter(page => page && typeof page === "object")
+            .map((page, index) => ({
+              ...page,
+              id: makeUniquePageId(page.id, usedIds),
+              pageNumber: Number.isInteger(Number(page.pageNumber)) && Number(page.pageNumber) > 0
+                ? Number(page.pageNumber)
+                : index + 1,
+              created: cleanLocationLabel(page.created) || timestampString(),
+              anlage: cleanLocationLabel(page.anlage),
+              bereich: cleanLocationLabel(page.bereich),
+              performedBy: canonicalWorkerName(page.performedBy),
+              rows: ensurePageRows(page.rows)
+            }));
+
+          if (!pages.length) {
+            await uiAlert("In der Datei wurden keine verwendbaren Protokollseiten gefunden.");
+            return;
+          }
+
+          ensureUniquePageNumbers();
+          migrateSchenkAreaInPages();
+          syncLocationsFromPages();
+
+          if (Array.isArray(data?.workerList)) {
+            data.workerList.forEach(name => addWorkerToList(name));
+          }
+          pages.forEach(page => {
+            const importedName = canonicalWorkerName(page.performedBy);
+            if (importedName) addWorkerToList(importedName);
+          });
+
+          if (!normalizeWorkerName(workerName)) {
+            workerName = canonicalWorkerName(data?.defaultPerformedBy) || findBestStoredWorkerName(pages);
+            if (workerName) saveWorkerName();
+          }
+          syncWorkerAcrossPages();
+
+          const requestedActiveId = data?.activePageId;
+          activePageId = pages.some(page => page.id === requestedActiveId)
+            ? requestedActiveId
+            : pages.slice().sort((a, b) => getPageNumber(a) - getPageNumber(b))[0].id;
+
+          saveState();
+          initAnlageDropdowns();
+          renderWorkerPickers();
+          renderAll();
+          await uiAlert(
+            `${pages.length} Protokollseite(n) wurden erfolgreich importiert.
+
+Dr.-Schenk-Stift wird dabei dem Bereich „Betreutes Wohnen“ zugeordnet.`,
+            "Import erfolgreich"
+          );
+        } catch (err) {
+          console.error("Fehler beim Seiten-Import:", err);
+          await uiAlert("Fehler beim Seiten-Import: " + err.message);
+        }
+      };
+      reader.onerror = () => uiAlert("Die Importdatei konnte nicht gelesen werden.");
+      reader.readAsText(file);
+    }
+
+    function exportAnlagenJSON() {
+      const inp = document.getElementById("workerNameInput");
+      if (inp && inp.value && inp.value !== MANUAL_WORKER_VALUE) workerName = canonicalWorkerName(inp.value);
+      const workerNameStr = normalizeWorkerName(workerName || "ohne_bearbeiter");
+      const workerPart = workerNameStr.replace(/[^a-zA-Z0-9äöüÄÖÜß_-]+/g, "_").replace(/_+/g, "_").replace(/^_+|_+$/g, "");
+      const stamp = filenameTimestamp();
+      const anlagenObj = { anlagen: anlagenData, exportedAt: timestampString() };
+      const blob = new Blob([JSON.stringify(anlagenObj, null, 2)], { type: "application/json" });
+      const filename = `spuelprotokoll_anlagen_${stamp}_${workerPart}.json`;
+      saveWithPicker(filename, blob);
+    }
+
+
+    function importAnlagenJSONFile(file) {
+      const reader = new FileReader();
+      reader.onload = e => {
+        try {
+          const data = JSON.parse(e.target.result);
+          if (data.anlagen && typeof data.anlagen === "object") {
+            anlagenData = normalizeAnlagenStructure(data.anlagen);
+            migrateSchenkAreaInAnlagen();
+            saveAnlagen();
+            initAnlageDropdowns();
+            uiAlert("Anlagen-Import erfolgreich.");
+          } else {
+            uiAlert("Datei enthält keine gültigen Anlagendaten.");
+          }
+        } catch (err) {
+          uiAlert("Fehler beim Anlagen-Import: " + err.message);
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function openModal() {
+      document.getElementById("modalOverlay").style.display = "flex";
+    }
+
+    function closeModal() {
+      document.getElementById("modalOverlay").style.display = "none";
+    }
+
+    function initManageAnlagen() {
+      const btn = document.getElementById("manageAnlagenBtn");
+      const modalAction = document.getElementById("modalAction");
+      const modalAnlageSelect = document.getElementById("modalAnlageSelect");
+      const modalBereichSelect = document.getElementById("modalBereichSelect");
+      const modalBereichRow = document.getElementById("modalBereichRow");
+      const modalNewNameRow = document.getElementById("modalNewNameRow");
+      const modalNewName = document.getElementById("modalNewName");
+      const modalCancelBtn = document.getElementById("modalCancelBtn");
+      const modalConfirmBtn = document.getElementById("modalConfirmBtn");
+
+      function refreshModalAnlagen() {
+        modalAnlageSelect.innerHTML = "";
+        const anlagen = Object.keys(anlagenData);
+        anlagen.forEach(a => {
+          const opt = document.createElement("option");
+          opt.value = a;
+          opt.textContent = a;
+          modalAnlageSelect.appendChild(opt);
+        });
+        refreshModalBereiche();
+      }
+
+      function refreshModalBereiche() {
+        modalBereichSelect.innerHTML = "";
+        const selectedAnlage = modalAnlageSelect.value;
+        const bereiche = anlagenData[selectedAnlage] || [];
+        bereiche.forEach(b => {
+          const opt = document.createElement("option");
+          opt.value = b;
+          opt.textContent = b;
+          modalBereichSelect.appendChild(opt);
+        });
+      }
+
+      function updateModalVisibility() {
+        const action = modalAction.value;
+        if (action === "1") {
+          // Anlage löschen
+          modalBereichRow.style.display = "none";
+          modalNewNameRow.style.display = "none";
+        } else if (action === "2") {
+          // Anlage umbenennen
+          modalBereichRow.style.display = "none";
+          modalNewNameRow.style.display = "block";
+        } else if (action === "3") {
+          // Bereich löschen
+          modalBereichRow.style.display = "block";
+          modalNewNameRow.style.display = "none";
+        } else if (action === "4") {
+          // Bereich umbenennen
+          modalBereichRow.style.display = "block";
+          modalNewNameRow.style.display = "block";
+        } else if (action === "5") {
+          // Bereich hinzufügen
+          modalBereichRow.style.display = "none";
+          modalNewNameRow.style.display = "block";
+        }
+      }
+
+      btn.addEventListener("click", () => {
+        if (!Object.keys(anlagenData).length) {
+          uiAlert("Keine Anlagen vorhanden.");
+          return;
+        }
+        refreshModalAnlagen();
+        modalNewName.value = "";
+        modalAction.value = "1";
+        updateModalVisibility();
+        openModal();
+      });
+
+      modalAction.addEventListener("change", updateModalVisibility);
+      modalAnlageSelect.addEventListener("change", refreshModalBereiche);
+
+      modalCancelBtn.addEventListener("click", () => {
+        closeModal();
+      });
+
+      modalConfirmBtn.addEventListener("click", async () => {
+        const action = modalAction.value;
+        const selectedAnlage = modalAnlageSelect.value;
+        const bereiche = anlagenData[selectedAnlage] || [];
+        const selectedBereich = modalBereichSelect.value;
+        const newName = modalNewName.value.trim();
+
+        switch (action) {
+          case "1":
+            if (await uiConfirm(`Achtung!\n\nSoll die Anlage „${selectedAnlage}“ wirklich gelöscht werden?\n\nDies kann NICHT rückgängig gemacht werden.`)) {
+              delete anlagenData[selectedAnlage];
+              saveAnlagen();
+              initAnlageDropdowns();
+              closeModal();
+              uiAlert("Anlage wurde gelöscht.");
+            }
+            break;
+
+          case "2":
+            if (!newName) {
+              uiAlert("Bitte einen neuen Namen eingeben.");
+              return;
+            }
+            const cleanNewAnlage = cleanLocationLabel(newName);
+            if (sameLocationName(cleanNewAnlage, selectedAnlage)) {
+              uiAlert("Der neue Anlagenname ist identisch mit dem bisherigen Namen.");
+              return;
+            }
+            const duplicateAnlage = Object.keys(anlagenData).find(name =>
+              name !== selectedAnlage && sameLocationName(name, cleanNewAnlage)
+            );
+            if (duplicateAnlage) {
+              uiAlert(`Die Anlage „${duplicateAnlage}“ existiert bereits. Ein Objekt kann nicht doppelt angelegt werden.`);
+              return;
+            }
+            anlagenData[cleanNewAnlage] = anlagenData[selectedAnlage];
+            delete anlagenData[selectedAnlage];
+            pages.forEach(page => {
+              if (sameLocationName(page.anlage, selectedAnlage)) page.anlage = cleanNewAnlage;
+            });
+            saveAnlagen();
+            saveState();
+            initAnlageDropdowns();
+            closeModal();
+            uiAlert("Anlage wurde umbenannt; vorhandene Protokolle wurden mitgenommen.");
+            break;
+
+          case "3":
+            if (!bereiche.length) {
+              uiAlert("Diese Anlage hat keine Bereiche.");
+              return;
+            }
+            if (!selectedBereich) {
+              uiAlert("Bitte einen Bereich auswählen.");
+              return;
+            }
+            const linkedBereichPages = findPagesForLocation(selectedAnlage, selectedBereich);
+            if (linkedBereichPages.length) {
+              uiAlert(`Der Bereich „${selectedBereich}“ ist mit ${linkedBereichPages.length} Protokollseite(n) verknüpft und kann deshalb nicht gelöscht werden. Bitte den Bereich bei Bedarf umbenennen; die vorhandenen Daten werden dabei automatisch mitgenommen.`);
+              return;
+            }
+            if (await uiConfirm(`Bereich „${selectedBereich}“ wirklich löschen?`, "Bestätigen")) {
+              const idx = bereiche.indexOf(selectedBereich);
+              if (idx >= 0) {
+                bereiche.splice(idx, 1);
+                anlagenData[selectedAnlage] = bereiche;
+                saveAnlagen();
+                initAnlageDropdowns();
+                refreshModalBereiche();
+                closeModal();
+                uiAlert("Bereich gelöscht.");
+              }
+            }
+            break;
+
+                    case "5":
+            if (!newName) {
+              uiAlert("Bitte einen Bereich-Namen eingeben.");
+              return;
+            }
+            if (!anlagenData[selectedAnlage]) anlagenData[selectedAnlage] = [];
+            const cleanNewBereich = cleanLocationLabel(newName);
+            const existingBereich = anlagenData[selectedAnlage].find(name => sameLocationName(name, cleanNewBereich));
+            if (existingBereich) {
+              uiAlert(`Der Bereich „${existingBereich}“ existiert bereits. Ein Standort kann nicht doppelt angelegt werden.`);
+              return;
+            }
+            anlagenData[selectedAnlage].push(cleanNewBereich);
+            saveAnlagen();
+            initAnlageDropdowns();
+            try{
+              const as = document.getElementById("anlageSelect");
+              const bs = document.getElementById("bereichSelect");
+              as.value = selectedAnlage;
+              as.dispatchEvent(new Event("change"));
+              bs.value = cleanNewBereich;
+            }catch(e){}
+            closeModal();
+            uiAlert("Bereich wurde hinzugefügt.");
+            break;
+
+case "4":
+            if (!bereiche.length) {
+              uiAlert("Diese Anlage hat keine Bereiche.");
+              return;
+            }
+            if (!selectedBereich) {
+              uiAlert("Bitte einen Bereich auswählen.");
+              return;
+            }
+            if (!newName) {
+              uiAlert("Bitte einen neuen Namen eingeben.");
+              return;
+            }
+            const cleanRenamedBereich = cleanLocationLabel(newName);
+            if (sameLocationName(cleanRenamedBereich, selectedBereich)) {
+              uiAlert("Der neue Bereichsname ist identisch mit dem bisherigen Namen.");
+              return;
+            }
+            const duplicateBereich = bereiche.find(name =>
+              name !== selectedBereich && sameLocationName(name, cleanRenamedBereich)
+            );
+            if (duplicateBereich) {
+              uiAlert(`Der Bereich „${duplicateBereich}“ existiert bereits. Ein Standort kann nicht doppelt angelegt werden.`);
+              return;
+            }
+            const idx2 = bereiche.indexOf(selectedBereich);
+            if (idx2 >= 0) {
+              bereiche[idx2] = cleanRenamedBereich;
+              anlagenData[selectedAnlage] = dedupeNames(bereiche);
+              pages.forEach(page => {
+                if (sameLocationName(page.anlage, selectedAnlage) && sameLocationName(page.bereich, selectedBereich)) {
+                  page.bereich = cleanRenamedBereich;
+                }
+              });
+              saveAnlagen();
+              saveState();
+              initAnlageDropdowns();
+              refreshModalBereiche();
+              closeModal();
+              uiAlert("Bereich umbenannt; vorhandene Protokolle wurden mitgenommen.");
+            }
+            break;
+        }
+      });
+
+      document.getElementById("modalOverlay").addEventListener("click", (e) => {
+        if (e.target.id === "modalOverlay") {
+          closeModal();
+        }
+      });
+    }
+
+    function performSearch() {
+      const term = document.getElementById("searchInput").value.trim().toLowerCase();
+      let resultsDiv = document.getElementById("searchResults");
+      if (!resultsDiv){
+        // Safety: create container if missing
+        const searchCard = document.querySelector('.card-title')?.textContent?.trim() === "Suche"
+          ? document.querySelector('.card-title')?.parentElement
+          : null;
+        resultsDiv = document.createElement("div");
+        resultsDiv.id = "searchResults";
+        resultsDiv.className = "search-results";
+        (searchCard || document.body).appendChild(resultsDiv);
+      }
+      searchHighlightPageId = null;
+      searchHighlightRowIndex = null;
+
+      if (!term) {
+        resultsDiv.textContent = "Bitte Suchbegriff eingeben (z. B. Haus-/Wohnungsnummer).";
+        renderAll();
+        return;
+      }
+
+      const results = [];
+      pages.forEach((p, pIndex) => {
+        (p.rows || []).forEach(row => {
+          if (!row || !row.unit) return;
+          if (String(row.unit).toLowerCase().includes(term)) {
+            results.push({ page: p, pageIndex: pIndex, pageNumber: getPageNumber(p), row });
+          }
+        });
+      });
+
+      if (!results.length) {
+        resultsDiv.textContent = `Keine Einträge gefunden für "${term}".`;
+        renderAll();
+        return;
+      }
+
+      const maxShown = 50;
+      let html = `Gefundene Einträge (${results.length}):<br>`;
+      results.slice(0, maxShown).forEach((r) => {
+        const pNum = r.pageNumber || (r.pageIndex + 1);
+        const label = `${pNum}: ${r.page.anlage} – ${r.page.bereich}, ${r.row.floor || ""} ${r.row.unit || ""} (Datum: ${r.row.date || "-"})`;
+        html += `<div class="search-results-item"><a href="#" class="search-link" data-page-id="${r.page.id}" data-row-index="${r.row.index}">${label}</a></div>`;
+      });
+      if (results.length > maxShown) {
+        html += `<div class="search-results-item">… weitere ${results.length - maxShown} Treffer nicht angezeigt.</div>`;
+      }
+      resultsDiv.innerHTML = html;
+
+      resultsDiv.querySelectorAll(".search-link").forEach(a => {
+        a.addEventListener("click", (ev) => {
+          ev.preventDefault();
+          const pid = a.getAttribute("data-page-id");
+          const rIndex = parseInt(a.getAttribute("data-row-index"), 10);
+          searchHighlightPageId = pid;
+          searchHighlightRowIndex = rIndex;
+          activePageId = pid;
+          saveState();
+          renderAll();
+        });
+      });
+    }
+
+    function clearSearch() {
+      document.getElementById("searchInput").value = "";
+      document.getElementById("searchResults").textContent = "";
+      searchHighlightPageId = null;
+      searchHighlightRowIndex = null;
+      renderAll();
+    }
+
+    function initEvents() {
+
+      document.getElementById("locationSwitchBtn").addEventListener("click", () => {
+        openStandortWechsel();
+      });
+
+      document.getElementById("newPageBtn").addEventListener("click", async () => {
+        const anlage = document.getElementById("anlageSelect").value;
+        const bereich = document.getElementById("bereichSelect").value;
+        await routeToLocation(anlage, bereich);
+      });
+
+      document.getElementById("deletePageBtn").addEventListener("click", () => {
+        deleteActivePage();
+      });
+
+      // Export / Import (Download)
+      document.getElementById("exportPagesBtn").addEventListener("click", exportPagesJSON);
+
+      const pagesImportInput = document.getElementById("pagesImportInput");
+      document.getElementById("importPagesBtn").addEventListener("click", () => {
+        pagesImportInput.click();
+      });
+      const quickImportPagesBtn = document.getElementById("quickImportPagesBtn");
+      if (quickImportPagesBtn) {
+        quickImportPagesBtn.addEventListener("click", () => pagesImportInput.click());
+      }
+      pagesImportInput.addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          importPagesJSONFile(file);
+        }
+        pagesImportInput.value = "";
+      });
+
+      document.getElementById("exportAnlagenBtn").addEventListener("click", exportAnlagenJSON);
+
+      const anlagenImportInput = document.getElementById("anlagenImportInput");
+      document.getElementById("importAnlagenBtn").addEventListener("click", () => {
+        anlagenImportInput.click();
+      });
+      anlagenImportInput.addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          importAnlagenJSONFile(file);
+        }
+        anlagenImportInput.value = "";
+      });
+
+      // Share (Google Drive via Share Sheet)
+
+      document.getElementById("addAnlageBtn").addEventListener("click", async () => {
+        // Choose: new Anlage OR new Bereich within existing Anlage
+        const choice = await new Promise((resolve) => {
+          _dialog.open({
+            title: "Hinzufügen",
+            message: "Was möchtest du hinzufügen?",
+            input: false,
+            buttons: [
+              { label: "Abbrechen", onClick: () => { _dialog.close(); resolve(null); } },
+              { label: "Neuer Bereich", onClick: () => { _dialog.close(); resolve("bereich"); } },
+              { label: "Neue Anlage", variant: "primary", onClick: () => { _dialog.close(); resolve("anlage"); } }
+            ],
+            outsideClose: false
+          });
+        });
+        if (!choice) return;
+
+        if (choice === "anlage") {
+          const name = await uiPrompt("Name der neuen Anlage:", "", "Neue Anlage");
+          if (name === null || !String(name).trim()) return;
+
+          const bereicheStr = await uiPrompt(
+            "Bereiche (durch Komma getrennt, z. B. \"Haus A, Haus B\").\nLeer lassen für einen Standardbereich.",
+            "",
+            "Bereiche"
+          );
+
+          let bereiche = [];
+          if (bereicheStr && String(bereicheStr).trim()) {
+            bereiche = String(bereicheStr).split(",").map(s => s.trim()).filter(Boolean);
+          } else {
+            bereiche = ["Allgemein"];
+          }
+
+          const cleanName = cleanLocationLabel(name);
+          const existingAnlage = Object.keys(anlagenData).find(item => sameLocationName(item, cleanName));
+          if (existingAnlage) {
+            await uiAlert(`Die Anlage „${existingAnlage}“ existiert bereits und kann nicht doppelt angelegt werden.`);
+            return;
+          }
+          bereiche = dedupeNames(bereiche);
+          anlagenData[cleanName] = bereiche;
+          saveAnlagen();
+          initAnlageDropdowns();
+
+          document.getElementById("anlageSelect").value = cleanName;
+          document.getElementById("anlageSelect").dispatchEvent(new Event("change"));
+          document.getElementById("bereichSelect").value = bereiche[0];
+          return;
+        }
+
+        // choice === "bereich"
+        const anlagen = Object.keys(anlagenData || {});
+        if (!anlagen.length) {
+          uiAlert("Es gibt noch keine Anlage. Bitte zuerst eine Anlage anlegen.");
+          return;
+        }
+
+        // quick picker using prompt-like input: user types/selects existing Anlage name
+        const selectedAnlage = await uiSelect(
+          "Zu welcher Anlage soll ein neuer Bereich hinzugefügt werden?",
+          anlagen,
+          anlagen[0],
+          "Neuer Bereich"
+        );
+        if (selectedAnlage === null || !String(selectedAnlage).trim()) return;
+
+        const anlageName = String(selectedAnlage).trim();
+        if (!anlagenData[anlageName]) {
+          uiAlert(`Die Anlage „${anlageName}“ wurde nicht gefunden.`);
+          return;
+        }
+
+        const newBereich = await uiPrompt("Name des neuen Bereichs:", "", "Neuer Bereich");
+        if (newBereich === null || !String(newBereich).trim()) return;
+
+        const bName = cleanLocationLabel(newBereich);
+        const existingBereich = anlagenData[anlageName].find(item => sameLocationName(item, bName));
+        if (existingBereich) {
+          await uiAlert(`Der Bereich „${existingBereich}“ existiert bereits und kann nicht doppelt angelegt werden.`);
+          return;
+        }
+
+        anlagenData[anlageName].push(bName);
+        saveAnlagen();
+        initAnlageDropdowns();
+
+        try{
+          const as = document.getElementById("anlageSelect");
+          const bs = document.getElementById("bereichSelect");
+          as.value = anlageName;
+          as.dispatchEvent(new Event("change"));
+          bs.value = bName;
+        }catch(e){}
+
+        uiAlert("Bereich wurde hinzugefügt.");
+      });document.getElementById("searchBtn").addEventListener("click", performSearch);
+      document.getElementById("clearSearchBtn").addEventListener("click", clearSearch);
+      document.getElementById("searchInput").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          performSearch();
+        }
+      });
+
+      initManageAnlagen();
+    }
+
+
+    const fabUp = document.getElementById("fabUp");
+    const fabNext = document.getElementById("fabNext");
+    const fabPage = document.getElementById("fabPage");
+
+    // Kurzbezeichnung für den Seiten-FAB wird nicht mehr benötigt (Symbol statt Text)
+
+    window.addEventListener("scroll", () => {
+      if (window.scrollY > 300) fabUp.classList.add("visible");
+      else fabUp.classList.remove("visible");
+
+      // fabNext nur zeigen wenn man nach oben gescrollt hat (mind. 200px vom Ende entfernt)
+      const nearBottom = (window.innerHeight + window.scrollY) >= (document.body.scrollHeight - 200);
+      if (window.scrollY > 200 && !nearBottom) fabNext.classList.add("visible");
+      else fabNext.classList.remove("visible");
+
+      // fabPage: ab 200px scrollen sichtbar, immer (solange nach unten gescrollt)
+      if (window.innerWidth <= 800 && window.scrollY > 200) fabPage.classList.add("visible");
+      else fabPage.classList.remove("visible");
+    });
+
+    fabUp.addEventListener("click", () => window.scrollTo({top: 0, behavior: "smooth"}));
+
+    fabPage.addEventListener("click", () => {
+      // Zur Seitenauswahl (pageList) scrollen und aktiven Badge kurz aufleuchten lassen
+      const pageList = document.getElementById("pageList");
+      if (!pageList) return;
+      pageList.scrollIntoView({behavior: "smooth", block: "start"});
+      // aktiver Badge kurz highlighten
+      setTimeout(() => {
+        const activeBadge = pageList.querySelector(".page-badge.active, .dd-badge.active");
+        if (activeBadge) {
+          activeBadge.style.transition = "box-shadow 0.15s";
+          activeBadge.style.boxShadow = "0 0 0 4px rgba(76,175,80,0.55)";
+          setTimeout(() => { activeBadge.style.boxShadow = ""; }, 900);
+        }
+      }, 350);
+    });
+
+    fabNext.addEventListener("click", () => {
+      const firstFree = document.querySelector("[data-free-row='true']");
+      if (firstFree) {
+        firstFree.scrollIntoView({behavior: "smooth", block: "start"});
+      } else {
+        // Fallback: ans Ende scrollen
+        window.scrollTo({top: document.body.scrollHeight, behavior: "smooth"});
+      }
+    });
+
+    // Mobile Bearbeiter-Bar ein-/ausblenden; Auswahl wird zentral verwaltet.
+    function initMobileWorkerBar() {
+      const bar = document.getElementById("mobileWorkerBar");
+      if (!bar) return;
+      const updateVisibility = () => {
+        bar.style.display = window.innerWidth <= 800 ? "grid" : "none";
+      };
+      updateVisibility();
+      window.addEventListener("resize", updateVisibility);
+    }
+
+    // ===================================================================
+    //  App-Start (läuft erst NACH erfolgreicher Anmeldung)
+    // ===================================================================
+    let appStarted = false;
+
+    function applyIdentityToWorker() {
+      // Angemeldeter Nutzer = Bearbeiter ("wer arbeitet hier")
+      const name = (currentProfile && currentProfile.display_name || "").trim();
+      if (!name) return;
+      workerName = canonicalWorkerName(name);
+      saveWorkerName();
+    }
+
+    function startApp() {
+      if (appStarted) return;
+      appStarted = true;
+      loadAnlagen();
+      loadWorkerName();
+      applyIdentityToWorker();           // Identität aus Supabase überschreibt lokalen Namen
+      const loaded = loadState();
+      loadWorkerList();
+      if (currentProfile && currentProfile.display_name) {
+        addWorkerToList(currentProfile.display_name);
+      }
+      initMobileWorkerBar();
+      initAnlageDropdowns();
+      initEvents();
+      initWorkerPickers();
+      if (!loaded || !pages.length) {
+        renderAll();
+      } else {
+        if (!getActivePage()) activePageId = pages[0].id;
+        renderAll();
+      }
+    }
+
+    // ===================================================================
+    //  Auth: Login / Logout / Session
+    // ===================================================================
+    function showLoginError(msg) {
+      const el = document.getElementById("loginError");
+      if (!el) return;
+      el.textContent = msg;
+      el.classList.add("show");
+    }
+    function clearLoginError() {
+      const el = document.getElementById("loginError");
+      if (el) { el.textContent = ""; el.classList.remove("show"); }
+    }
+    function setLoginStatus(msg) {
+      const el = document.getElementById("loginStatus");
+      if (el) el.textContent = msg || "";
+    }
+
+    async function loadCurrentProfile() {
+      // Anzeigename kommt aus den Login-Metadaten (kein profiles-Table nötig).
+      if (!currentUser) { currentProfile = null; return; }
+      const meta = currentUser.user_metadata || {};
+      const name = (meta.display_name || meta.full_name || "").trim()
+        || (currentUser.email || "").split("@")[0];
+      currentProfile = { id: currentUser.id, email: currentUser.email, display_name: name };
+    }
+
+    function updateAccountBar() {
+      const bar = document.getElementById("accountBar");
+      const nameEl = document.getElementById("accountName");
+      const name = (currentProfile && currentProfile.display_name)
+        || (currentUser && currentUser.email) || "";
+      if (nameEl) nameEl.textContent = name || "–";
+      if (bar) bar.style.display = name ? "flex" : "none";
+    }
+
+    async function enterApp() {
+      await loadCurrentProfile();
+      updateAccountBar();
+      const ov = document.getElementById("loginOverlay");
+      if (ov) ov.style.display = "none";
+      startApp();
+    }
+
+    async function handleLogin() {
+      if (!db) { showLoginError("Datenbank-Bibliothek nicht geladen (Internet/CDN prüfen)."); return; }
+      const btn = document.getElementById("loginBtn");
+      const email = (document.getElementById("loginEmail").value || "").trim();
+      const password = document.getElementById("loginPassword").value || "";
+      clearLoginError();
+      if (!email || !password) { showLoginError("Bitte E-Mail und Passwort eingeben."); return; }
+      if (btn) { btn.disabled = true; btn.textContent = "Anmelden…"; }
+      try {
+        const { data, error } = await db.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        currentUser = data.user;
+        await enterApp();
+      } catch (e) {
+        const msg = (e && e.message ? e.message : "").toLowerCase();
+        if (msg.includes("invalid login")) showLoginError("E-Mail oder Passwort falsch.");
+        else if (msg.includes("email not confirmed")) showLoginError("E-Mail noch nicht bestätigt – Nutzer im Supabase-Dashboard bestätigen (oder E-Mail-Bestätigung deaktivieren).");
+        else showLoginError("Anmeldung fehlgeschlagen: " + (e && e.message ? e.message : "unbekannter Fehler"));
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = "Anmelden"; }
+      }
+    }
+
+    async function handleLogout() {
+      try { if (db) await db.auth.signOut(); } catch (e) {}
+      location.reload();   // sauberster Reset des UI-Zustands
+    }
+
+    async function initAuth() {
+      const btn = document.getElementById("loginBtn");
+      if (btn) btn.addEventListener("click", handleLogin);
+      const pw = document.getElementById("loginPassword");
+      if (pw) pw.addEventListener("keydown", e => { if (e.key === "Enter") handleLogin(); });
+      const em = document.getElementById("loginEmail");
+      if (em) em.addEventListener("keydown", e => { if (e.key === "Enter") document.getElementById("loginPassword").focus(); });
+      const out = document.getElementById("logoutBtn");
+      if (out) out.addEventListener("click", handleLogout);
+
+      if (!db) {
+        setLoginStatus("");
+        showLoginError("Datenbank-Bibliothek nicht geladen (Internet/CDN prüfen).");
+        return;
+      }
+
+      // Bestehende Session? (persistSession = eingeloggt bleiben)
+      try {
+        const { data } = await db.auth.getSession();
+        if (data && data.session && data.session.user) {
+          currentUser = data.session.user;
+          await enterApp();
+          return;
+        }
+      } catch (e) {
+        console.warn("Session-Check fehlgeschlagen:", e);
+      }
+
+      setLoginStatus("");
+      if (em) em.focus();
+    }
+
+    window.addEventListener("DOMContentLoaded", () => { initAuth(); });
+  </script>
+
+  <div id="dialogOverlay" class="dialog-overlay" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="dialog" aria-labelledby="dialogTitle">
+      <div class="dialog-header">
+        <h3 class="dialog-title" id="dialogTitle">Hinweis</h3>
+      </div>
+      <div class="dialog-body" id="dialogMessage"></div>
+      <div class="dialog-input-wrap" id="dialogInputWrap" style="display:none;">
+        <input class="dialog-input" id="dialogInput" type="text" autocomplete="off">
+        <select class="dialog-input" id="dialogSelect" style="display:none;"></select>
+      </div>
+      <div class="dialog-actions" id="dialogActions"></div>
+    </div>
+  </div>
+
+</body>
+</html>
