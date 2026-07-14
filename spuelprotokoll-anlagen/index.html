@@ -1246,6 +1246,7 @@
           <div class="hint" style="margin-top:0;">Nur für dich sichtbar. Diese Aktionen betreffen die Live-Datenbank und können nicht rückgängig gemacht werden.</div>
           <div class="btn-row">
             <button id="adminWipeBtn" class="btn danger">Alle Live-Daten löschen</button>
+            <button id="adminPurgeBtn" class="btn danger">Soft-Gelöschte endgültig entfernen</button>
             <button id="adminReloadBtn" class="btn">Neu aus DB laden</button>
           </div>
         </div>
@@ -1268,7 +1269,7 @@
   <div id="tableContainer"></div>
 
   <div class="footer">
-    Anmeldung aktiv · Live-Sync mit Supabase · Version 3.0.1</div>
+    Anmeldung aktiv · Live-Sync + Realtime · Version 3.0.2</div>
 
   <!-- Modal für Anlagenverwaltung -->
   <div id="modalOverlay" class="modal-overlay">
@@ -1404,29 +1405,41 @@
 
     function mergePageRows(localPage, remotePage) {
       // Zeilen aus local + remote zusammenführen. Duplikat = gleicher rowKey.
-      // Wenn beide vorhanden: neueste lastEditedAt (bzw. flushedAt) gewinnt.
+      // Konfliktregel (auch für Löschungen): neueste Änderung gewinnt.
+      // Ein gelöschter Datensatz mit späterem deletedAt schlägt eine ältere Neueingabe -
+      // dadurch synct das Löschen sauber über Geräte.
       const byKey = new Map();
       const addRow = (r) => {
-        if (!r || !rowHasMeaningfulData(r)) return;
+        if (!r) return;
+        if (!rowIsSyncable(r)) return;
         const k = rowKey(r);
         if (!k || k === "|||") return;
         const existing = byKey.get(k);
         if (!existing) { byKey.set(k, r); return; }
-        const t = (x) => new Date(x?.lastEditedAt || x?.flushedAt || 0).getTime();
+        const t = (x) => new Date(
+          x?.deletedAt || x?.lastEditedAt || x?.flushedAt || 0
+        ).getTime();
         if (t(r) >= t(existing)) byKey.set(k, r);
       };
       (localPage.rows || []).forEach(addRow);
       (remotePage.rows || []).forEach(addRow);
-      // Zurück in ein sortiertes Array (nach Datum+Uhrzeit).
-      const merged = Array.from(byKey.values()).sort((a, b) => {
-        const ka = (a.date || "") + " " + (a.time || "");
-        const kb = (b.date || "") + " " + (b.time || "");
-        return ka.localeCompare(kb);
-      });
-      // Neu durchnummerieren und auf 25 auffüllen.
-      merged.forEach((r, i) => r.index = i + 1);
-      const out = ensurePageRows(merged);
-      return out;
+      // Zurück in ein Array, gelöschte hinten drangehängt (als Tombstones)
+      // und sichtbare vorne nach Datum+Uhrzeit sortiert.
+      const all = Array.from(byKey.values());
+      const visible = all
+        .filter(r => !r.deletedAt)
+        .sort((a, b) => {
+          const ka = (a.date || "") + " " + (a.time || "");
+          const kb = (b.date || "") + " " + (b.time || "");
+          return ka.localeCompare(kb);
+        });
+      const tombstones = all.filter(r => r.deletedAt);
+      // Sichtbare Zeilen neu durchnummerieren.
+      visible.forEach((r, i) => r.index = i + 1);
+      // Auf 25 auffüllen (visible zählt; Tombstones separat halten).
+      const filled = ensurePageRows(visible);
+      // Tombstones werden mitgeführt, damit die Info beim Sync erhalten bleibt.
+      return filled.concat(tombstones);
     }
 
     function mergeRemotePageIntoLocal(remotePage) {
@@ -1439,7 +1452,7 @@
         );
       }
       if (!local) {
-        // Komplett neu übernehmen.
+        // Komplett neu übernehmen (auch wenn remote deleted: Tombstone wandert mit).
         const usedIds = new Set(pages.map(p => p.id));
         const rp = {
           ...remotePage,
@@ -1454,6 +1467,17 @@
       if (!local.anlage && remotePage.anlage) local.anlage = remotePage.anlage;
       if (!local.bereich && remotePage.bereich) local.bereich = remotePage.bereich;
       if (!local.performedBy && remotePage.performedBy) local.performedBy = remotePage.performedBy;
+      // Seiten-Löschung: wenn remote gelöscht wurde und die Markierung neuer ist,
+      // lokale Seite ebenfalls als gelöscht setzen. Umgekehrt lokale Löschung stehen lassen.
+      if (remotePage.deletedAt) {
+        const rt = new Date(remotePage.deletedAt).getTime();
+        const lt = new Date(local.deletedAt || 0).getTime();
+        if (rt > lt) {
+          local.deletedAt = remotePage.deletedAt;
+          local.deletedBy = remotePage.deletedBy || local.deletedBy;
+          local.deletedById = remotePage.deletedById || local.deletedById;
+        }
+      }
       return { pageId: local.id, added: false };
     }
 
@@ -1524,6 +1548,69 @@
       }
     }
 
+    function reconcileActivePageAfterSync() {
+      const active = pages.find(p => p.id === activePageId);
+      if (!active || isPageDeleted(active)) {
+        const fallback = pages
+          .filter(p => !isPageDeleted(p))
+          .slice()
+          .sort((a, b) => getPageNumber(a) - getPageNumber(b))[0] || null;
+        activePageId = fallback ? fallback.id : null;
+      }
+    }
+
+    // ===================================================================
+    //  REALTIME (Supabase Postgres Changes)
+    // ===================================================================
+    let realtimeChannel = null;
+    let realtimePendingTimer = null;
+
+    function scheduleRealtimeApply(pageIdHint) {
+      // Wir sammeln Events kurz und ziehen dann alle Seiten frisch.
+      // Vorteil: kein delta-Fiddling, immer konsistent.
+      if (realtimePendingTimer) clearTimeout(realtimePendingTimer);
+      realtimePendingTimer = setTimeout(async () => {
+        realtimePendingTimer = null;
+        setSyncStatus("syncing");
+        const res = await pullAllPagesFromCloud();
+        if (!res.ok) { setSyncStatus("error"); return; }
+        reconcileActivePageAfterSync();
+        SYNC.applyingRemote = true;
+        saveState();
+        SYNC.applyingRemote = false;
+        renderAll();
+        setSyncStatus("ok");
+      }, 400);
+    }
+
+    function startRealtime() {
+      if (!db || realtimeChannel) return;
+      try {
+        realtimeChannel = db
+          .channel("spuel-realtime")
+          .on(
+            "postgres_changes",
+            { event: "*", schema: "public", table: NOVA_TABLE },
+            (payload) => {
+              // Eigene, gerade eben hochgeschickte Änderungen ignorieren wir NICHT –
+              // sicherer, den frischen Stand zu ziehen. Kosten sind minimal.
+              const rec = payload.new || payload.old || {};
+              scheduleRealtimeApply(rec.id);
+            }
+          )
+          .subscribe();
+      } catch (e) {
+        console.warn("Realtime nicht verfügbar:", e);
+      }
+    }
+
+    function stopRealtime() {
+      if (realtimeChannel && db) {
+        try { db.removeChannel(realtimeChannel); } catch (e) {}
+      }
+      realtimeChannel = null;
+    }
+
     function setSyncStatus(s) {
       SYNC.lastStatus = s;
       const el = document.getElementById("syncStatus");
@@ -1575,6 +1662,7 @@
       if (res.ok) {
         ensureUniquePageNumbers();
         syncLocationsFromPages();
+        reconcileActivePageAfterSync();
         SYNC.applyingRemote = true;
         saveState();
         SYNC.applyingRemote = false;
@@ -1582,6 +1670,32 @@
         toast(`Neu geladen: ${res.addedPages} neue Seite(n), ${res.mergedRows} neue Zeile(n).`);
       } else {
         await uiAlert("Neuladen fehlgeschlagen: " + res.reason);
+      }
+    }
+
+    async function adminPurgeSoftDeleted() {
+      if (!isAdmin || !db) return;
+      const ok = await uiConfirm(
+        "Wirklich alle soft-gelöschten Seiten und Zeilen endgültig aus der DB entfernen?\n\nBetrifft nur Datensätze mit Löschmarkierung. Sichtbare Daten bleiben unberührt.",
+        "Tombstones endgültig löschen"
+      );
+      if (!ok) return;
+      setSyncStatus("syncing");
+      try {
+        // Nur die Zeilen, deren data->>'deletedAt' gesetzt ist.
+        const { error } = await db
+          .from(NOVA_TABLE)
+          .delete()
+          .eq("kind", "page")
+          .not("data->>deletedAt", "is", null);
+        if (error) throw error;
+        setSyncStatus("ok");
+        await uiAlert("Soft-gelöschte Seiten wurden endgültig entfernt.");
+        // Neu ziehen, um lokale Tombstones ebenfalls auszuräumen (Merge wirft Tombstones dann nicht mehr auf).
+        adminReloadFromCloud();
+      } catch (e) {
+        setSyncStatus("error");
+        await uiAlert("Fehler: " + (e.message || e));
       }
     }
 
@@ -1665,7 +1779,7 @@
     }
 
     function findPagesForLocation(anlage, bereich) {
-      return pages.filter(page => samePageLocation(page, anlage, bereich));
+      return pages.filter(page => samePageLocation(page, anlage, bereich) && !isPageDeleted(page));
     }
 
     function dedupeNames(values) {
@@ -2361,6 +2475,7 @@
 
     function rowHasMeaningfulData(row) {
       if (!row || typeof row !== "object") return false;
+      if (row.deletedAt) return false;   // v3.0.2: soft-gelöschte Zeilen zählen nicht
       const textFields = [
         "date", "time", "floor", "roomType", "unit", "kwTemp",
         "tempLocationOther", "wwKitchen", "wwBath", "issueType",
@@ -2375,6 +2490,11 @@
       const changedMode = normalizeTemperatureMode(row) !== "kitchenBath";
       const kwOnly = normalizeKwOnly(row);
       return hasText || hasFlag || changedMode || kwOnly;
+    }
+
+    // Für Sync/Merge: Zeile ist "syncrelevant", wenn sie entweder Inhalt hat ODER gelöscht ist.
+    function rowIsSyncable(row) {
+      return !!row && (rowHasMeaningfulData(row) || !!row.deletedAt);
     }
 
     function pageHasMeaningfulData(page) {
@@ -2481,13 +2601,21 @@
       if (!page) return;
       const index = getPageNumber(page);
       const ok = await uiConfirm(
-        `Achtung:\n\nSoll die Seite ${index} für\n${page.anlage} – ${page.bereich}\nwirklich gelöscht werden?\n\nDiese Aktion kann nicht rückgängig gemacht werden.`
+        `Achtung:\n\nSoll die Seite ${index} für\n${page.anlage} – ${page.bereich}\nwirklich gelöscht werden?\n\nDie Seite wird auf allen Geräten ausgeblendet. Sie bleibt in der Datenbank erhalten (Historie).`
       );
       if (!ok) return;
-      const sameLocationPages = findPagesForLocation(page.anlage, page.bereich).filter(p => p.id !== page.id);
-      pages = pages.filter(p => p.id !== page.id);
-      const fallback = sameLocationPages[0] || pages.slice().sort((a, b) => getPageNumber(a) - getPageNumber(b))[0] || null;
+      const sameLocationPages = findPagesForLocation(page.anlage, page.bereich).filter(p => p.id !== page.id && !isPageDeleted(p));
+      markPageDeleted(page);
+      // Beim nächsten Sync-Push wandert die Löschmarkierung in die DB.
+      const fallback = sameLocationPages[0]
+        || pages.filter(p => !isPageDeleted(p)).slice().sort((a, b) => getPageNumber(a) - getPageNumber(b))[0]
+        || null;
       activePageId = fallback ? fallback.id : null;
+      // Sync explizit anstoßen (saveState triggert nur die aktive Seite,
+      // wir haben aber gerade die alte "aktive" Seite gelöscht).
+      if (SYNC.enabled && !SYNC.applyingRemote) {
+        scheduleUploadForPage(page.id);
+      }
       saveState();
       renderAll();
     }
@@ -2634,8 +2762,8 @@
 
       const active = getActivePage();
 
-      // Sort pages by Anlage / Bereich / created
-      const sorted = [...pages].sort((a, b) => {
+      // Sort pages by Anlage / Bereich / created (gelöschte Seiten ausblenden)
+      const sorted = pages.filter(p => !isPageDeleted(p)).sort((a, b) => {
         const anA = a.anlage || "";
         const anB = b.anlage || "";
         if (anA !== anB) return anA.localeCompare(anB);
@@ -2821,7 +2949,9 @@
 
 
     function getActivePage() {
-      return pages.find(p => p.id === activePageId) || null;
+      const p = pages.find(p => p.id === activePageId) || null;
+      if (p && isPageDeleted(p)) return null;
+      return p;
     }
     // Wählt einen Standort und öffnet das passende vorhandene Protokoll.
     async function openStandortWechsel() {
@@ -3041,8 +3171,12 @@
     }
 
     function clearRowData(row){
-      // Keep row.index; wipe the editable fields
+      // v3.0.2: Soft-Delete. Zeile wird markiert, Inhalt geleert, index behalten.
       const keep = { index: row.index };
+      // Attribution für die Löschung
+      const nowIso = new Date().toISOString();
+      const uid = currentProfile ? currentProfile.id : null;
+      const uname = currentProfile ? currentProfile.display_name : "";
       Object.keys(row).forEach(k => delete row[k]);
       Object.assign(row, keep, {
         date: "",
@@ -3066,8 +3200,34 @@
         otherIssueText: "",
         aeratorChanged: false,
         aeratorChangedCount: "",
-        notes: ""
+        notes: "",
+        deletedAt: nowIso,
+        deletedBy: uname,
+        deletedById: uid
       });
+    }
+
+    function undeleteRow(row) {
+      if (!row) return;
+      delete row.deletedAt;
+      delete row.deletedBy;
+      delete row.deletedById;
+    }
+
+    function isRowDeleted(row) {
+      return !!(row && row.deletedAt);
+    }
+
+    function isPageDeleted(page) {
+      return !!(page && page.deletedAt);
+    }
+
+    function markPageDeleted(page) {
+      if (!page) return;
+      const nowIso = new Date().toISOString();
+      page.deletedAt = nowIso;
+      page.deletedBy = currentProfile ? currentProfile.display_name : "";
+      page.deletedById = currentProfile ? currentProfile.id : null;
     }
 
     function renderTable() {
@@ -3183,7 +3343,7 @@
             if (!ok) return;
             const snapshot = JSON.parse(JSON.stringify(row));
             clearRowData(row); saveState(); renderTable();
-            toast("Zeile geleert.", "Rückgängig", () => { Object.keys(row).forEach(k => delete row[k]); Object.assign(row, snapshot); saveState(); renderTable(); });
+            toast("Zeile geleert.", "Rückgängig", () => { Object.keys(row).forEach(k => delete row[k]); Object.assign(row, snapshot); undeleteRow(row); saveState(); renderTable(); });
           });
           head.appendChild(no); head.appendChild(when); head.appendChild(delBtn);
 
@@ -3539,6 +3699,7 @@ ${label}
   toast("Zeile geleert.", "Rückgängig", () => {
     Object.keys(row).forEach(k => delete row[k]);
     Object.assign(row, snapshot);
+    undeleteRow(row);
     saveState();
     renderTable();
   });
@@ -4631,6 +4792,8 @@ case "4":
       // Admin-Aktionen (nur sichtbar bei isAdmin, aber Handler dennoch registrieren)
       const wipeBtn = document.getElementById("adminWipeBtn");
       if (wipeBtn) wipeBtn.addEventListener("click", adminWipeAllLiveData);
+      const purgeBtn = document.getElementById("adminPurgeBtn");
+      if (purgeBtn) purgeBtn.addEventListener("click", adminPurgeSoftDeleted);
       const reloadBtn = document.getElementById("adminReloadBtn");
       if (reloadBtn) reloadBtn.addEventListener("click", adminReloadFromCloud);
 
@@ -4916,11 +5079,8 @@ case "4":
         ensureUniquePageNumbers();
         migrateSchenkAreaInPages();
         syncLocationsFromPages();
-        if (!getActivePage() && pages.length) activePageId = pages[0].id;
-        // Lokal speichern (ohne Cloud-Trigger – applyingRemote steht false, ist ok:
-        // wir wollen NICHT hochladen, was wir gerade runter geladen haben; deshalb
-        // scheduleUploadForPage-Aufruf in saveState() prüft SYNC.applyingRemote.
-        // Jetzt kurz auf true setzen für diesen einen Save.
+        reconcileActivePageAfterSync();
+        if (!getActivePage() && pages.length) activePageId = pages.find(p => !isPageDeleted(p))?.id || null;
         SYNC.applyingRemote = true;
         saveState();
         SYNC.applyingRemote = false;
@@ -4928,6 +5088,7 @@ case "4":
         if (res.addedPages || res.mergedRows) {
           toast(`Live-Daten geladen: ${res.addedPages} neue Seite(n), ${res.mergedRows} neue Zeile(n).`);
         }
+        startRealtime();
       } else {
         // Ohne DB weiterarbeiten – lokal geht alles wie bisher.
         SYNC.enabled = false;
@@ -4960,6 +5121,7 @@ case "4":
     }
 
     async function handleLogout() {
+      try { stopRealtime(); } catch (e) {}
       try { if (db) await db.auth.signOut(); } catch (e) {}
       location.reload();   // sauberster Reset des UI-Zustands
     }
