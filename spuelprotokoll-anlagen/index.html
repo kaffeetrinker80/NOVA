@@ -500,6 +500,17 @@
         bottom: 5mm;
         right: 10mm;
       }
+      th.workercol, td.workercol{
+        width: 52px;
+        min-width: 52px;
+      }
+      .row-attrib{
+        padding:0;
+        border:none;
+        background:transparent;
+        color:#111;
+        font-size:0.62rem;
+      }
     }
 
     .modal-overlay {
@@ -954,7 +965,7 @@
       tbody.mobile-worklist td::before{display:none !important;content:none !important}
       .mobile-row-card{background:#fff;border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);overflow:hidden;margin-bottom:2px}
       .mobile-row-head{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;padding:10px;background:linear-gradient(180deg,#1f2937,#111827);color:#fff}
-      .mobile-row-no{font-size:.9rem;font-weight:800;white-space:nowrap}
+      .mobile-row-no{display:grid;gap:3px;font-size:.9rem;font-weight:800;white-space:nowrap}
       .mobile-row-when{display:grid;grid-template-columns:1fr 1fr;gap:6px;min-width:0}
       .mobile-row-when input{width:100%;min-height:36px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.10);color:#fff;border-radius:10px;padding:7px 9px}
       .mobile-row-when input::-webkit-calendar-picker-indicator{filter:invert(1);opacity:.95}
@@ -1126,10 +1137,43 @@
       font-weight:800; font-size:0.85rem; color:#9a3412; margin-bottom:6px;
     }
     .admin-box .hint{ margin-top:2px; }
+    th.workercol, td.workercol{
+      width: 68px;
+      min-width: 68px;
+      text-align: center;
+    }
     .row-attrib{
-      display:inline-block; margin-left:6px; padding:1px 6px;
-      font-size:0.66rem; font-weight:700; color:#475569;
-      background:#e5e7eb; border-radius:999px; vertical-align:middle;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      max-width:100%;
+      padding:2px 6px;
+      font-size:0.68rem;
+      line-height:1.15;
+      font-weight:800;
+      color:#1e3a5f;
+      background:#dbeafe;
+      border:1px solid #bfdbfe;
+      border-radius:999px;
+      vertical-align:middle;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .row-attrib.empty{
+      color:#6b7280;
+      background:#f3f4f6;
+      border-color:#e5e7eb;
+      font-weight:700;
+    }
+    .row-attrib.mobile{
+      justify-self:start;
+      max-width:120px;
+      padding:2px 7px;
+      font-size:0.68rem;
+      color:#e0f2fe;
+      background:rgba(37,99,235,.28);
+      border-color:rgba(191,219,254,.35);
     }
 
 </style>
@@ -1163,7 +1207,7 @@
     <div class="header-title">Spülprotokoll – Kontrolle der Wassertemperaturen</div>
     <div class="header-sub">Objektbezogene Hygienespülungen</div>
     <div class="header-sub" id="headerContext">Anlage &amp; Bereich</div>
-    <div class="header-worker" id="headerWorker" style="display:none;"></div>
+    <div class="header-worker" id="headerWorker"></div>
     <div class="account-bar" id="accountBar" style="display:none;">
       <span class="account-chip">
         <span class="status-dot" title="Verbunden"></span>
@@ -1270,7 +1314,7 @@
   <div id="tableContainer"></div>
 
   <div class="footer">
-    Anmeldung aktiv · Cloud-Sync (Row-Level Live) · Version 3.0.6</div>
+    Anmeldung aktiv · Cloud-Sync (Row-Level Live) · Version 3.0.7</div>
 
   <!-- Modal für Anlagenverwaltung -->
   <div id="modalOverlay" class="modal-overlay">
@@ -1341,7 +1385,7 @@
     let isAdmin = false;
 
     // ===================================================================
-    //  CLOUD-SYNC (v3.0.6 – Row-Level Live + Polling-Fallback)
+    //  CLOUD-SYNC (v3.0.7 – Row-Level Live + Spülerzuordnung)
     //  - Beim Login: alle Zeilen ziehen und lokale Seiten rekonstruieren.
     //  - Beim Bearbeiten: ausschließlich tatsächlich geänderte Zeilen hochladen.
     //  - Realtime übernimmt fremde Zeilen sofort; 3-Sekunden-Polling dient als Fallback.
@@ -1416,9 +1460,68 @@
         bereich: page.bereich || null,
         page_number: getPageNumber(page) || null,
         data: rec,
+        // Zusätzlich als echte Spalten: im Supabase Table Editor sofort sichtbar
+        // und später ohne JSON-Ausdrücke auswertbar.
+        flushed_by: canonicalWorkerName(row.flushedBy || row.performedBy || page.performedBy) || null,
+        flushed_by_id: row.flushedById || null,
+        flushed_at: row.flushedAt || null,
+        last_edited_by: canonicalWorkerName(row.lastEditedBy) || null,
+        last_edited_by_id: row.lastEditedById || null,
+        last_edited_at: row.lastEditedAt || null,
         updated_by: currentProfile ? currentProfile.id : null,
         updated_by_name: currentProfile ? currentProfile.display_name : null
       };
+    }
+
+    function getCurrentFlusherIdentity() {
+      const profileName = canonicalWorkerName(currentProfile && currentProfile.display_name);
+      const selectedName = canonicalWorkerName(workerName);
+      return {
+        name: profileName || selectedName || "",
+        id: currentProfile ? currentProfile.id : null
+      };
+    }
+
+    // Setzt den ausführenden Spüler genau beim ersten Inhalt einer Zeile.
+    // Spätere Korrekturen durch andere Nutzer ändern nur lastEditedBy, nicht flushedBy.
+    function ensureRowFlusher(row) {
+      if (!row || typeof row !== "object") return "";
+      const identity = getCurrentFlusherIdentity();
+      if (!row.flushedBy && identity.name) {
+        row.flushedBy = identity.name;
+        row.flushedById = identity.id;
+        row.flushedAt = new Date().toISOString();
+      }
+      return canonicalWorkerName(row.flushedBy || row.performedBy);
+    }
+
+    function getRowFlusherName(row, page) {
+      return canonicalWorkerName(
+        row && (row.flushedBy || row.performedBy)
+        || page && page.performedBy
+        || ""
+      );
+    }
+
+    function getRowFlusherShortName(row, page) {
+      const name = getRowFlusherName(row, page);
+      if (!name) return "";
+      return name.split(/\s+/).filter(Boolean)[0] || name;
+    }
+
+    function getRowFlusherTitle(row, page) {
+      const name = getRowFlusherName(row, page);
+      if (!name) return "Spüler noch nicht zugeordnet";
+      const when = row && row.flushedAt
+        ? String(row.flushedAt).slice(0, 16).replace("T", " ")
+        : "";
+      const editor = canonicalWorkerName(row && row.lastEditedBy);
+      const edited = row && row.lastEditedAt
+        ? String(row.lastEditedAt).slice(0, 16).replace("T", " ")
+        : "";
+      let title = "Gespült von " + name + (when ? " · " + when : "");
+      if (editor && editor !== name) title += "\nZuletzt bearbeitet von " + editor + (edited ? " · " + edited : "");
+      return title;
     }
 
     function rowHasDataIgnoringDelete(row) {
@@ -2960,17 +3063,12 @@
         });
 
         const nowIso = new Date().toISOString();
-        const uid = currentProfile ? currentProfile.id : null;
-        const uname = currentProfile ? currentProfile.display_name : "";
+        const identity = getCurrentFlusherIdentity();
         changedRows.forEach(({ row }) => {
           if (rowHasMeaningfulData(row)) {
-            if (!row.flushedBy) {
-              row.flushedBy = uname;
-              row.flushedById = uid;
-              row.flushedAt = nowIso;
-            }
-            row.lastEditedBy = uname;
-            row.lastEditedById = uid;
+            ensureRowFlusher(row);
+            row.lastEditedBy = identity.name;
+            row.lastEditedById = identity.id;
             row.lastEditedAt = nowIso;
           }
         });
@@ -3431,14 +3529,14 @@
       const page = getActivePage();
       if (!page){
         el.textContent = "Anlage & Bereich";
-        if (workerEl) workerEl.textContent = normalizeWorkerName(workerName) ? `Bearbeiter: ${normalizeWorkerName(workerName)}` : "";
+        if (workerEl) workerEl.textContent = normalizeWorkerName(workerName) ? `Aktueller Spüler: ${normalizeWorkerName(workerName)}` : "";
         return;
       }
       const pageIndex = getPageNumber(page);
       el.textContent = `${page.anlage} · ${page.bereich} · Seite ${pageIndex}`;
       if (workerEl) {
         const name = getPageWorker(page);
-        workerEl.textContent = name ? `Bearbeiter: ${name}` : "";
+        workerEl.textContent = name ? `Aktueller Spüler: ${name}` : "";
       }
     }
 
@@ -3586,6 +3684,7 @@
       const headerRow = document.createElement("tr");
       const headers = [
         { text: "Nr.", cls: "small" },
+        { text: "Spüler", cls: "workercol" },
         { text: "Datum", cls: "date" },
         { text: "Uhrzeit", cls: "time" },
         { text: "Stockwerk" },
@@ -3621,7 +3720,10 @@
         let dateInput, timeInput, kwInput;
         let tdWWK, tdWWB, wwKInput, wwBInput;
 
+        let updateRowAttribution = () => {};
+
         function ensureDateTime() {
+          ensureRowFlusher(row);
           if (!row.date) {
             row.date = todayISO();
             if (dateInput) dateInput.value = row.date;
@@ -3636,6 +3738,7 @@
               kwInput.value = row.kwTemp;
             }
           }
+          updateRowAttribution();
         }
 
         if (page.id === searchHighlightPageId && row.index === searchHighlightRowIndex) {
@@ -3655,17 +3758,31 @@
           head.className = "mobile-row-head";
           const no = document.createElement("div");
           no.className = "mobile-row-no";
-          no.textContent = `Nr. ${row.index}`;
+          const noLabel = document.createElement("span");
+          noLabel.textContent = `Nr. ${row.index}`;
+          const mobileAttrib = document.createElement("span");
+          mobileAttrib.className = "row-attrib mobile";
+          no.appendChild(noLabel);
+          no.appendChild(mobileAttrib);
+          updateRowAttribution = () => {
+            const hasData = rowHasMeaningfulData(row);
+            const shortName = getRowFlusherShortName(row, page);
+            mobileAttrib.textContent = shortName || "nicht zugeordnet";
+            mobileAttrib.title = getRowFlusherTitle(row, page);
+            mobileAttrib.style.display = hasData ? "inline-flex" : "none";
+            mobileAttrib.classList.toggle("empty", !shortName);
+          };
+          updateRowAttribution();
           const when = document.createElement("div");
           when.className = "mobile-row-when";
           dateInput = document.createElement("input");
           dateInput.type = "date";
           dateInput.value = row.date || "";
-          dateInput.addEventListener("change", () => { row.date = dateInput.value; saveState(); });
+          dateInput.addEventListener("change", () => { ensureRowFlusher(row); row.date = dateInput.value; updateRowAttribution(); saveState(); });
           timeInput = document.createElement("input");
           timeInput.type = "time";
           timeInput.value = row.time || "";
-          timeInput.addEventListener("change", () => { row.time = timeInput.value; saveState(); });
+          timeInput.addEventListener("change", () => { ensureRowFlusher(row); row.time = timeInput.value; updateRowAttribution(); saveState(); });
           when.appendChild(dateInput); when.appendChild(timeInput);
           const delBtn = document.createElement("button");
           delBtn.type = "button"; delBtn.className = "mobile-del-btn"; delBtn.textContent = "×"; delBtn.title = "Zeile leeren";
@@ -4040,23 +4157,26 @@ ${label}
 
 idxWrap.appendChild(idxSpan);
 
-// Dezenter Bearbeiter-Hinweis nur bei fremden Zeilen mit Inhalt
-try {
-  const flushName = String(row?.flushedBy || "").trim();
-  const myName = currentProfile?.display_name || "";
-  if (flushName && flushName !== myName && rowHasMeaningfulData(row)) {
-    const initials = flushName.split(/\s+/).filter(Boolean)
-      .slice(0, 2).map(w => w.charAt(0).toLocaleUpperCase("de-DE")).join("");
-    const badge = document.createElement("span");
-    badge.className = "row-attrib";
-    badge.textContent = initials;
-    badge.title = "Gespült von " + flushName + (row.flushedAt ? " · " + row.flushedAt.slice(0,16).replace("T"," ") : "");
-    idxWrap.appendChild(badge);
-  }
-} catch(e){}
 idxWrap.appendChild(delBtn);
 tdIdx.appendChild(idxWrap);
 tr.appendChild(tdIdx);
+
+        const tdWorker = document.createElement("td");
+        tdWorker.classList.add("workercol");
+        tdWorker.dataset.label = "Spüler";
+        const workerBadge = document.createElement("span");
+        workerBadge.className = "row-attrib";
+        tdWorker.appendChild(workerBadge);
+        updateRowAttribution = () => {
+          const hasData = rowHasMeaningfulData(row);
+          const shortName = getRowFlusherShortName(row, page);
+          workerBadge.textContent = shortName || "–";
+          workerBadge.title = getRowFlusherTitle(row, page);
+          workerBadge.style.display = hasData ? "inline-flex" : "none";
+          workerBadge.classList.toggle("empty", !shortName);
+        };
+        updateRowAttribution();
+        tr.appendChild(tdWorker);
 
         const tdDate = document.createElement("td");
         tdDate.classList.add("date");
@@ -4065,7 +4185,9 @@ tr.appendChild(tdIdx);
         dateInput.type = "date";
         dateInput.value = row.date || "";
         dateInput.addEventListener("change", () => {
+          ensureRowFlusher(row);
           row.date = dateInput.value;
+          updateRowAttribution();
           saveState();
         });
         tdDate.appendChild(dateInput);
@@ -4078,7 +4200,9 @@ tr.appendChild(tdIdx);
         timeInput.type = "time";
         timeInput.value = row.time || "";
         timeInput.addEventListener("change", () => {
+          ensureRowFlusher(row);
           row.time = timeInput.value;
+          updateRowAttribution();
           saveState();
         });
         tdTime.appendChild(timeInput);
@@ -4594,11 +4718,19 @@ function renderAll() {
       const workerNameStr = normalizeWorkerName(workerName || "ohne_bearbeiter");
       const workerPart = workerNameStr.replace(/[^a-zA-Z0-9äöüÄÖÜß_-]+/g, "_").replace(/_+/g, "_").replace(/^_+|_+$/g, "");
       const stamp = filenameTimestamp();
+      const flusherSummary = {};
+      pages.forEach(page => (page.rows || []).forEach(row => {
+        if (!rowHasMeaningfulData(row)) return;
+        const name = getRowFlusherName(row, page) || "Nicht zugeordnet";
+        flusherSummary[name] = (flusherSummary[name] || 0) + 1;
+      }));
       const pagesObj = {
-        pages: pages.map(p => ({ ...p, performedBy: workerNameStr })),
+        pages: pages.map(p => ({ ...p })),
         activePageId,
         exportedAt: timestampString(),
         defaultPerformedBy: workerNameStr,
+        rowAttribution: "flushedBy",
+        flusherSummary,
         workerList: [...workerList]
       };
       const blob = new Blob([JSON.stringify(pagesObj, null, 2)], { type: "application/json" });
@@ -5393,7 +5525,7 @@ case "4":
     let appStarted = false;
 
     function applyIdentityToWorker() {
-      // Angemeldeter Nutzer = Bearbeiter ("wer arbeitet hier")
+      // Angemeldeter Nutzer = aktueller Spüler; neue Zeilen werden ihm eindeutig zugeordnet
       const name = (currentProfile && currentProfile.display_name || "").trim();
       if (!name) return;
       workerName = canonicalWorkerName(name);
