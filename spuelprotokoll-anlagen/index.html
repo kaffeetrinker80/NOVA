@@ -1245,6 +1245,7 @@
           <div class="admin-title">🛡 Super-Admin</div>
           <div class="hint" style="margin-top:0;">Nur für dich sichtbar. Diese Aktionen betreffen die Live-Datenbank und können nicht rückgängig gemacht werden.</div>
           <div class="btn-row">
+            <button id="adminPauseBtn" class="btn">⏸ Sync pausieren</button>
             <button id="adminWipeBtn" class="btn danger">Alle Live-Daten löschen</button>
             <button id="adminPurgeBtn" class="btn danger">Soft-Gelöschte endgültig entfernen</button>
             <button id="adminLocalWipeBtn" class="btn danger">Auch lokal leeren (Neustart)</button>
@@ -1270,7 +1271,7 @@
   <div id="tableContainer"></div>
 
   <div class="footer">
-    Anmeldung aktiv · Live-Sync + Realtime · Version 3.0.3</div>
+    Anmeldung aktiv · Live-Sync + Realtime · Version 3.0.4</div>
 
   <!-- Modal für Anlagenverwaltung -->
   <div id="modalOverlay" class="modal-overlay">
@@ -1352,8 +1353,9 @@
       pullDone: false,
       dirtyPageIds: new Set(),
       timer: null,
-      lastStatus: "",       // "ok" | "syncing" | "error" | "offline"
-      applyingRemote: false // während wir remote-Daten einspielen: kein Upload triggern
+      lastStatus: "",       // "ok" | "syncing" | "error" | "offline" | "paused"
+      applyingRemote: false,// während wir remote-Daten einspielen: kein Upload triggern
+      paused: false         // v3.0.4: Admin-Kill-Switch, blockiert Upload
     };
 
     function rowKey(row) {
@@ -1582,6 +1584,11 @@
     async function flushUploads() {
       SYNC.timer = null;
       if (!db || !SYNC.enabled) return;
+      if (SYNC.paused) {
+        // Dirty-Ids liegen lassen; nächster Trigger versucht's nach dem Unpause.
+        setSyncStatus("paused");
+        return;
+      }
       const ids = Array.from(SYNC.dirtyPageIds);
       SYNC.dirtyPageIds.clear();
       if (!ids.length) return;
@@ -1696,7 +1703,8 @@
         ok:      { txt: "● Synchron", cls: "sync-ok" },
         syncing: { txt: "● Sync…",   cls: "sync-busy" },
         error:   { txt: "● Sync-Fehler", cls: "sync-err" },
-        offline: { txt: "● Offline",  cls: "sync-err" }
+        offline: { txt: "● Offline",  cls: "sync-err" },
+        paused:  { txt: "⏸ Sync pausiert", cls: "sync-busy" }
       };
       const info = map[s] || { txt: "", cls: "" };
       el.textContent = info.txt;
@@ -1747,6 +1755,22 @@
         toast(`Neu geladen: ${res.addedPages} neue Seite(n), ${res.mergedRows} neue Zeile(n).`);
       } else {
         await uiAlert("Neuladen fehlgeschlagen: " + res.reason);
+      }
+    }
+
+    function adminTogglePause() {
+      if (!isAdmin) return;
+      SYNC.paused = !SYNC.paused;
+      const btn = document.getElementById("adminPauseBtn");
+      if (btn) btn.textContent = SYNC.paused ? "▶ Sync fortsetzen" : "⏸ Sync pausieren";
+      if (SYNC.paused) {
+        setSyncStatus("paused");
+        toast("Sync pausiert. Änderungen bleiben lokal und werden erst nach Fortsetzen hochgeladen.");
+      } else {
+        // Nachholen, falls Dirty-Ids gestapelt haben.
+        if (SYNC.dirtyPageIds.size) flushUploads();
+        else setSyncStatus("ok");
+        toast("Sync fortgesetzt.");
       }
     }
 
@@ -1834,11 +1858,25 @@
       ]
     };
 
-    const STORAGE_KEY = "spuelprotokoll_pages_v4_clean";
-    // Vorhandene Protokolle werden einmalig kontrolliert per JSON importiert.
-    const ANLAGEN_KEY = "spuelprotokoll_anlagen_v2";
-    const WORKER_NAME_KEY = "spuelprotokoll_worker_name_v1";
-    const WORKER_LIST_KEY = "spuelprotokoll_worker_list_v1";
+    const STORAGE_KEY = "spuelprotokoll_pages_v5_reset";
+    // Anlagen-/Bearbeiter-Struktur wird beim ersten Start neu aus der Cloud gezogen.
+    const ANLAGEN_KEY = "spuelprotokoll_anlagen_v3_reset";
+    const WORKER_NAME_KEY = "spuelprotokoll_worker_name_v2_reset";
+    const WORKER_LIST_KEY = "spuelprotokoll_worker_list_v2_reset";
+    // Legacy-Keys von v3.0.3 und früher – werden beim ersten Start dieses Geräts
+    // einmalig weggeräumt, damit alte Cache-Stände nicht in die Cloud lecken.
+    const LEGACY_STORAGE_KEYS = [
+      "spuelprotokoll_pages_v4_clean",
+      "spuelprotokoll_pages_v4",
+      "spuelprotokoll_pages_v3",
+      "spuelprotokoll_pages_v2",
+      "spuelprotokoll_pages",
+      "spuelprotokoll_anlagen_v2",
+      "spuelprotokoll_anlagen",
+      "spuelprotokoll_worker_name_v1",
+      "spuelprotokoll_worker_list_v1"
+    ];
+    try { LEGACY_STORAGE_KEYS.forEach(k => localStorage.removeItem(k)); } catch (e) {}
     const DEFAULT_WORKERS = ["Marco Neudecker", "Marcel Blum", "Mirja Nowak"];
     const MANUAL_WORKER_VALUE = "__manual_worker__";
 
@@ -4898,6 +4936,8 @@ case "4":
       if (purgeBtn) purgeBtn.addEventListener("click", adminPurgeSoftDeleted);
       const localWipeBtn = document.getElementById("adminLocalWipeBtn");
       if (localWipeBtn) localWipeBtn.addEventListener("click", adminLocalWipe);
+      const pauseBtn = document.getElementById("adminPauseBtn");
+      if (pauseBtn) pauseBtn.addEventListener("click", adminTogglePause);
       const reloadBtn = document.getElementById("adminReloadBtn");
       if (reloadBtn) reloadBtn.addEventListener("click", adminReloadFromCloud);
 
