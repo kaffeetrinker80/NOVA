@@ -1247,6 +1247,7 @@
           <div class="btn-row">
             <button id="adminWipeBtn" class="btn danger">Alle Live-Daten löschen</button>
             <button id="adminPurgeBtn" class="btn danger">Soft-Gelöschte endgültig entfernen</button>
+            <button id="adminLocalWipeBtn" class="btn danger">Auch lokal leeren (Neustart)</button>
             <button id="adminReloadBtn" class="btn">Neu aus DB laden</button>
           </div>
         </div>
@@ -1269,7 +1270,7 @@
   <div id="tableContainer"></div>
 
   <div class="footer">
-    Anmeldung aktiv · Live-Sync + Realtime · Version 3.0.2</div>
+    Anmeldung aktiv · Live-Sync + Realtime · Version 3.0.3</div>
 
   <!-- Modal für Anlagenverwaltung -->
   <div id="modalOverlay" class="modal-overlay">
@@ -1423,8 +1424,7 @@
       };
       (localPage.rows || []).forEach(addRow);
       (remotePage.rows || []).forEach(addRow);
-      // Zurück in ein Array, gelöschte hinten drangehängt (als Tombstones)
-      // und sichtbare vorne nach Datum+Uhrzeit sortiert.
+      // Sichtbare Zeilen nach Datum+Uhrzeit sortieren; Tombstones separat.
       const all = Array.from(byKey.values());
       const visible = all
         .filter(r => !r.deletedAt)
@@ -1434,12 +1434,50 @@
           return ka.localeCompare(kb);
         });
       const tombstones = all.filter(r => r.deletedAt);
-      // Sichtbare Zeilen neu durchnummerieren.
-      visible.forEach((r, i) => r.index = i + 1);
-      // Auf 25 auffüllen (visible zählt; Tombstones separat halten).
-      const filled = ensurePageRows(visible);
-      // Tombstones werden mitgeführt, damit die Info beim Sync erhalten bleibt.
-      return filled.concat(tombstones);
+      // Nur die ersten 25 sichtbaren bleiben auf DIESER Seite -
+      // der Rest wird vom Aufrufer über splitOverflow... auf neue Seiten verteilt.
+      const keep = visible.slice(0, 25);
+      const overflow = visible.slice(25);
+      keep.forEach((r, i) => r.index = i + 1);
+      const filled = ensurePageRows(keep);
+      // Overflow als Property, damit der Aufrufer weitermachen kann.
+      const out = filled.concat(tombstones);
+      out.__overflow = overflow;
+      return out;
+    }
+
+    function splitOverflowIntoNewPages(basePage, overflowRows) {
+      // Nimmt Zeilen, die auf basePage nicht mehr passen, und legt für sie
+      // fortlaufende Extra-Seiten (max. 25 pro Seite) chronologisch an.
+      if (!overflowRows || !overflowRows.length) return [];
+      const usedIds = new Set(pages.map(p => p.id));
+      const created = [];
+      // Nächste freie Seitennummer für diese Location bestimmen
+      const sameLoc = pages.filter(p =>
+        sameLocationName(p.anlage, basePage.anlage) &&
+        sameLocationName(p.bereich, basePage.bereich) &&
+        !isPageDeleted(p)
+      );
+      let nextNum = sameLoc.reduce((m, p) => Math.max(m, getPageNumber(p) || 0), 0) + 1;
+
+      for (let i = 0; i < overflowRows.length; i += 25) {
+        const chunk = overflowRows.slice(i, i + 25);
+        chunk.forEach((r, k) => r.index = k + 1);
+        const newId = makeUniquePageId(null, usedIds);
+        const newPage = {
+          id: newId,
+          pageNumber: nextNum++,
+          anlage: basePage.anlage,
+          bereich: basePage.bereich,
+          performedBy: basePage.performedBy || "",
+          created: timestampString(),
+          rows: ensurePageRows(chunk)
+        };
+        pages.push(newPage);
+        created.push(newPage);
+        if (SYNC.enabled && !SYNC.applyingRemote) SYNC.dirtyPageIds.add(newId);
+      }
+      return created;
     }
 
     function mergeRemotePageIntoLocal(remotePage) {
@@ -1452,17 +1490,34 @@
         );
       }
       if (!local) {
-        // Komplett neu übernehmen (auch wenn remote deleted: Tombstone wandert mit).
+        // Komplett neu übernehmen. Wenn >25 sichtbare Zeilen: aufteilen.
         const usedIds = new Set(pages.map(p => p.id));
+        const allRows = Array.isArray(remotePage.rows) ? remotePage.rows : [];
+        const visible = allRows
+          .filter(r => rowHasMeaningfulData(r))
+          .sort((a, b) => {
+            const ka = (a.date || "") + " " + (a.time || "");
+            const kb = (b.date || "") + " " + (b.time || "");
+            return ka.localeCompare(kb);
+          });
+        const tombstones = allRows.filter(r => r.deletedAt);
+        const first25 = visible.slice(0, 25);
+        first25.forEach((r, i) => r.index = i + 1);
         const rp = {
           ...remotePage,
           id: makeUniquePageId(remotePage.id, usedIds),
-          rows: ensurePageRows(remotePage.rows)
+          rows: ensurePageRows(first25).concat(tombstones)
         };
         pages.push(rp);
+        // Overflow als weitere Seiten anlegen.
+        const overflow = visible.slice(25);
+        if (overflow.length) splitOverflowIntoNewPages(rp, overflow);
         return { pageId: rp.id, added: true };
       }
       local.rows = mergePageRows(local, remotePage);
+      const overflow = local.rows.__overflow || [];
+      delete local.rows.__overflow;
+      if (overflow.length) splitOverflowIntoNewPages(local, overflow);
       // Metadaten sanft zusammenführen.
       if (!local.anlage && remotePage.anlage) local.anlage = remotePage.anlage;
       if (!local.bereich && remotePage.bereich) local.bereich = remotePage.bereich;
@@ -1602,6 +1657,28 @@
       } catch (e) {
         console.warn("Realtime nicht verfügbar:", e);
       }
+      // Rückkehr aus Hintergrund / Tab-Wechsel / Netz-Wiederkehr:
+      // WebSocket kann in mobilen Browsern still weggekippt sein.
+      // In diesen Fällen zwingen wir einen Force-Refresh und starten
+      // den Realtime-Kanal frisch, sonst zeigt das Handy veraltete Daten.
+      if (!SYNC._foregroundHandlersInstalled) {
+        SYNC._foregroundHandlersInstalled = true;
+        const forceRefresh = () => {
+          if (!SYNC.enabled) return;
+          // Kanal neu aufbauen, um tote WebSockets zu erwecken.
+          try {
+            if (realtimeChannel && db) db.removeChannel(realtimeChannel);
+          } catch (e) {}
+          realtimeChannel = null;
+          scheduleRealtimeApply();       // sofort neu ziehen + mergen
+          setTimeout(() => startRealtime(), 200); // Kanal frisch abonnieren
+        };
+        document.addEventListener("visibilitychange", () => {
+          if (document.visibilityState === "visible") forceRefresh();
+        });
+        window.addEventListener("focus", forceRefresh);
+        window.addEventListener("online", forceRefresh);
+      }
     }
 
     function stopRealtime() {
@@ -1671,6 +1748,27 @@
       } else {
         await uiAlert("Neuladen fehlgeschlagen: " + res.reason);
       }
+    }
+
+    async function adminLocalWipe() {
+      if (!isAdmin) return;
+      const ok1 = await uiConfirm(
+        "Alle lokal auf diesem Gerät gespeicherten Daten löschen und Tool neu laden?\n\nDie Cloud-Daten (Live-DB) bleiben unberührt. Nach dem Neuladen wird der aktuelle Bestand frisch aus der DB gezogen.",
+        "Lokal leeren – Sicherheitsabfrage 1/2"
+      );
+      if (!ok1) return;
+      const ok2 = await uiConfirm(
+        "Wirklich sicher?\n\nDein lokaler Cache (Seiten, Bearbeiter, Anlagen-Struktur) wird komplett verworfen.",
+        "Lokal leeren – Sicherheitsabfrage 2/2"
+      );
+      if (!ok2) return;
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(ANLAGEN_KEY);
+        localStorage.removeItem(WORKER_NAME_KEY);
+        localStorage.removeItem(WORKER_LIST_KEY);
+      } catch (e) {}
+      location.reload();
     }
 
     async function adminPurgeSoftDeleted() {
@@ -2411,21 +2509,25 @@
     }
 
     function normalizeTemperatureMode(row) {
-      if (!row || typeof row !== "object") return "kitchenBath";
-      // Frühere Daten mit „Nur KW“ hatten noch keinen getrennten Standortmodus.
-      // Wenn möglich wird die einzelne Entnahmestelle übernommen, sonst „Bad“.
+      if (!row || typeof row !== "object") return "";
+      // v3.0.3: Wenn der Nutzer noch NICHTS ausgewählt hat und die Zeile
+      // faktisch leer ist, keinen Modus voreinstellen (dann werden weder
+      // "Küche" noch "Bad" als aktiv markiert).
       if (row.tempMode === "kw") {
-        if (TEMP_MODES.includes(row.tempBaseMode)) return row.tempBaseMode;
-        if (String(row.tempLocationOther ?? "").trim() !== "") return "other";
-        return "bath";
+        row.tempMode = "kitchenBath";
+        row.kwOnly = true;
+        return "kitchenBath";
       }
       if (row.tempMode === "washbasin" || row.tempMode === "bath") return "bath";
       if (TEMP_MODES.includes(row.tempMode)) return row.tempMode;
-      if (String(row.tempLocationOther ?? "").trim() !== "") return "other";
-
-      const hasKitchen = String(row.wwKitchen ?? "").trim() !== "";
-      const hasBath = String(row.wwBath ?? "").trim() !== "";
-      if (hasBath && !hasKitchen) return "bath";
+      if (typeof row.tempMode === "string" && row.tempMode.trim() === "") {
+        // Explizit leer -> leer lassen, es sei denn die Zeile hat schon Werte.
+        const hasAny = String(row.wwKitchen || "").trim() !== ""
+                    || String(row.wwBath || "").trim() !== ""
+                    || String(row.kwTemp || "").trim() !== ""
+                    || String(row.tempLocationOther || "").trim() !== "";
+        if (!hasAny) return "";
+      }
       return "kitchenBath";
     }
 
@@ -2487,7 +2589,7 @@
         "aeratorStuckFlag", "longTkmaxFlag", "otherIssueFlag",
         "aeratorChanged"
       ].some(key => row[key] === true);
-      const changedMode = normalizeTemperatureMode(row) !== "kitchenBath";
+      const changedMode = normalizeTemperatureMode(row) !== "kitchenBath" && normalizeTemperatureMode(row) !== "";
       const kwOnly = normalizeKwOnly(row);
       return hasText || hasFlag || changedMode || kwOnly;
     }
@@ -2549,7 +2651,7 @@
         roomType: "",
         unit: "",
         kwTemp: "",
-        tempMode: "kitchenBath",
+        tempMode: "",
         tempLocationOther: "",
         kwOnly: false,
         wwKitchen: "",
@@ -3185,7 +3287,7 @@
         roomType: "",
         unit: "",
         kwTemp: "",
-        tempMode: "kitchenBath",
+        tempMode: "",
         tempLocationOther: "",
         kwOnly: false,
         wwKitchen: "",
@@ -4794,6 +4896,8 @@ case "4":
       if (wipeBtn) wipeBtn.addEventListener("click", adminWipeAllLiveData);
       const purgeBtn = document.getElementById("adminPurgeBtn");
       if (purgeBtn) purgeBtn.addEventListener("click", adminPurgeSoftDeleted);
+      const localWipeBtn = document.getElementById("adminLocalWipeBtn");
+      if (localWipeBtn) localWipeBtn.addEventListener("click", adminLocalWipe);
       const reloadBtn = document.getElementById("adminReloadBtn");
       if (reloadBtn) reloadBtn.addEventListener("click", adminReloadFromCloud);
 
