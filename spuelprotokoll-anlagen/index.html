@@ -1247,7 +1247,6 @@
           <div class="btn-row">
             <button id="adminPauseBtn" class="btn">⏸ Sync pausieren</button>
             <button id="adminWipeBtn" class="btn danger">Alle Live-Daten löschen</button>
-            <button id="adminPurgeBtn" class="btn danger">Soft-Gelöschte endgültig entfernen</button>
             <button id="adminLocalWipeBtn" class="btn danger">Auch lokal leeren (Neustart)</button>
             <button id="adminReloadBtn" class="btn">Neu aus DB laden</button>
           </div>
@@ -1271,7 +1270,7 @@
   <div id="tableContainer"></div>
 
   <div class="footer">
-    Anmeldung aktiv · Live-Sync + Realtime · Version 3.0.4</div>
+    Anmeldung aktiv · Cloud-Sync (Row-Level) · Version 3.0.5</div>
 
   <!-- Modal für Anlagenverwaltung -->
   <div id="modalOverlay" class="modal-overlay">
@@ -1342,229 +1341,126 @@
     let isAdmin = false;
 
     // ===================================================================
-    //  CLOUD-SYNC (v3.0.1)
-    //  - initialer Pull nach Login  -> DB-Zeilen in lokale pages mergen
-    //  - nach jedem saveState()     -> debounced Upsert je Seite
-    //  - Zeilen-Merge-Schlüssel: date | time | floor | unit
-    //  - Konflikt: neueste updated_at gewinnt
+    //  CLOUD-SYNC (v3.0.5 – Row-Level, "Sync-and-Forget")
+    //  - Beim Login: EINMAL alle Zeilen ziehen, lokale Seiten rekonstruieren.
+    //  - Beim Bearbeiten: nur betroffene Zeile(n) einer Seite hochschieben.
+    //  - Kein Realtime, keine automatischen Pulls, keine Merge-Loops.
+    //  - Kollegen-Änderungen kommen erst beim nächsten Login oder per
+    //    Admin "Neu aus DB laden".
     // ===================================================================
     const SYNC = {
-      enabled: false,       // true nach erfolgreichem Initial-Pull
+      enabled: false,
       pullDone: false,
-      dirtyPageIds: new Set(),
+      dirtyPageIds: new Set(),   // Seiten, deren Zeilen wir neu hochladen wollen
       timer: null,
-      lastStatus: "",       // "ok" | "syncing" | "error" | "offline" | "paused"
-      applyingRemote: false,// während wir remote-Daten einspielen: kein Upload triggern
-      paused: false         // v3.0.4: Admin-Kill-Switch, blockiert Upload
+      lastStatus: "",
+      applyingRemote: false,
+      paused: false
     };
 
-    function rowKey(row) {
-      // Natürlicher Schlüssel innerhalb einer Seite.
-      const d = String(row?.date || "").trim();
-      const t = String(row?.time || "").trim();
-      const f = String(row?.floor || "").trim().toLocaleLowerCase("de-DE");
-      const u = String(row?.unit || "").trim().toLocaleLowerCase("de-DE");
-      return `${d}|${t}|${f}|${u}`;
+    // Stabile DB-Zeilen-ID: eindeutig pro (Seite, Zeilen-Nummer).
+    function rowDbId(pageId, rowIndex) {
+      return "row:" + pageId + ":" + (rowIndex || 0);
     }
 
-    function stampRowAttribution(row, mode /* "created" | "edited" */) {
-      if (!row || typeof row !== "object") return;
-      if (!currentProfile) return;
-      const nowIso = new Date().toISOString();
-      const uid = currentProfile.id || null;
-      const uname = currentProfile.display_name || "";
-      if (mode === "created" && !row.flushedBy) {
-        row.flushedBy = uname;
-        row.flushedById = uid;
-        row.flushedAt = nowIso;
-      }
-      row.lastEditedBy = uname;
-      row.lastEditedById = uid;
-      row.lastEditedAt = nowIso;
-    }
-
-    function stampAllMeaningfulRowsOnLocalPage(page) {
-      if (!page || !Array.isArray(page.rows)) return;
-      page.rows.forEach(row => {
-        if (rowHasMeaningfulData(row)) {
-          const mode = row.flushedBy ? "edited" : "created";
-          stampRowAttribution(row, mode);
-        }
-      });
-    }
-
-    function pageToDbRow(page) {
+    // Serialisiert eine Protokoll-Zeile als DB-Datensatz. Seiten-Metadaten
+    // wandern als _page_*-Felder in "data", damit wir Seiten beim Pull
+    // vollständig rekonstruieren können.
+    function rowToDbRecord(page, row) {
+      const rec = { ...row };
+      rec._page_id           = page.id;
+      rec._page_number       = getPageNumber(page) || null;
+      rec._page_created      = page.created || null;
+      rec._page_performed_by = page.performedBy || "";
+      rec._page_anlage       = page.anlage || "";
+      rec._page_bereich      = page.bereich || "";
       return {
-        id: "page:" + page.id,
-        kind: "page",
+        id: rowDbId(page.id, row.index),
+        kind: "row",
         anlage: page.anlage || null,
         bereich: page.bereich || null,
         page_number: getPageNumber(page) || null,
-        data: page,
+        data: rec,
         updated_by: currentProfile ? currentProfile.id : null,
         updated_by_name: currentProfile ? currentProfile.display_name : null
       };
     }
 
-    function mergePageRows(localPage, remotePage) {
-      // Zeilen aus local + remote zusammenführen. Duplikat = gleicher rowKey.
-      // Konfliktregel (auch für Löschungen): neueste Änderung gewinnt.
-      // Ein gelöschter Datensatz mit späterem deletedAt schlägt eine ältere Neueingabe -
-      // dadurch synct das Löschen sauber über Geräte.
-      const byKey = new Map();
-      const addRow = (r) => {
-        if (!r) return;
-        if (!rowIsSyncable(r)) return;
-        const k = rowKey(r);
-        if (!k || k === "|||") return;
-        const existing = byKey.get(k);
-        if (!existing) { byKey.set(k, r); return; }
-        const t = (x) => new Date(
-          x?.deletedAt || x?.lastEditedAt || x?.flushedAt || 0
-        ).getTime();
-        if (t(r) >= t(existing)) byKey.set(k, r);
-      };
-      (localPage.rows || []).forEach(addRow);
-      (remotePage.rows || []).forEach(addRow);
-      // Sichtbare Zeilen nach Datum+Uhrzeit sortieren; Tombstones separat.
-      const all = Array.from(byKey.values());
-      const visible = all
-        .filter(r => !r.deletedAt)
-        .sort((a, b) => {
-          const ka = (a.date || "") + " " + (a.time || "");
-          const kb = (b.date || "") + " " + (b.time || "");
-          return ka.localeCompare(kb);
-        });
-      const tombstones = all.filter(r => r.deletedAt);
-      // Nur die ersten 25 sichtbaren bleiben auf DIESER Seite -
-      // der Rest wird vom Aufrufer über splitOverflow... auf neue Seiten verteilt.
-      const keep = visible.slice(0, 25);
-      const overflow = visible.slice(25);
-      keep.forEach((r, i) => r.index = i + 1);
-      const filled = ensurePageRows(keep);
-      // Overflow als Property, damit der Aufrufer weitermachen kann.
-      const out = filled.concat(tombstones);
-      out.__overflow = overflow;
-      return out;
-    }
-
-    function splitOverflowIntoNewPages(basePage, overflowRows) {
-      // Nimmt Zeilen, die auf basePage nicht mehr passen, und legt für sie
-      // fortlaufende Extra-Seiten (max. 25 pro Seite) chronologisch an.
-      if (!overflowRows || !overflowRows.length) return [];
-      const usedIds = new Set(pages.map(p => p.id));
-      const created = [];
-      // Nächste freie Seitennummer für diese Location bestimmen
-      const sameLoc = pages.filter(p =>
-        sameLocationName(p.anlage, basePage.anlage) &&
-        sameLocationName(p.bereich, basePage.bereich) &&
-        !isPageDeleted(p)
-      );
-      let nextNum = sameLoc.reduce((m, p) => Math.max(m, getPageNumber(p) || 0), 0) + 1;
-
-      for (let i = 0; i < overflowRows.length; i += 25) {
-        const chunk = overflowRows.slice(i, i + 25);
-        chunk.forEach((r, k) => r.index = k + 1);
-        const newId = makeUniquePageId(null, usedIds);
-        const newPage = {
-          id: newId,
-          pageNumber: nextNum++,
-          anlage: basePage.anlage,
-          bereich: basePage.bereich,
-          performedBy: basePage.performedBy || "",
-          created: timestampString(),
-          rows: ensurePageRows(chunk)
-        };
-        pages.push(newPage);
-        created.push(newPage);
-        if (SYNC.enabled && !SYNC.applyingRemote) SYNC.dirtyPageIds.add(newId);
-      }
-      return created;
-    }
-
-    function mergeRemotePageIntoLocal(remotePage) {
-      // Suche lokale Seite mit gleicher id ODER gleicher anlage+bereich.
-      let local = pages.find(p => p.id === remotePage.id);
-      if (!local) {
-        local = pages.find(p =>
-          sameLocationName(p.anlage, remotePage.anlage) &&
-          sameLocationName(p.bereich, remotePage.bereich)
-        );
-      }
-      if (!local) {
-        // Komplett neu übernehmen. Wenn >25 sichtbare Zeilen: aufteilen.
-        const usedIds = new Set(pages.map(p => p.id));
-        const allRows = Array.isArray(remotePage.rows) ? remotePage.rows : [];
-        const visible = allRows
-          .filter(r => rowHasMeaningfulData(r))
-          .sort((a, b) => {
-            const ka = (a.date || "") + " " + (a.time || "");
-            const kb = (b.date || "") + " " + (b.time || "");
-            return ka.localeCompare(kb);
-          });
-        const tombstones = allRows.filter(r => r.deletedAt);
-        const first25 = visible.slice(0, 25);
-        first25.forEach((r, i) => r.index = i + 1);
-        const rp = {
-          ...remotePage,
-          id: makeUniquePageId(remotePage.id, usedIds),
-          rows: ensurePageRows(first25).concat(tombstones)
-        };
-        pages.push(rp);
-        // Overflow als weitere Seiten anlegen.
-        const overflow = visible.slice(25);
-        if (overflow.length) splitOverflowIntoNewPages(rp, overflow);
-        return { pageId: rp.id, added: true };
-      }
-      local.rows = mergePageRows(local, remotePage);
-      const overflow = local.rows.__overflow || [];
-      delete local.rows.__overflow;
-      if (overflow.length) splitOverflowIntoNewPages(local, overflow);
-      // Metadaten sanft zusammenführen.
-      if (!local.anlage && remotePage.anlage) local.anlage = remotePage.anlage;
-      if (!local.bereich && remotePage.bereich) local.bereich = remotePage.bereich;
-      if (!local.performedBy && remotePage.performedBy) local.performedBy = remotePage.performedBy;
-      // Seiten-Löschung: wenn remote gelöscht wurde und die Markierung neuer ist,
-      // lokale Seite ebenfalls als gelöscht setzen. Umgekehrt lokale Löschung stehen lassen.
-      if (remotePage.deletedAt) {
-        const rt = new Date(remotePage.deletedAt).getTime();
-        const lt = new Date(local.deletedAt || 0).getTime();
-        if (rt > lt) {
-          local.deletedAt = remotePage.deletedAt;
-          local.deletedBy = remotePage.deletedBy || local.deletedBy;
-          local.deletedById = remotePage.deletedById || local.deletedById;
-        }
-      }
-      return { pageId: local.id, added: false };
+    // Welche Zeilen einer Seite gehen in die Cloud?
+    // - Zeilen mit Inhalt (rowHasMeaningfulData)
+    // - Zeilen mit deletedAt (Tombstone)
+    // Leere Standard-Zeilen NICHT.
+    function pageRowsToDbRecords(page) {
+      const rows = Array.isArray(page.rows) ? page.rows : [];
+      return rows
+        .filter(r => r && (rowHasMeaningfulData(r) || r.deletedAt))
+        .map(r => rowToDbRecord(page, r));
     }
 
     async function pullAllPagesFromCloud() {
+      // v3.0.5: zieht EINMAL alle Zeilen, baut Seiten daraus.
       if (!db) return { ok: false, reason: "no-db" };
       try {
         const { data, error } = await db
           .from(NOVA_TABLE)
           .select("id, data, updated_at")
-          .eq("kind", "page");
+          .eq("kind", "row");
         if (error) throw error;
-        SYNC.applyingRemote = true;
-        let added = 0, mergedRows = 0;
+
+        // Zeilen nach _page_id gruppieren, dabei Tombstones ausblenden.
+        const byPage = new Map();
+        const usedIds = new Set();
         (data || []).forEach(rec => {
-          const rp = rec.data || {};
-          const beforeCount = (pages.find(p =>
-            p.id === rp.id ||
-            (sameLocationName(p.anlage, rp.anlage) && sameLocationName(p.bereich, rp.bereich))
-          )?.rows || []).filter(rowHasMeaningfulData).length;
-          const res = mergeRemotePageIntoLocal(rp);
-          if (res.added) added++;
-          const afterCount = (pages.find(p => p.id === res.pageId)?.rows || [])
-            .filter(rowHasMeaningfulData).length;
-          mergedRows += Math.max(0, afterCount - beforeCount);
+          const rd = rec.data || {};
+          const pid = rd._page_id;
+          if (!pid) return;
+          if (rd.deletedAt) return;                // gelöschte Zeile - nicht zeigen
+          if (!byPage.has(pid)) {
+            usedIds.add(pid);
+            byPage.set(pid, {
+              id: pid,
+              pageNumber: Number(rd._page_number) || null,
+              anlage: cleanLocationLabel(rd._page_anlage),
+              bereich: cleanLocationLabel(rd._page_bereich),
+              performedBy: rd._page_performed_by || "",
+              created: rd._page_created || timestampString(),
+              rows: []
+            });
+          }
+          // Zeile bereinigen: die Seiten-Metadaten wieder rausnehmen.
+          const clean = { ...rd };
+          delete clean._page_id;
+          delete clean._page_number;
+          delete clean._page_created;
+          delete clean._page_performed_by;
+          delete clean._page_anlage;
+          delete clean._page_bereich;
+          byPage.get(pid).rows.push(clean);
         });
+
+        // Rekonstruktion: pro Seite Zeilen nach index sortieren, auf 25 auffüllen.
+        SYNC.applyingRemote = true;
+        const rebuilt = Array.from(byPage.values()).map(p => {
+          const sortedRows = p.rows
+            .sort((a, b) => (Number(a.index) || 0) - (Number(b.index) || 0));
+          // Re-Indexierung, dann auffüllen
+          sortedRows.forEach((r, i) => r.index = i + 1);
+          return { ...p, rows: ensurePageRows(sortedRows) };
+        });
+
+        // Ersetzt lokalen Bestand komplett - "einmal reinholen, fertig".
+        pages = rebuilt;
+        if (!getActivePage()) {
+          const sorted = pages.filter(p => !isPageDeleted(p))
+            .slice().sort((a, b) => getPageNumber(a) - getPageNumber(b));
+          activePageId = sorted[0] ? sorted[0].id : null;
+        }
+
         SYNC.applyingRemote = false;
         SYNC.enabled = true;
         SYNC.pullDone = true;
         setSyncStatus("ok");
-        return { ok: true, addedPages: added, mergedRows };
+        return { ok: true, pageCount: pages.length, rowCount: (data || []).length };
       } catch (e) {
         SYNC.applyingRemote = false;
         console.error("Pull-Fehler:", e);
@@ -1585,7 +1481,6 @@
       SYNC.timer = null;
       if (!db || !SYNC.enabled) return;
       if (SYNC.paused) {
-        // Dirty-Ids liegen lassen; nächster Trigger versucht's nach dem Unpause.
         setSyncStatus("paused");
         return;
       }
@@ -1594,21 +1489,45 @@
       if (!ids.length) return;
       setSyncStatus("syncing");
       try {
-        const payload = ids
-          .map(id => pages.find(p => p.id === id))
-          .filter(Boolean)
-          .map(pageToDbRow);
+        // Für jede betroffene Seite: alle relevanten Zeilen upserten.
+        // Leere Zeilen tauchen nicht in payload auf (sind lokal ohnehin
+        // nur Platzhalter). Bereits gelöschte Zeilen wandern als Tombstone
+        // ebenfalls hoch.
+        const payload = [];
+        ids.forEach(pid => {
+          const page = pages.find(p => p.id === pid);
+          if (!page) return;
+          if (isPageDeleted(page)) return;  // Seiten-Delete wird über deletePageRowsInCloud gemacht
+          pageRowsToDbRecords(page).forEach(rec => payload.push(rec));
+        });
         if (!payload.length) { setSyncStatus("ok"); return; }
         const { error } = await db.from(NOVA_TABLE).upsert(payload, { onConflict: "id" });
         if (error) throw error;
         setSyncStatus("ok");
       } catch (e) {
         console.error("Upload-Fehler:", e);
-        // Wieder in Dirty aufnehmen, damit's beim nächsten Trigger nochmal versucht wird.
         ids.forEach(id => SYNC.dirtyPageIds.add(id));
         setSyncStatus("error");
       }
     }
+
+    // Wird beim Löschen einer ganzen Seite aufgerufen.
+    async function deletePageRowsInCloud(pageId) {
+      if (!db || !SYNC.enabled) return;
+      try {
+        const { error } = await db
+          .from(NOVA_TABLE)
+          .delete()
+          .eq("kind", "row")
+          .eq("data->>_page_id", pageId);
+        if (error) throw error;
+      } catch (e) {
+        console.error("Seiten-Löschung Cloud fehlgeschlagen:", e);
+      }
+    }
+
+    // (Alter page-basierter Merge-Code wurde in v3.0.5 durch Row-Level-Sync ersetzt.)
+
 
     function reconcileActivePageAfterSync() {
       const active = pages.find(p => p.id === activePageId);
@@ -1621,79 +1540,13 @@
       }
     }
 
-    // ===================================================================
-    //  REALTIME (Supabase Postgres Changes)
-    // ===================================================================
+    // v3.0.5: Realtime deaktiviert. Änderungen von Kollegen kommen erst
+    // beim nächsten Login oder per Admin "Neu aus DB laden" - kein automatisches
+    // Nachziehen mehr. Das schließt den Merge-Loop endgültig aus.
     let realtimeChannel = null;
-    let realtimePendingTimer = null;
-
-    function scheduleRealtimeApply(pageIdHint) {
-      // Wir sammeln Events kurz und ziehen dann alle Seiten frisch.
-      // Vorteil: kein delta-Fiddling, immer konsistent.
-      if (realtimePendingTimer) clearTimeout(realtimePendingTimer);
-      realtimePendingTimer = setTimeout(async () => {
-        realtimePendingTimer = null;
-        setSyncStatus("syncing");
-        const res = await pullAllPagesFromCloud();
-        if (!res.ok) { setSyncStatus("error"); return; }
-        reconcileActivePageAfterSync();
-        SYNC.applyingRemote = true;
-        saveState();
-        SYNC.applyingRemote = false;
-        renderAll();
-        setSyncStatus("ok");
-      }, 400);
-    }
-
-    function startRealtime() {
-      if (!db || realtimeChannel) return;
-      try {
-        realtimeChannel = db
-          .channel("spuel-realtime")
-          .on(
-            "postgres_changes",
-            { event: "*", schema: "public", table: NOVA_TABLE },
-            (payload) => {
-              // Eigene, gerade eben hochgeschickte Änderungen ignorieren wir NICHT –
-              // sicherer, den frischen Stand zu ziehen. Kosten sind minimal.
-              const rec = payload.new || payload.old || {};
-              scheduleRealtimeApply(rec.id);
-            }
-          )
-          .subscribe();
-      } catch (e) {
-        console.warn("Realtime nicht verfügbar:", e);
-      }
-      // Rückkehr aus Hintergrund / Tab-Wechsel / Netz-Wiederkehr:
-      // WebSocket kann in mobilen Browsern still weggekippt sein.
-      // In diesen Fällen zwingen wir einen Force-Refresh und starten
-      // den Realtime-Kanal frisch, sonst zeigt das Handy veraltete Daten.
-      if (!SYNC._foregroundHandlersInstalled) {
-        SYNC._foregroundHandlersInstalled = true;
-        const forceRefresh = () => {
-          if (!SYNC.enabled) return;
-          // Kanal neu aufbauen, um tote WebSockets zu erwecken.
-          try {
-            if (realtimeChannel && db) db.removeChannel(realtimeChannel);
-          } catch (e) {}
-          realtimeChannel = null;
-          scheduleRealtimeApply();       // sofort neu ziehen + mergen
-          setTimeout(() => startRealtime(), 200); // Kanal frisch abonnieren
-        };
-        document.addEventListener("visibilitychange", () => {
-          if (document.visibilityState === "visible") forceRefresh();
-        });
-        window.addEventListener("focus", forceRefresh);
-        window.addEventListener("online", forceRefresh);
-      }
-    }
-
-    function stopRealtime() {
-      if (realtimeChannel && db) {
-        try { db.removeChannel(realtimeChannel); } catch (e) {}
-      }
-      realtimeChannel = null;
-    }
+    function startRealtime() { /* no-op */ }
+    function stopRealtime()  { /* no-op */ }
+    function scheduleRealtimeApply() { /* no-op */ }
 
     function setSyncStatus(s) {
       SYNC.lastStatus = s;
@@ -1719,19 +1572,22 @@
     async function adminWipeAllLiveData() {
       if (!isAdmin || !db) return;
       const step1 = await uiConfirm(
-        "ALLE Live-Daten in der Cloud löschen?\n\nDas betrifft sämtliche Seiten von allen Nutzern. Lokale Daten auf diesem Gerät bleiben unberührt.\n\nDanach folgt eine zweite Sicherheitsabfrage.",
+        "ALLE Live-Daten in der Cloud löschen?\n\nDas betrifft sämtliche Seiten und Zeilen von allen Nutzern. Lokale Daten auf diesem Gerät bleiben unberührt.\n\nDanach folgt eine zweite Sicherheitsabfrage.",
         "Sicherheitsabfrage 1/2"
       );
       if (!step1) return;
       const step2 = await uiConfirm(
-        "Wirklich sicher? Diese Aktion ist unwiderruflich.\n\nAlle Cloud-Zeilen mit kind='page' werden entfernt.",
+        "Wirklich sicher? Diese Aktion ist unwiderruflich.\n\nAlle Cloud-Datensätze (Zeilen und alte Seiten-Einträge) werden entfernt.",
         "Sicherheitsabfrage 2/2"
       );
       if (!step2) return;
       setSyncStatus("syncing");
       try {
-        const { error } = await db.from(NOVA_TABLE).delete().eq("kind", "page");
-        if (error) throw error;
+        // v3.0.5: sowohl neue row-Datensätze als auch alte page-Reste entfernen.
+        const e1 = await db.from(NOVA_TABLE).delete().eq("kind", "row");
+        if (e1.error) throw e1.error;
+        const e2 = await db.from(NOVA_TABLE).delete().eq("kind", "page");
+        if (e2.error) throw e2.error;
         setSyncStatus("ok");
         await uiAlert("Live-Daten in der Cloud wurden gelöscht. Lokal auf diesem Gerät ist alles unverändert.");
       } catch (e) {
@@ -1747,12 +1603,11 @@
       if (res.ok) {
         ensureUniquePageNumbers();
         syncLocationsFromPages();
-        reconcileActivePageAfterSync();
         SYNC.applyingRemote = true;
         saveState();
         SYNC.applyingRemote = false;
         renderAll();
-        toast(`Neu geladen: ${res.addedPages} neue Seite(n), ${res.mergedRows} neue Zeile(n).`);
+        toast(`Neu geladen: ${res.pageCount} Seite(n), ${res.rowCount} Zeile(n).`);
       } else {
         await uiAlert("Neuladen fehlgeschlagen: " + res.reason);
       }
@@ -1795,31 +1650,9 @@
       location.reload();
     }
 
-    async function adminPurgeSoftDeleted() {
-      if (!isAdmin || !db) return;
-      const ok = await uiConfirm(
-        "Wirklich alle soft-gelöschten Seiten und Zeilen endgültig aus der DB entfernen?\n\nBetrifft nur Datensätze mit Löschmarkierung. Sichtbare Daten bleiben unberührt.",
-        "Tombstones endgültig löschen"
-      );
-      if (!ok) return;
-      setSyncStatus("syncing");
-      try {
-        // Nur die Zeilen, deren data->>'deletedAt' gesetzt ist.
-        const { error } = await db
-          .from(NOVA_TABLE)
-          .delete()
-          .eq("kind", "page")
-          .not("data->>deletedAt", "is", null);
-        if (error) throw error;
-        setSyncStatus("ok");
-        await uiAlert("Soft-gelöschte Seiten wurden endgültig entfernt.");
-        // Neu ziehen, um lokale Tombstones ebenfalls auszuräumen (Merge wirft Tombstones dann nicht mehr auf).
-        adminReloadFromCloud();
-      } catch (e) {
-        setSyncStatus("error");
-        await uiAlert("Fehler: " + (e.message || e));
-      }
-    }
+    // v3.0.5: adminPurgeSoftDeleted entfernt - Row-Level-Sync kennt keine
+    // soft-gelöschten Seiten mehr; row-Tombstones sind selten und beim Pull
+    // ohnehin ausgeblendet.
 
     // Eigener Speicherstand für den einmaligen, kontrollierten Datenimport.
     const DEFAULT_ANLAGEN = {
@@ -2741,21 +2574,21 @@
       if (!page) return;
       const index = getPageNumber(page);
       const ok = await uiConfirm(
-        `Achtung:\n\nSoll die Seite ${index} für\n${page.anlage} – ${page.bereich}\nwirklich gelöscht werden?\n\nDie Seite wird auf allen Geräten ausgeblendet. Sie bleibt in der Datenbank erhalten (Historie).`
+        `Achtung:\n\nSoll die Seite ${index} für\n${page.anlage} – ${page.bereich}\nwirklich gelöscht werden?\n\nDie Seite wird lokal und in der Datenbank entfernt.`
       );
       if (!ok) return;
-      const sameLocationPages = findPagesForLocation(page.anlage, page.bereich).filter(p => p.id !== page.id && !isPageDeleted(p));
-      markPageDeleted(page);
-      // Beim nächsten Sync-Push wandert die Löschmarkierung in die DB.
+      const sameLocationPages = findPagesForLocation(page.anlage, page.bereich).filter(p => p.id !== page.id);
+      const deletedId = page.id;
+      // Cloud-Zeilen dieser Seite entfernen (Row-Level).
+      if (SYNC.enabled && !SYNC.applyingRemote) {
+        deletePageRowsInCloud(deletedId);
+      }
+      // Lokal die Seite komplett entfernen.
+      pages = pages.filter(p => p.id !== deletedId);
       const fallback = sameLocationPages[0]
-        || pages.filter(p => !isPageDeleted(p)).slice().sort((a, b) => getPageNumber(a) - getPageNumber(b))[0]
+        || pages.slice().sort((a, b) => getPageNumber(a) - getPageNumber(b))[0]
         || null;
       activePageId = fallback ? fallback.id : null;
-      // Sync explizit anstoßen (saveState triggert nur die aktive Seite,
-      // wir haben aber gerade die alte "aktive" Seite gelöscht).
-      if (SYNC.enabled && !SYNC.applyingRemote) {
-        scheduleUploadForPage(page.id);
-      }
       saveState();
       renderAll();
     }
@@ -2784,11 +2617,24 @@
       // Attribution nur setzen, wenn wir nicht gerade remote-Daten einspielen.
       if (!SYNC.applyingRemote) {
         const active = pages.find(p => p.id === activePageId);
-        if (active) stampAllMeaningfulRowsOnLocalPage(active);
+        if (active) {
+          // Zeilen der aktiven Seite mit Bearbeiter/Zeitstempel versehen.
+          if (Array.isArray(active.rows)) {
+            const nowIso = new Date().toISOString();
+            const uid = currentProfile ? currentProfile.id : null;
+            const uname = currentProfile ? currentProfile.display_name : "";
+            active.rows.forEach(row => {
+              if (row && rowHasMeaningfulData(row)) {
+                if (!row.flushedBy) { row.flushedBy = uname; row.flushedById = uid; row.flushedAt = nowIso; }
+                row.lastEditedBy = uname; row.lastEditedById = uid; row.lastEditedAt = nowIso;
+              }
+            });
+          }
+        }
       }
       const data = { pages, activePageId };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-      // Cloud-Sync: nur aktive Seite anstoßen (dort wurde gerade editiert).
+      // Cloud-Sync (Row-Level): Zeilen der aktiven Seite hochladen.
       if (SYNC.enabled && !SYNC.applyingRemote && activePageId) {
         scheduleUploadForPage(activePageId);
       }
@@ -4484,19 +4330,104 @@ function renderAll() {
             });
           });
 
-          // 4) Zeilenweise in lokale pages mergen (statt "ersetzen")
-          SYNC.applyingRemote = true;   // wir wollen erst manuell hochschieben
-          let addedPages = 0, mergedRows = 0;
-          normalizedImports.forEach(rp => {
-            const beforeCount = (pages.find(p =>
-              p.id === rp.id ||
-              (sameLocationName(p.anlage, rp.anlage) && sameLocationName(p.bereich, rp.bereich))
-            )?.rows || []).filter(rowHasMeaningfulData).length;
-            const res = mergeRemotePageIntoLocal(rp);
-            if (res.added) addedPages++;
-            const afterCount = (pages.find(p => p.id === res.pageId)?.rows || [])
-              .filter(rowHasMeaningfulData).length;
-            mergedRows += Math.max(0, afterCount - beforeCount);
+          // 4) Zeilen pro Location zusammenlegen, deduplizieren, in 25er-Chunks
+          //    an vorhandene Seiten anhängen oder als neue Seiten ergänzen.
+          SYNC.applyingRemote = true;
+          const rowNaturalKey = (r) => [
+            String(r?.date || "").trim(),
+            String(r?.time || "").trim(),
+            String(r?.floor || "").trim().toLocaleLowerCase("de-DE"),
+            String(r?.unit  || "").trim().toLocaleLowerCase("de-DE")
+          ].join("|");
+
+          // Gruppierung: Location -> {anlage, bereich, sortedRows}
+          const byLoc = new Map();
+          normalizedImports.forEach(page => {
+            const key = locationCompareKey(page.anlage) + "||" + locationCompareKey(page.bereich);
+            if (!byLoc.has(key)) {
+              byLoc.set(key, {
+                anlage: page.anlage, bereich: page.bereich,
+                performedBy: page.performedBy || canonAssignee,
+                rows: [], seen: new Set()
+              });
+            }
+            const bucket = byLoc.get(key);
+            (page.rows || []).forEach(r => {
+              if (!rowHasMeaningfulData(r)) return;
+              const nk = rowNaturalKey(r);
+              if (nk === "|||") return;
+              if (bucket.seen.has(nk)) return;
+              bucket.seen.add(nk);
+              bucket.rows.push(r);
+            });
+          });
+
+          let addedPages = 0, addedRows = 0;
+          const usedIds = new Set(pages.map(p => p.id));
+
+          byLoc.forEach(bucket => {
+            // Chronologisch sortieren
+            bucket.rows.sort((a, b) => {
+              const ka = (a.date || "") + " " + (a.time || "");
+              const kb = (b.date || "") + " " + (b.time || "");
+              return ka.localeCompare(kb);
+            });
+            // Existierende Seiten dieser Location (vom Cloud-Pull)
+            const existing = pages.filter(p =>
+              sameLocationName(p.anlage, bucket.anlage) &&
+              sameLocationName(p.bereich, bucket.bereich)
+            );
+            // Vorhandene rowKeys dieser Location (Deduplikation gegen Cloud-Bestand)
+            const existingKeys = new Set();
+            existing.forEach(p => (p.rows || []).forEach(r => {
+              if (rowHasMeaningfulData(r)) existingKeys.add(rowNaturalKey(r));
+            }));
+            const newRows = bucket.rows.filter(r => !existingKeys.has(rowNaturalKey(r)));
+            if (!newRows.length) return;
+            addedRows += newRows.length;
+
+            // Kandidaten: Seiten mit freien Plätzen (Sortier nach Seitennummer)
+            const sortedExisting = existing.slice()
+              .sort((a, b) => (getPageNumber(a) || 0) - (getPageNumber(b) || 0));
+
+            let idx = 0;
+            // Zuerst freie Plätze in existierenden Seiten auffüllen
+            for (const p of sortedExisting) {
+              const freeSlots = 25 - (p.rows || []).filter(rowHasMeaningfulData).length;
+              if (freeSlots <= 0) continue;
+              const take = newRows.slice(idx, idx + freeSlots);
+              if (!take.length) break;
+              // Bestehende + neue Zeilen chronologisch neu anordnen
+              const existingRows = (p.rows || []).filter(rowHasMeaningfulData);
+              const merged = existingRows.concat(take).sort((a, b) => {
+                const ka = (a.date || "") + " " + (a.time || "");
+                const kb = (b.date || "") + " " + (b.time || "");
+                return ka.localeCompare(kb);
+              });
+              merged.forEach((r, i) => r.index = i + 1);
+              p.rows = ensurePageRows(merged);
+              idx += take.length;
+              if (idx >= newRows.length) break;
+            }
+
+            // Rest als neue Seiten anhängen
+            let nextNum = sortedExisting.reduce((m, p) => Math.max(m, getPageNumber(p) || 0), 0) + 1;
+            while (idx < newRows.length) {
+              const chunk = newRows.slice(idx, idx + 25);
+              chunk.forEach((r, i) => r.index = i + 1);
+              const pid = makeUniquePageId(null, usedIds);
+              pages.push({
+                id: pid,
+                pageNumber: nextNum++,
+                anlage: bucket.anlage,
+                bereich: bucket.bereich,
+                performedBy: bucket.performedBy,
+                created: timestampString(),
+                rows: ensurePageRows(chunk)
+              });
+              addedPages++;
+              idx += 25;
+            }
           });
 
           ensureUniquePageNumbers();
@@ -4514,14 +4445,14 @@ function renderAll() {
           renderWorkerPickers();
           renderAll();
 
-          // 5) In die Cloud schieben (alle betroffenen Seiten hochladen)
+          // 5) In die Cloud schieben (alle Seiten mit Import-Zeilen)
           if (SYNC.enabled) {
             pages.forEach(p => SYNC.dirtyPageIds.add(p.id));
             await flushUploads();
           }
 
           await uiAlert(
-            `Import abgeschlossen.\n\n${addedPages} neue Seite(n), ${mergedRows} neue Zeile(n).\nZeilen ohne eigene Zuordnung wurden „${canonAssignee}“ zugeordnet.`,
+            `Import abgeschlossen.\n\n${addedRows} neue Zeile(n) auf ${addedPages} neue Seite(n) verteilt.\nZeilen ohne eigene Zuordnung wurden „${canonAssignee}“ zugeordnet.`,
             "Import erfolgreich"
           );
         } catch (err) {
@@ -4932,8 +4863,6 @@ case "4":
       // Admin-Aktionen (nur sichtbar bei isAdmin, aber Handler dennoch registrieren)
       const wipeBtn = document.getElementById("adminWipeBtn");
       if (wipeBtn) wipeBtn.addEventListener("click", adminWipeAllLiveData);
-      const purgeBtn = document.getElementById("adminPurgeBtn");
-      if (purgeBtn) purgeBtn.addEventListener("click", adminPurgeSoftDeleted);
       const localWipeBtn = document.getElementById("adminLocalWipeBtn");
       if (localWipeBtn) localWipeBtn.addEventListener("click", adminLocalWipe);
       const pauseBtn = document.getElementById("adminPauseBtn");
@@ -5216,25 +5145,25 @@ case "4":
       const ov = document.getElementById("loginOverlay");
       if (ov) ov.style.display = "none";
       startApp();
-      // Nach dem Rendern: Cloud-Daten ziehen und mergen.
+      // v3.0.5: Einmalig alle Zeilen aus der Cloud ziehen, Seiten daraus bauen.
+      // Kein weiterer Merge, kein Realtime - fertig.
       setSyncStatus("syncing");
       const res = await pullAllPagesFromCloud();
       if (res.ok) {
         ensureUniquePageNumbers();
         migrateSchenkAreaInPages();
         syncLocationsFromPages();
-        reconcileActivePageAfterSync();
-        if (!getActivePage() && pages.length) activePageId = pages.find(p => !isPageDeleted(p))?.id || null;
+        if (!getActivePage() && pages.length) {
+          activePageId = pages.find(p => !isPageDeleted(p))?.id || null;
+        }
         SYNC.applyingRemote = true;
         saveState();
         SYNC.applyingRemote = false;
         renderAll();
-        if (res.addedPages || res.mergedRows) {
-          toast(`Live-Daten geladen: ${res.addedPages} neue Seite(n), ${res.mergedRows} neue Zeile(n).`);
+        if (res.pageCount) {
+          toast(`Bestand geladen: ${res.pageCount} Seite(n), ${res.rowCount} Zeile(n).`);
         }
-        startRealtime();
       } else {
-        // Ohne DB weiterarbeiten – lokal geht alles wie bisher.
         SYNC.enabled = false;
         setSyncStatus("offline");
       }
