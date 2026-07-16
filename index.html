@@ -145,7 +145,6 @@
       padding: 3px 10px; border-radius: 999px; display: inline-block; margin-bottom: 16px;
       align-self: flex-start;
     }
-    .card-tag.template { color: var(--muted); background: rgba(255,255,255,0.04); border-color: var(--border); }
 
     .icon {
       width: 54px; height: 54px; border-radius: 14px; display: flex; align-items: center; justify-content: center;
@@ -154,7 +153,6 @@
       transition: 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
     .card:hover .icon { transform: rotate(360deg) scale(1.1); }
-    .icon.dim { color: var(--muted); border-color: var(--border); }
 
     .card h3 { margin: 0 0 8px; font-size: 1.15rem; font-weight: 700; }
     .card p { font-size: 0.88rem; color: var(--muted); margin: 0 0 20px; flex-grow: 1; }
@@ -162,7 +160,6 @@
     .list { list-style: none; padding: 0; margin: 0 0 20px; }
     .list li { position: relative; padding-left: 18px; margin-bottom: 6px; color: #d7dee8; font-size: 0.88rem; }
     .list li::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--nova); opacity: 0.6; position: absolute; left: 0; top: 0.6em; }
-    .list li.dim::before { background: var(--muted); }
 
     .btn-card {
       width: 100%; text-align: center; text-decoration: none; font-weight: 600;
@@ -176,12 +173,25 @@
     }
     .btn-nova-card:hover { background: rgba(94, 234, 212, 0.18); border-color: rgba(94, 234, 212, 0.45); }
 
-    .btn-template {
-      color: var(--muted);
-      background: rgba(255,255,255,0.04);
-      border: 1px solid var(--border);
+    /* ── Dev Area (Test Tool) ── */
+    .dev-area {
+      margin-top: 40px;
+      display: flex;
+      justify-content: center;
     }
-    .btn-template:hover { background: rgba(255,255,255,0.07); color: var(--text); }
+    .dev-btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      text-decoration: none; color: var(--muted); font-size: 0.85rem;
+      padding: 10px 20px; border-radius: 999px;
+      background: rgba(255,255,255,0.02);
+      border: 1px dashed var(--border);
+      transition: var(--transition-smooth);
+    }
+    .dev-btn:hover {
+      color: var(--text);
+      background: rgba(255,255,255,0.06);
+      border-color: rgba(255,255,255,0.2);
+    }
 
     /* ── Footer ── */
     .footer { margin-top: 48px; text-align: center; color: var(--muted); font-size: 0.82rem; }
@@ -196,7 +206,6 @@
       .container { padding: 40px 20px 60px; }
     }
     
-    /* Sorgt dafür, dass es ab bestimmten Breiten 3 Spalten sind (Test Tool rutscht nach rechts) */
     @media (min-width: 1024px) {
       .grid { grid-template-columns: repeat(3, 1fr); }
     }
@@ -234,7 +243,7 @@
 
     <section class="grid animate-in delay-3">
 
-      <!-- Sonderobjekte -->
+      <!-- Termindatenbank Sonderobjekte -->
       <article class="card">
         <span class="card-tag">Aktiv · Login required</span>
         <div class="icon">
@@ -262,7 +271,7 @@
         </a>
       </article>
 
-      <!-- NEU: Spülprotokoll Stiftsanlagen -->
+      <!-- Spülprotokoll Stiftsanlagen -->
       <article class="card">
         <span class="card-tag">Aktiv · Login required</span>
         <div class="icon">
@@ -287,33 +296,45 @@
         </a>
       </article>
 
-      <!-- Test / Template -->
+      <!-- NEU: Spülprotokoll Auswertung -->
       <article class="card">
-        <span class="card-tag template">Template · Intern</span>
-        <div class="icon dim">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M9 3h6v8l3.5 6.5A2 2 0 0 1 16.76 20H7.24a2 2 0 0 1-1.74-2.5L9 11V3z"/>
-            <line x1="6.5" y1="14" x2="17.5" y2="14"/>
-            <line x1="9" y1="3" x2="15" y2="3"/>
+        <span class="card-tag">Aktiv · Login required</span>
+        <div class="icon">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="20" x2="18" y2="10"></line>
+            <line x1="12" y1="20" x2="12" y2="4"></line>
+            <line x1="6" y1="20" x2="6" y2="14"></line>
           </svg>
         </div>
-        <h3>Test Tool</h3>
-        <p>Vorlage und Testumgebung für neue NOVA Tools. Dient als Basis für künftige Entwicklungen.</p>
+        <h3>Spülprotokoll Auswertung</h3>
+        <p>Auswertung der Spüldaten, Statistiken und grafische Aufbereitung. Datenbank-gestützt mit Supabase.</p>
         <ul class="list">
-          <li class="dim">Supabase-Grundstruktur</li>
-          <li class="dim">Auth-Template integriert</li>
-          <li class="dim">Nur für Entwicklung</li>
+          <li>Datenanalyse & Statistiken</li>
+          <li>Report-Generierung</li>
+          <li>Supabase Auth · Login erforderlich</li>
         </ul>
-        <a class="btn-card btn-template" href="https://kaffeetrinker80.github.io/NOVA/test/">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="16 18 22 12 16 6"/>
-            <polyline points="8 6 2 12 8 18"/>
+        <a class="btn-card btn-nova-card" href="https://kaffeetrinker80.github.io/NOVA/spuelprotokoll-auswertung/">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+            <polyline points="10 17 15 12 10 7"/>
+            <line x1="15" y1="12" x2="3" y2="12"/>
           </svg>
-          Test-Umgebung öffnen
+          Öffnen & Einloggen
         </a>
       </article>
 
     </section>
+
+    <!-- Dev Area: Test Tool (Deutlich kleiner) -->
+    <div class="dev-area animate-in delay-3">
+      <a class="dev-btn" href="https://kaffeetrinker80.github.io/NOVA/test/" title="Testumgebung und Vorlage">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="16 18 22 12 16 6"/>
+          <polyline points="8 6 2 12 8 18"/>
+        </svg>
+        Test-Umgebung öffnen
+      </a>
+    </div>
 
     <footer class="footer animate-in delay-3">
       <div class="footer-logo">NOVA Praxis-Hygiene GmbH</div>
