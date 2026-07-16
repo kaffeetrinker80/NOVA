@@ -508,6 +508,29 @@ select:focus{
     .stat-tile .tile-bar-fill.warn { background:#e53935; }
     .bearbeiter-tag { display:inline-block; background:#e8f1ff; color:#1e3a8a; border-radius:999px; padding:1px 8px; font-size:0.75rem; font-weight:600; margin:1px 2px; white-space:nowrap; }
     th.col-bearbeiter, td.col-bearbeiter { min-width:100px; }
+
+    .flush-count-cell { white-space: nowrap; text-align: center; }
+    .history-toggle {
+      margin-left: 5px; padding: 1px 6px; min-width: 27px; height: 25px;
+      border-radius: 7px; border: 1px solid #bfdbfe; background: #eff6ff;
+      color: #1565c0; box-shadow: none; font-size: .78rem; line-height: 1;
+      vertical-align: middle;
+    }
+    .history-toggle:hover { background:#dbeafe; border-color:#93c5fd; color:#0f4f9e; }
+    .history-toggle[aria-expanded="true"] { background:#dbeafe; }
+    .history-row > td { padding: 0 !important; background:#f8fbff !important; }
+    .history-panel { padding: 10px 12px 12px 42px; border-top: 1px solid #dbeafe; }
+    .history-title { font-weight: 750; color:#334155; margin-bottom:7px; font-size:.8rem; }
+    .history-table { width:100%; border-collapse:collapse; font-size:.76rem; background:#fff; }
+    .history-table th { position:static; background:#edf5ff; color:#334155; white-space:nowrap; }
+    .history-table th, .history-table td { padding:5px 7px; border:1px solid #dbe5f0; }
+    .history-table td.history-note { min-width:180px; white-space:normal; }
+    .history-flag { display:inline-block; margin:1px 3px 1px 0; padding:1px 6px; border-radius:999px; background:#fff4e5; color:#9a5800; font-size:.7rem; font-weight:650; }
+    .history-empty { color:#94a3b8; }
+
+    @media print {
+      .history-toggle, .history-row { display:none !important; }
+    }
 </style>
 
   
@@ -973,7 +996,7 @@ select:focus{
     </div>
 
     <div class="footer">
-      Spülprotokoll-Auswertung · Datenbasis: NOVA Supabase Live-Daten + JSON-Backup · Version 1.31
+      Spülprotokoll-Auswertung · Datenbasis: NOVA Supabase Live-Daten + JSON-Backup · Version 1.32
     </div>
   </div>
 
@@ -1126,12 +1149,27 @@ select:focus{
                 wwBBelow55: 0,
                 turbidityCount: 0,
                 aeratorTotal: 0,
-                bearbeiterSet: new Set()
+                bearbeiterSet: new Set(),
+                history: []
               };
             }
 
             const obj = objects[key];
             if (rowPerformer) obj.bearbeiterSet.add(rowPerformer);
+
+            obj.history.push({
+              date: row.date || "",
+              time: row.time || "",
+              kwTemp: row.kwTemp ?? "",
+              wwKitchen: row.wwKitchen ?? "",
+              wwBath: row.wwBath ?? "",
+              performer: rowPerformer,
+              turbidityFlag: Boolean(row.turbidityFlag),
+              aeratorChanged: Boolean(row.aeratorChanged),
+              aeratorChangedCount: row.aeratorChangedCount || "",
+              notes: row.notes || "",
+              flushedAt: row.flushedAt || ""
+            });
 
             obj.count++;
             totalRows++;
@@ -1180,6 +1218,11 @@ select:focus{
         o.kwAvg   = o.kwCount   ? (o.kwSum / o.kwCount)   : null;
         o.wwKAvg  = o.wwKCount  ? (o.wwKSum / o.wwKCount) : null;
         o.wwBAvg  = o.wwBCount  ? (o.wwBSum / o.wwBCount) : null;
+        o.history = Array.isArray(o.history) ? o.history.sort((a, b) => {
+          const aKey = `${a.date || ""}T${a.time || "00:00"}`;
+          const bKey = `${b.date || ""}T${b.time || "00:00"}`;
+          return bKey.localeCompare(aKey);
+        }) : [];
       });
 
       resultArray.sort((a, b) => {
@@ -1243,7 +1286,7 @@ select:focus{
 
     function renderTableInfo() {
       const el = document.getElementById("tableInfo");
-      el.textContent = `angezeigte Objekte: ${document.querySelectorAll("#resultsTable tbody tr").length} von insgesamt ${allObjects.length}` + (currentSearchTerm ? ` · Suchtreffer für "${currentSearchTerm}"` : "");
+      el.textContent = `angezeigte Objekte: ${document.querySelectorAll("#resultsTable tbody tr.object-row").length} von insgesamt ${allObjects.length}` + (currentSearchTerm ? ` · Suchtreffer für "${currentSearchTerm}"` : "");
     }
 
     function formatNumber(value, decimals = 1) {
@@ -1305,12 +1348,98 @@ select:focus{
       });
     }
 
+    function createHistoryRow(o) {
+      const historyTr = document.createElement("tr");
+      historyTr.className = "history-row no-print";
+      historyTr.hidden = true;
+
+      const cell = document.createElement("td");
+      cell.colSpan = 13;
+
+      const panel = document.createElement("div");
+      panel.className = "history-panel";
+
+      const title = document.createElement("div");
+      title.className = "history-title";
+      title.textContent = `Historie – ${o.count} Spülungen (neueste zuerst)`;
+      panel.appendChild(title);
+
+      const table = document.createElement("table");
+      table.className = "history-table";
+      const thead = document.createElement("thead");
+      const headRow = document.createElement("tr");
+      ["Datum", "Uhrzeit", "KW [°C]", "WW Küche [°C]", "WW Bad [°C]", "Spüler", "Auffälligkeiten / Hinweise"].forEach(label => {
+        const th = document.createElement("th");
+        th.textContent = label;
+        headRow.appendChild(th);
+      });
+      thead.appendChild(headRow);
+      table.appendChild(thead);
+
+      const body = document.createElement("tbody");
+      (o.history || []).forEach(h => {
+        const row = document.createElement("tr");
+        const values = [
+          formatDateDisplay(h.date),
+          h.time || "",
+          formatNumber(parseTemp(h.kwTemp)),
+          formatNumber(parseTemp(h.wwKitchen)),
+          formatNumber(parseTemp(h.wwBath)),
+          h.performer || ""
+        ];
+        values.forEach(value => {
+          const c = document.createElement("td");
+          c.textContent = value || "–";
+          row.appendChild(c);
+        });
+
+        const noteCell = document.createElement("td");
+        noteCell.className = "history-note";
+        let hasInfo = false;
+        if (h.turbidityFlag) {
+          const flag = document.createElement("span");
+          flag.className = "history-flag";
+          flag.textContent = "Trübung/Färbung auffällig";
+          noteCell.appendChild(flag);
+          hasInfo = true;
+        }
+        if (h.aeratorChanged) {
+          const flag = document.createElement("span");
+          flag.className = "history-flag";
+          const count = parseInt(h.aeratorChangedCount || "1", 10);
+          flag.textContent = `Strahlregler getauscht${count > 1 ? ` (${count})` : ""}`;
+          noteCell.appendChild(flag);
+          hasInfo = true;
+        }
+        if (h.notes) {
+          const text = document.createElement("div");
+          text.textContent = h.notes;
+          noteCell.appendChild(text);
+          hasInfo = true;
+        }
+        if (!hasInfo) {
+          const empty = document.createElement("span");
+          empty.className = "history-empty";
+          empty.textContent = "–";
+          noteCell.appendChild(empty);
+        }
+        row.appendChild(noteCell);
+        body.appendChild(row);
+      });
+      table.appendChild(body);
+      panel.appendChild(table);
+      cell.appendChild(panel);
+      historyTr.appendChild(cell);
+      return historyTr;
+    }
+
     function renderTable(objects) {
       const tbody = document.querySelector("#resultsTable tbody");
       tbody.innerHTML = "";
 
       objects.forEach((o, idx) => {
         const tr = document.createElement("tr");
+        tr.className = "object-row";
 
         function td(text, className) {
           const c = document.createElement("td");
@@ -1325,7 +1454,30 @@ select:focus{
         tr.appendChild(td(o.floor || "", "col-floor"));
         tr.appendChild(td(o.roomType || "", "col-roomtype"));
         tr.appendChild(td(o.unit || "", "col-unit"));
-        tr.appendChild(td(String(o.count)));
+        const countCell = document.createElement("td");
+        countCell.className = "flush-count-cell";
+        const countText = document.createElement("span");
+        countText.textContent = String(o.count);
+        countCell.appendChild(countText);
+        let historyRow = null;
+        if (o.count > 1 && Array.isArray(o.history) && o.history.length > 1) {
+          historyRow = createHistoryRow(o);
+          const toggle = document.createElement("button");
+          toggle.type = "button";
+          toggle.className = "history-toggle no-print";
+          toggle.setAttribute("aria-expanded", "false");
+          toggle.title = "Spülhistorie anzeigen";
+          toggle.textContent = "▼";
+          toggle.addEventListener("click", () => {
+            const willOpen = historyRow.hidden;
+            historyRow.hidden = !willOpen;
+            toggle.setAttribute("aria-expanded", willOpen ? "true" : "false");
+            toggle.textContent = willOpen ? "▲" : "▼";
+            toggle.title = willOpen ? "Spülhistorie schließen" : "Spülhistorie anzeigen";
+          });
+          countCell.appendChild(toggle);
+        }
+        tr.appendChild(countCell);
         tr.appendChild(td(formatDateDisplay(o.firstDate)));
         tr.appendChild(td(formatDateDisplay(o.lastDate)));
         tr.appendChild(td(formatNumber(o.kwAvg), "col-temp"));
@@ -1342,6 +1494,7 @@ select:focus{
         tr.appendChild(tdB);
 
         tbody.appendChild(tr);
+        if (historyRow) tbody.appendChild(historyRow);
       });
 
       renderTableInfo();
