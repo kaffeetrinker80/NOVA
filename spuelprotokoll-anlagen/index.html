@@ -1314,7 +1314,7 @@
   <div id="tableContainer"></div>
 
   <div class="footer">
-    Anmeldung aktiv · Cloud-Sync (Row-Level Live) · Version 3.0.7</div>
+    Anmeldung aktiv · Cloud-Sync (Row-Level Live) · Version 3.0.8</div>
 
   <!-- Modal für Anlagenverwaltung -->
   <div id="modalOverlay" class="modal-overlay">
@@ -1385,7 +1385,7 @@
     let isAdmin = false;
 
     // ===================================================================
-    //  CLOUD-SYNC (v3.0.7 – Row-Level Live + Spülerzuordnung)
+    //  CLOUD-SYNC (v3.0.8 – Row-Level Live + Spülerzuordnung)
     //  - Beim Login: alle Zeilen ziehen und lokale Seiten rekonstruieren.
     //  - Beim Bearbeiten: ausschließlich tatsächlich geänderte Zeilen hochladen.
     //  - Realtime übernimmt fremde Zeilen sofort; 3-Sekunden-Polling dient als Fallback.
@@ -2705,24 +2705,14 @@
 
     // Raumtyp beschreibt ausschließlich die Art des Raums/Bereichs.
     const ROOM_TYPE_OPTIONS = [
-      "Behandlungsraum / Untersuchungsraum",
-      "Bewohner- / Patientenzimmer",
-      "Hausanschlussraum",
-      "Kantine / Großküche",
-      "Lüftungszentrale",
-      "Pausenraum / Aufenthaltsraum",
-      "Personal-WC / Patienten-WC / Besucher-WC",
-      "Pflegebad",
-      "Putzraum / Reinigungsraum",
-      "Sanitär- & Personalbereich",
-      "Sanitärraum WC/Bad",
-      "Sonstiger Raum / Bereich",
-      "Teeküche / Stationsküche",
-      "Umkleide (mit integriertem Waschbereich)",
-      "Unreinraum",
-      "Waschküche",
-      "Waschraum / Duschraum",
-      "Zentrale Trinkwassererwärmung"
+      "Apartment / Zimmer",
+      "Bad / WC / Sanitärraum",
+      "Büro / Behandlung / Untersuchung",
+      "Küche / Teeküche / Kantine",
+      "Personal / Aufenthalt / Umkleide",
+      "Reinigung / Wäsche / Unreinraum",
+      "Heiz- / Technikraum",
+      "Sonstiger Raum / Bereich"
     ];
 
     const GENERIC_EXTRACTION_POINTS = [
@@ -2759,10 +2749,8 @@
 
     function getExtractionPointOptions(roomType = "") {
       switch (String(roomType || "").trim()) {
-        case "Zentrale Trinkwassererwärmung":
-          return ["WW-Abgang", "Zirkulations-RL", "KW"];
-        case "Hausanschlussraum":
-          return ["Probenahmehahn nach dem Wasserzähler", "Sonstige Entnahmestelle"];
+        case "Heiz- / Technikraum":
+          return ["WW-Abgang", "Zirkulations-RL", "Hausanschluss"];
         default:
           return GENERIC_EXTRACTION_POINTS;
       }
@@ -3816,7 +3804,7 @@
           roomTypeSelect.addEventListener("change", () => {
             ensureDateTime();
             row.roomType = roomTypeSelect.value;
-            if (row.roomType === "Zentrale Trinkwassererwärmung" && row.tempMode === "kitchenBath" && !row.wwKitchen && !row.wwBath) {
+            if (row.roomType === "Heiz- / Technikraum" && row.tempMode === "kitchenBath" && !row.wwKitchen && !row.wwBath) {
               row.tempMode = "other";
               row.kwOnly = false;
             }
@@ -3900,8 +3888,8 @@
           otherLocationSelect.addEventListener("change", () => {
             ensureDateTime();
             row.tempLocationOther = otherLocationSelect.value;
-            if (row.roomType === "Zentrale Trinkwassererwärmung") {
-              if (row.tempLocationOther === "KW") row.kwOnly = true;
+            if (row.roomType === "Heiz- / Technikraum") {
+              if (row.tempLocationOther === "Hausanschluss" || row.tempLocationOther === "KW") row.kwOnly = true;
               if (row.tempLocationOther === "WW-Abgang" || row.tempLocationOther === "Zirkulations-RL") row.kwOnly = false;
               mobileKwOnlyCheckbox.checked = row.kwOnly === true;
             }
@@ -3934,26 +3922,26 @@
             modeRadios.forEach(radio => { radio.checked = radio.value === mode; });
             mobileKwOnlyCheckbox.checked = row.kwOnly;
 
-            const isCentralHeater = row.roomType === "Zentrale Trinkwassererwärmung";
+            const isTechnicalRoom = row.roomType === "Heiz- / Technikraum";
             const point = String(row.tempLocationOther || "");
-            const centralKw = isCentralHeater && point === "KW";
-            const centralWw = isCentralHeater && (point === "WW-Abgang" || point === "Zirkulations-RL");
-            if (mode === "other" && centralKw) row.kwOnly = true;
-            if (mode === "other" && centralWw) row.kwOnly = false;
+            const technicalKw = isTechnicalRoom && (point === "Hausanschluss" || point === "KW");
+            const technicalWw = isTechnicalRoom && (point === "WW-Abgang" || point === "Zirkulations-RL");
+            if (mode === "other" && technicalKw) row.kwOnly = true;
+            if (mode === "other" && technicalWw) row.kwOnly = false;
             mobileKwOnlyCheckbox.checked = row.kwOnly;
-            mobileKwOnlyCheckbox.disabled = mode === "other" && isCentralHeater && !!point;
+            mobileKwOnlyCheckbox.disabled = mode === "other" && isTechnicalRoom && !!point;
 
             let kwActive = true;
             let kitchenActive = !row.kwOnly && mode === "kitchenBath";
             let bathActive = !row.kwOnly && (mode === "bath" || mode === "other" || mode === "kitchenBath");
 
-            if (mode === "other" && isCentralHeater && point) {
-              kwActive = row.kwOnly || centralKw;
+            if (mode === "other" && isTechnicalRoom && point) {
+              kwActive = row.kwOnly || technicalKw;
               kitchenActive = false;
-              bathActive = !row.kwOnly && centralWw;
+              bathActive = !row.kwOnly && technicalWw;
             }
 
-            otherLocationLabel.textContent = isCentralHeater ? "Probenahmeventil" : "Entnahmestelle";
+            otherLocationLabel.textContent = isTechnicalRoom ? "Anlagenteil" : "Entnahmestelle";
             otherLocationWrap.style.display = mode === "other" ? "grid" : "none";
             kwWrap.style.display = kwActive ? "grid" : "none";
             wwKWrap.style.display = kitchenActive ? "grid" : "none";
@@ -3961,13 +3949,13 @@
             wwRow.style.display = (kitchenActive || bathActive) ? "grid" : "none";
             wwRow.style.gridTemplateColumns = (kitchenActive && bathActive) ? "1fr 1fr" : "1fr";
 
-            if (centralKw) kwWrap.querySelector("span").textContent = "KW Probenahmeventil";
+            if (technicalKw) kwWrap.querySelector("span").textContent = point === "Hausanschluss" ? "KW Hausanschluss" : "KW Probenahmeventil";
             else if (row.kwOnly && mode === "bath") kwWrap.querySelector("span").textContent = "KW Bad min.";
             else if (row.kwOnly && mode === "other") kwWrap.querySelector("span").textContent = "KW Entnahmestelle min.";
             else kwWrap.querySelector("span").textContent = "KW min.";
             wwKLabel.textContent = "WW Küche max.";
             if (mode === "bath") wwBLabel.textContent = "WW Bad max.";
-            else if (centralWw) wwBLabel.textContent = point === "WW-Abgang" ? "WW-Abgang max." : "Zirkulations-RL max.";
+            else if (technicalWw) wwBLabel.textContent = point === "WW-Abgang" ? "WW-Abgang max." : "Zirkulations-RL max.";
             else if (mode === "other") wwBLabel.textContent = "WW Entnahmestelle max.";
             else wwBLabel.textContent = "WW Bad max.";
           };
@@ -4236,7 +4224,7 @@ tr.appendChild(tdIdx);
         roomTypeSelect.addEventListener("change", () => {
           ensureDateTime();
           row.roomType = roomTypeSelect.value;
-          if (row.roomType === "Zentrale Trinkwassererwärmung" && row.tempMode === "kitchenBath" && !row.wwKitchen && !row.wwBath) {
+          if (row.roomType === "Heiz- / Technikraum" && row.tempMode === "kitchenBath" && !row.wwKitchen && !row.wwBath) {
             row.tempMode = "other";
             row.kwOnly = false;
           }
@@ -4304,26 +4292,26 @@ tr.appendChild(tdIdx);
           row.tempMode = mode;
           row.kwOnly = normalizeKwOnly(row);
 
-          const isCentralHeater = row.roomType === "Zentrale Trinkwassererwärmung";
+          const isTechnicalRoom = row.roomType === "Heiz- / Technikraum";
           const point = String(row.tempLocationOther || "");
-          const centralKw = isCentralHeater && point === "KW";
-          const centralWw = isCentralHeater && (point === "WW-Abgang" || point === "Zirkulations-RL");
-          if (mode === "other" && centralKw) row.kwOnly = true;
-          if (mode === "other" && centralWw) row.kwOnly = false;
+          const technicalKw = isTechnicalRoom && (point === "Hausanschluss" || point === "KW");
+          const technicalWw = isTechnicalRoom && (point === "WW-Abgang" || point === "Zirkulations-RL");
+          if (mode === "other" && technicalKw) row.kwOnly = true;
+          if (mode === "other" && technicalWw) row.kwOnly = false;
           kwOnlyCheckbox.checked = row.kwOnly;
-          kwOnlyCheckbox.disabled = mode === "other" && isCentralHeater && !!point;
+          kwOnlyCheckbox.disabled = mode === "other" && isTechnicalRoom && !!point;
 
           let kwActive = true;
           let kitchenActive = !row.kwOnly && mode === "kitchenBath";
           let bathActive = !row.kwOnly && (mode === "bath" || mode === "other" || mode === "kitchenBath");
-          if (mode === "other" && isCentralHeater && point) {
-            kwActive = row.kwOnly || centralKw;
+          if (mode === "other" && isTechnicalRoom && point) {
+            kwActive = row.kwOnly || technicalKw;
             kitchenActive = false;
-            bathActive = !row.kwOnly && centralWw;
+            bathActive = !row.kwOnly && technicalWw;
           }
 
           if (otherLocationWrap) otherLocationWrap.style.display = mode === "other" ? "block" : "none";
-          otherLocationSelect.title = isCentralHeater ? "Probenahmeventil auswählen" : "Entnahmestelle auswählen";
+          otherLocationSelect.title = isTechnicalRoom ? "Anlagenteil auswählen" : "Entnahmestelle auswählen";
           kwInput.disabled = !kwActive;
           wwKInput.disabled = !kitchenActive;
           wwBInput.disabled = !bathActive;
@@ -4403,8 +4391,8 @@ tr.appendChild(tdIdx);
         otherLocationSelect.addEventListener("change", () => {
           ensureDateTime();
           row.tempLocationOther = otherLocationSelect.value;
-          if (row.roomType === "Zentrale Trinkwassererwärmung") {
-            if (row.tempLocationOther === "KW") row.kwOnly = true;
+          if (row.roomType === "Heiz- / Technikraum") {
+            if (row.tempLocationOther === "Hausanschluss" || row.tempLocationOther === "KW") row.kwOnly = true;
             if (row.tempLocationOther === "WW-Abgang" || row.tempLocationOther === "Zirkulations-RL") row.kwOnly = false;
             kwOnlyCheckbox.checked = row.kwOnly === true;
           }
@@ -4460,25 +4448,25 @@ tr.appendChild(tdIdx);
 
         function updateExtractionLabels() {
           const mode = normalizeTemperatureMode(row);
-          const isCentralHeater = row.roomType === "Zentrale Trinkwassererwärmung";
+          const isTechnicalRoom = row.roomType === "Heiz- / Technikraum";
           const point = String(row.tempLocationOther || "");
-          const centralKw = isCentralHeater && point === "KW";
-          const centralWw = isCentralHeater && (point === "WW-Abgang" || point === "Zirkulations-RL");
+          const technicalKw = isTechnicalRoom && (point === "Hausanschluss" || point === "KW");
+          const technicalWw = isTechnicalRoom && (point === "WW-Abgang" || point === "Zirkulations-RL");
           const kitchenActive = mode === "kitchenBath";
           const bathActive = mode === "bath" || mode === "other" || mode === "kitchenBath";
 
-          if (centralKw) tdKW.dataset.label = "KW Probenahmeventil";
+          if (technicalKw) tdKW.dataset.label = point === "Hausanschluss" ? "KW Hausanschluss" : "KW Probenahmeventil";
           else if (row.kwOnly && mode === "bath") tdKW.dataset.label = "KW Bad";
           else if (row.kwOnly && mode === "other") tdKW.dataset.label = "KW Entnahmestelle";
           else tdKW.dataset.label = "KW [°C]";
           tdWWK.dataset.label = "WW Küche";
           if (mode === "bath") tdWWB.dataset.label = "WW Bad";
-          else if (centralWw) tdWWB.dataset.label = point;
+          else if (technicalWw) tdWWB.dataset.label = point;
           else if (mode === "other") tdWWB.dataset.label = "WW Entnahmestelle";
           else tdWWB.dataset.label = "WW Bad";
 
           if (kitchenActive && !row.wwKitchen) wwKInput.placeholder = "60,0";
-          if (bathActive && !row.wwBath) wwBInput.placeholder = centralWw && point === "Zirkulations-RL" ? "55,0" : "60,0";
+          if (bathActive && !row.wwBath) wwBInput.placeholder = technicalWw && point === "Zirkulations-RL" ? "55,0" : "60,0";
         }
 
         updateKwWarning();
