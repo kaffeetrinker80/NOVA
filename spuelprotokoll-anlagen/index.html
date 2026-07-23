@@ -1314,7 +1314,7 @@
   <div id="tableContainer"></div>
 
   <div class="footer">
-    Anmeldung aktiv · Cloud-Sync (Row-Level Live) · Version 3.0.8</div>
+    Anmeldung aktiv · Cloud-Sync (Row-Level Live) · Version 3.0.9</div>
 
   <!-- Modal für Anlagenverwaltung -->
   <div id="modalOverlay" class="modal-overlay">
@@ -1365,6 +1365,9 @@
     const SUPABASE_URL = "https://avuimpwjslrgpdahyloa.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF2dWltcHdqc2xyZ3BkYWh5bG9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwOTc0MjAsImV4cCI6MjA5NDY3MzQyMH0.q6s3s36WOoGGLbH7gsWqyzY2b_36vUjAHqKrGrAhYEs";
     const NOVA_TABLE = "nova_spuelprotokoll_data";
+    // Zentrale Anlagen-/Bereichsstruktur. Alle Nutzer lesen diesen Datensatz,
+    // ändern darf ihn innerhalb des Tools ausschließlich der Super-Admin.
+    const LOCATION_CONFIG_ID = "config:locations";
 
     // Super-Admin-Whitelist (E-Mails). Neue Admins einfach hier ergänzen.
     const ADMIN_EMAILS = [
@@ -1384,8 +1387,14 @@
     let currentProfile = null;     // { id, email, display_name }
     let isAdmin = false;
 
+    const LOCATION_SYNC = {
+      loaded: false,
+      applyingRemote: false,
+      timer: null
+    };
+
     // ===================================================================
-    //  CLOUD-SYNC (v3.0.8 – Row-Level Live + Spülerzuordnung)
+    //  CLOUD-SYNC (v3.0.9 – Row-Level Live + zentrale Admin-Standorte)
     //  - Beim Login: alle Zeilen ziehen und lokale Seiten rekonstruieren.
     //  - Beim Bearbeiten: ausschließlich tatsächlich geänderte Zeilen hochladen.
     //  - Realtime übernimmt fremde Zeilen sofort; 3-Sekunden-Polling dient als Fallback.
@@ -1975,6 +1984,14 @@
     function updateAdminUi() {
       const box = document.getElementById("adminBox");
       if (box) box.style.display = isAdmin ? "block" : "none";
+
+      // Die gesamte Verwaltung, Sicherung und Seitenpflege ist Admin-Sache.
+      // Spüler sehen nur Suche, Standortwechsel und die eigentliche Erfassung.
+      const settings = document.querySelector(".settings-details");
+      if (settings) settings.style.display = isAdmin ? "block" : "none";
+
+      const recoveryBtn = document.getElementById("quickImportPagesBtn");
+      if (recoveryBtn && !isAdmin) recoveryBtn.style.display = "none";
     }
 
     async function adminWipeAllLiveData() {
@@ -2669,14 +2686,102 @@
       if (migrateSchenkAreaInAnlagen()) {
         console.info("Dr.-Schenk-Stift: Bereich wurde in Betreutes Wohnen umbenannt.");
       }
-      saveAnlagen();
+      // Beim Start nur lokal puffern. Die zentrale Cloud-Struktur wird direkt
+      // nach dem Login geladen und überschreibt veraltete Gerätestände.
+      localStorage.setItem(ANLAGEN_KEY, JSON.stringify(anlagenData));
     }
 
     function saveAnlagen() {
       anlagenData = normalizeAnlagenStructure(anlagenData);
       migrateSchenkAreaInAnlagen();
       localStorage.setItem(ANLAGEN_KEY, JSON.stringify(anlagenData));
-}
+      scheduleLocationConfigUpload();
+    }
+
+    function buildLocationConfigRecord() {
+      return {
+        id: LOCATION_CONFIG_ID,
+        kind: "config",
+        anlage: "__CONFIG__",
+        bereich: "__CONFIG__",
+        page_number: null,
+        data: {
+          config_type: "locations",
+          anlagen: normalizeAnlagenStructure(anlagenData),
+          _client_id: SYNC.clientId
+        },
+        updated_by: currentProfile ? currentProfile.id : null,
+        updated_by_name: currentProfile ? currentProfile.display_name : null
+      };
+    }
+
+    async function uploadLocationConfigNow() {
+      if (!db || !isAdmin || LOCATION_SYNC.applyingRemote) return false;
+      try {
+        const { error } = await db
+          .from(NOVA_TABLE)
+          .upsert(buildLocationConfigRecord(), { onConflict: "id" });
+        if (error) throw error;
+        LOCATION_SYNC.loaded = true;
+        return true;
+      } catch (e) {
+        console.error("Standortstruktur konnte nicht gespeichert werden:", e);
+        toast("Standortstruktur konnte nicht in der Cloud gespeichert werden.");
+        return false;
+      }
+    }
+
+    function scheduleLocationConfigUpload() {
+      if (!db || !isAdmin || !LOCATION_SYNC.loaded || LOCATION_SYNC.applyingRemote) return;
+      if (LOCATION_SYNC.timer) clearTimeout(LOCATION_SYNC.timer);
+      LOCATION_SYNC.timer = setTimeout(() => {
+        LOCATION_SYNC.timer = null;
+        uploadLocationConfigNow();
+      }, 500);
+    }
+
+    async function pullLocationConfigFromCloud({ seedIfMissing = true, quiet = false } = {}) {
+      if (!db) return false;
+      try {
+        const { data, error } = await db
+          .from(NOVA_TABLE)
+          .select("id, kind, data, updated_at")
+          .eq("id", LOCATION_CONFIG_ID)
+          .maybeSingle();
+        if (error) throw error;
+
+        const cloudAnlagen = data && data.data && data.data.anlagen;
+        if (cloudAnlagen && typeof cloudAnlagen === "object") {
+          LOCATION_SYNC.applyingRemote = true;
+          anlagenData = normalizeAnlagenStructure(cloudAnlagen);
+          migrateSchenkAreaInAnlagen();
+          localStorage.setItem(ANLAGEN_KEY, JSON.stringify(anlagenData));
+          LOCATION_SYNC.applyingRemote = false;
+          LOCATION_SYNC.loaded = true;
+          if (appStarted) initAnlageDropdowns();
+          return true;
+        }
+
+        LOCATION_SYNC.loaded = true;
+        // Beim allerersten Einsatz bewusst aus dem geprüften Stamm erzeugen,
+        // nicht aus möglicherweise veralteten lokalen Geräten.
+        if (isAdmin && seedIfMissing) {
+          LOCATION_SYNC.applyingRemote = true;
+          anlagenData = normalizeAnlagenStructure(clone(DEFAULT_ANLAGEN));
+          localStorage.setItem(ANLAGEN_KEY, JSON.stringify(anlagenData));
+          LOCATION_SYNC.applyingRemote = false;
+          await uploadLocationConfigNow();
+          if (appStarted) initAnlageDropdowns();
+          if (!quiet) toast("Zentrale Standortstruktur wurde angelegt.");
+        }
+        return false;
+      } catch (e) {
+        LOCATION_SYNC.applyingRemote = false;
+        console.error("Standortstruktur konnte nicht geladen werden:", e);
+        if (!quiet) toast("Standortstruktur konnte nicht geladen werden – lokaler Stand wird verwendet.");
+        return false;
+      }
+    }
 
     function todayISO() {
       return new Date().toISOString().slice(0, 10);
@@ -3372,6 +3477,8 @@
     }
     // Wählt einen Standort und öffnet das passende vorhandene Protokoll.
     async function openStandortWechsel() {
+      // Vor jeder Standortwahl kurz den zentralen Stamm aktualisieren.
+      await pullLocationConfigFromCloud({ seedIfMissing: false, quiet: true });
       const anlagen = Object.keys(anlagenData || {});
       if (!anlagen.length) {
         uiAlert("Es sind noch keine Anlagen hinterlegt. Bitte zuerst unter „Einstellungen → Verwalten“ eine Anlage anlegen.");
@@ -3460,7 +3567,7 @@
       if (!page){
         btn.textContent = "Wo arbeitest du gerade?";
         btn.classList.add("location-switch-cta");
-        if (recoveryBtn) recoveryBtn.style.display = "inline-flex";
+        if (recoveryBtn) recoveryBtn.style.display = isAdmin ? "inline-flex" : "none";
         if (actions) actions.classList.add("location-panel-empty");
       } else {
         btn.textContent = "Standort wechseln";
@@ -5035,6 +5142,10 @@ function renderAll() {
       }
 
       btn.addEventListener("click", () => {
+        if (!isAdmin) {
+          uiAlert("Die Standortverwaltung ist nur für den Super-Admin freigegeben.");
+          return;
+        }
         if (!Object.keys(anlagenData).length) {
           uiAlert("Keine Anlagen vorhanden.");
           return;
@@ -5054,6 +5165,10 @@ function renderAll() {
       });
 
       modalConfirmBtn.addEventListener("click", async () => {
+        if (!isAdmin) {
+          closeModal();
+          return;
+        }
         const action = modalAction.value;
         const selectedAnlage = modalAnlageSelect.value;
         const bereiche = anlagenData[selectedAnlage] || [];
@@ -5285,27 +5400,31 @@ case "4":
       });
 
       document.getElementById("newPageBtn").addEventListener("click", async () => {
+        if (!isAdmin) return;
         const anlage = document.getElementById("anlageSelect").value;
         const bereich = document.getElementById("bereichSelect").value;
         await routeToLocation(anlage, bereich);
       });
 
       document.getElementById("deletePageBtn").addEventListener("click", () => {
+        if (!isAdmin) return;
         deleteActivePage();
       });
 
       // Export / Import (Download)
-      document.getElementById("exportPagesBtn").addEventListener("click", exportPagesJSON);
+      document.getElementById("exportPagesBtn").addEventListener("click", () => { if (isAdmin) exportPagesJSON(); });
 
       const pagesImportInput = document.getElementById("pagesImportInput");
       document.getElementById("importPagesBtn").addEventListener("click", () => {
+        if (!isAdmin) return;
         pagesImportInput.click();
       });
       const quickImportPagesBtn = document.getElementById("quickImportPagesBtn");
       if (quickImportPagesBtn) {
-        quickImportPagesBtn.addEventListener("click", () => pagesImportInput.click());
+        quickImportPagesBtn.addEventListener("click", () => { if (isAdmin) pagesImportInput.click(); });
       }
       pagesImportInput.addEventListener("change", (e) => {
+        if (!isAdmin) { e.target.value = ""; return; }
         const file = e.target.files[0];
         if (file) {
           importPagesJSONFile(file);
@@ -5313,13 +5432,15 @@ case "4":
         pagesImportInput.value = "";
       });
 
-      document.getElementById("exportAnlagenBtn").addEventListener("click", exportAnlagenJSON);
+      document.getElementById("exportAnlagenBtn").addEventListener("click", () => { if (isAdmin) exportAnlagenJSON(); });
 
       const anlagenImportInput = document.getElementById("anlagenImportInput");
       document.getElementById("importAnlagenBtn").addEventListener("click", () => {
+        if (!isAdmin) return;
         anlagenImportInput.click();
       });
       anlagenImportInput.addEventListener("change", (e) => {
+        if (!isAdmin) { e.target.value = ""; return; }
         const file = e.target.files[0];
         if (file) {
           importAnlagenJSONFile(file);
@@ -5340,6 +5461,10 @@ case "4":
       // Share (Google Drive via Share Sheet)
 
       document.getElementById("addAnlageBtn").addEventListener("click", async () => {
+        if (!isAdmin) {
+          await uiAlert("Anlagen und Bereiche können nur vom Super-Admin geändert werden.");
+          return;
+        }
         // Choose: new Anlage OR new Bereich within existing Anlage
         const choice = await new Promise((resolve) => {
           _dialog.open({
@@ -5609,10 +5734,18 @@ case "4":
       const em = (currentUser && currentUser.email || "").toLocaleLowerCase("de-DE");
       isAdmin = ADMIN_EMAILS.map(s => s.toLocaleLowerCase("de-DE")).includes(em);
       updateAccountBar();
+      updateAdminUi();
       const ov = document.getElementById("loginOverlay");
       if (ov) ov.style.display = "none";
       startApp();
-      // v3.0.6: Erstbestand ziehen, danach zeilenweiser Live-Abgleich.
+
+      // Zuerst den zentralen Standortstamm laden. Dadurch werden alte lokale
+      // Fehlanlagen auf Mitarbeitergeräten zuverlässig überschrieben.
+      await pullLocationConfigFromCloud({ seedIfMissing: true, quiet: false });
+      initAnlageDropdowns();
+      renderAll();
+
+      // Erstbestand ziehen, danach zeilenweiser Live-Abgleich.
       setSyncStatus("syncing");
       const res = await pullAllPagesFromCloud();
       if (res.ok) {
