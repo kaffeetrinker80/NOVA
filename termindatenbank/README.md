@@ -65,19 +65,15 @@ Kunde → Anlage → Untersuchungsbereich (WWB) → Auftrag (26-0897) → Untera
 
 Ziel-Adresse: **https://kaffeetrinker80.github.io/NOVA/termindatenbank/**
 
-Ein GitHub-Actions-Workflow (`.github/workflows/deploy.yml`) baut die App bei jedem Push
-auf `main` (der `termindatenbank/`-Ordner betrifft) automatisch und veröffentlicht sie in den
-`gh-pages`-Branch, Unterordner `termindatenbank/` – mit `keep_files: true`, damit die
-Unterordner eurer anderen NOVA-Tools im selben Branch unangetastet bleiben.
+Euer Repo liefert GitHub Pages direkt aus dem `main`-Branch aus (Settings → Pages →
+„Deploy from a branch" → `main` / `root`) — genau wie bei den anderen NOVA-Tools.
+Deshalb liegt im Ordner `termindatenbank/` direkt die **fertig gebaute** Version
+(`index.html`, `assets/`, `nova_logo.png`), kein Build-Schritt und kein
+GitHub-Actions-Workflow nötig. Der Quellcode zum Weiterentwickeln liegt daneben in
+`termindatenbank/_quellcode/` (siehe `_quellcode/LIESMICH.md` für den Ablauf bei
+künftigen Änderungen).
 
-Einmalig im Repo zu prüfen/einzustellen:
-1. **Settings → Actions → General → Workflow permissions**: „Read and write permissions"
-   aktivieren (nötig, damit der Workflow in `gh-pages` schreiben darf).
-2. **Settings → Pages**: Quelle ist der `gh-pages`-Branch (falls noch nicht so eingestellt
-   wie bei den anderen Tools).
-
-Danach reicht `git push` auf `main`, und die Seite aktualisiert sich automatisch
-(ca. 1–2 Minuten Bauzeit).
+Einfach den kompletten Inhalt dieses Ordners hochladen/committen, fertig.
 
 ## Anmeldung
 
