@@ -17,12 +17,30 @@ npm run dev        # startet im Demo-Modus (ohne Supabase, In-Memory-Beispieldat
 
 ## Supabase verbinden
 
+Bereits erledigt für das Projekt **kaffeetrinker80** (`avuimpwjslrgpdahyloa`):
+Alle vier Migrationen sind live, `.env` ist mit den echten Zugangsdaten befüllt.
+Alle Tabellen/Views/Funktionen liegen in einem **eigenen Schema `nova_termindatenbank_data`**
+(nicht in `public`) und tragen zusätzlich das Präfix **`td_`**
+(z. B. `nova_termindatenbank_data.td_kunden`, `…td_termine`, `…td_auftraege`).
+In der Tabellenübersicht von Supabase Studio erscheint das als eigener Baum
+„nova_termindatenbank_data" mit den `td_`-Tabellen darunter – sauber getrennt von
+euren anderen NOVA-Tools. Migration `0003` schaltet dieses Schema zusätzlich für die
+Programmierschnittstelle (Data API) frei; normalerweise ein manueller Dashboard-Schritt,
+hier per SQL erledigt (`alter role authenticator set pgrst.db_schemas = '…'`).
+
+Für ein neues/anderes Projekt so vorgehen:
 1. Supabase-Projekt anlegen (EU-Region empfohlen).
 2. Migrationen ausführen (Supabase CLI oder SQL-Editor, in dieser Reihenfolge):
-   - `supabase/migrations/0001_init.sql` – Datenmodell, Auftragsnummern-Vergabe, RLS, Audit, Historie
-   - `supabase/migrations/0002_sample_data.sql` – Beispieldaten (optional)
-3. `.env` anlegen (siehe `.env.example`) mit `VITE_SUPABASE_URL` und `VITE_SUPABASE_ANON_KEY`.
-4. Ersten Benutzer über Supabase Auth registrieren, danach in der Tabelle `profile` die Rolle auf `admin` setzen.
+   - `supabase/migrations/0001_init.sql` – Schema, Datenmodell, Auftragsnummern-Vergabe, RLS, Audit, Historie
+   - `supabase/migrations/0002_security_hardening.sql` – View-/Funktions-Härtung
+   - `supabase/migrations/0003_grants_und_api_freischaltung.sql` – Rechte + Schema-Freischaltung für die API
+   - `supabase/migrations/0004_sample_data.sql` – Beispieldaten (optional)
+3. `.env` anlegen (siehe `.env.example`) mit `VITE_SUPABASE_URL` und `VITE_SUPABASE_ANON_KEY`
+   (den **publishable/anon**-Key verwenden – der ist fürs Frontend gedacht, nie den `service_role`-Key hier eintragen).
+   Der Supabase-Client im Code ist fest auf das Schema `nova_termindatenbank_data` eingestellt
+   (`src/lib/data.ts`, `db: { schema: 'nova_termindatenbank_data' }`) – bei einem anderen Schemanamen dort anpassen.
+4. Ersten Benutzer über Supabase Auth registrieren, danach in der Tabelle
+   `nova_termindatenbank_data.td_profile` die Rolle auf `admin` setzen.
 
 **Beispieldaten entfernen** vor Produktivbetrieb: `scripts/remove_sample_data.sql` (alle Demo-Datensätze sind mit `legacy_quelle = 'DEMO'` markiert; der Nummernzähler wird bewusst nicht zurückgesetzt).
 

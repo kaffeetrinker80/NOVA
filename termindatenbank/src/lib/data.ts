@@ -4,7 +4,9 @@ import type { Anlage, Auftrag, Bereich, Kunde, Termin, Untersuchungsart } from '
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined
 const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
 
-export const supabase: SupabaseClient | null = url && key ? createClient(url, key) : null
+export const supabase: SupabaseClient<any, any, any> | null = url && key
+  ? createClient(url, key, { db: { schema: 'nova_termindatenbank_data' } })
+  : null
 export const demoModus = !supabase
 
 // ------------------------------------------------------------------
@@ -56,25 +58,25 @@ const demo = {
 export const db = {
   async kunden(): Promise<Kunde[]> {
     if (!supabase) return demo.kunden
-    const { data, error } = await supabase.from('kunden').select('*').order('name_kurz')
+    const { data, error } = await supabase.from('td_kunden').select('*').order('name_kurz')
     if (error) throw error
     return data as Kunde[]
   },
   async anlagen(): Promise<Anlage[]> {
     if (!supabase) return demo.anlagen
-    const { data, error } = await supabase.from('anlagen').select('*').order('name')
+    const { data, error } = await supabase.from('td_anlagen').select('*').order('name')
     if (error) throw error
     return data as Anlage[]
   },
   async bereiche(): Promise<Bereich[]> {
     if (!supabase) return demo.bereiche
-    const { data, error } = await supabase.from('bereiche').select('*').order('name')
+    const { data, error } = await supabase.from('td_bereiche').select('*').order('name')
     if (error) throw error
     return data as Bereich[]
   },
   async termine(): Promise<Termin[]> {
     if (!supabase) return demo.termine
-    const { data, error } = await supabase.from('termine').select('*, termin_probenehmer(profil_id, profile(anzeigename))').order('datum')
+    const { data, error } = await supabase.from('td_termine').select('*, td_termin_probenehmer(profil_id, td_profile(anzeigename))').order('datum')
     if (error) throw error
     return (data as any[]).map(t => ({
       ...t,
@@ -83,24 +85,24 @@ export const db = {
   },
   async auftraege(): Promise<Auftrag[]> {
     if (!supabase) return demo.auftraege
-    const { data, error } = await supabase.from('auftraege').select('*, unterauftraege(*)').order('auftragsnummer', { ascending: false })
+    const { data, error } = await supabase.from('td_auftraege').select('*, td_unterauftraege(*)').order('auftragsnummer', { ascending: false })
     if (error) throw error
     return data as unknown as Auftrag[]
   },
 
   async kundeAnlegen(k: Omit<Kunde, 'id' | 'aktiv'>): Promise<void> {
     if (!supabase) { demo.kunden.push({ ...k, id: 'k' + (demo.kunden.length + 1), aktiv: true }); return }
-    const { error } = await supabase.from('kunden').insert(k)
+    const { error } = await supabase.from('td_kunden').insert(k)
     if (error) throw error
   },
   async anlageAnlegen(a: Omit<Anlage, 'id' | 'aktiv'>): Promise<void> {
     if (!supabase) { demo.anlagen.push({ ...a, id: 'a' + (demo.anlagen.length + 1), aktiv: true }); return }
-    const { error } = await supabase.from('anlagen').insert(a)
+    const { error } = await supabase.from('td_anlagen').insert(a)
     if (error) throw error
   },
   async bereichAnlegen(b: Omit<Bereich, 'id' | 'aktiv'>): Promise<void> {
     if (!supabase) { demo.bereiche.push({ ...b, id: 'b' + (demo.bereiche.length + 1), aktiv: true }); return }
-    const { error } = await supabase.from('bereiche').insert(b)
+    const { error } = await supabase.from('td_bereiche').insert(b)
     if (error) throw error
   },
   async terminAnlegen(t: Omit<Termin, 'id' | 'probenehmer' | 'kalender_exportiert'>): Promise<string> {
@@ -109,7 +111,7 @@ export const db = {
       demo.termine.push({ ...t, id, probenehmer: [], kalender_exportiert: false })
       return id
     }
-    const { data, error } = await supabase.from('termine').insert(t).select('id').single()
+    const { data, error } = await supabase.from('td_termine').insert(t).select('id').single()
     if (error) throw error
     return data.id
   },
@@ -132,7 +134,7 @@ export const db = {
       })
       return nr
     }
-    const { data, error } = await supabase.rpc('auftrag_anlegen', {
+    const { data, error } = await supabase.rpc('td_auftrag_anlegen', {
       p_bereich: bereichId, p_termin: terminId ?? null,
       p_arten: arten.map(a => ({ ...a, umfang: a.umfang ?? null, proben_geplant: a.proben_geplant ?? null })),
     })
@@ -148,13 +150,13 @@ export const db = {
       }
       return
     }
-    const { error } = await supabase.from('unterauftraege').update(patch).eq('id', id)
+    const { error } = await supabase.from('td_unterauftraege').update(patch).eq('id', id)
     if (error) throw error
   },
 
   async importStaging(quelle: string, typ: string, zeilen: unknown[]): Promise<number> {
     if (!supabase) return zeilen.length
-    const { error } = await supabase.from('staging_import').insert(
+    const { error } = await supabase.from('td_staging_import').insert(
       zeilen.map(r => ({ quelle, typ, rohdaten: r })),
     )
     if (error) throw error

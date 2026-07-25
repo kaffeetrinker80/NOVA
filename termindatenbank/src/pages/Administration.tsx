@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 export default function Administration() {
   const [nutzer, setNutzer] = useState<{ anzeigename: string; rolle: string; aktiv: boolean }[]>([])
   useEffect(() => {
-    if (supabase) supabase.from('profile').select('anzeigename, rolle, aktiv').then(({ data }) => setNutzer(data ?? []))
+    if (supabase) supabase.from('td_profile').select('anzeigename, rolle, aktiv').then(({ data }) => setNutzer(data ?? []))
   }, [])
 
   return (
