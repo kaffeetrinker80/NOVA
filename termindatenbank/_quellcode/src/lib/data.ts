@@ -76,7 +76,7 @@ export const db = {
   },
   async termine(): Promise<Termin[]> {
     if (!supabase) return demo.termine
-    const { data, error } = await supabase.from('td_termine').select('*, td_termin_probenehmer(profil_id, td_profile(anzeigename))').order('datum')
+    const { data, error } = await supabase.from('td_termine').select('*, termin_probenehmer:td_termin_probenehmer(profil_id, profile:td_profile(anzeigename))').order('datum')
     if (error) throw error
     return (data as any[]).map(t => ({
       ...t,
@@ -85,7 +85,7 @@ export const db = {
   },
   async auftraege(): Promise<Auftrag[]> {
     if (!supabase) return demo.auftraege
-    const { data, error } = await supabase.from('td_auftraege').select('*, td_unterauftraege(*)').order('auftragsnummer', { ascending: false })
+    const { data, error } = await supabase.from('td_auftraege').select('*, unterauftraege:td_unterauftraege(*)').order('auftragsnummer', { ascending: false })
     if (error) throw error
     return data as unknown as Auftrag[]
   },
