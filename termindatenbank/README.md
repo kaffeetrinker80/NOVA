@@ -61,6 +61,33 @@ Kunde → Anlage → Untersuchungsbereich (WWB) → Auftrag (26-0897) → Untera
 - **Bereiche können aufgeteilt werden** (`abgespalten_von`), falls sich vor Ort zeigt,
   dass ein Objekt mehrere Systeme hat.
 
+## Live-Betrieb über GitHub Pages
+
+Ziel-Adresse: **https://kaffeetrinker80.github.io/NOVA/termindatenbank/**
+
+Ein GitHub-Actions-Workflow (`.github/workflows/deploy.yml`) baut die App bei jedem Push
+auf `main` (der `termindatenbank/`-Ordner betrifft) automatisch und veröffentlicht sie in den
+`gh-pages`-Branch, Unterordner `termindatenbank/` – mit `keep_files: true`, damit die
+Unterordner eurer anderen NOVA-Tools im selben Branch unangetastet bleiben.
+
+Einmalig im Repo zu prüfen/einzustellen:
+1. **Settings → Actions → General → Workflow permissions**: „Read and write permissions"
+   aktivieren (nötig, damit der Workflow in `gh-pages` schreiben darf).
+2. **Settings → Pages**: Quelle ist der `gh-pages`-Branch (falls noch nicht so eingestellt
+   wie bei den anderen Tools).
+
+Danach reicht `git push` auf `main`, und die Seite aktualisiert sich automatisch
+(ca. 1–2 Minuten Bauzeit).
+
+## Anmeldung
+
+Anmeldung läuft per **E-Mail + Passwort** über Supabase Auth (wie beim Sondertermine-Tool).
+Neue Nutzer bekommen beim ersten Anlegen in Supabase Auth automatisch ein Profil mit der
+Rolle „Lesend" und müssen von einem Admin in der Tabelle `td_profile` hochgestuft werden
+(Feld `rolle`: `admin` / `disposition` / `probenehmer` / `lesend`). Bereits vor dieser App
+angelegte Auth-Nutzer brauchen ein einmaliges manuelles Nachziehen des Profils
+(siehe `scripts/backfill_profiles.sql`).
+
 ## Rollen & Sicherheit
 
 | Rolle | Rechte |
