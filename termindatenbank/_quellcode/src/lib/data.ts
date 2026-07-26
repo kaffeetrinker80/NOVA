@@ -116,10 +116,24 @@ export const db = {
     return data.id
   },
 
-  /** Legt für einen Bereich einen Hauptauftrag mit zentral vergebener Nummer + Unteraufträgen an. */
+  /** Vorschau der nächsten Auftragsnummer (ohne sie zu verbrauchen). */
+  async nummerVorschau(): Promise<string> {
+    if (!supabase) {
+      const jahr = new Date().getFullYear()
+      const demoNaechste = ((demo as any).zaehler?.[jahr] ?? 0) + 1
+      return `${String(jahr % 100).padStart(2, '0')}-${String(demoNaechste).padStart(4, '0')}`
+    }
+    const { data, error } = await supabase.rpc('td_nummer_vorschau')
+    if (error) throw error
+    return data as string
+  },
+
+  /** Legt für einen Bereich einen Hauptauftrag mit zentral vergebener Nummer + Unteraufträgen an.
+   *  nummerManuell: optionaler manueller Eingriff (Format JJ-NNNN, Eindeutigkeit wird geprüft,
+   *  der Zähler wird nachgezogen, damit die Automatik nie kollidiert). */
   async auftragAnlegen(bereichId: string, terminId: string | undefined, arten: {
     art: Untersuchungsart; suffix: string; umfang?: string; proben_geplant?: number
-  }[]): Promise<string> {
+  }[], nummerManuell?: string): Promise<string> {
     if (!supabase) {
       const jahr = new Date().getFullYear()
       demo.zaehler[jahr] = (demo.zaehler[jahr] ?? 0) + 1
@@ -137,9 +151,10 @@ export const db = {
     const { data, error } = await supabase.rpc('td_auftrag_anlegen', {
       p_bereich: bereichId, p_termin: terminId ?? null,
       p_arten: arten.map(a => ({ ...a, umfang: a.umfang ?? null, proben_geplant: a.proben_geplant ?? null })),
+      p_nummer_manuell: nummerManuell?.trim() || null,
     })
     if (error) throw error
-    return data as string
+    return (data as any).nummer as string
   },
 
   async unterauftragAktualisieren(id: string, patch: Partial<{ proben_ist: number; status: string; ergebnis: string; notizen: string }>): Promise<void> {
@@ -220,8 +235,9 @@ export const db = {
           legacy_id: t.legacy_id, anlage_id: aid,
           kunde_id: v.anlagen.find(a => a.legacy_id === t.anlage_legacy)
             ? kundeId.get(v.anlagen.find(a => a.legacy_id === t.anlage_legacy)!.kunde_legacy) : null,
-          datum: t.datum, status: 'abgeschlossen',
-          notizen: 'Historischer Termin aus Altbestand' + (anl ? '' : ''),
+          datum: t.datum,
+          status: (t as any).geplant ? 'geplant' : 'abgeschlossen',
+          notizen: (t as any).geplant ? 'Geplanter Termin aus Altbestand' : 'Historischer Termin aus Altbestand' + (anl ? '' : ''),
           legacy_quelle: 'Terminverwaltung V4',
         } : null
       }).filter((x): x is NonNullable<typeof x> => !!x && !!x.kunde_id)

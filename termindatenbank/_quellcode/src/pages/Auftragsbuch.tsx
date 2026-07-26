@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { db } from '../lib/data'
-import type { Anlage, Auftrag, Bereich, Kunde, Termin } from '../lib/types'
+import type { Anlage, Auftrag, Bereich, Kunde, Termin, Untersuchungsart } from '../lib/types'
 import { ART_LABEL, ERGEBNIS_LABEL, STATUS_LABEL, fmtDatum, nummerVoll } from '../lib/types'
 import { Abschnitt, ErgebnisBadge, Nr, StatusBadge } from '../components/ui'
 
@@ -15,6 +15,17 @@ export default function Auftragsbuch() {
   const [fArt, setFArt] = useState(''); const [fStatus, setFStatus] = useState('')
   const [fErgebnis, setFErgebnis] = useState('')
   const [bearbeite, setBearbeite] = useState<string | null>(null)
+
+  // ── Eigenständige Nummern-Vergabe ──
+  const [nvOffen, setNvOffen] = useState(false)
+  const [nvVorschau, setNvVorschau] = useState('…')
+  const [nvKunde, setNvKunde] = useState('')
+  const [nvAnlage, setNvAnlage] = useState('')
+  const [nvBereich, setNvBereich] = useState('')
+  const [nvArt, setNvArt] = useState<Untersuchungsart>('legionellen')
+  const [nvManuell, setNvManuell] = useState(false)
+  const [nvNummer, setNvNummer] = useState('')
+  const [nvMeldung, setNvMeldung] = useState('')
 
   const laden = () => {
     db.auftraege().then(setAuftraege); db.kunden().then(setKunden)
@@ -43,6 +54,23 @@ export default function Auftragsbuch() {
 
   const jahre = [...new Set(zeilen.map(z => z.a.jahr))].sort().reverse()
 
+  useEffect(() => { if (nvOffen) db.nummerVorschau().then(setNvVorschau).catch(() => setNvVorschau('–')) }, [nvOffen, auftraege])
+
+  const nummerVergeben = async () => {
+    if (!nvBereich) { setNvMeldung('Bitte Bereich wählen.'); return }
+    if (nvManuell && !/^\d{2}-\d{4}$/.test(nvNummer.trim())) {
+      setNvMeldung('Manuelle Nummer im Format JJ-NNNN, z. B. 26-0899.'); return
+    }
+    try {
+      const nr = await db.auftragAnlegen(nvBereich, undefined,
+        [{ art: nvArt, suffix: '' }], nvManuell ? nvNummer.trim() : undefined)
+      setNvMeldung(`Auftragsnummer ${nr} vergeben (ohne Termin – im Auftragsbuch geführt).`)
+      setNvNummer(''); setNvManuell(false); laden()
+    } catch (e: any) {
+      setNvMeldung('Fehler: ' + (e.message ?? e))
+    }
+  }
+
   const speichern = async (id: string, feld: string, wert: string) => {
     await db.unterauftragAktualisieren(id, { [feld]: feld === 'proben_ist' ? +wert : wert } as any)
     laden()
@@ -50,6 +78,67 @@ export default function Auftragsbuch() {
 
   return (
     <>
+      {nvMeldung && <div className="notice">{nvMeldung}</div>}
+
+      <Abschnitt titel="Auftragsnummer vergeben"
+        aktionen={<button onClick={() => setNvOffen(!nvOffen)}>
+          <i className={`fas ${nvOffen ? 'fa-chevron-up' : 'fa-hashtag'}`} aria-hidden="true"></i>
+          {nvOffen ? 'Einklappen' : `Nächste Nummer vergeben`}
+        </button>}>
+        {nvOffen && (
+          <div style={{ padding: '16px 20px' }}>
+            <div className="grid2">
+              <label className="f">Kunde
+                <select value={nvKunde} onChange={e => { setNvKunde(e.target.value); setNvAnlage(''); setNvBereich('') }}>
+                  <option value="">– wählen –</option>
+                  {kunden.map(k => <option key={k.id} value={k.id}>{k.name_kurz}</option>)}
+                </select>
+              </label>
+              <label className="f">Anlage
+                <select value={nvAnlage} onChange={e => { setNvAnlage(e.target.value); setNvBereich('') }} disabled={!nvKunde}>
+                  <option value="">– wählen –</option>
+                  {anlagen.filter(a => a.kunde_id === nvKunde).map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                </select>
+              </label>
+              <label className="f">Untersuchungsbereich
+                <select value={nvBereich} onChange={e => setNvBereich(e.target.value)} disabled={!nvAnlage}>
+                  <option value="">– wählen –</option>
+                  {bereiche.filter(b => b.anlage_id === nvAnlage).map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                </select>
+              </label>
+              <label className="f">Untersuchungsart
+                <select value={nvArt} onChange={e => setNvArt(e.target.value as Untersuchungsart)}>
+                  {Object.entries(ART_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+              </label>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 14, flexWrap: 'wrap' }}>
+              <div>
+                <span className="hint">Nummer</span><br />
+                {nvManuell
+                  ? <input value={nvNummer} onChange={e => setNvNummer(e.target.value)} placeholder={nvVorschau} style={{ width: 110, fontWeight: 700 }} autoFocus />
+                  : <span className="nr" style={{ fontSize: '1.05rem' }}>{nvVorschau}</span>}
+                {!nvManuell && <span className="hint"> automatische Folgenummer</span>}
+              </div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '.85rem' }}>
+                <input type="checkbox" checked={nvManuell} onChange={e => setNvManuell(e.target.checked)} />
+                manuell eingreifen
+              </label>
+              <button className="primary" onClick={nummerVergeben} disabled={!nvBereich}>
+                <i className="fas fa-hashtag" aria-hidden="true"></i> Nummer vergeben
+              </button>
+            </div>
+            {nvManuell && (
+              <p className="notice" style={{ marginTop: 12, marginBottom: 0 }}>
+                <i className="fas fa-triangle-exclamation" aria-hidden="true"></i>&nbsp;
+                Nur im Ausnahmefall: Format JJ-NNNN, Doppelvergabe wird abgewiesen, der automatische
+                Zähler zieht nach – die nächste automatische Nummer folgt hinter der manuellen.
+              </p>
+            )}
+          </div>
+        )}
+      </Abschnitt>
+
       <Abschnitt titel={`Auftragsbuch (${gefiltert.length})`}
         aktionen={<button onClick={() => window.print()}>
           <i className="fas fa-print" aria-hidden="true"></i> Gefilterte Liste drucken

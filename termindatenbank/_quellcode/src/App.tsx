@@ -2,17 +2,11 @@ import { useEffect, useState } from 'react'
 import { demoModus, supabase } from './lib/data'
 import { useAuth } from './lib/auth'
 import Login from './pages/Login'
-import Dashboard from './pages/Dashboard'
-import Termine from './pages/Termine'
+import Planung from './pages/Planung'
 import Auftragsbuch from './pages/Auftragsbuch'
-import Kunden from './pages/Kunden'
-import Anlagen from './pages/Anlagen'
-import Bereiche from './pages/Bereiche'
-import Kalenderexport from './pages/Kalenderexport'
-import Aushang from './pages/Aushang'
+import Stammdaten from './pages/Stammdaten'
 import Auswertungen from './pages/Auswertungen'
-import ImportSeite from './pages/ImportSeite'
-import Administration from './pages/Administration'
+import System from './pages/System'
 
 const ROLLE_LABEL: Record<string, string> = {
   admin: 'Admin', disposition: 'Disposition', probenehmer: 'Probenehmer', lesend: 'Lesend',
@@ -20,23 +14,17 @@ const ROLLE_LABEL: Record<string, string> = {
 
 // [Route, Beschriftung, Font-Awesome-Icon]
 const NAV: [string, string, string][] = [
-  ['dashboard', 'Dashboard', 'fa-gauge-high'],
-  ['termine', 'Termine', 'fa-calendar-day'],
+  ['planung', 'Planung', 'fa-calendar-day'],
   ['auftragsbuch', 'Auftragsbuch', 'fa-book'],
-  ['kunden', 'Kunden & Hausverwaltungen', 'fa-building-user'],
-  ['anlagen', 'Anlagen', 'fa-building'],
-  ['bereiche', 'Untersuchungsbereiche', 'fa-diagram-project'],
-  ['aushang', 'Aushang', 'fa-print'],
-  ['kalender', 'Kalenderexport', 'fa-calendar-plus'],
+  ['stammdaten', 'Stammdaten', 'fa-building-user'],
   ['auswertungen', 'Auswertungen', 'fa-chart-column'],
-  ['import', 'Import & Migration', 'fa-file-import'],
-  ['admin', 'Administration', 'fa-gear'],
+  ['system', 'System', 'fa-gear'],
 ]
 
 export default function App() {
-  const [route, setRoute] = useState(location.hash.replace('#/', '') || 'dashboard')
+  const [route, setRoute] = useState(location.hash.replace('#/', '') || 'planung')
   useEffect(() => {
-    const fn = () => setRoute(location.hash.replace('#/', '') || 'dashboard')
+    const fn = () => setRoute(location.hash.replace('#/', '') || 'planung')
     window.addEventListener('hashchange', fn)
     return () => window.removeEventListener('hashchange', fn)
   }, [])
@@ -61,11 +49,9 @@ export default function App() {
   }
 
   const seite = {
-    dashboard: <Dashboard />, termine: <Termine />, auftragsbuch: <Auftragsbuch />,
-    kunden: <Kunden />, anlagen: <Anlagen />, bereiche: <Bereiche />,
-    aushang: <Aushang />, kalender: <Kalenderexport />, auswertungen: <Auswertungen />,
-    import: <ImportSeite />, admin: <Administration />,
-  }[route] ?? <Dashboard />
+    planung: <Planung />, auftragsbuch: <Auftragsbuch />,
+    stammdaten: <Stammdaten />, auswertungen: <Auswertungen />, system: <System />,
+  }[route] ?? <Planung />
 
   const stand = new Date().toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' })
 

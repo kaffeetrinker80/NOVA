@@ -1,0 +1,5 @@
+-- (Bereits im Projekt kaffeetrinker80 angewandt: td_nummernlogik_und_reset_fix)
+-- 1) td_reset_alle_daten: DELETE-Anweisungen mit "where true" (Supabase-Schutz)
+-- 2) td_nummer_vorschau(): nächste Nummer anzeigen ohne sie zu verbrauchen
+-- 3) td_auftrag_anlegen(..., p_nummer_manuell): manueller Eingriff mit
+--    Format-/Eindeutigkeitsprüfung und Zähler-Nachzug

@@ -234,3 +234,124 @@ table.tbl {
 @media (max-width: 760px) {
   .brand-logo { width: 40px; height: 40px; }
 }
+
+/* ==========================================================
+   Planungsseite, Stammdaten-Spalten und Plan-Modal
+   ========================================================== */
+.planung-werkzeuge {
+  display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; margin-bottom: 14px;
+}
+.suchfeld {
+  position: relative; display: flex; align-items: center; flex: 1; min-width: 220px; max-width: 420px;
+}
+.suchfeld i { position: absolute; left: 11px; color: var(--text-muted); font-size: .8rem; }
+.suchfeld input { width: 100%; padding-left: 32px; padding-right: 30px; }
+.suchfeld-x {
+  position: absolute; right: 4px; border: none; background: none; padding: 4px 8px;
+  font-size: 1rem; color: var(--text-muted); cursor: pointer;
+}
+.zeile-btn {
+  padding: 4px 10px; font-size: .78rem; border-radius: 8px;
+  background: var(--color-primary); color: #fff; border-color: var(--color-primary);
+}
+.zeile-btn:hover { background: var(--color-primary-dark); }
+
+/* ---------- Stammdaten: drei verzahnte Spalten ---------- */
+.stamm-spalten {
+  display: grid; grid-template-columns: repeat(3, minmax(240px, 1fr)); gap: 14px;
+}
+.stamm-spalte {
+  background: var(--surface); border-radius: 12px;
+  box-shadow: 0 3px 12px rgba(0,0,0,0.05); overflow: hidden;
+  display: flex; flex-direction: column; min-height: 340px; max-height: 72vh;
+}
+.stamm-kopf {
+  background: #f4f8fc; border-bottom: 1px solid var(--border);
+  padding: 12px 14px; display: flex; justify-content: space-between; align-items: center;
+}
+.stamm-kopf h3 { margin: 0; font-size: .92rem; font-weight: 600; display: flex; gap: 8px; align-items: center; }
+.stamm-formular { padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid var(--border); }
+.stamm-liste { overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 4px; }
+.stamm-eintrag {
+  text-align: left; border: 1px solid transparent; background: none; border-radius: 8px;
+  padding: 8px 10px; display: flex; flex-direction: column; gap: 1px; position: relative;
+}
+.stamm-eintrag:hover { background: var(--row-hover); }
+.stamm-eintrag.aktiv { background: var(--color-primary); color: #fff; }
+.stamm-eintrag.aktiv .hint { color: rgba(255,255,255,.75); }
+.stamm-eintrag .hint { font-size: .74rem; }
+.stamm-zahl {
+  position: absolute; right: 10px; top: 9px; font-size: .72rem; font-weight: 700;
+  background: #eef2f7; color: var(--text-muted); border-radius: 999px; padding: 1px 8px;
+}
+.stamm-eintrag.aktiv .stamm-zahl { background: rgba(255,255,255,.25); color: #fff; }
+@media (max-width: 900px) { .stamm-spalten { grid-template-columns: 1fr; } .stamm-spalte { max-height: none; } }
+
+/* ---------- Plan-Modal ---------- */
+.modal-hintergrund {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9999;
+  display: flex; align-items: flex-start; justify-content: center;
+  overflow-y: auto; padding: 24px 12px;
+}
+.modal {
+  background: #fff; border-radius: 12px; width: 100%; max-width: 620px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.25); overflow: hidden;
+}
+.modal-kopf {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  padding: 16px 24px 12px; border-bottom: 1px solid var(--border);
+}
+.modal-schliessen {
+  border: none; background: none; font-size: 1.5rem; line-height: 1; padding: 0 4px;
+  color: var(--text-muted); cursor: pointer;
+}
+.pm-tabs { display: flex; border-bottom: 2px solid #e8e8e8; }
+.pm-tab {
+  flex: 1; padding: 12px 0; border: none; border-radius: 0; background: #f8f9fa;
+  font-size: .82rem; font-weight: 600; color: #666; cursor: pointer;
+  border-bottom: 3px solid transparent; margin-bottom: -2px;
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+}
+.pm-tab.active { background: #fff; color: #1a3a5c; border-bottom-color: var(--color-primary); }
+.pm-tab:disabled { opacity: .5; cursor: not-allowed; }
+.pm-gemeinsam {
+  display: flex; gap: 12px; flex-wrap: wrap; padding: 14px 24px; border-bottom: 1px solid #eee;
+}
+.pm-inhalt { padding: 14px 0 0; }
+.pm-bereich { margin: 0 24px 10px; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+.pm-bereich.gewaehlt { border-color: var(--color-primary); background: #f6fbff; }
+.pm-bereich-kopf { display: flex; align-items: baseline; gap: 8px; cursor: pointer; }
+.pm-arten { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.pm-art {
+  display: flex; align-items: center; gap: 6px; font-size: .8rem;
+  border: 1px solid var(--border); border-radius: 999px; padding: 4px 12px; cursor: pointer;
+}
+.pm-art.an { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
+.pm-art.an select, .pm-art.an input { color: var(--text-main); }
+.pm-art select, .pm-art input { padding: 2px 6px; font-size: .76rem; border-radius: 6px; }
+.pm-bereich-neu { display: flex; gap: 8px; margin: 0 24px 12px; }
+.pm-bereich-neu input { flex: 1; }
+.pm-nummer {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  margin: 0 24px 10px; padding: 10px 14px; background: var(--surface-muted); border-radius: 10px;
+}
+.pm-manuell { display: flex; align-items: center; gap: 6px; font-size: .82rem; white-space: nowrap; }
+.pm-erfolg {
+  margin: 0 24px 12px; padding: 10px 14px; border-radius: 10px;
+  background: #e7f4ed; color: #236443; font-size: .85rem; font-weight: 600;
+}
+.pm-vorschau {
+  margin: 4px 24px 12px; padding: 12px 14px; background: var(--surface-muted);
+  border-radius: 10px; font-size: .88rem; font-weight: 600; word-break: break-word;
+}
+.pm-aushang-vorschau {
+  margin: 0 24px 12px; border: 1px solid var(--border); border-radius: 10px;
+  padding: 14px; max-height: 46vh; overflow-y: auto; background: #fff;
+}
+.pm-fuss {
+  display: flex; gap: 10px; flex-wrap: wrap; padding: 12px 24px 18px; border-top: 1px solid #eee;
+}
+
+@media print {
+  .planung-werkzeuge, .tabs, .no-print, .zeile-btn, .modal-hintergrund { display: none !important; }
+}
