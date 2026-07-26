@@ -1,0 +1,4 @@
+-- (Bereits im Projekt kaffeetrinker80 angewandt: td_trigger_fix_und_objektbetreuer)
+-- 1) td_log_kritische_aenderungen: Bedingungen strikt verschachtelt
+--    (Fix für "record old has no field auftragsnummer" beim Zusammenführen)
+-- 2) td_anlagen.objekt_betreuer: optionaler Ansprechpartner am Objekt

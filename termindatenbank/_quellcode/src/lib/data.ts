@@ -264,7 +264,7 @@ export const db = {
     return `Übernommen: ${v.kunden.length} Kunden, ${v.anlagen.length} Anlagen, ${neueBereiche.length} Bereiche, ${termineOk} historische Termine.`
   },
 
-  async anlageAktualisieren(id: string, patch: Partial<Pick<Anlage, 'name' | 'notizen' | 'naechste_untersuchung' | 'turnus_monate' | 'aktiv'>> & { planungsnotiz?: string | null }): Promise<void> {
+  async anlageAktualisieren(id: string, patch: Partial<Pick<Anlage, 'name' | 'strasse' | 'plz' | 'ort' | 'notizen' | 'naechste_untersuchung' | 'turnus_monate' | 'aktiv' | 'objekt_betreuer'>> & { planungsnotiz?: string | null }): Promise<void> {
     if (!supabase) { const a = demo.anlagen.find(x => x.id === id); if (a) Object.assign(a, patch); return }
     const { error } = await supabase.from('td_anlagen').update(patch).eq('id', id)
     if (error) throw error

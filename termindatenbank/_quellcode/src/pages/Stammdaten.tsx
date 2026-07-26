@@ -28,6 +28,8 @@ export default function Stammdaten() {
   const [mergeModus, setMergeModus] = useState(false)
   const [mergeWahl, setMergeWahl] = useState<Set<string>>(new Set())
   const [mergeZiel, setMergeZiel] = useState('')
+  const [mergeNeu, setMergeNeu] = useState(false)          // Ziel = neuer Kunde
+  const [mergeNeuName, setMergeNeuName] = useState({ kurz: '', lang: '' })
   const [meldung, setMeldung] = useState('')
 
   // Anlagen-Detailbearbeitung
@@ -35,6 +37,8 @@ export default function Stammdaten() {
   const [planungsnotiz, setPlanungsnotiz] = useState('')
   const [neuerVerwalter, setNeuerVerwalter] = useState('')
   const [anlageName, setAnlageName] = useState('')
+  const [adresse, setAdresse] = useState({ strasse: '', plz: '', ort: '' })
+  const [betreuer, setBetreuer] = useState('')
 
   // Anlagen zusammenführen
   const [aMergeModus, setAMergeModus] = useState(false)
@@ -71,14 +75,26 @@ export default function Stammdaten() {
   })
 
   const zusammenfuehren = async () => {
-    const ziel = mergeZiel || [...mergeWahl][0]
-    const quellen = [...mergeWahl].filter(id => id !== ziel)
-    if (!ziel || quellen.length === 0) return
-    const mergeZielFinal = ziel; setMergeZiel(mergeZielFinal)
+    let ziel: string
+    let quellen: string[]
+    if (mergeNeu) {
+      if (!mergeNeuName.kurz.trim() || !mergeNeuName.lang.trim() || mergeWahl.size < 1) return
+      await db.kundeAnlegen({ name_lang: mergeNeuName.lang.trim(), name_kurz: mergeNeuName.kurz.trim(), typ: 'hausverwaltung' })
+      const alle = await db.kunden()
+      const neu = alle.find(k => k.name_kurz === mergeNeuName.kurz.trim() && k.name_lang === mergeNeuName.lang.trim())
+      if (!neu) { setMeldung('Neuer Kunde konnte nicht angelegt werden.'); return }
+      ziel = neu.id
+      quellen = [...mergeWahl]
+    } else {
+      ziel = mergeZiel || [...mergeWahl][0]
+      quellen = [...mergeWahl].filter(id => id !== ziel)
+      if (!ziel || quellen.length === 0) return
+    }
     try {
       const erg = await db.kundenZusammenfuehren(ziel, quellen)
       setMeldung(erg + ' Alle Anlagen samt Historie hängen jetzt am Zielkunden.')
       setMergeModus(false); setMergeWahl(new Set()); setMergeZiel('')
+      setMergeNeu(false); setMergeNeuName({ kurz: '', lang: '' })
       setKundeId(ziel); laden()
     } catch (e: any) { setMeldung('Fehler: ' + (e.message ?? e)) }
   }
@@ -87,6 +103,8 @@ export default function Stammdaten() {
   useEffect(() => {
     setNotiz(anlage?.notizen ?? ''); setPlanungsnotiz(anlage?.planungsnotiz ?? '')
     setNeuerVerwalter(''); setAnlageName(anlage?.name ?? '')
+    setAdresse({ strasse: anlage?.strasse ?? '', plz: anlage?.plz ?? '', ort: anlage?.ort ?? '' })
+    setBetreuer(anlage?.objekt_betreuer ?? '')
   }, [anlageId])
   useEffect(() => {
     setKName({ kurz: kunde?.name_kurz ?? '', lang: kunde?.name_lang ?? '' })
@@ -125,8 +143,13 @@ export default function Stammdaten() {
 
   const anlageSpeichernDetails = async () => {
     if (!anlage) return
-    await db.anlageAktualisieren(anlage.id, { notizen: notiz || undefined, planungsnotiz: planungsnotiz || null })
-    setMeldung('Objekt-Notizen gespeichert.'); laden()
+    await db.anlageAktualisieren(anlage.id, {
+      name: anlageName.trim() || anlage.name,
+      strasse: adresse.strasse || undefined, plz: adresse.plz || undefined, ort: adresse.ort || undefined,
+      objekt_betreuer: betreuer || undefined,
+      notizen: notiz || undefined, planungsnotiz: planungsnotiz || null,
+    })
+    setMeldung('Objekt-Details gespeichert.'); laden()
   }
   const verwalterWechseln = async () => {
     if (!anlage || !neuerVerwalter) return
@@ -184,19 +207,41 @@ export default function Stammdaten() {
               </select>
               <input placeholder="Telefon" value={kf.telefon} onChange={e => setKf({ ...kf, telefon: e.target.value })} />
               <input placeholder="E-Mail" value={kf.email} onChange={e => setKf({ ...kf, email: e.target.value })} />
-              <button className="primary" onClick={kundeSpeichern}>Anlegen</button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="primary" onClick={kundeSpeichern}>Anlegen</button>
+                <button onClick={() => setNeuKunde(false)}>Abbrechen</button>
+              </div>
             </div>
           )}
           {mergeModus && (
             <div className="merge-leiste">
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '.82rem' }}>
+                <input type="radio" checked={!mergeNeu} onChange={() => setMergeNeu(false)} />
+                In bestehenden Kunden (<i className="fas fa-star" style={{ color: '#b45309' }}></i>-Stern = Ziel)
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '.82rem' }}>
+                <input type="radio" checked={mergeNeu} onChange={() => setMergeNeu(true)} />
+                In <strong>neuen</strong> Kunden übernehmen
+              </label>
+              {mergeNeu && (
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input style={{ width: 110 }} placeholder="Kurzname" value={mergeNeuName.kurz}
+                    onChange={e => setMergeNeuName({ ...mergeNeuName, kurz: e.target.value })} />
+                  <input style={{ flex: 1 }} placeholder="Voller Name, z. B. AWO Schwaben" value={mergeNeuName.lang}
+                    onChange={e => setMergeNeuName({ ...mergeNeuName, lang: e.target.value })} />
+                </div>
+              )}
               <p className="hint" style={{ margin: 0 }}>
-                Kunden ankreuzen – der <i className="fas fa-star" style={{ color: '#b45309' }}></i>-Stern
-                markiert das Ziel (antippen zum Wechseln). Alle Anlagen samt kompletter Historie
-                wandern zum Ziel, danach kannst du Namen &amp; Details nachbearbeiten.
+                Alle Objekte der angekreuzten Kunden wandern samt kompletter Historie zum Ziel und
+                bleiben dort einzeln als Anlagen bearbeitbar (Adresse, Betreuer …).
               </p>
-              <button className="primary" onClick={zusammenfuehren} disabled={mergeWahl.size < 2}>
+              <button className="primary" onClick={zusammenfuehren}
+                disabled={mergeNeu ? (mergeWahl.size < 1 || !mergeNeuName.kurz.trim() || !mergeNeuName.lang.trim())
+                                   : mergeWahl.size < 2}>
                 <i className="fas fa-object-group" aria-hidden="true"></i>
-                {mergeWahl.size < 2 ? 'Mind. 2 Kunden ankreuzen' : `${mergeWahl.size} Kunden zusammenführen`}
+                {mergeNeu
+                  ? (mergeWahl.size < 1 ? 'Kunden ankreuzen' : !mergeNeuName.kurz.trim() || !mergeNeuName.lang.trim() ? 'Namen des neuen Kunden eingeben' : `${mergeWahl.size} Kunden → ${mergeNeuName.kurz.trim()}`)
+                  : (mergeWahl.size < 2 ? 'Mind. 2 Kunden ankreuzen' : `${mergeWahl.size} Kunden zusammenführen`)}
               </button>
             </div>
           )}
@@ -290,7 +335,10 @@ export default function Stammdaten() {
               <label className="f">Nächste Untersuchung
                 <input type="date" value={af.naechste_untersuchung} onChange={e => setAf({ ...af, naechste_untersuchung: e.target.value })} />
               </label>
-              <button className="primary" onClick={anlageSpeichern}>Anlegen</button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="primary" onClick={anlageSpeichern}>Anlegen</button>
+                <button onClick={() => setNeuAnlage(false)}>Abbrechen</button>
+              </div>
             </div>
           )}
           <div className="stamm-liste">
@@ -358,11 +406,15 @@ export default function Stammdaten() {
 
               <div className="stamm-formular" style={{ borderTop: '1px solid var(--border)', borderBottom: 'none' }}>
                 <span className="hint" style={{ fontWeight: 650 }}>Objektname</span>
+                <input value={anlageName} onChange={e => setAnlageName(e.target.value)} />
+                <span className="hint" style={{ fontWeight: 650 }}>Adresse</span>
+                <input placeholder="Straße" value={adresse.strasse} onChange={e => setAdresse({ ...adresse, strasse: e.target.value })} />
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <input style={{ flex: 1 }} value={anlageName} onChange={e => setAnlageName(e.target.value)} />
-                  <button onClick={async () => { if (anlage && anlageName.trim()) { await db.anlageAktualisieren(anlage.id, { name: anlageName.trim() }); setMeldung('Objekt umbenannt.'); laden() } }}
-                    title="Namen speichern"><i className="fas fa-floppy-disk" aria-hidden="true"></i></button>
+                  <input placeholder="PLZ" style={{ width: 90 }} value={adresse.plz} onChange={e => setAdresse({ ...adresse, plz: e.target.value })} />
+                  <input placeholder="Ort" style={{ flex: 1 }} value={adresse.ort} onChange={e => setAdresse({ ...adresse, ort: e.target.value })} />
                 </div>
+                <span className="hint" style={{ fontWeight: 650 }}>Objektbetreuer / Ansprechpartner (optional)</span>
+                <input placeholder="z. B. Hr. Maier, 0821 …" value={betreuer} onChange={e => setBetreuer(e.target.value)} />
                 <span className="hint" style={{ fontWeight: 650 }}>Objekt-Notizen</span>
                 <textarea rows={2} placeholder="z. B. Zugang über Hausmeister, Codes …"
                   value={notiz} onChange={e => setNotiz(e.target.value)} />
@@ -371,7 +423,7 @@ export default function Stammdaten() {
                 <textarea rows={2} placeholder="z. B. Heizung wird erneuert – zurückstellen"
                   value={planungsnotiz} onChange={e => setPlanungsnotiz(e.target.value)} />
                 <button className="primary" onClick={anlageSpeichernDetails}>
-                  <i className="fas fa-floppy-disk" aria-hidden="true"></i> Notizen speichern
+                  <i className="fas fa-floppy-disk" aria-hidden="true"></i> Objekt-Details speichern
                 </button>
 
                 <span className="hint" style={{ fontWeight: 650, marginTop: 6 }}>Verwalter wechseln</span>
