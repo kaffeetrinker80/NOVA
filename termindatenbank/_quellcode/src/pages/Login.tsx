@@ -18,6 +18,8 @@ export default function Login() {
   return (
     <div className="login-wrap">
       <form className="login-card" onSubmit={e => { e.preventDefault(); anmelden() }}>
+        <img className="login-logo" src={`${import.meta.env.BASE_URL}nova_logo_web.png`} alt=""
+             onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} />
         <h1 className="dashboard-title" style={{ marginBottom: 2 }}>
           <span className="product-name" style={{ color: 'var(--color-primary-dark)' }}>NOVAplan</span>
           <span className="dashboard-title-separator" style={{ color: 'var(--text-muted)' }}>·</span>

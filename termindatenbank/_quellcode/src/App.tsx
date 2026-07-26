@@ -72,6 +72,10 @@ export default function App() {
   return (
     <>
       <header>
+        <div className="header-inner">
+        <img className="brand-logo" src={`${import.meta.env.BASE_URL}nova_logo_web.png`} alt=""
+             onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} />
+        <div className="header-text">
         <div className="product-header">
           <h1 className="dashboard-title">
             <span className="product-name">NOVAplan</span>
@@ -83,6 +87,8 @@ export default function App() {
           <div className="company-name">NOVA Praxis-Hygiene GmbH</div>
           <p className="company-subtitle">Experten für Trinkwasserhygiene</p>
           <p className="dashboard-meta">Stand: {stand}</p>
+        </div>
+        </div>
         </div>
         <div className="header-user">
           {demoModus ? 'Demo-Modus (ohne Supabase)' : (
