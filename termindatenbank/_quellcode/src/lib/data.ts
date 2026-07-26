@@ -119,6 +119,16 @@ export const db = {
     const { error } = await supabase.from('td_bereiche').insert(b)
     if (error) throw error
   },
+  async bereichAktualisieren(id: string, patch: Partial<Pick<Bereich, 'name' | 'beschreibung' | 'wwb_details' | 'strasse' | 'hausnummer' | 'notizen'>>): Promise<void> {
+    if (!supabase) { const b = demo.bereiche.find(x => x.id === id); if (b) Object.assign(b, patch); return }
+    const { error } = await supabase.from('td_bereiche').update(patch).eq('id', id)
+    if (error) throw error
+  },
+  async bereichLoeschen(id: string): Promise<void> {
+    if (!supabase) return
+    const { error } = await supabase.from('td_bereiche').delete().eq('id', id)
+    if (error) throw error
+  },
   async terminAnlegen(t: Omit<Termin, 'id' | 'probenehmer' | 'kalender_exportiert'>): Promise<string> {
     if (!supabase) {
       const id = 't' + (demo.termine.length + 1)

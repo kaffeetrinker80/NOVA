@@ -3,6 +3,7 @@ import { db } from '../lib/data'
 import type { Anlage, Bereich, Kunde, Kundentyp } from '../lib/types'
 import { fmtDatum } from '../lib/types'
 import HistorieModal from '../components/HistorieModal'
+import { Meldung } from '../components/ui'
 
 const TYP: Record<Kundentyp, string> = {
   hausverwaltung: 'Hausverwaltung', pflegetraeger: 'Pflegeträger',
@@ -48,7 +49,11 @@ export default function Stammdaten() {
   // Kunden umbenennen
   const [kName, setKName] = useState({ kurz: '', lang: '' })
   const [inaktiveAnzeigen, setInaktiveAnzeigen] = useState(false)
+  const [inaktiveKunden, setInaktiveKunden] = useState(false)
   const [historieOffen, setHistorieOffen] = useState(false)
+  const [historieBereich, setHistorieBereich] = useState<string | undefined>(undefined)
+  const [bereichId, setBereichId] = useState('')
+  const [bf, setBf] = useState({ name: '', strasse: '', hausnummer: '', wwb_details: '', notizen: '' })
   const [termine, setTermine] = useState<import('../lib/types').Termin[]>([])
   const [auftraege, setAuftraege] = useState<import('../lib/types').Auftrag[]>([])
 
@@ -61,8 +66,9 @@ export default function Stammdaten() {
   const kundenGefiltert = useMemo(() => {
     const q = suche.toLowerCase()
     return kunden
-      .filter(k => !q || k.name_lang.toLowerCase().includes(q) || k.name_kurz.toLowerCase().includes(q))
-      .sort((a, b) => a.name_kurz.localeCompare(b.name_kurz, 'de'))
+      .filter(k => !q || k.name_lang.toLowerCase().includes(q) || k.name_kurz.toLowerCase().includes(q)
+        || (inaktiveKunden && !k.aktiv))
+      .sort((a, b) => a.name_lang.localeCompare(b.name_lang, 'de'))
   }, [kunden, suche])
 
   const kunde = kunden.find(k => k.id === kundeId)
@@ -99,7 +105,28 @@ export default function Stammdaten() {
     } catch (e: any) { setMeldung('Fehler: ' + (e.message ?? e)) }
   }
   const anlagenDesKunden = anlagen.filter(a => a.kunde_id === kundeId && (inaktiveAnzeigen || a.aktiv))
+  const bereich = bereiche.find(b => b.id === bereichId)
+  useEffect(() => {
+    setBf({
+      name: bereich?.name ?? '', strasse: bereich?.strasse ?? '', hausnummer: bereich?.hausnummer ?? '',
+      wwb_details: bereich?.wwb_details ?? '', notizen: bereich?.notizen ?? '',
+    })
+  }, [bereichId])
+  const bereichSpeichernDetails = async () => {
+    if (!bereich) return
+    await db.bereichAktualisieren(bereich.id, {
+      name: bf.name.trim() || bereich.name, strasse: bf.strasse || undefined,
+      hausnummer: bf.hausnummer || undefined, wwb_details: bf.wwb_details || undefined,
+      notizen: bf.notizen || undefined,
+    })
+    setMeldung('Bereich gespeichert.'); laden()
+  }
+  const bereichEntfernen = async (id: string) => {
+    await db.bereichLoeschen(id); if (bereichId === id) setBereichId(''); setMeldung('Bereich entfernt.'); laden()
+  }
+
   const anlage = anlagen.find(a => a.id === anlageId)
+  useEffect(() => { setBereichId('') }, [anlageId])
   useEffect(() => {
     setNotiz(anlage?.notizen ?? ''); setPlanungsnotiz(anlage?.planungsnotiz ?? '')
     setNeuerVerwalter(''); setAnlageName(anlage?.name ?? '')
@@ -177,7 +204,7 @@ export default function Stammdaten() {
 
   return (
     <>
-      {meldung && <div className="notice">{meldung}</div>}
+      <Meldung text={meldung} onWeg={() => setMeldung('')} />
       <div className="stamm-spalten">
         {/* ── Spalte 1: Kunden ── */}
         <div className="stamm-spalte">
@@ -196,8 +223,14 @@ export default function Stammdaten() {
           </div>
           <div className="suchfeld" style={{ margin: '0 12px 10px' }}>
             <i className="fas fa-magnifying-glass" aria-hidden="true"></i>
-            <input placeholder="Kunde suchen …" value={suche} onChange={e => setSuche(e.target.value)} />
+            <input placeholder="Kunde suchen …" value={suche} onChange={e => setSuche(e.target.value)}
+              onKeyDown={e => e.key === 'Escape' && setSuche('')} />
+            {suche && <button className="suchfeld-x" onClick={() => setSuche('')} aria-label="Suche leeren">×</button>}
           </div>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '.76rem', padding: '0 14px 8px', color: 'var(--text-muted)' }}>
+            <input type="checkbox" checked={inaktiveKunden} onChange={e => setInaktiveKunden(e.target.checked)} />
+            inaktive Kunden anzeigen
+          </label>
           {neuKunde && (
             <div className="stamm-formular">
               <input placeholder="Vollständiger Name" value={kf.name_lang} onChange={e => setKf({ ...kf, name_lang: e.target.value })} />
@@ -369,94 +402,100 @@ export default function Stammdaten() {
           </div>
         </div>
 
-        {/* ── Spalte 3: Bereiche der Anlage ── */}
-        <div className="stamm-spalte">
+        {/* ── Spalte 3: Bereiche (WWB) mit eigenen Details ── */}
+        <div className="stamm-spalte breit">
           <div className="stamm-kopf">
-            <h3><i className="fas fa-diagram-project" aria-hidden="true"></i> Bereiche &amp; Objekt {anlage ? `(${bereicheDerAnlage.length})` : ''}</h3>
-            {anlage && <button className="zeile-btn" onClick={() => setHistorieOffen(true)}>
-              <i className="fas fa-clock-rotate-left" aria-hidden="true"></i> Historie
+            <h3><i className="fas fa-diagram-project" aria-hidden="true"></i> Untersuchungsbereiche (WWB) {anlage ? `(${bereicheDerAnlage.length})` : ''}</h3>
+            {anlage && <button className="zeile-btn" onClick={() => { setHistorieBereich(undefined); setHistorieOffen(true) }}>
+              <i className="fas fa-clock-rotate-left" aria-hidden="true"></i> Gesamt-Historie
             </button>}
           </div>
-          {!anlage && <p className="hint" style={{ padding: '4px 14px' }}>← In der Mitte eine Anlage wählen.</p>}
+          {!anlage && <p className="hint" style={{ padding: '4px 14px' }}>← In der Mitte eine Anlage (Objekt/Standort) wählen.</p>}
+
           {anlage && (
-            <>
-              <div className="stamm-formular" style={{ paddingTop: 0 }}>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <input placeholder="Neuer Bereich, z. B. Haus 7" style={{ flex: 1 }} value={neuBereichName}
-                    onChange={e => setNeuBereichName(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && bereichSpeichern()} />
-                  <button className="primary" onClick={bereichSpeichern} disabled={!neuBereichName.trim()}>
-                    <i className="fas fa-plus" aria-hidden="true"></i>
+            <div className="bereich-raster">
+              {/* Objekt-Ebene: Adresse, Betreuer, Zugang, Aktiv, Verwalterwechsel */}
+              <details className="objekt-box" open>
+                <summary><i className="fas fa-building" aria-hidden="true"></i> Objekt: {anlage.name}
+                  {!anlage.aktiv && <span className="badge neutral" style={{ marginLeft: 6 }}>inaktiv</span>}</summary>
+                <div className="stamm-formular" style={{ borderBottom: 'none' }}>
+                  <span className="hint" style={{ fontWeight: 650 }}>Objektname</span>
+                  <input value={anlageName} onChange={e => setAnlageName(e.target.value)} />
+                  <span className="hint" style={{ fontWeight: 650 }}>Adresse (Objekt gesamt)</span>
+                  <input placeholder="Straße" value={adresse.strasse} onChange={e => setAdresse({ ...adresse, strasse: e.target.value })} />
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input placeholder="PLZ" style={{ width: 90 }} value={adresse.plz} onChange={e => setAdresse({ ...adresse, plz: e.target.value })} />
+                    <input placeholder="Ort" style={{ flex: 1 }} value={adresse.ort} onChange={e => setAdresse({ ...adresse, ort: e.target.value })} />
+                  </div>
+                  <span className="hint" style={{ fontWeight: 650 }}>Objektbetreuer (optional)</span>
+                  <input placeholder="z. B. Hr. Maier, 0821 …" value={betreuer} onChange={e => setBetreuer(e.target.value)} />
+                  <span className="hint" style={{ fontWeight: 650 }}>Zugang / Notizen</span>
+                  <textarea rows={2} placeholder="z. B. Schlüssel beim Hausmeister" value={notiz} onChange={e => setNotiz(e.target.value)} />
+                  <span className="hint" style={{ fontWeight: 650 }}>Planungsvermerk (nimmt Objekt aus Fälligkeits-Ansichten)</span>
+                  <textarea rows={2} placeholder="z. B. Heizung wird erneuert – zurückstellen" value={planungsnotiz} onChange={e => setPlanungsnotiz(e.target.value)} />
+                  <button className="primary" onClick={anlageSpeichernDetails}>
+                    <i className="fas fa-floppy-disk" aria-hidden="true"></i> Objekt speichern
                   </button>
+
+                  <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                    <select style={{ flex: 1 }} value={neuerVerwalter} onChange={e => setNeuerVerwalter(e.target.value)}>
+                      <option value="">Verwalter wechseln zu …</option>
+                      {kunden.filter(k => k.id !== kundeId).map(k => <option key={k.id} value={k.id}>{k.name_lang}</option>)}
+                    </select>
+                    <button onClick={verwalterWechseln} disabled={!neuerVerwalter} title="Objekt + Historie zum neuen Kunden">
+                      <i className="fas fa-right-left" aria-hidden="true"></i>
+                    </button>
+                  </div>
+                  {anlage.aktiv
+                    ? <button className="secondary" onClick={() => anlageAktivSetzen(false)}><i className="fas fa-pause" aria-hidden="true"></i> Objekt inaktiv setzen</button>
+                    : <button className="primary" onClick={() => anlageAktivSetzen(true)}><i className="fas fa-play" aria-hidden="true"></i> Objekt reaktivieren</button>}
                 </div>
-                <p className="hint" style={{ margin: '4px 0 0' }}>
-                  Jedes eigenständig untersuchbare Warmwassersystem als eigener Bereich – jeder erhält eigene Auftragsnummern.
-                </p>
-              </div>
-              <div className="stamm-liste" style={{ flex: 'none', maxHeight: 180 }}>
+              </details>
+
+              {/* Bereichs-Ebene: je WWB eigene Adresse/Details/Historie */}
+              <div className="bereich-liste">
                 {bereicheDerAnlage.map(b => (
-                  <div key={b.id} className="stamm-eintrag" style={{ cursor: 'default' }}>
-                    <strong>{b.name}</strong>
-                    {b.beschreibung && <span className="hint">{b.beschreibung}</span>}
+                  <div key={b.id} className={`bereich-karte ${b.id === bereichId ? 'aktiv' : ''}`}>
+                    <button className="bereich-kopf" onClick={() => setBereichId(b.id === bereichId ? '' : b.id)}>
+                      <strong><i className={`fas fa-chevron-${b.id === bereichId ? 'down' : 'right'}`} style={{ fontSize: '.7rem', marginRight: 6 }}></i>{b.name}</strong>
+                      {(b.strasse || b.hausnummer) && <span className="hint">{[b.strasse, b.hausnummer].filter(Boolean).join(' ')}</span>}
+                    </button>
+                    {b.id === bereichId && (
+                      <div className="stamm-formular" style={{ borderBottom: 'none', paddingTop: 6 }}>
+                        <input placeholder="Bereichsname, z. B. Altbau / Haus 7" value={bf.name} onChange={e => setBf({ ...bf, name: e.target.value })} />
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <input placeholder="Straße (falls abweichend)" style={{ flex: 1 }} value={bf.strasse} onChange={e => setBf({ ...bf, strasse: e.target.value })} />
+                          <input placeholder="Haus-Nr." style={{ width: 90 }} value={bf.hausnummer} onChange={e => setBf({ ...bf, hausnummer: e.target.value })} />
+                        </div>
+                        <input placeholder="WW-System-Details (optional)" value={bf.wwb_details} onChange={e => setBf({ ...bf, wwb_details: e.target.value })} />
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                          <button className="primary" onClick={bereichSpeichernDetails}><i className="fas fa-floppy-disk" aria-hidden="true"></i> Speichern</button>
+                          <button onClick={() => { setHistorieBereich(b.id); setHistorieOffen(true) }}><i className="fas fa-clock-rotate-left" aria-hidden="true"></i> Historie</button>
+                          <button className="secondary" onClick={() => bereichEntfernen(b.id)} title="Bereich entfernen"><i className="fas fa-trash-can" aria-hidden="true"></i></button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
-                {bereicheDerAnlage.length === 0 && <p className="hint" style={{ padding: '0 14px' }}>
-                  Noch keine Bereiche – bei einem einzelnen WW-System reicht z. B. „Gesamtanlage“.</p>}
-              </div>
-
-              <div className="stamm-formular" style={{ borderTop: '1px solid var(--border)', borderBottom: 'none' }}>
-                <span className="hint" style={{ fontWeight: 650 }}>Objektname</span>
-                <input value={anlageName} onChange={e => setAnlageName(e.target.value)} />
-                <span className="hint" style={{ fontWeight: 650 }}>Adresse</span>
-                <input placeholder="Straße" value={adresse.strasse} onChange={e => setAdresse({ ...adresse, strasse: e.target.value })} />
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <input placeholder="PLZ" style={{ width: 90 }} value={adresse.plz} onChange={e => setAdresse({ ...adresse, plz: e.target.value })} />
-                  <input placeholder="Ort" style={{ flex: 1 }} value={adresse.ort} onChange={e => setAdresse({ ...adresse, ort: e.target.value })} />
-                </div>
-                <span className="hint" style={{ fontWeight: 650 }}>Objektbetreuer / Ansprechpartner (optional)</span>
-                <input placeholder="z. B. Hr. Maier, 0821 …" value={betreuer} onChange={e => setBetreuer(e.target.value)} />
-                <span className="hint" style={{ fontWeight: 650 }}>Objekt-Notizen</span>
-                <textarea rows={2} placeholder="z. B. Zugang über Hausmeister, Codes …"
-                  value={notiz} onChange={e => setNotiz(e.target.value)} />
-                <span className="hint" style={{ fontWeight: 650 }}>Planungsvermerk
-                  <span style={{ fontWeight: 400 }}> (nimmt das Objekt aus den Fälligkeits-Ansichten)</span></span>
-                <textarea rows={2} placeholder="z. B. Heizung wird erneuert – zurückstellen"
-                  value={planungsnotiz} onChange={e => setPlanungsnotiz(e.target.value)} />
-                <button className="primary" onClick={anlageSpeichernDetails}>
-                  <i className="fas fa-floppy-disk" aria-hidden="true"></i> Objekt-Details speichern
-                </button>
-
-                <span className="hint" style={{ fontWeight: 650, marginTop: 6 }}>Verwalter wechseln</span>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <select style={{ flex: 1 }} value={neuerVerwalter} onChange={e => setNeuerVerwalter(e.target.value)}>
-                    <option value="">– neuen Kunden wählen –</option>
-                    {kunden.filter(k => k.id !== kundeId).map(k =>
-                      <option key={k.id} value={k.id}>{k.name_kurz} – {k.name_lang}</option>)}
-                  </select>
-                  <button onClick={verwalterWechseln} disabled={!neuerVerwalter}>
-                    <i className="fas fa-right-left" aria-hidden="true"></i>
+                <div className="pm-bereich-neu" style={{ margin: '8px 0 0' }}>
+                  <input placeholder="Neuer Bereich, z. B. Neubau / Haus 7" value={neuBereichName}
+                    onChange={e => setNeuBereichName(e.target.value)} onKeyDown={e => e.key === 'Enter' && bereichSpeichern()} />
+                  <button className="primary" onClick={bereichSpeichern} disabled={!neuBereichName.trim()}>
+                    <i className="fas fa-plus" aria-hidden="true"></i> Bereich
                   </button>
                 </div>
-                <p className="hint" style={{ margin: 0 }}>Objekt samt kompletter Untersuchungshistorie wandert zum neuen Kunden.</p>
-
-                {anlage?.aktiv ? (
-                  <button className="secondary" onClick={() => anlageAktivSetzen(false)}>
-                    <i className="fas fa-pause" aria-hidden="true"></i> Objekt inaktiv setzen (keine Fälligkeits-Erinnerungen)
-                  </button>
-                ) : (
-                  <button className="primary" onClick={() => anlageAktivSetzen(true)}>
-                    <i className="fas fa-play" aria-hidden="true"></i> Objekt wieder aktivieren
-                  </button>
-                )}
+                {bereicheDerAnlage.length === 0 && <p className="hint" style={{ padding: '4px 2px' }}>
+                  Noch keine Bereiche. Bei einem einzelnen WW-System z. B. „Gesamtanlage"; bei mehreren je System einen Bereich mit eigener Adresse.</p>}
               </div>
-            </>
+            </div>
           )}
         </div>
       </div>
 
       {historieOffen && anlage && (
         <HistorieModal anlage={anlage} kunde={kunde} termine={termine}
-          auftraege={auftraege} bereiche={bereiche} onClose={() => setHistorieOffen(false)} />
+          auftraege={auftraege} bereiche={bereiche} nurBereich={historieBereich}
+          onClose={() => setHistorieOffen(false)} />
       )}
     </>
   )

@@ -1,0 +1,4 @@
+-- (Bereits angewandt: td_bereiche_adresse, td_termine_bereich_zuordnung)
+-- 1) td_bereiche.strasse/hausnummer: eigene Adresse je WWB (Altbau/Neubau)
+-- 2) td_termine.bereich_id: optionale Bereichszuordnung; beim Anlagen-Zusammenführen
+--    werden Termine dem entstehenden Bereich zugeordnet -> getrennte Historie

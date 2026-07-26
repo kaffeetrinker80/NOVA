@@ -6,6 +6,7 @@ export default function Login() {
   const [passwort, setPasswort] = useState('')
   const [fehler, setFehler] = useState('')
   const [sendet, setSendet] = useState(false)
+  const [zeigen, setZeigen] = useState(false)
 
   const anmelden = async () => {
     if (!supabase || !email || !passwort) return
@@ -34,8 +35,14 @@ export default function Login() {
         </label>
         <label className="f" style={{ marginBottom: 10 }}>
           Passwort
-          <input type="password" value={passwort} onChange={e => setPasswort(e.target.value)}
-            autoComplete="current-password" placeholder="••••••••" />
+          <div className="pw-feld">
+            <input type={zeigen ? 'text' : 'password'} value={passwort} onChange={e => setPasswort(e.target.value)}
+              autoComplete="current-password" placeholder="••••••••" />
+            <button type="button" className="pw-auge" onClick={() => setZeigen(!zeigen)}
+              aria-label={zeigen ? 'Passwort verbergen' : 'Passwort anzeigen'} tabIndex={-1}>
+              <i className={`fas ${zeigen ? 'fa-eye-slash' : 'fa-eye'}`} aria-hidden="true"></i>
+            </button>
+          </div>
         </label>
         {fehler && <p style={{ color: '#99342e', fontSize: '.8rem', margin: '0 0 10px' }}>{fehler}</p>}
         <button type="submit" className="primary" disabled={sendet || !email || !passwort}

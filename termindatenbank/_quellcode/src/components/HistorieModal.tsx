@@ -5,20 +5,24 @@ import { ErgebnisBadge } from './ui'
 import { phasenErmitteln } from '../lib/phasen'
 
 /** Kompletter Untersuchungsverlauf einer Anlage – Abstände, Phasen, Aufträge, Ergebnisse. */
-export default function HistorieModal({ anlage, kunde, termine, auftraege, bereiche, onClose }: {
+export default function HistorieModal({ anlage, kunde, termine, auftraege, bereiche, nurBereich, onClose }: {
   anlage: Anlage
   kunde?: Kunde
   termine: Termin[]
   auftraege: Auftrag[]
   bereiche: Bereich[]
+  nurBereich?: string
   onClose: () => void
 }) {
+  const bereichName = nurBereich ? bereiche.find(b => b.id === nurBereich)?.name : undefined
   const eigene = useMemo(() =>
-    termine.filter(t => t.anlage_id === anlage.id && t.status !== 'abgesagt')
+    termine.filter(t => t.anlage_id === anlage.id && t.status !== 'abgesagt'
+        && (!nurBereich || t.bereich_id === nurBereich))
       .sort((a, b) => b.datum.localeCompare(a.datum)),
-    [termine, anlage])
+    [termine, anlage, nurBereich])
 
-  const bereichIds = new Set(bereiche.filter(b => b.anlage_id === anlage.id).map(b => b.id))
+  const bereichIds = nurBereich ? new Set([nurBereich])
+    : new Set(bereiche.filter(b => b.anlage_id === anlage.id).map(b => b.id))
   const eigeneAuftraege = auftraege.filter(a => bereichIds.has(a.bereich_id))
 
   const phasen = useMemo(() => phasenErmitteln([{
@@ -51,7 +55,7 @@ export default function HistorieModal({ anlage, kunde, termine, auftraege, berei
       <div className="modal" style={{ maxWidth: 680 }} role="dialog" aria-modal="true" aria-label={`Historie ${anlage.name}`}>
         <div className="modal-kopf">
           <div>
-            <strong><i className="fas fa-clock-rotate-left" aria-hidden="true"></i> Untersuchungsverlauf · {anlage.name}</strong>
+            <strong><i className="fas fa-clock-rotate-left" aria-hidden="true"></i> Untersuchungsverlauf · {anlage.name}{bereichName ? ` › ${bereichName}` : ''}</strong>
             <div className="hint">{kunde?.name_kurz ?? '–'} · {[anlage.plz, anlage.ort].filter(Boolean).join(' ')} ·
               Turnus {anlage.turnus_monate === 3 ? '3 Monate' : anlage.turnus_monate === 12 ? '1 Jahr' : anlage.turnus_monate === 36 ? '3 Jahre' : '–'}</div>
           </div>

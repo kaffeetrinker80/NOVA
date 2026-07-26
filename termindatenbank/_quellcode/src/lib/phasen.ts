@@ -21,6 +21,8 @@ export interface Phase {
   anzahlNachuntersuchungen: number
   dauerMonate: number | null
   status: 'aktiv' | 'abgeschlossen' | 'prueffall'
+  sicherheit: 'hoch' | 'mittel' | 'pruefen'
+  abstandTage: number      // Abstand, der die Überschreitung ausgelöst hat
 }
 
 const TAG = 864e5
@@ -112,7 +114,15 @@ export function phasenErmitteln(anlagen: AnlagenEingabe[]): Phase[] {
         else if (tageSeitLetzter > (basis === 1 ? 550 : 1450)) status = 'prueffall'
         else status = 'aktiv'
 
+        // Sicherheit der Ableitung: klarer Regelturnus aus Stammdaten = hoch
+        const ausl = tage(daten[i], daten[i + 1])
+        let sicherheit: Phase['sicherheit']
+        if (herkunft === 'aktueller Turnus') sicherheit = 'hoch'
+        else if (herkunft === 'historische Abstände') sicherheit = 'mittel'
+        else sicherheit = 'pruefen'
+
         phasen.push({
+          sicherheit, abstandTage: ausl,
           anlageId: a.id, anlage: a.name, kunde: a.kunde, ort: a.ort,
           regelturnusJahre: basis, turnusHerkunft: herkunft,
           ueberschreitungsdatum: erkennung,

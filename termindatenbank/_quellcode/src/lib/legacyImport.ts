@@ -108,7 +108,7 @@ export function vorschauErzeugen(datensaetze: LegacyDatensatz[]): ImportVorschau
       kunden.set(kundeKey, {
         legacy_id: kundeKey,
         name_lang: verwaltung,
-        name_kurz: kurzname(verwaltung),
+        name_kurz: verwaltung,          // Kurzname = voller Name; wird bei Bedarf manuell angepasst
         typ: kundentyp(verwaltung),
       })
     }

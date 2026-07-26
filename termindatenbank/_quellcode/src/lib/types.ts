@@ -18,10 +18,11 @@ export interface Anlage {
 }
 export interface Bereich {
   id: string; anlage_id: string; name: string
-  beschreibung?: string; wwb_details?: string; notizen?: string; aktiv: boolean
+  beschreibung?: string; wwb_details?: string; notizen?: string
+  strasse?: string; hausnummer?: string; aktiv: boolean
 }
 export interface Termin {
-  id: string; kunde_id: string; anlage_id: string
+  id: string; kunde_id: string; anlage_id: string; bereich_id?: string
   datum: string; beginn?: string; ende?: string
   status: Terminstatus; frist?: string; notizen?: string
   probenehmer: string[]

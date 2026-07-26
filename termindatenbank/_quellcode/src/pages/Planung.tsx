@@ -155,7 +155,8 @@ export default function Planung() {
       <div className="planung-werkzeuge no-print">
         <div className="suchfeld">
           <i className="fas fa-magnifying-glass" aria-hidden="true"></i>
-          <input placeholder="Suche: Objekt, Verwaltung, Ort, PLZ …" value={suche} onChange={e => setSuche(e.target.value)} />
+          <input placeholder="Suche: Objekt, Verwaltung, Ort, PLZ …" value={suche}
+            onChange={e => setSuche(e.target.value)} onKeyDown={e => e.key === 'Escape' && setSuche('')} />
           {suche && <button className="suchfeld-x" onClick={() => setSuche('')} aria-label="Suche leeren">×</button>}
         </div>
         {tab === 'next90' && (

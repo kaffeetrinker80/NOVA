@@ -4,6 +4,23 @@ import { ERGEBNIS_LABEL, STATUS_LABEL, TERMIN_LABEL } from '../lib/types'
 
 export const Nr = ({ children }: { children: ReactNode }) => <span className="nr">{children}</span>
 
+import { useEffect } from 'react'
+/** Kurze Erfolgs-/Hinweismeldung, blendet sich nach einigen Sekunden selbst aus. */
+export function Meldung({ text, onWeg }: { text: string; onWeg: () => void }) {
+  useEffect(() => {
+    if (!text) return
+    const id = setTimeout(onWeg, 5000)
+    return () => clearTimeout(id)
+  }, [text])
+  if (!text) return null
+  return (
+    <div className="notice notice-fade" role="status">
+      <span>{text}</span>
+      <button className="notice-x" onClick={onWeg} aria-label="Schließen">×</button>
+    </div>
+  )
+}
+
 /** Weißer Karten-Abschnitt mit Kopfzeile – Struktur wie in den NOVAplan-Dashboards. */
 export function Abschnitt({ titel, aktionen, legende, children }: {
   titel: string; aktionen?: ReactNode; legende?: ReactNode; children: ReactNode
