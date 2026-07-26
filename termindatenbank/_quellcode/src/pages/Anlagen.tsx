@@ -48,7 +48,7 @@ export default function Anlagen() {
               <td>{[a.strasse, [a.plz, a.ort].filter(Boolean).join(' ')].filter(Boolean).join(', ')}</td>
               <td>{a.turnus_monate ? `${a.turnus_monate / 12} Jahre` : '–'}</td>
               <td>{fmtDatum(a.naechste_untersuchung)}</td>
-              <td><span className={`badge ${a.aktiv ? 'green' : 'gray'}`}>{a.aktiv ? 'aktiv' : 'inaktiv'}</span></td>
+              <td><span className={`badge ${a.aktiv ? 'closed' : 'neutral'}`}>{a.aktiv ? 'aktiv' : 'inaktiv'}</span></td>
             </tr>
           ))}
         </tbody>

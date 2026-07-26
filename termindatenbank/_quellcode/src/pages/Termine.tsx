@@ -75,7 +75,7 @@ export default function Termine() {
     <>
       <h1>Termine</h1>
       <p className="sub">Beprobungstermine planen – je Untersuchungsbereich wird automatisch eine eigene Auftragsnummer vergeben</p>
-      {meldung && <div className="demoflag">{meldung}</div>}
+      {meldung && <div className="notice">{meldung}</div>}
       {!neu && <p><button className="primary" onClick={() => setNeu(true)}>Neuen Termin planen</button></p>}
 
       {neu && (

@@ -46,7 +46,7 @@ export default function Bereiche() {
                 <td>{a?.name ?? '–'}</td>
                 <td>{kunden.find(k => k.id === a?.kunde_id)?.name_kurz ?? '–'}</td>
                 <td>{b.beschreibung ?? '–'}</td>
-                <td><span className={`badge ${b.aktiv ? 'green' : 'gray'}`}>{b.aktiv ? 'aktiv' : 'inaktiv'}</span></td>
+                <td><span className={`badge ${b.aktiv ? 'closed' : 'neutral'}`}>{b.aktiv ? 'aktiv' : 'inaktiv'}</span></td>
               </tr>
             )
           })}

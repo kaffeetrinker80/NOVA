@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { db } from '../lib/data'
 import type { Anlage, Auftrag, Bereich, Kunde, Termin } from '../lib/types'
 import { ART_LABEL, ERGEBNIS_LABEL, STATUS_LABEL, fmtDatum, nummerVoll } from '../lib/types'
-import { ErgebnisBadge, Nr, StatusBadge } from '../components/ui'
+import { Abschnitt, ErgebnisBadge, Nr, StatusBadge } from '../components/ui'
 
 export default function Auftragsbuch() {
   const [auftraege, setAuftraege] = useState<Auftrag[]>([])
@@ -50,8 +50,10 @@ export default function Auftragsbuch() {
 
   return (
     <>
-      <h1>Auftragsbuch</h1>
-      <p className="sub">Alle Aufträge und Unteraufträge mit vollständigem Bezug zu Kunde, Anlage, Bereich und Termin</p>
+      <Abschnitt titel={`Auftragsbuch (${gefiltert.length})`}
+        aktionen={<button onClick={() => window.print()}>
+          <i className="fas fa-print" aria-hidden="true"></i> Gefilterte Liste drucken
+        </button>}>
       <div className="filters">
         <input placeholder="Suche: Auftragsnummer, Kunde, Anlage …" value={suche} onChange={e => setSuche(e.target.value)} style={{ minWidth: 260 }} />
         <select value={fJahr} onChange={e => setFJahr(e.target.value)}><option value="">Jahr: alle</option>{jahre.map(j => <option key={j}>{j}</option>)}</select>
@@ -61,7 +63,8 @@ export default function Auftragsbuch() {
         <select value={fErgebnis} onChange={e => setFErgebnis(e.target.value)}><option value="">Ergebnis: alle</option>{Object.entries(ERGEBNIS_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
       </div>
 
-      <table className="tbl">
+      <div className="table-container">
+      <table>
         <thead><tr>
           <th>Nr.</th><th>Kunde</th><th>Anlage</th><th>Bereich</th><th>Termin</th>
           <th>Art / Umfang</th><th>Proben (Soll/Ist)</th><th>Status</th><th>Ergebnis</th><th></th>
@@ -92,6 +95,8 @@ export default function Auftragsbuch() {
           {gefiltert.length === 0 && <tr><td colSpan={10} className="hint">Keine Aufträge für die gewählten Filter.</td></tr>}
         </tbody>
       </table>
+      </div>
+      </Abschnitt>
     </>
   )
 }

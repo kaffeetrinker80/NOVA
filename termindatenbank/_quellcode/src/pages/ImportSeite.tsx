@@ -1,72 +1,136 @@
 import { useState } from 'react'
 import { db, demoModus } from '../lib/data'
+import { vorschauErzeugen, type ImportVorschau, type LegacyDatensatz } from '../lib/legacyImport'
+import { Abschnitt } from '../components/ui'
+import { useAuth } from '../lib/auth'
+import { fmtDatum } from '../lib/types'
 
 export default function ImportSeite() {
-  const [zeilen, setZeilen] = useState<any[]>([])
+  const { rolle } = useAuth()
   const [dateiname, setDateiname] = useState('')
+  const [vorschau, setVorschau] = useState<ImportVorschau | null>(null)
   const [meldung, setMeldung] = useState('')
+  const [laeuft, setLaeuft] = useState(false)
+  const [resetText, setResetText] = useState('')
 
   const lesen = async (file: File) => {
-    setDateiname(file.name)
+    setDateiname(file.name); setMeldung(''); setVorschau(null)
     try {
-      const inhalt = JSON.parse(await file.text())
-      setZeilen(Array.isArray(inhalt) ? inhalt : [inhalt])
-      setMeldung('')
-    } catch {
-      setMeldung('Datei konnte nicht als JSON gelesen werden.')
-      setZeilen([])
+      let roh = await file.text()
+      // Abgeschnittene Exporte (z. B. Kurzfassungen) tolerieren
+      roh = roh.trim().replace(/,\s*\]?\s*$/, ']')
+      if (!roh.endsWith(']') && roh.startsWith('[')) roh += ']'
+      const inhalt = JSON.parse(roh)
+      const liste: LegacyDatensatz[] = Array.isArray(inhalt) ? inhalt : [inhalt]
+      setVorschau(vorschauErzeugen(liste))
+    } catch (e: any) {
+      setMeldung('Datei konnte nicht gelesen werden: ' + e.message)
     }
   }
 
   const uebernehmen = async () => {
-    const n = await db.importStaging(dateiname, 'legacy_json', zeilen)
-    setMeldung(demoModus
-      ? `${n} Datensätze gelesen. Im Demo-Modus werden sie nicht gespeichert – mit Supabase landen sie in der Staging-Tabelle zur Prüfung.`
-      : `${n} Datensätze in die Staging-Tabelle übernommen. Sie können dort geprüft und schrittweise als Live-Daten übernommen werden.`)
+    if (!vorschau) return
+    setLaeuft(true); setMeldung('Übernahme läuft …')
+    try {
+      const ergebnis = await db.legacyUebernehmen(vorschau, setMeldung)
+      setMeldung(ergebnis)
+    } catch (e: any) {
+      setMeldung('Fehler bei der Übernahme: ' + e.message)
+    }
+    setLaeuft(false)
   }
 
-  const spalten = zeilen.length ? Object.keys(zeilen[0]).slice(0, 8) : []
+  const zuruecksetzen = async () => {
+    if (resetText !== 'RESET') return
+    setLaeuft(true)
+    try {
+      setMeldung(await db.resetAlleDaten(false))
+      setVorschau(null); setResetText('')
+    } catch (e: any) {
+      setMeldung('Fehler beim Zurücksetzen: ' + e.message)
+    }
+    setLaeuft(false)
+  }
 
   return (
     <>
       <h1>Import &amp; Migration</h1>
-      <p className="sub">Bestehende JSON-Exporte (z.&nbsp;B. Terminverwaltung V4) werden zuerst in eine Staging-Tabelle geladen, dort geprüft und erst danach als Live-Daten übernommen. Original-Kennungen und Quellinformationen bleiben erhalten. Der Import ist schrittweise und rückgängig machbar.</p>
+      <p className="sub">
+        JSON-Export der Terminverwaltung V4 einlesen, Vorschau prüfen und übernehmen.
+        Alt-Kennungen bleiben erhalten, ein erneuter Import überschreibt statt zu duplizieren.
+      </p>
 
-      <div className="panel">
-        <label className="f">Legacy-JSON-Datei wählen
-          <input type="file" accept=".json,application/json" onChange={e => e.target.files?.[0] && lesen(e.target.files[0])} />
-        </label>
-      </div>
+      {meldung && <div className="notice">{meldung}</div>}
 
-      {meldung && <div className="demoflag">{meldung}</div>}
+      <Abschnitt titel="1. Datei einlesen">
+        <div style={{ padding: '16px 20px' }}>
+          <label className="f" style={{ maxWidth: 460 }}>
+            JSON-Datei (z. B. Terminverwaltung_V4.json)
+            <input type="file" accept=".json,application/json"
+              onChange={e => e.target.files?.[0] && lesen(e.target.files[0])} />
+          </label>
+        </div>
+      </Abschnitt>
 
-      {zeilen.length > 0 && (
+      {vorschau && (
         <>
-          <p className="hint">{zeilen.length} Datensätze aus „{dateiname}“ – Vorschau der ersten 10 Zeilen:</p>
-          <div style={{ overflowX: 'auto' }}>
-            <table className="tbl">
-              <thead><tr>{spalten.map(s => <th key={s}>{s}</th>)}</tr></thead>
-              <tbody>
-                {zeilen.slice(0, 10).map((z, i) => (
-                  <tr key={i}>{spalten.map(s => <td key={s}>{String(z[s] ?? '')}</td>)}</tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="cards">
+            <div className="card"><div className="label">Kunden / Verwaltungen</div><div className="value">{vorschau.kunden.length}</div></div>
+            <div className="card"><div className="label">Anlagen</div><div className="value">{vorschau.anlagen.length}</div></div>
+            <div className="card"><div className="label">Historische Termine</div><div className="value">{vorschau.termine.length}</div></div>
+            <div className="card"><div className="label">Übersprungen</div><div className="value">{vorschau.uebersprungen}</div></div>
           </div>
-          <p><button className="primary" onClick={uebernehmen}>In Staging-Tabelle übernehmen</button></p>
+
+          <Abschnitt titel="2. Vorschau – Anlagen (erste 15)"
+            aktionen={
+              <button className="primary" onClick={uebernehmen}
+                disabled={laeuft || demoModus || rolle === 'lesend' || rolle === 'probenehmer'}>
+                <i className="fas fa-database" aria-hidden="true"></i>
+                {laeuft ? 'Übernahme läuft …' : 'In die Datenbank übernehmen'}
+              </button>
+            }>
+            <div className="table-container">
+              <table>
+                <thead><tr><th>Objekt</th><th>Verwaltung</th><th>PLZ</th><th>Ort</th><th>Turnus</th><th>Nächste Unters.</th></tr></thead>
+                <tbody>
+                  {vorschau.anlagen.slice(0, 15).map(a => (
+                    <tr key={a.legacy_id}>
+                      <td>{a.name}</td>
+                      <td>{vorschau.kunden.find(k => k.legacy_id === a.kunde_legacy)?.name_lang ?? '–'}</td>
+                      <td>{a.plz ?? '–'}</td>
+                      <td>{a.ort ?? '–'}</td>
+                      <td>{a.turnus_monate ? `${a.turnus_monate} Monate` : '–'}</td>
+                      <td>{a.naechste_untersuchung ? fmtDatum(a.naechste_untersuchung) : '–'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Abschnitt>
         </>
       )}
 
-      <h2>Migrationsablauf</h2>
-      <div className="panel">
-        <ol style={{ margin: 0, paddingLeft: 20, lineHeight: 1.9 }}>
-          <li>JSON-Export hochladen → Rohdaten landen unverändert in <code>staging_import</code>.</li>
-          <li>Prüfung: Zuordnung Verwaltung → Kunde, Objekt → Anlage, WW-System → Untersuchungsbereich.</li>
-          <li>Übernahme je Datensatz; <code>legacy_id</code> und <code>legacy_quelle</code> werden mitgeführt.</li>
-          <li>Historische Untersuchungstermine werden als abgeschlossene Termine/Aufträge übernommen – nichts wird gelöscht oder überschrieben.</li>
-          <li>Fehlerhafte Übernahmen lassen sich über die Staging-Referenz zurücknehmen.</li>
-        </ol>
-      </div>
+      <Abschnitt titel="Testphase: Daten zurücksetzen">
+        <div style={{ padding: '16px 20px' }}>
+          <p className="hint" style={{ marginTop: 0 }}>
+            Löscht <strong>alle</strong> Kunden, Anlagen, Bereiche, Termine und Aufträge – für wiederholte
+            Testläufe. Der Auftragsnummern-Zähler bleibt bewusst stehen, damit vergebene Nummern nie
+            erneut vergeben werden. Nur für Admins.
+          </p>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+            <label className="f">
+              Zur Bestätigung „RESET“ eingeben
+              <input value={resetText} onChange={e => setResetText(e.target.value)}
+                placeholder="RESET" style={{ width: 160 }} disabled={rolle !== 'admin'} />
+            </label>
+            <button className="secondary" onClick={zuruecksetzen}
+              disabled={laeuft || resetText !== 'RESET' || rolle !== 'admin' || demoModus}>
+              <i className="fas fa-trash-can" aria-hidden="true"></i> Alle Daten zurücksetzen
+            </button>
+          </div>
+          {rolle !== 'admin' && <p className="hint">Nur Admins können zurücksetzen.</p>}
+        </div>
+      </Abschnitt>
     </>
   )
 }

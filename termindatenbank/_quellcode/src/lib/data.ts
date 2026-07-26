@@ -154,6 +154,88 @@ export const db = {
     if (error) throw error
   },
 
+  /** Setzt alle operativen Daten zurück (nur Admin, Testphase). */
+  async resetAlleDaten(zaehlerZuruecksetzen = false): Promise<string> {
+    if (!supabase) return 'Demo-Modus: nichts zurückzusetzen.'
+    const { data, error } = await supabase.rpc('td_reset_alle_daten', {
+      p_zaehler_zuruecksetzen: zaehlerZuruecksetzen,
+    })
+    if (error) throw error
+    return data as string
+  },
+
+  /** Übernimmt die Alt-Daten in Kunden/Anlagen/Bereiche/Termine. */
+  async legacyUebernehmen(v: import('./legacyImport').ImportVorschau,
+                          fortschritt?: (text: string) => void): Promise<string> {
+    if (!supabase) return 'Demo-Modus: Übernahme nur mit Supabase möglich.'
+
+    fortschritt?.(`Kunden werden übernommen (${v.kunden.length}) …`)
+    const { error: e1 } = await supabase.from('td_kunden').upsert(
+      v.kunden.map(k => ({ ...k, legacy_quelle: 'Terminverwaltung V4' })),
+      { onConflict: 'legacy_id' })
+    if (e1) throw e1
+
+    const { data: kundenDb, error: e2 } = await supabase.from('td_kunden').select('id, legacy_id')
+    if (e2) throw e2
+    const kundeId = new Map((kundenDb as any[]).map(k => [k.legacy_id, k.id]))
+
+    fortschritt?.(`Anlagen werden übernommen (${v.anlagen.length}) …`)
+    for (let i = 0; i < v.anlagen.length; i += 500) {
+      const teil = v.anlagen.slice(i, i + 500).map(a => ({
+        legacy_id: a.legacy_id, kunde_id: kundeId.get(a.kunde_legacy), name: a.name,
+        plz: a.plz, ort: a.ort, objekt_referenz: a.objekt_referenz,
+        turnus_monate: a.turnus_monate, naechste_untersuchung: a.naechste_untersuchung,
+        notizen: a.notizen, legacy_quelle: 'Terminverwaltung V4',
+      })).filter(a => a.kunde_id)
+      const { error } = await supabase.from('td_anlagen').upsert(teil, { onConflict: 'legacy_id' })
+      if (error) throw error
+      fortschritt?.(`Anlagen: ${Math.min(i + 500, v.anlagen.length)} / ${v.anlagen.length}`)
+    }
+
+    const { data: anlagenDb, error: e3 } = await supabase.from('td_anlagen').select('id, legacy_id, name')
+    if (e3) throw e3
+    const anlageId = new Map((anlagenDb as any[]).map(a => [a.legacy_id, a.id]))
+
+    // Je Anlage ein Standard-Untersuchungsbereich, sofern noch keiner existiert
+    fortschritt?.('Untersuchungsbereiche werden angelegt …')
+    const { data: bereicheDb } = await supabase.from('td_bereiche').select('anlage_id')
+    const hatBereich = new Set((bereicheDb as any[] ?? []).map(b => b.anlage_id))
+    const neueBereiche = (anlagenDb as any[])
+      .filter(a => !hatBereich.has(a.id))
+      .map(a => ({ anlage_id: a.id, name: 'Gesamtanlage',
+                   beschreibung: 'Aus Altbestand übernommen – bei mehreren WW-Systemen später aufteilbar',
+                   legacy_quelle: 'Terminverwaltung V4' }))
+    for (let i = 0; i < neueBereiche.length; i += 500) {
+      const { error } = await supabase.from('td_bereiche').insert(neueBereiche.slice(i, i + 500))
+      if (error) throw error
+    }
+
+    fortschritt?.(`Historische Termine werden übernommen (${v.termine.length}) …`)
+    let termineOk = 0
+    for (let i = 0; i < v.termine.length; i += 500) {
+      const teil = v.termine.slice(i, i + 500).map(t => {
+        const aid = anlageId.get(t.anlage_legacy)
+        const anl = (anlagenDb as any[]).find(a => a.legacy_id === t.anlage_legacy)
+        return aid ? {
+          legacy_id: t.legacy_id, anlage_id: aid,
+          kunde_id: v.anlagen.find(a => a.legacy_id === t.anlage_legacy)
+            ? kundeId.get(v.anlagen.find(a => a.legacy_id === t.anlage_legacy)!.kunde_legacy) : null,
+          datum: t.datum, status: 'abgeschlossen',
+          notizen: 'Historischer Termin aus Altbestand' + (anl ? '' : ''),
+          legacy_quelle: 'Terminverwaltung V4',
+        } : null
+      }).filter((x): x is NonNullable<typeof x> => !!x && !!x.kunde_id)
+      if (teil.length) {
+        const { error } = await supabase.from('td_termine').upsert(teil, { onConflict: 'legacy_id' })
+        if (error) throw error
+        termineOk += teil.length
+      }
+      fortschritt?.(`Termine: ${Math.min(i + 500, v.termine.length)} / ${v.termine.length}`)
+    }
+
+    return `Übernommen: ${v.kunden.length} Kunden, ${v.anlagen.length} Anlagen, ${neueBereiche.length} Bereiche, ${termineOk} historische Termine.`
+  },
+
   async importStaging(quelle: string, typ: string, zeilen: unknown[]): Promise<number> {
     if (!supabase) return zeilen.length
     const { error } = await supabase.from('td_staging_import').insert(

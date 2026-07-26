@@ -22,10 +22,10 @@ export default function Administration() {
       <table className="tbl">
         <thead><tr><th>Rolle</th><th>Berechtigungen</th></tr></thead>
         <tbody>
-          <tr><td><span className="badge red">Admin</span></td><td>Benutzer, Kunden, Anlagen, Daten und Einstellungen verwalten; Löschen von Datensätzen</td></tr>
-          <tr><td><span className="badge blue">Disposition</span></td><td>Kunden, Termine, Aufträge und Kalenderexporte anlegen und bearbeiten; Importe durchführen</td></tr>
-          <tr><td><span className="badge amber">Probenehmer</span></td><td>Zugewiesene Termine einsehen; Ist-Probenzahlen, Proben und Status der eigenen Aufträge erfassen</td></tr>
-          <tr><td><span className="badge gray">Lesend</span></td><td>Freigegebene Daten nur einsehen</td></tr>
+          <tr><td><span className="badge active">Admin</span></td><td>Benutzer, Kunden, Anlagen, Daten und Einstellungen verwalten; Löschen von Datensätzen</td></tr>
+          <tr><td><span className="badge high">Disposition</span></td><td>Kunden, Termine, Aufträge und Kalenderexporte anlegen und bearbeiten; Importe durchführen</td></tr>
+          <tr><td><span className="badge medium">Probenehmer</span></td><td>Zugewiesene Termine einsehen; Ist-Probenzahlen, Proben und Status der eigenen Aufträge erfassen</td></tr>
+          <tr><td><span className="badge neutral">Lesend</span></td><td>Freigegebene Daten nur einsehen</td></tr>
         </tbody>
       </table>
 
@@ -37,7 +37,7 @@ export default function Administration() {
             <tbody>
               {nutzer.map((n, i) => (
                 <tr key={i}><td>{n.anzeigename}</td><td>{n.rolle}</td>
-                  <td><span className={`badge ${n.aktiv ? 'green' : 'gray'}`}>{n.aktiv ? 'aktiv' : 'inaktiv'}</span></td></tr>
+                  <td><span className={`badge ${n.aktiv ? 'closed' : 'neutral'}`}>{n.aktiv ? 'aktiv' : 'inaktiv'}</span></td></tr>
               ))}
             </tbody>
           </table>

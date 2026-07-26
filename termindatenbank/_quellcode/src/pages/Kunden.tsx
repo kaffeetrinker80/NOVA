@@ -51,7 +51,7 @@ export default function Kunden() {
               <td>{TYP[k.typ]}</td>
               <td>{k.ort ?? '–'}</td>
               <td>{k.telefon ?? ''}{k.telefon && k.email ? ' · ' : ''}{k.email ?? ''}</td>
-              <td><span className={`badge ${k.aktiv ? 'green' : 'gray'}`}>{k.aktiv ? 'aktiv' : 'inaktiv'}</span></td>
+              <td><span className={`badge ${k.aktiv ? 'closed' : 'neutral'}`}>{k.aktiv ? 'aktiv' : 'inaktiv'}</span></td>
             </tr>
           ))}
         </tbody>

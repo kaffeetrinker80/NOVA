@@ -16,28 +16,29 @@ export default function Login() {
   }
 
   return (
-    <div style={{
-      minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: 'linear-gradient(135deg, #16232b 0%, #1d3a5f 50%, #0f2744 100%)', padding: '20px 12px',
-    }}>
-      <form onSubmit={e => { e.preventDefault(); anmelden() }}
-        style={{ width: '100%', maxWidth: 380, background: 'var(--surface)', borderRadius: 16, padding: '32px 32px 28px', boxShadow: '0 24px 64px rgba(0,0,0,0.35)' }}>
-        <div style={{ fontSize: 36, textAlign: 'center', marginBottom: 10 }}>🔐</div>
-        <div style={{ fontSize: 18, fontWeight: 600, textAlign: 'center', marginBottom: 4 }}>NOVA Wasser – Untersuchungsverwaltung</div>
-        <div className="hint" style={{ textAlign: 'center', marginBottom: 20 }}>NOVA Praxis-Hygiene – Supabase Login</div>
+    <div className="login-wrap">
+      <form className="login-card" onSubmit={e => { e.preventDefault(); anmelden() }}>
+        <h1 className="dashboard-title" style={{ marginBottom: 2 }}>
+          <span className="product-name" style={{ color: 'var(--color-primary-dark)' }}>NOVAplan</span>
+          <span className="dashboard-title-separator" style={{ color: 'var(--text-muted)' }}>·</span>
+          <span style={{ color: 'var(--text-muted)', fontSize: '.95rem' }}>Termin- &amp; Probenmanagement</span>
+        </h1>
+        <p className="hint" style={{ margin: '0 0 20px' }}>NOVA Praxis-Hygiene GmbH</p>
 
         <label className="f" style={{ marginBottom: 12 }}>
           E-Mail
           <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-            autoComplete="email" placeholder="deine@nova-praxis.de" autoFocus />
+            autoComplete="email" placeholder="name@nova-praxis.de" autoFocus />
         </label>
-        <label className="f" style={{ marginBottom: 8 }}>
+        <label className="f" style={{ marginBottom: 10 }}>
           Passwort
           <input type="password" value={passwort} onChange={e => setPasswort(e.target.value)}
             autoComplete="current-password" placeholder="••••••••" />
         </label>
-        {fehler && <p style={{ color: 'var(--danger)', fontSize: 12, margin: '0 0 8px' }}>{fehler}</p>}
-        <button type="submit" className="primary" disabled={sendet || !email || !passwort} style={{ width: '100%', marginTop: 8 }}>
+        {fehler && <p style={{ color: '#99342e', fontSize: '.8rem', margin: '0 0 10px' }}>{fehler}</p>}
+        <button type="submit" className="primary" disabled={sendet || !email || !passwort}
+          style={{ width: '100%', justifyContent: 'center', marginTop: 6 }}>
+          <i className="fas fa-right-to-bracket" aria-hidden="true"></i>
           {sendet ? 'Wird geprüft …' : 'Anmelden'}
         </button>
       </form>

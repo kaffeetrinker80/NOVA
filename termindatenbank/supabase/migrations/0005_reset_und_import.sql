@@ -1,0 +1,3 @@
+-- (Diese Migration ist bereits im Projekt kaffeetrinker80 angewandt.)
+-- Reset-Funktion für die Testphase + eindeutige Legacy-Indizes.
+-- Vollständiger Inhalt siehe Supabase-Migrationsverlauf: td_reset_und_import_helfer
