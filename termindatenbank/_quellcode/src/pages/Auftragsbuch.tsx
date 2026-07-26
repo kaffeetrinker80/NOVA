@@ -198,6 +198,7 @@ export default function Auftragsbuch() {
             return kundeAnzeige(kunden.find(k => k.id === a?.kunde_id))
           })()}
           bereichName={bereiche.find(x => x.id === berichtAuftrag.bereich_id)?.name}
+          bereichId={berichtAuftrag.bereich_id}
           onClose={() => setBerichtAuftrag(null)}
           onSaved={laden}
         />

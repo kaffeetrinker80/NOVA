@@ -56,9 +56,18 @@ Die bestehenden Felder an `td_anlagen` bleiben zunächst aktiv. Erst wenn die al
 
 ## Noch nicht in diesem ersten Ansatz
 
-- Eingabemasken für Prüfberichte, Maßnahmen und GA-Freigabe
+- Maßnahmenabschluss und GA-Freigabe als eigene Eingabemasken
 - geführter Assistent für die Zuordnung alter Termine zu Altbau/Neubau
 - Bereichsbasierte Planungsansicht und neue Jahresstatistik
 - Testdaten und Migration der produktiven Daten
+
+## Bereits als erste Bedienoberfläche umgesetzt
+
+Im Auftragsbuch öffnet der Button **„Bericht“** jetzt die erweiterte Maske
+„Prüfbericht & Befund". Dort werden Prüfberichtnummer, Berichtdatum, Befund und
+Ist-Proben je Unterauftrag erfasst. Bei **sauber** kann der Befund ausdrücklich
+als saubere Nachuntersuchung einer offenen Phase zugeordnet werden. Bei
+**Überschreitung** oder **Verkeimung** kann gezielt eine neue Phase für genau
+diesen Untersuchungsbereich eröffnet werden.
 
 Diese Schritte sollten erst nach einer Testausführung der neuen Migration auf einer Kopie erfolgen.

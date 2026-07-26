@@ -4,6 +4,9 @@ export type Untersuchungsart = 'legionellen' | 'mibi' | 'chemie' | 'vorortparame
 export type Auftragsstatus = 'offen' | 'beprobt' | 'im_labor' | 'abgeschlossen' | 'storniert'
 export type Ergebnisstatus = 'offen' | 'unauffaellig' | 'ueberschritten' | 'nachuntersuchung_erforderlich'
 export type Rolle = 'admin' | 'disposition' | 'probenehmer' | 'lesend'
+export type BerichtStatus = 'ausstehend' | 'eingegangen' | 'geprueft'
+export type Befund = 'offen' | 'sauber' | 'ueberschreitung' | 'verkeimung' | 'nicht_bewertbar'
+export type PhasenStatus = 'aktiv' | 'massnahmen_laufen' | 'nachuntersuchung' | 'regelturnus_bestaetigt' | 'abgeschlossen'
 
 export interface Kunde {
   id: string; name_lang: string; name_kurz: string; typ: Kundentyp
@@ -40,6 +43,19 @@ export interface Auftrag {
   bereich_id: string; termin_id?: string
   status: Auftragsstatus; notizen?: string
   unterauftraege: Unterauftrag[]
+}
+export interface Untersuchungsbewertung {
+  id: string; unterauftrag_id: string; bericht_status: BerichtStatus
+  pruefbericht_nummer?: string; pruefbericht_datum?: string; befund: Befund
+  bewertungsdatum?: string; zaehlt_als_saubere_nachuntersuchung: boolean
+  bemerkung?: string; phase_id?: string | null
+}
+export interface Ueberschreitungsphase {
+  id: string; bereich_id: string; ausloesende_bewertung_id?: string
+  eroeffnet_am: string; ausloeser: 'ueberschreitung' | 'verkeimung' | 'behoerdenanordnung' | 'sonstiges'
+  status: PhasenStatus; massnahmen_abschluss_am?: string; saubere_nu_erforderlich: number
+  gesundheitsamt_freigabe_am?: string; gesundheitsamt_aktenzeichen?: string
+  abgeschlossen_am?: string; begruendung_abweichung?: string; notizen?: string
 }
 
 export const ART_LABEL: Record<Untersuchungsart, string> = {

@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
-import type { Anlage, Auftrag, Bereich, Kunde, Termin, Untersuchungsart } from './types'
+import type { Anlage, Auftrag, Bereich, Kunde, Termin, Untersuchungsart, Untersuchungsbewertung, Ueberschreitungsphase } from './types'
 
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined
 const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
@@ -191,6 +191,33 @@ export const db = {
     }
     const { error } = await supabase.from('td_unterauftraege').update(patch).eq('id', id)
     if (error) throw error
+  },
+
+  async bewertungenFuerUnterauftraege(ids: string[]): Promise<Untersuchungsbewertung[]> {
+    if (!ids.length || !supabase) return []
+    const { data, error } = await supabase.from('td_untersuchungsbewertungen').select('*').in('unterauftrag_id', ids)
+    if (error) throw error
+    return data as Untersuchungsbewertung[]
+  },
+  async bewertungSpeichern(eintrag: Omit<Untersuchungsbewertung, 'id'>): Promise<Untersuchungsbewertung> {
+    if (!supabase) return { id: 'bewertung-demo-' + eintrag.unterauftrag_id, ...eintrag }
+    const { data, error } = await supabase.from('td_untersuchungsbewertungen')
+      .upsert(eintrag, { onConflict: 'unterauftrag_id' }).select('*').single()
+    if (error) throw error
+    return data as Untersuchungsbewertung
+  },
+  async phasenFuerBereich(bereichId: string): Promise<Ueberschreitungsphase[]> {
+    if (!supabase) return []
+    const { data, error } = await supabase.from('td_ueberschreitungsphasen').select('*')
+      .eq('bereich_id', bereichId).order('eroeffnet_am', { ascending: false })
+    if (error) throw error
+    return data as Ueberschreitungsphase[]
+  },
+  async phaseAnlegen(eintrag: Omit<Ueberschreitungsphase, 'id'>): Promise<Ueberschreitungsphase> {
+    if (!supabase) return { id: 'phase-demo-' + Date.now(), ...eintrag }
+    const { data, error } = await supabase.from('td_ueberschreitungsphasen').insert(eintrag).select('*').single()
+    if (error) throw error
+    return data as Ueberschreitungsphase
   },
 
   /** Setzt alle operativen Daten zurück (nur Admin, Testphase). */

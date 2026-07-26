@@ -132,3 +132,5 @@ Nachuntersuchungen und sicheren Bereichs-Umstrukturierungen liegt in
 [`FACHLOGIK_ANSATZ.md`](FACHLOGIK_ANSATZ.md). Die passende, **noch nicht
 produktiv ausgeführte** Datenbankmigration ist
 `supabase/migrations/0013_fachlogik_historie_und_sichere_umstrukturierung.sql`.
+Für die sichere Ausführung im bestehenden Testprojekt siehe
+[`SUPABASE_TESTSCHRITTE.md`](SUPABASE_TESTSCHRITTE.md).
