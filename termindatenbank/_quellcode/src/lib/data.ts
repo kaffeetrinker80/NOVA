@@ -264,10 +264,23 @@ export const db = {
     return `Übernommen: ${v.kunden.length} Kunden, ${v.anlagen.length} Anlagen, ${neueBereiche.length} Bereiche, ${termineOk} historische Termine.`
   },
 
-  async anlageAktualisieren(id: string, patch: Partial<Pick<Anlage, 'notizen' | 'naechste_untersuchung' | 'turnus_monate'>> & { planungsnotiz?: string | null }): Promise<void> {
+  async anlageAktualisieren(id: string, patch: Partial<Pick<Anlage, 'name' | 'notizen' | 'naechste_untersuchung' | 'turnus_monate' | 'aktiv'>> & { planungsnotiz?: string | null }): Promise<void> {
     if (!supabase) { const a = demo.anlagen.find(x => x.id === id); if (a) Object.assign(a, patch); return }
     const { error } = await supabase.from('td_anlagen').update(patch).eq('id', id)
     if (error) throw error
+  },
+
+  async kundeAktualisieren(id: string, patch: Partial<Pick<Kunde, 'name_lang' | 'name_kurz' | 'telefon' | 'email' | 'notizen' | 'aktiv'>>): Promise<void> {
+    if (!supabase) { const k = demo.kunden.find(x => x.id === id); if (k) Object.assign(k, patch); return }
+    const { error } = await supabase.from('td_kunden').update(patch).eq('id', id)
+    if (error) throw error
+  },
+
+  async anlagenZusammenfuehren(zielId: string, quellenIds: string[]): Promise<string> {
+    if (!supabase) return 'Demo-Modus: Zusammenführen nur mit Supabase.'
+    const { data, error } = await supabase.rpc('td_anlagen_zusammenfuehren', { p_ziel: zielId, p_quellen: quellenIds })
+    if (error) throw error
+    return data as string
   },
 
   async kundenZusammenfuehren(zielId: string, quellenIds: string[]): Promise<string> {

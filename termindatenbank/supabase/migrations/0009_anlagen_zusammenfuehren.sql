@@ -1,0 +1,4 @@
+-- (Bereits im Projekt kaffeetrinker80 angewandt: td_anlagen_zusammenfuehren)
+-- td_anlagen_zusammenfuehren(ziel, quellen[]): Quellen-Anlagen werden zu
+-- Untersuchungsbereichen der Ziel-Anlage; Termine/Historie wandern mit,
+-- Vorgang wird in der Änderungshistorie protokolliert.

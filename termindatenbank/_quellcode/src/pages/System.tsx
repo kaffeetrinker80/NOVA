@@ -3,7 +3,7 @@ import { db, demoModus, supabase } from '../lib/data'
 import { vorschauErzeugen, type ImportVorschau, type LegacyDatensatz } from '../lib/legacyImport'
 import { Abschnitt } from '../components/ui'
 import { useAuth } from '../lib/auth'
-import { fmtDatum } from '../lib/types'
+import { fmtDatum, nummerVoll, ART_LABEL } from '../lib/types'
 
 export default function System() {
   const { rolle } = useAuth()
@@ -38,6 +38,51 @@ export default function System() {
     try { setMeldung(await db.legacyUebernehmen(vorschau, setMeldung)) }
     catch (e: any) { setMeldung('Fehler bei der Übernahme: ' + e.message) }
     setLaeuft(false)
+  }
+
+  const herunterladen = (inhalt: string, name: string, typ: string) => {
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(new Blob(['\ufeff' + inhalt], { type: typ }))
+    a.download = name; a.click(); URL.revokeObjectURL(a.href)
+  }
+  const csvZeile = (felder: (string | number | null | undefined)[]) =>
+    felder.map(f => '"' + String(f ?? '').replace(/"/g, '""') + '"').join(';')
+
+  const exportJson = async () => {
+    setMeldung('Gesamtsicherung wird erstellt …')
+    const [kunden, anlagen, bereiche, termine, auftraege] = await Promise.all([
+      db.kunden(), db.anlagen(), db.bereiche(), db.termine(), db.auftraege()])
+    const stand = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-')
+    herunterladen(JSON.stringify({ exportiert_am: new Date().toISOString(),
+      kunden, anlagen, bereiche, termine, auftraege }, null, 1),
+      `NOVAplan_Gesamtsicherung_${stand}.json`, 'application/json')
+    setMeldung(`Gesamtsicherung erstellt: ${kunden.length} Kunden, ${anlagen.length} Anlagen, ${termine.length} Termine, ${auftraege.length} Aufträge.`)
+  }
+
+  const exportCsv = async (was: 'anlagen' | 'termine' | 'auftragsbuch') => {
+    setMeldung('CSV wird erstellt …')
+    const [kunden, anlagen, bereiche, termine, auftraege] = await Promise.all([
+      db.kunden(), db.anlagen(), db.bereiche(), db.termine(), db.auftraege()])
+    const kName = (id: string) => kunden.find(k => k.id === id)?.name_kurz ?? ''
+    const stand = new Date().toISOString().slice(0, 10)
+    let zeilen: string[] = []
+    if (was === 'anlagen') {
+      zeilen = [csvZeile(['Verwaltung', 'Objekt', 'PLZ', 'Ort', 'Turnus (Monate)', 'Nächste Untersuchung', 'Planungsvermerk', 'Notizen', 'Aktiv'])]
+      for (const a of anlagen) zeilen.push(csvZeile([kName(a.kunde_id), a.name, a.plz, a.ort, a.turnus_monate, fmtDatum(a.naechste_untersuchung), a.planungsnotiz, a.notizen, a.aktiv ? 'ja' : 'nein']))
+    } else if (was === 'termine') {
+      zeilen = [csvZeile(['Datum', 'Verwaltung', 'Objekt', 'Status'])]
+      const aName = new Map(anlagen.map(a => [a.id, a.name]))
+      for (const t of termine) zeilen.push(csvZeile([fmtDatum(t.datum), kName(t.kunde_id), aName.get(t.anlage_id), t.status]))
+    } else {
+      zeilen = [csvZeile(['Nummer', 'Verwaltung', 'Objekt', 'Bereich', 'Art', 'Umfang', 'Proben Soll', 'Proben Ist', 'Status', 'Ergebnis'])]
+      const bMap = new Map(bereiche.map(b => [b.id, b])); const aMap = new Map(anlagen.map(a => [a.id, a]))
+      for (const a of auftraege) for (const u of a.unterauftraege) {
+        const b = bMap.get(a.bereich_id); const anl = b ? aMap.get(b.anlage_id) : undefined
+        zeilen.push(csvZeile([nummerVoll(a, u), anl ? kName(anl.kunde_id) : '', anl?.name, b?.name, ART_LABEL[u.art], u.umfang, u.proben_geplant, u.proben_ist, u.status, u.ergebnis]))
+      }
+    }
+    herunterladen(zeilen.join('\r\n'), `NOVAplan_${was}_${stand}.csv`, 'text/csv;charset=utf-8')
+    setMeldung(`CSV exportiert: ${zeilen.length - 1} Zeilen.`)
   }
 
   const zuruecksetzen = async () => {
@@ -120,6 +165,23 @@ export default function System() {
           Tabelle <code>td_profile</code>, Feld <code>rolle</code>. Alle wichtigen Änderungen werden
           mit Zeitstempel und Nutzer protokolliert.
         </p>
+      </Abschnitt>
+
+      <Abschnitt titel="Datensicherung & Export">
+        <div style={{ padding: '16px 20px' }}>
+          <p className="hint" style={{ marginTop: 0 }}>
+            Kompletter Datenstand zum Herunterladen – als Gesamtsicherung (JSON, alles inklusive
+            Verknüpfungen) oder als CSV-Tabellen für Excel. Regelmäßig sichern = maximale Absicherung.
+          </p>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <button className="primary" onClick={exportJson}>
+              <i className="fas fa-file-shield" aria-hidden="true"></i> Gesamtsicherung (JSON)
+            </button>
+            <button onClick={() => exportCsv('anlagen')}><i className="fas fa-file-csv" aria-hidden="true"></i> Anlagen (CSV)</button>
+            <button onClick={() => exportCsv('termine')}><i className="fas fa-file-csv" aria-hidden="true"></i> Termine (CSV)</button>
+            <button onClick={() => exportCsv('auftragsbuch')}><i className="fas fa-file-csv" aria-hidden="true"></i> Auftragsbuch (CSV)</button>
+          </div>
+        </div>
       </Abschnitt>
 
       <Abschnitt titel="Testphase: Daten zurücksetzen">

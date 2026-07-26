@@ -3,6 +3,9 @@ import { db } from '../lib/data'
 import type { Anlage, Bereich, Kunde, Termin } from '../lib/types'
 import { fmtDatum } from '../lib/types'
 import PlanModal from '../components/PlanModal'
+import HistorieModal from '../components/HistorieModal'
+import type { Auftrag } from '../lib/types'
+import { db as db2 } from '../lib/data'
 
 type SubTab = 'next90' | 'nachunters' | 'geplant' | 'alle'
 
@@ -61,10 +64,13 @@ export default function Planung() {
   const [infoAnzeigen, setInfoAnzeigen] = useState(true)
   const [sortAuf, setSortAuf] = useState(true)
   const [modalAnlage, setModalAnlage] = useState<Anlage | null>(null)
+  const [historieAnlage, setHistorieAnlage] = useState<Anlage | null>(null)
+  const [auftraege, setAuftraege] = useState<Auftrag[]>([])
 
   const laden = () => {
     db.anlagen().then(setAnlagen); db.kunden().then(setKunden)
     db.bereiche().then(setBereiche); db.termine().then(setTermine)
+    db.auftraege().then(setAuftraege)
   }
   useEffect(laden, [])
 
@@ -224,6 +230,10 @@ export default function Planung() {
                   <td className="no-print" style={{ whiteSpace: 'nowrap' }}>
                     <button className="zeile-btn" onClick={() => setModalAnlage(z.anlage)}>
                       <i className="fas fa-calendar-plus" aria-hidden="true"></i> Planen
+                    </button>{' '}
+                    <button className="zeile-btn" style={{ background: '#6c757d', borderColor: '#6c757d' }}
+                      onClick={() => setHistorieAnlage(z.anlage)} title="Untersuchungsverlauf">
+                      <i className="fas fa-clock-rotate-left" aria-hidden="true"></i>
                     </button>
                   </td>
                 </tr>
@@ -235,6 +245,10 @@ export default function Planung() {
         {gefiltert.length > 500 && <p className="hint" style={{ padding: '10px 20px' }}>Angezeigt: erste 500 von {gefiltert.length} – Suche zum Eingrenzen nutzen.</p>}
       </section>
 
+      {historieAnlage && (
+        <HistorieModal anlage={historieAnlage} kunde={kunden.find(k => k.id === historieAnlage.kunde_id)}
+          termine={termine} auftraege={auftraege} bereiche={bereiche} onClose={() => setHistorieAnlage(null)} />
+      )}
       {modalAnlage && (
         <PlanModal
           anlage={modalAnlage}

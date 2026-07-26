@@ -364,3 +364,41 @@ table.tbl {
 .stamm-eintrag.merge { cursor: pointer; }
 .stamm-eintrag.merge.markiert { background: var(--amp-yellow); }
 .info-zelle { font-size: .76rem; color: var(--text-muted); max-width: 260px; }
+
+/* ---------- Einklappbare Diagramme, Ziel-Stern, inaktive Einträge, Historie ---------- */
+.klappe {
+  background: var(--surface); border-radius: 12px;
+  box-shadow: 0 3px 12px rgba(0,0,0,0.05); margin-bottom: 14px; overflow: hidden;
+}
+.klappe summary {
+  list-style: none; cursor: pointer; padding: 13px 20px; font-weight: 600; font-size: .95rem;
+  background: #f4f8fc; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px;
+}
+.klappe summary::-webkit-details-marker { display: none; }
+.klappe-pfeil { margin-left: auto; transition: transform .15s ease; color: var(--text-muted); }
+.klappe[open] .klappe-pfeil { transform: rotate(180deg); }
+
+.ziel-stern {
+  border: none; background: none; padding: 0 4px; cursor: pointer;
+  color: #b45309; font-size: .78rem; font-weight: 700;
+}
+.stamm-eintrag.merge.ziel { outline: 2px solid #b45309; }
+.stamm-eintrag.inaktiv { opacity: .55; }
+
+.hist-phasen { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 24px 4px; }
+.hist-liste { padding: 12px 24px 18px; max-height: 56vh; overflow-y: auto; }
+.hist-eintrag { display: flex; gap: 12px; position: relative; padding-bottom: 14px; }
+.hist-eintrag::before {
+  content: ''; position: absolute; left: 5px; top: 14px; bottom: 0; width: 2px; background: var(--border);
+}
+.hist-eintrag:last-child::before { display: none; }
+.hist-punkt {
+  width: 12px; height: 12px; border-radius: 50%; background: var(--color-primary);
+  flex-shrink: 0; margin-top: 4px; z-index: 1;
+}
+.hist-eintrag.hist-rot .hist-punkt { background: #c0392b; }
+.hist-eintrag.hist-gelb .hist-punkt { background: #b45309; }
+.hist-zeile1 { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.hist-auftrag { margin-top: 4px; display: flex; flex-direction: column; gap: 3px; }
+.hist-unterauftrag { font-size: .8rem; display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }

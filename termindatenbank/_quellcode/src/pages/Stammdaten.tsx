@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { db } from '../lib/data'
 import type { Anlage, Bereich, Kunde, Kundentyp } from '../lib/types'
 import { fmtDatum } from '../lib/types'
+import HistorieModal from '../components/HistorieModal'
 
 const TYP: Record<Kundentyp, string> = {
   hausverwaltung: 'Hausverwaltung', pflegetraeger: 'Pflegeträger',
@@ -33,8 +34,24 @@ export default function Stammdaten() {
   const [notiz, setNotiz] = useState('')
   const [planungsnotiz, setPlanungsnotiz] = useState('')
   const [neuerVerwalter, setNeuerVerwalter] = useState('')
+  const [anlageName, setAnlageName] = useState('')
 
-  const laden = () => { db.kunden().then(setKunden); db.anlagen().then(setAnlagen); db.bereiche().then(setBereiche) }
+  // Anlagen zusammenführen
+  const [aMergeModus, setAMergeModus] = useState(false)
+  const [aMergeWahl, setAMergeWahl] = useState<Set<string>>(new Set())
+  const [aMergeZiel, setAMergeZiel] = useState('')
+
+  // Kunden umbenennen
+  const [kName, setKName] = useState({ kurz: '', lang: '' })
+  const [inaktiveAnzeigen, setInaktiveAnzeigen] = useState(false)
+  const [historieOffen, setHistorieOffen] = useState(false)
+  const [termine, setTermine] = useState<import('../lib/types').Termin[]>([])
+  const [auftraege, setAuftraege] = useState<import('../lib/types').Auftrag[]>([])
+
+  const laden = () => {
+    db.kunden().then(setKunden); db.anlagen().then(setAnlagen); db.bereiche().then(setBereiche)
+    db.termine().then(setTermine); db.auftraege().then(setAuftraege)
+  }
   useEffect(laden, [])
 
   const kundenGefiltert = useMemo(() => {
@@ -47,24 +64,64 @@ export default function Stammdaten() {
   const kunde = kunden.find(k => k.id === kundeId)
 
   const mergeToggle = (id: string) => setMergeWahl(w => {
-    const n = new Set(w); n.has(id) ? n.delete(id) : n.add(id); return n
+    const n = new Set(w)
+    if (n.has(id)) { n.delete(id); if (mergeZiel === id) setMergeZiel([...n][0] ?? '') }
+    else { n.add(id); if (!mergeZiel) setMergeZiel(id) }   // erster Haken wird automatisch Ziel
+    return n
   })
 
   const zusammenfuehren = async () => {
-    const quellen = [...mergeWahl].filter(id => id !== mergeZiel)
-    if (!mergeZiel || quellen.length === 0) return
+    const ziel = mergeZiel || [...mergeWahl][0]
+    const quellen = [...mergeWahl].filter(id => id !== ziel)
+    if (!ziel || quellen.length === 0) return
+    const mergeZielFinal = ziel; setMergeZiel(mergeZielFinal)
     try {
-      const erg = await db.kundenZusammenfuehren(mergeZiel, quellen)
+      const erg = await db.kundenZusammenfuehren(ziel, quellen)
       setMeldung(erg + ' Alle Anlagen samt Historie hängen jetzt am Zielkunden.')
       setMergeModus(false); setMergeWahl(new Set()); setMergeZiel('')
-      setKundeId(mergeZiel); laden()
+      setKundeId(ziel); laden()
     } catch (e: any) { setMeldung('Fehler: ' + (e.message ?? e)) }
   }
-  const anlagenDesKunden = anlagen.filter(a => a.kunde_id === kundeId)
+  const anlagenDesKunden = anlagen.filter(a => a.kunde_id === kundeId && (inaktiveAnzeigen || a.aktiv))
   const anlage = anlagen.find(a => a.id === anlageId)
   useEffect(() => {
-    setNotiz(anlage?.notizen ?? ''); setPlanungsnotiz(anlage?.planungsnotiz ?? ''); setNeuerVerwalter('')
+    setNotiz(anlage?.notizen ?? ''); setPlanungsnotiz(anlage?.planungsnotiz ?? '')
+    setNeuerVerwalter(''); setAnlageName(anlage?.name ?? '')
   }, [anlageId])
+  useEffect(() => {
+    setKName({ kurz: kunde?.name_kurz ?? '', lang: kunde?.name_lang ?? '' })
+    setAMergeModus(false); setAMergeWahl(new Set()); setAMergeZiel('')
+  }, [kundeId])
+
+  const aMergeToggle = (id: string) => setAMergeWahl(w => {
+    const n = new Set(w)
+    if (n.has(id)) { n.delete(id); if (aMergeZiel === id) setAMergeZiel([...n][0] ?? '') }
+    else { n.add(id); if (!aMergeZiel) setAMergeZiel(id) }
+    return n
+  })
+  const anlagenZusammenfuehren = async () => {
+    const ziel = aMergeZiel || [...aMergeWahl][0]
+    const quellen = [...aMergeWahl].filter(id => id !== ziel)
+    if (!ziel || quellen.length === 0) return
+    try {
+      const erg = await db.anlagenZusammenfuehren(ziel, quellen)
+      setMeldung(erg + ' Die Quellen sind jetzt Untersuchungsbereiche der Ziel-Anlage, Historie vollständig erhalten.')
+      setAMergeModus(false); setAMergeWahl(new Set()); setAMergeZiel(''); setAnlageId(ziel); laden()
+    } catch (e: any) { setMeldung('Fehler: ' + (e.message ?? e)) }
+  }
+  const kundeUmbenennen = async () => {
+    if (!kunde) return
+    await db.kundeAktualisieren(kunde.id, { name_kurz: kName.kurz, name_lang: kName.lang })
+    setMeldung('Kunde umbenannt.'); laden()
+  }
+  const anlageAktivSetzen = async (aktiv: boolean) => {
+    if (!anlage) return
+    await db.anlageAktualisieren(anlage.id, { aktiv })
+    setMeldung(aktiv
+      ? 'Anlage wieder aktiv – erscheint erneut in den Fälligkeits-Ansichten.'
+      : 'Anlage inaktiv gesetzt – keine Fälligkeits-Erinnerungen mehr, jederzeit reaktivierbar.')
+    laden()
+  }
 
   const anlageSpeichernDetails = async () => {
     if (!anlage) return
@@ -132,30 +189,31 @@ export default function Stammdaten() {
           )}
           {mergeModus && (
             <div className="merge-leiste">
-              <p className="hint" style={{ margin: '0 0 8px' }}>
-                Kunden ankreuzen, Ziel wählen – alle Anlagen samt kompletter Historie wandern zum Ziel,
-                die übrigen Einträge werden entfernt.
+              <p className="hint" style={{ margin: 0 }}>
+                Kunden ankreuzen – der <i className="fas fa-star" style={{ color: '#b45309' }}></i>-Stern
+                markiert das Ziel (antippen zum Wechseln). Alle Anlagen samt kompletter Historie
+                wandern zum Ziel, danach kannst du Namen &amp; Details nachbearbeiten.
               </p>
-              <select value={mergeZiel} onChange={e => setMergeZiel(e.target.value)}>
-                <option value="">Ziel wählen ({mergeWahl.size} markiert)</option>
-                {[...mergeWahl].map(id => {
-                  const k = kunden.find(x => x.id === id)
-                  return k ? <option key={id} value={id}>→ {k.name_kurz} – {k.name_lang}</option> : null
-                })}
-              </select>
-              <button className="primary" onClick={zusammenfuehren}
-                disabled={!mergeZiel || mergeWahl.size < 2}>
-                <i className="fas fa-object-group" aria-hidden="true"></i> Zusammenführen
+              <button className="primary" onClick={zusammenfuehren} disabled={mergeWahl.size < 2}>
+                <i className="fas fa-object-group" aria-hidden="true"></i>
+                {mergeWahl.size < 2 ? 'Mind. 2 Kunden ankreuzen' : `${mergeWahl.size} Kunden zusammenführen`}
               </button>
             </div>
           )}
           <div className="stamm-liste">
             {kundenGefiltert.map(k => (
               mergeModus ? (
-                <label key={k.id} className={`stamm-eintrag merge ${mergeWahl.has(k.id) ? 'markiert' : ''}`}>
+                <label key={k.id} className={`stamm-eintrag merge ${mergeWahl.has(k.id) ? 'markiert' : ''} ${mergeZiel === k.id ? 'ziel' : ''}`}>
                   <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <input type="checkbox" checked={mergeWahl.has(k.id)} onChange={() => mergeToggle(k.id)} />
                     <strong>{k.name_kurz}</strong>
+                    {mergeWahl.has(k.id) && (
+                      <button type="button" className="ziel-stern" title={mergeZiel === k.id ? 'Ziel' : 'Als Ziel wählen'}
+                        onClick={e => { e.preventDefault(); setMergeZiel(k.id) }}>
+                        <i className={`${mergeZiel === k.id ? 'fas' : 'far'} fa-star`} aria-hidden="true"></i>
+                        {mergeZiel === k.id ? ' Ziel' : ''}
+                      </button>
+                    )}
                   </span>
                   <span className="hint">{k.name_lang}</span>
                   <span className="stamm-zahl">{anlagen.filter(a => a.kunde_id === k.id).length}</span>
@@ -177,10 +235,44 @@ export default function Stammdaten() {
         <div className="stamm-spalte">
           <div className="stamm-kopf">
             <h3><i className="fas fa-building" aria-hidden="true"></i> Anlagen {kunde ? `– ${kunde.name_kurz} (${anlagenDesKunden.length})` : ''}</h3>
-            {kunde && <button className="zeile-btn" onClick={() => setNeuAnlage(!neuAnlage)}>
-              <i className="fas fa-plus" aria-hidden="true"></i> Neu
-            </button>}
+            {kunde && <div style={{ display: 'flex', gap: 6 }}>
+              <button className="zeile-btn" style={aMergeModus ? { background: '#6c757d', borderColor: '#6c757d' } : undefined}
+                onClick={() => { setAMergeModus(!aMergeModus); setAMergeWahl(new Set()); setAMergeZiel('') }}
+                title="Mehrere Anlagen zu einer zusammenführen (Quellen werden Bereiche)">
+                <i className="fas fa-object-group" aria-hidden="true"></i>
+              </button>
+              {!aMergeModus && <button className="zeile-btn" onClick={() => setNeuAnlage(!neuAnlage)}>
+                <i className="fas fa-plus" aria-hidden="true"></i> Neu
+              </button>}
+            </div>}
           </div>
+          {kunde && !aMergeModus && (
+            <div className="stamm-formular" style={{ background: '#fbfdff' }}>
+              <span className="hint" style={{ fontWeight: 650 }}>Kunde bearbeiten</span>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input style={{ width: 110 }} value={kName.kurz} onChange={e => setKName({ ...kName, kurz: e.target.value })} placeholder="Kurzname" />
+                <input style={{ flex: 1 }} value={kName.lang} onChange={e => setKName({ ...kName, lang: e.target.value })} placeholder="Vollständiger Name" />
+                <button onClick={kundeUmbenennen} title="Namen speichern"><i className="fas fa-floppy-disk" aria-hidden="true"></i></button>
+              </div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '.78rem' }}>
+                <input type="checkbox" checked={inaktiveAnzeigen} onChange={e => setInaktiveAnzeigen(e.target.checked)} />
+                inaktive Anlagen anzeigen
+              </label>
+            </div>
+          )}
+          {kunde && aMergeModus && (
+            <div className="merge-leiste">
+              <p className="hint" style={{ margin: 0 }}>
+                Anlagen ankreuzen – <i className="fas fa-star" style={{ color: '#b45309' }}></i> markiert das Ziel.
+                Die Quellen werden zu <strong>Untersuchungsbereichen</strong> der Ziel-Anlage, ihre komplette
+                Historie wandert mit.
+              </p>
+              <button className="primary" onClick={anlagenZusammenfuehren} disabled={aMergeWahl.size < 2}>
+                <i className="fas fa-object-group" aria-hidden="true"></i>
+                {aMergeWahl.size < 2 ? 'Mind. 2 Anlagen ankreuzen' : `${aMergeWahl.size} Anlagen zusammenführen`}
+              </button>
+            </div>
+          )}
           {!kunde && <p className="hint" style={{ padding: '4px 14px' }}>← Links einen Kunden wählen.</p>}
           {neuAnlage && kunde && (
             <div className="stamm-formular">
@@ -203,11 +295,27 @@ export default function Stammdaten() {
           )}
           <div className="stamm-liste">
             {anlagenDesKunden.map(a => (
-              <button key={a.id} className={`stamm-eintrag ${a.id === anlageId ? 'aktiv' : ''}`} onClick={() => setAnlageId(a.id)}>
-                <strong>{a.name}</strong>
+              aMergeModus ? (
+                <label key={a.id} className={`stamm-eintrag merge ${aMergeWahl.has(a.id) ? 'markiert' : ''} ${aMergeZiel === a.id ? 'ziel' : ''}`}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <input type="checkbox" checked={aMergeWahl.has(a.id)} onChange={() => aMergeToggle(a.id)} />
+                    <strong>{a.name}</strong>
+                    {aMergeWahl.has(a.id) && (
+                      <button type="button" className="ziel-stern" onClick={e => { e.preventDefault(); setAMergeZiel(a.id) }}>
+                        <i className={`${aMergeZiel === a.id ? 'fas' : 'far'} fa-star`} aria-hidden="true"></i>
+                        {aMergeZiel === a.id ? ' Ziel' : ''}
+                      </button>
+                    )}
+                  </span>
+                  <span className="hint">{[a.plz, a.ort].filter(Boolean).join(' ')}</span>
+                </label>
+              ) : (
+              <button key={a.id} className={`stamm-eintrag ${a.id === anlageId ? 'aktiv' : ''} ${!a.aktiv ? 'inaktiv' : ''}`} onClick={() => setAnlageId(a.id)}>
+                <strong>{a.name}{!a.aktiv && <span className="badge neutral" style={{ marginLeft: 6 }}>inaktiv</span>}</strong>
                 <span className="hint">{[a.plz, a.ort].filter(Boolean).join(' ')} · fällig {fmtDatum(a.naechste_untersuchung)}</span>
                 <span className="stamm-zahl">{bereiche.filter(b => b.anlage_id === a.id).length}</span>
               </button>
+              )
             ))}
             {kunde && anlagenDesKunden.length === 0 && <p className="hint" style={{ padding: '0 14px' }}>Noch keine Anlagen – oben „Neu“.</p>}
           </div>
@@ -216,7 +324,10 @@ export default function Stammdaten() {
         {/* ── Spalte 3: Bereiche der Anlage ── */}
         <div className="stamm-spalte">
           <div className="stamm-kopf">
-            <h3><i className="fas fa-diagram-project" aria-hidden="true"></i> Untersuchungsbereiche {anlage ? `(${bereicheDerAnlage.length})` : ''}</h3>
+            <h3><i className="fas fa-diagram-project" aria-hidden="true"></i> Bereiche &amp; Objekt {anlage ? `(${bereicheDerAnlage.length})` : ''}</h3>
+            {anlage && <button className="zeile-btn" onClick={() => setHistorieOffen(true)}>
+              <i className="fas fa-clock-rotate-left" aria-hidden="true"></i> Historie
+            </button>}
           </div>
           {!anlage && <p className="hint" style={{ padding: '4px 14px' }}>← In der Mitte eine Anlage wählen.</p>}
           {anlage && (
@@ -246,6 +357,12 @@ export default function Stammdaten() {
               </div>
 
               <div className="stamm-formular" style={{ borderTop: '1px solid var(--border)', borderBottom: 'none' }}>
+                <span className="hint" style={{ fontWeight: 650 }}>Objektname</span>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input style={{ flex: 1 }} value={anlageName} onChange={e => setAnlageName(e.target.value)} />
+                  <button onClick={async () => { if (anlage && anlageName.trim()) { await db.anlageAktualisieren(anlage.id, { name: anlageName.trim() }); setMeldung('Objekt umbenannt.'); laden() } }}
+                    title="Namen speichern"><i className="fas fa-floppy-disk" aria-hidden="true"></i></button>
+                </div>
                 <span className="hint" style={{ fontWeight: 650 }}>Objekt-Notizen</span>
                 <textarea rows={2} placeholder="z. B. Zugang über Hausmeister, Codes …"
                   value={notiz} onChange={e => setNotiz(e.target.value)} />
@@ -269,11 +386,26 @@ export default function Stammdaten() {
                   </button>
                 </div>
                 <p className="hint" style={{ margin: 0 }}>Objekt samt kompletter Untersuchungshistorie wandert zum neuen Kunden.</p>
+
+                {anlage?.aktiv ? (
+                  <button className="secondary" onClick={() => anlageAktivSetzen(false)}>
+                    <i className="fas fa-pause" aria-hidden="true"></i> Objekt inaktiv setzen (keine Fälligkeits-Erinnerungen)
+                  </button>
+                ) : (
+                  <button className="primary" onClick={() => anlageAktivSetzen(true)}>
+                    <i className="fas fa-play" aria-hidden="true"></i> Objekt wieder aktivieren
+                  </button>
+                )}
               </div>
             </>
           )}
         </div>
       </div>
+
+      {historieOffen && anlage && (
+        <HistorieModal anlage={anlage} kunde={kunde} termine={termine}
+          auftraege={auftraege} bereiche={bereiche} onClose={() => setHistorieOffen(false)} />
+      )}
     </>
   )
 }
