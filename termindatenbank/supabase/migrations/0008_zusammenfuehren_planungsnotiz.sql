@@ -1,0 +1,5 @@
+-- (Bereits im Projekt kaffeetrinker80 angewandt: td_zusammenfuehren_und_planungsnotiz)
+-- 1) td_anlagen.planungsnotiz: Freitext-Planungsvermerk (nimmt Objekt aus Fälligkeits-Ansichten)
+-- 2) td_kunden_zusammenfuehren(ziel, quellen[]): Anlagen/Termine/Ansprechpartner wandern
+--    zum Ziel, Historie bleibt vollständig, leere Quell-Kunden werden entfernt, protokolliert
+-- 3) td_anlage_verwalter_wechseln(anlage, neuer_kunde): Objekt + Historie zum neuen Kunden

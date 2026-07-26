@@ -23,6 +23,17 @@ export default function Stammdaten() {
   const [af, setAf] = useState({ name: '', strasse: '', plz: '', ort: '', turnus_monate: 36, naechste_untersuchung: '' })
   const [neuBereichName, setNeuBereichName] = useState('')
 
+  // Zusammenführen-Modus
+  const [mergeModus, setMergeModus] = useState(false)
+  const [mergeWahl, setMergeWahl] = useState<Set<string>>(new Set())
+  const [mergeZiel, setMergeZiel] = useState('')
+  const [meldung, setMeldung] = useState('')
+
+  // Anlagen-Detailbearbeitung
+  const [notiz, setNotiz] = useState('')
+  const [planungsnotiz, setPlanungsnotiz] = useState('')
+  const [neuerVerwalter, setNeuerVerwalter] = useState('')
+
   const laden = () => { db.kunden().then(setKunden); db.anlagen().then(setAnlagen); db.bereiche().then(setBereiche) }
   useEffect(laden, [])
 
@@ -34,8 +45,38 @@ export default function Stammdaten() {
   }, [kunden, suche])
 
   const kunde = kunden.find(k => k.id === kundeId)
+
+  const mergeToggle = (id: string) => setMergeWahl(w => {
+    const n = new Set(w); n.has(id) ? n.delete(id) : n.add(id); return n
+  })
+
+  const zusammenfuehren = async () => {
+    const quellen = [...mergeWahl].filter(id => id !== mergeZiel)
+    if (!mergeZiel || quellen.length === 0) return
+    try {
+      const erg = await db.kundenZusammenfuehren(mergeZiel, quellen)
+      setMeldung(erg + ' Alle Anlagen samt Historie hängen jetzt am Zielkunden.')
+      setMergeModus(false); setMergeWahl(new Set()); setMergeZiel('')
+      setKundeId(mergeZiel); laden()
+    } catch (e: any) { setMeldung('Fehler: ' + (e.message ?? e)) }
+  }
   const anlagenDesKunden = anlagen.filter(a => a.kunde_id === kundeId)
   const anlage = anlagen.find(a => a.id === anlageId)
+  useEffect(() => {
+    setNotiz(anlage?.notizen ?? ''); setPlanungsnotiz(anlage?.planungsnotiz ?? ''); setNeuerVerwalter('')
+  }, [anlageId])
+
+  const anlageSpeichernDetails = async () => {
+    if (!anlage) return
+    await db.anlageAktualisieren(anlage.id, { notizen: notiz || undefined, planungsnotiz: planungsnotiz || null })
+    setMeldung('Objekt-Notizen gespeichert.'); laden()
+  }
+  const verwalterWechseln = async () => {
+    if (!anlage || !neuerVerwalter) return
+    await db.verwalterWechseln(anlage.id, neuerVerwalter)
+    setMeldung('Verwalter gewechselt – Objekt und komplette Historie hängen jetzt am neuen Kunden.')
+    setKundeId(neuerVerwalter); laden()
+  }
   const bereicheDerAnlage = bereiche.filter(b => b.anlage_id === anlageId)
 
   const kundeSpeichern = async () => {
@@ -56,14 +97,22 @@ export default function Stammdaten() {
 
   return (
     <>
+      {meldung && <div className="notice">{meldung}</div>}
       <div className="stamm-spalten">
         {/* ── Spalte 1: Kunden ── */}
         <div className="stamm-spalte">
           <div className="stamm-kopf">
             <h3><i className="fas fa-building-user" aria-hidden="true"></i> Kunden ({kundenGefiltert.length})</h3>
-            <button className="zeile-btn" onClick={() => setNeuKunde(!neuKunde)}>
-              <i className="fas fa-plus" aria-hidden="true"></i> Neu
-            </button>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button className="zeile-btn" style={mergeModus ? { background: '#6c757d', borderColor: '#6c757d' } : undefined}
+                onClick={() => { setMergeModus(!mergeModus); setMergeWahl(new Set()); setMergeZiel('') }}
+                title="Mehrere Kunden zu einem zusammenführen">
+                <i className="fas fa-object-group" aria-hidden="true"></i> {mergeModus ? 'Abbrechen' : 'Zusammenführen'}
+              </button>
+              {!mergeModus && <button className="zeile-btn" onClick={() => setNeuKunde(!neuKunde)}>
+                <i className="fas fa-plus" aria-hidden="true"></i> Neu
+              </button>}
+            </div>
           </div>
           <div className="suchfeld" style={{ margin: '0 12px 10px' }}>
             <i className="fas fa-magnifying-glass" aria-hidden="true"></i>
@@ -81,14 +130,44 @@ export default function Stammdaten() {
               <button className="primary" onClick={kundeSpeichern}>Anlegen</button>
             </div>
           )}
+          {mergeModus && (
+            <div className="merge-leiste">
+              <p className="hint" style={{ margin: '0 0 8px' }}>
+                Kunden ankreuzen, Ziel wählen – alle Anlagen samt kompletter Historie wandern zum Ziel,
+                die übrigen Einträge werden entfernt.
+              </p>
+              <select value={mergeZiel} onChange={e => setMergeZiel(e.target.value)}>
+                <option value="">Ziel wählen ({mergeWahl.size} markiert)</option>
+                {[...mergeWahl].map(id => {
+                  const k = kunden.find(x => x.id === id)
+                  return k ? <option key={id} value={id}>→ {k.name_kurz} – {k.name_lang}</option> : null
+                })}
+              </select>
+              <button className="primary" onClick={zusammenfuehren}
+                disabled={!mergeZiel || mergeWahl.size < 2}>
+                <i className="fas fa-object-group" aria-hidden="true"></i> Zusammenführen
+              </button>
+            </div>
+          )}
           <div className="stamm-liste">
             {kundenGefiltert.map(k => (
+              mergeModus ? (
+                <label key={k.id} className={`stamm-eintrag merge ${mergeWahl.has(k.id) ? 'markiert' : ''}`}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <input type="checkbox" checked={mergeWahl.has(k.id)} onChange={() => mergeToggle(k.id)} />
+                    <strong>{k.name_kurz}</strong>
+                  </span>
+                  <span className="hint">{k.name_lang}</span>
+                  <span className="stamm-zahl">{anlagen.filter(a => a.kunde_id === k.id).length}</span>
+                </label>
+              ) : (
               <button key={k.id} className={`stamm-eintrag ${k.id === kundeId ? 'aktiv' : ''}`}
                 onClick={() => { setKundeId(k.id); setAnlageId('') }}>
                 <strong>{k.name_kurz}</strong>
                 <span className="hint">{k.name_lang}</span>
                 <span className="stamm-zahl">{anlagen.filter(a => a.kunde_id === k.id).length}</span>
               </button>
+              )
             ))}
             {kundenGefiltert.length === 0 && <p className="hint" style={{ padding: '0 14px' }}>Keine Kunden gefunden.</p>}
           </div>
@@ -155,7 +234,7 @@ export default function Stammdaten() {
                   Jedes eigenständig untersuchbare Warmwassersystem als eigener Bereich – jeder erhält eigene Auftragsnummern.
                 </p>
               </div>
-              <div className="stamm-liste">
+              <div className="stamm-liste" style={{ flex: 'none', maxHeight: 180 }}>
                 {bereicheDerAnlage.map(b => (
                   <div key={b.id} className="stamm-eintrag" style={{ cursor: 'default' }}>
                     <strong>{b.name}</strong>
@@ -164,6 +243,32 @@ export default function Stammdaten() {
                 ))}
                 {bereicheDerAnlage.length === 0 && <p className="hint" style={{ padding: '0 14px' }}>
                   Noch keine Bereiche – bei einem einzelnen WW-System reicht z. B. „Gesamtanlage“.</p>}
+              </div>
+
+              <div className="stamm-formular" style={{ borderTop: '1px solid var(--border)', borderBottom: 'none' }}>
+                <span className="hint" style={{ fontWeight: 650 }}>Objekt-Notizen</span>
+                <textarea rows={2} placeholder="z. B. Zugang über Hausmeister, Codes …"
+                  value={notiz} onChange={e => setNotiz(e.target.value)} />
+                <span className="hint" style={{ fontWeight: 650 }}>Planungsvermerk
+                  <span style={{ fontWeight: 400 }}> (nimmt das Objekt aus den Fälligkeits-Ansichten)</span></span>
+                <textarea rows={2} placeholder="z. B. Heizung wird erneuert – zurückstellen"
+                  value={planungsnotiz} onChange={e => setPlanungsnotiz(e.target.value)} />
+                <button className="primary" onClick={anlageSpeichernDetails}>
+                  <i className="fas fa-floppy-disk" aria-hidden="true"></i> Notizen speichern
+                </button>
+
+                <span className="hint" style={{ fontWeight: 650, marginTop: 6 }}>Verwalter wechseln</span>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <select style={{ flex: 1 }} value={neuerVerwalter} onChange={e => setNeuerVerwalter(e.target.value)}>
+                    <option value="">– neuen Kunden wählen –</option>
+                    {kunden.filter(k => k.id !== kundeId).map(k =>
+                      <option key={k.id} value={k.id}>{k.name_kurz} – {k.name_lang}</option>)}
+                  </select>
+                  <button onClick={verwalterWechseln} disabled={!neuerVerwalter}>
+                    <i className="fas fa-right-left" aria-hidden="true"></i>
+                  </button>
+                </div>
+                <p className="hint" style={{ margin: 0 }}>Objekt samt kompletter Untersuchungshistorie wandert zum neuen Kunden.</p>
               </div>
             </>
           )}

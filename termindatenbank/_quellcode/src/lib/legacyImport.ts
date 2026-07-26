@@ -17,7 +17,8 @@ export interface ImportVorschau {
   kunden: { legacy_id: string; name_lang: string; name_kurz: string; typ: string }[]
   anlagen: {
     legacy_id: string; kunde_legacy: string; name: string; plz?: string; ort?: string
-    objekt_referenz?: string; turnus_monate?: number; naechste_untersuchung?: string; notizen?: string
+    objekt_referenz?: string; turnus_monate?: number; naechste_untersuchung?: string
+    notizen?: string; planungsnotiz?: string
   }[]
   termine: { legacy_id: string; anlage_legacy: string; datum: string; geplant?: boolean }[]
   uebersprungen: number
@@ -132,10 +133,14 @@ export function vorschauErzeugen(datensaetze: LegacyDatensatz[]): ImportVorschau
       for (const datum of untersuchungsdaten(rec)) {
         termine.push({ legacy_id: `${anlageKey}@${datum}`, anlage_legacy: anlageKey, datum })
       }
-      // Bereits geplanter Termin aus dem Altbestand -> als zukünftiger Termin übernehmen
-      const geplant = parseDatum(rec['Geplant'])
+      // "Geplant"-Spalte: Datum -> zukünftiger Termin; Freitext -> Planungsnotiz
+      // (beides nimmt die Anlage aus den zeitbasierten Ansichten, wie im alten Dashboard)
+      const geplantRoh = text(rec['Geplant'])
+      const geplant = parseDatum(geplantRoh)
       if (geplant) {
         termine.push({ legacy_id: `${anlageKey}@geplant@${geplant}`, anlage_legacy: anlageKey, datum: geplant, geplant: true })
+      } else if (geplantRoh) {
+        anlagen.get(anlageKey)!.planungsnotiz = geplantRoh
       }
     }
   }

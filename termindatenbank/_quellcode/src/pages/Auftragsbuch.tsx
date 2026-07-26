@@ -3,6 +3,7 @@ import { db } from '../lib/data'
 import type { Anlage, Auftrag, Bereich, Kunde, Termin, Untersuchungsart } from '../lib/types'
 import { ART_LABEL, ERGEBNIS_LABEL, STATUS_LABEL, fmtDatum, nummerVoll } from '../lib/types'
 import { Abschnitt, ErgebnisBadge, Nr, StatusBadge } from '../components/ui'
+import BerichtModal from '../components/BerichtModal'
 
 export default function Auftragsbuch() {
   const [auftraege, setAuftraege] = useState<Auftrag[]>([])
@@ -26,6 +27,7 @@ export default function Auftragsbuch() {
   const [nvManuell, setNvManuell] = useState(false)
   const [nvNummer, setNvNummer] = useState('')
   const [nvMeldung, setNvMeldung] = useState('')
+  const [berichtAuftrag, setBerichtAuftrag] = useState<Auftrag | null>(null)
 
   const laden = () => {
     db.auftraege().then(setAuftraege); db.kunden().then(setKunden)
@@ -174,10 +176,10 @@ export default function Auftragsbuch() {
               </td>
               <td><StatusBadge s={z.u.status} /></td>
               <td><ErgebnisBadge s={z.u.ergebnis} /></td>
-              <td>
-                <select value={z.u.ergebnis} onChange={e => speichern(z.u.id, 'ergebnis', e.target.value)} title="Ergebnis setzen">
-                  {Object.entries(ERGEBNIS_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                </select>
+              <td className="no-print" style={{ whiteSpace: 'nowrap' }}>
+                <button className="zeile-btn" onClick={() => setBerichtAuftrag(z.a)} title="Prüfbericht erfassen">
+                  <i className="fas fa-file-circle-check" aria-hidden="true"></i> Bericht
+                </button>
               </td>
             </tr>
           ))}
@@ -186,6 +188,20 @@ export default function Auftragsbuch() {
       </table>
       </div>
       </Abschnitt>
+
+      {berichtAuftrag && (
+        <BerichtModal
+          auftrag={berichtAuftrag}
+          kundeKurz={(() => {
+            const b = bereiche.find(x => x.id === berichtAuftrag.bereich_id)
+            const a = anlagen.find(x => x.id === b?.anlage_id)
+            return kunden.find(k => k.id === a?.kunde_id)?.name_kurz
+          })()}
+          bereichName={bereiche.find(x => x.id === berichtAuftrag.bereich_id)?.name}
+          onClose={() => setBerichtAuftrag(null)}
+          onSaved={laden}
+        />
+      )}
     </>
   )
 }

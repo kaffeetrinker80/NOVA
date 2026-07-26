@@ -355,3 +355,12 @@ table.tbl {
 @media print {
   .planung-werkzeuge, .tabs, .no-print, .zeile-btn, .modal-hintergrund { display: none !important; }
 }
+
+/* ---------- Zusammenführen-Modus & Info-Spalte ---------- */
+.merge-leiste {
+  padding: 10px 12px; border-bottom: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 8px; background: #fffdf4;
+}
+.stamm-eintrag.merge { cursor: pointer; }
+.stamm-eintrag.merge.markiert { background: var(--amp-yellow); }
+.info-zelle { font-size: .76rem; color: var(--text-muted); max-width: 260px; }

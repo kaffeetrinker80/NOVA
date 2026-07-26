@@ -55,39 +55,53 @@ const demo = {
 // Einheitliche Datenzugriffs-Schicht.
 // Im Demo-Modus in-memory; mit Supabase über Tabellen/RPCs aus 0001_init.sql.
 // ------------------------------------------------------------------
+/** Lädt ALLE Zeilen einer Tabelle in 1000er-Seiten (Supabase-API-Limit pro Abfrage). */
+async function alleZeilen<T>(tabelle: string, spalten: string, sortierung: string): Promise<T[]> {
+  const ergebnis: T[] = []
+  for (let von = 0; ; von += 1000) {
+    const { data, error } = await supabase!
+      .from(tabelle).select(spalten).order(sortierung).range(von, von + 999)
+    if (error) throw error
+    ergebnis.push(...(data as T[]))
+    if ((data as T[]).length < 1000) break
+  }
+  return ergebnis
+}
+
 export const db = {
   async kunden(): Promise<Kunde[]> {
     if (!supabase) return demo.kunden
-    const { data, error } = await supabase.from('td_kunden').select('*').order('name_kurz')
-    if (error) throw error
-    return data as Kunde[]
+    return alleZeilen<Kunde>('td_kunden', '*', 'name_kurz')
   },
   async anlagen(): Promise<Anlage[]> {
     if (!supabase) return demo.anlagen
-    const { data, error } = await supabase.from('td_anlagen').select('*').order('name')
-    if (error) throw error
-    return data as Anlage[]
+    return alleZeilen<Anlage>('td_anlagen', '*', 'name')
   },
   async bereiche(): Promise<Bereich[]> {
     if (!supabase) return demo.bereiche
-    const { data, error } = await supabase.from('td_bereiche').select('*').order('name')
-    if (error) throw error
-    return data as Bereich[]
+    return alleZeilen<Bereich>('td_bereiche', '*', 'name')
   },
   async termine(): Promise<Termin[]> {
     if (!supabase) return demo.termine
-    const { data, error } = await supabase.from('td_termine').select('*, termin_probenehmer:td_termin_probenehmer(profil_id, profile:td_profile(anzeigename))').order('datum')
-    if (error) throw error
-    return (data as any[]).map(t => ({
+    const zeilen = await alleZeilen<any>('td_termine',
+      '*, termin_probenehmer:td_termin_probenehmer(profil_id, profile:td_profile(anzeigename))', 'datum')
+    return zeilen.map(t => ({
       ...t,
       probenehmer: (t.termin_probenehmer ?? []).map((x: any) => x.profile?.anzeigename).filter(Boolean),
     })) as Termin[]
   },
   async auftraege(): Promise<Auftrag[]> {
     if (!supabase) return demo.auftraege
-    const { data, error } = await supabase.from('td_auftraege').select('*, unterauftraege:td_unterauftraege(*)').order('auftragsnummer', { ascending: false })
-    if (error) throw error
-    return data as unknown as Auftrag[]
+    const zeilen: Auftrag[] = []
+    for (let von = 0; ; von += 1000) {
+      const { data, error } = await supabase.from('td_auftraege')
+        .select('*, unterauftraege:td_unterauftraege(*)')
+        .order('auftragsnummer', { ascending: false }).range(von, von + 999)
+      if (error) throw error
+      zeilen.push(...(data as unknown as Auftrag[]))
+      if ((data as any[]).length < 1000) break
+    }
+    return zeilen
   },
 
   async kundeAnlegen(k: Omit<Kunde, 'id' | 'aktiv'>): Promise<void> {
@@ -190,9 +204,8 @@ export const db = {
       { onConflict: 'legacy_id' })
     if (e1) throw e1
 
-    const { data: kundenDb, error: e2 } = await supabase.from('td_kunden').select('id, legacy_id')
-    if (e2) throw e2
-    const kundeId = new Map((kundenDb as any[]).map(k => [k.legacy_id, k.id]))
+    const kundenDb = await alleZeilen<any>('td_kunden', 'id, legacy_id', 'id')
+    const kundeId = new Map(kundenDb.map(k => [k.legacy_id, k.id]))
 
     fortschritt?.(`Anlagen werden übernommen (${v.anlagen.length}) …`)
     for (let i = 0; i < v.anlagen.length; i += 500) {
@@ -200,22 +213,23 @@ export const db = {
         legacy_id: a.legacy_id, kunde_id: kundeId.get(a.kunde_legacy), name: a.name,
         plz: a.plz, ort: a.ort, objekt_referenz: a.objekt_referenz,
         turnus_monate: a.turnus_monate, naechste_untersuchung: a.naechste_untersuchung,
-        notizen: a.notizen, legacy_quelle: 'Terminverwaltung V4',
+        notizen: a.notizen, planungsnotiz: (a as any).planungsnotiz ?? null,
+        legacy_quelle: 'Terminverwaltung V4',
       })).filter(a => a.kunde_id)
       const { error } = await supabase.from('td_anlagen').upsert(teil, { onConflict: 'legacy_id' })
       if (error) throw error
       fortschritt?.(`Anlagen: ${Math.min(i + 500, v.anlagen.length)} / ${v.anlagen.length}`)
     }
 
-    const { data: anlagenDb, error: e3 } = await supabase.from('td_anlagen').select('id, legacy_id, name')
-    if (e3) throw e3
-    const anlageId = new Map((anlagenDb as any[]).map(a => [a.legacy_id, a.id]))
+    const anlagenDb = await alleZeilen<any>('td_anlagen', 'id, legacy_id, name', 'id')
+    const anlageId = new Map(anlagenDb.map(a => [a.legacy_id, a.id]))
+    const anlageZuKunde = new Map(v.anlagen.map(a => [a.legacy_id, a.kunde_legacy]))
 
     // Je Anlage ein Standard-Untersuchungsbereich, sofern noch keiner existiert
     fortschritt?.('Untersuchungsbereiche werden angelegt …')
-    const { data: bereicheDb } = await supabase.from('td_bereiche').select('anlage_id')
-    const hatBereich = new Set((bereicheDb as any[] ?? []).map(b => b.anlage_id))
-    const neueBereiche = (anlagenDb as any[])
+    const bereicheDb = await alleZeilen<any>('td_bereiche', 'anlage_id', 'anlage_id')
+    const hatBereich = new Set(bereicheDb.map(b => b.anlage_id))
+    const neueBereiche = anlagenDb
       .filter(a => !hatBereich.has(a.id))
       .map(a => ({ anlage_id: a.id, name: 'Gesamtanlage',
                    beschreibung: 'Aus Altbestand übernommen – bei mehreren WW-Systemen später aufteilbar',
@@ -230,17 +244,15 @@ export const db = {
     for (let i = 0; i < v.termine.length; i += 500) {
       const teil = v.termine.slice(i, i + 500).map(t => {
         const aid = anlageId.get(t.anlage_legacy)
-        const anl = (anlagenDb as any[]).find(a => a.legacy_id === t.anlage_legacy)
-        return aid ? {
-          legacy_id: t.legacy_id, anlage_id: aid,
-          kunde_id: v.anlagen.find(a => a.legacy_id === t.anlage_legacy)
-            ? kundeId.get(v.anlagen.find(a => a.legacy_id === t.anlage_legacy)!.kunde_legacy) : null,
+        const kid = kundeId.get(anlageZuKunde.get(t.anlage_legacy) ?? '')
+        return aid && kid ? {
+          legacy_id: t.legacy_id, anlage_id: aid, kunde_id: kid,
           datum: t.datum,
           status: (t as any).geplant ? 'geplant' : 'abgeschlossen',
-          notizen: (t as any).geplant ? 'Geplanter Termin aus Altbestand' : 'Historischer Termin aus Altbestand' + (anl ? '' : ''),
+          notizen: (t as any).geplant ? 'Geplanter Termin aus Altbestand' : 'Historischer Termin aus Altbestand',
           legacy_quelle: 'Terminverwaltung V4',
         } : null
-      }).filter((x): x is NonNullable<typeof x> => !!x && !!x.kunde_id)
+      }).filter((x): x is NonNullable<typeof x> => !!x)
       if (teil.length) {
         const { error } = await supabase.from('td_termine').upsert(teil, { onConflict: 'legacy_id' })
         if (error) throw error
@@ -250,6 +262,25 @@ export const db = {
     }
 
     return `Übernommen: ${v.kunden.length} Kunden, ${v.anlagen.length} Anlagen, ${neueBereiche.length} Bereiche, ${termineOk} historische Termine.`
+  },
+
+  async anlageAktualisieren(id: string, patch: Partial<Pick<Anlage, 'notizen' | 'naechste_untersuchung' | 'turnus_monate'>> & { planungsnotiz?: string | null }): Promise<void> {
+    if (!supabase) { const a = demo.anlagen.find(x => x.id === id); if (a) Object.assign(a, patch); return }
+    const { error } = await supabase.from('td_anlagen').update(patch).eq('id', id)
+    if (error) throw error
+  },
+
+  async kundenZusammenfuehren(zielId: string, quellenIds: string[]): Promise<string> {
+    if (!supabase) return 'Demo-Modus: Zusammenführen nur mit Supabase.'
+    const { data, error } = await supabase.rpc('td_kunden_zusammenfuehren', { p_ziel: zielId, p_quellen: quellenIds })
+    if (error) throw error
+    return data as string
+  },
+
+  async verwalterWechseln(anlageId: string, neuerKundeId: string): Promise<void> {
+    if (!supabase) return
+    const { error } = await supabase.rpc('td_anlage_verwalter_wechseln', { p_anlage: anlageId, p_neuer_kunde: neuerKundeId })
+    if (error) throw error
   },
 
   async importStaging(quelle: string, typ: string, zeilen: unknown[]): Promise<number> {

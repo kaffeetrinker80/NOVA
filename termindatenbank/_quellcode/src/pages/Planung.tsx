@@ -10,6 +10,7 @@ interface Zeile {
   anlage: Anlage
   kunde?: Kunde
   geplantAm?: string        // nächster zukünftiger Termin
+  geplantText?: string      // Freitext-Planungsvermerk am Objekt
   faellig?: string          // anlage.naechste_untersuchung
 }
 
@@ -57,6 +58,7 @@ export default function Planung() {
   const [vonDatum, setVonDatum] = useState('')
   const [bisDatum, setBisDatum] = useState('')
   const [sortSpalte, setSortSpalte] = useState<keyof Zeile | 'kundeName' | 'ort'>('faellig')
+  const [infoAnzeigen, setInfoAnzeigen] = useState(true)
   const [sortAuf, setSortAuf] = useState(true)
   const [modalAnlage, setModalAnlage] = useState<Anlage | null>(null)
 
@@ -74,6 +76,7 @@ export default function Planung() {
       anlage: a,
       kunde: kunden.find(k => k.id === a.kunde_id),
       geplantAm: zukunft[0],
+      geplantText: a.planungsnotiz || undefined,
       faellig: a.naechste_untersuchung,
     }
   }), [anlagen, kunden, termine])
@@ -82,12 +85,12 @@ export default function Planung() {
     let z = zeilen
 
     if (tab === 'next90') {
-      z = z.filter(x => !x.geplantAm && x.faellig && x.faellig <= plusTage(90))
+      z = z.filter(x => !x.geplantAm && !x.geplantText && x.faellig && x.faellig <= plusTage(90))
       if (!ueberfaelligeAnzeigen) z = z.filter(x => !(x.faellig! <= heuteIso && x.anlage.turnus_monate !== 3))
     } else if (tab === 'nachunters') {
-      z = z.filter(x => x.anlage.turnus_monate === 3 && !x.geplantAm)
+      z = z.filter(x => x.anlage.turnus_monate === 3 && !x.geplantAm && !x.geplantText)
     } else if (tab === 'geplant') {
-      z = z.filter(x => !!x.geplantAm)
+      z = z.filter(x => !!x.geplantAm || !!x.geplantText)
     } else if (tab === 'alle') {
       if (vonDatum) z = z.filter(x => x.faellig && x.faellig >= vonDatum)
       if (bisDatum) z = z.filter(x => x.faellig && x.faellig <= bisDatum)
@@ -114,9 +117,9 @@ export default function Planung() {
   }, [zeilen, tab, suche, ueberfaelligeAnzeigen, vonDatum, bisDatum, sortSpalte, sortAuf])
 
   const anz = {
-    next90: zeilen.filter(x => !x.geplantAm && x.faellig && x.faellig <= plusTage(90)).length,
-    nachunters: zeilen.filter(x => x.anlage.turnus_monate === 3 && !x.geplantAm).length,
-    geplant: zeilen.filter(x => !!x.geplantAm).length,
+    next90: zeilen.filter(x => !x.geplantAm && !x.geplantText && x.faellig && x.faellig <= plusTage(90)).length,
+    nachunters: zeilen.filter(x => x.anlage.turnus_monate === 3 && !x.geplantAm && !x.geplantText).length,
+    geplant: zeilen.filter(x => !!x.geplantAm || !!x.geplantText).length,
     alle: zeilen.length,
   }
   const ueberfaellig = zeilen.filter(x => !x.geplantAm && x.faellig && x.faellig <= heuteIso && x.anlage.turnus_monate !== 3).length
@@ -162,6 +165,10 @@ export default function Planung() {
             {(vonDatum || bisDatum) && <button onClick={() => { setVonDatum(''); setBisDatum('') }}>Filter leeren</button>}
           </>
         )}
+        <button onClick={() => setInfoAnzeigen(!infoAnzeigen)}>
+          <i className={`fas ${infoAnzeigen ? 'fa-eye-slash' : 'fa-eye'}`} aria-hidden="true"></i>
+          Info {infoAnzeigen ? 'ausblenden' : 'anzeigen'}
+        </button>
         <button onClick={() => window.print()}>
           <i className="fas fa-print" aria-hidden="true"></i> Gefilterte Einträge drucken
         </button>
@@ -196,6 +203,7 @@ export default function Planung() {
               <th>Turnus</th>
               <th onClick={() => sortieren('faellig')} style={{ cursor: 'pointer' }}>Nächste Untersuchung <Pfeil s="faellig" /></th>
               {tab === 'geplant' && <th onClick={() => sortieren('geplantAm')} style={{ cursor: 'pointer' }}>Geplant <Pfeil s="geplantAm" /></th>}
+              {infoAnzeigen && <th>Info</th>}
               <th className="no-print"></th>
             </tr></thead>
             <tbody>
@@ -208,7 +216,11 @@ export default function Planung() {
                   <td>{z.anlage.ort ?? '–'}</td>
                   <td>{turnusText(z.anlage.turnus_monate)}</td>
                   <td>{fmtDatum(z.faellig)}</td>
-                  {tab === 'geplant' && <td style={{ fontWeight: 600 }}>{fmtDatum(z.geplantAm)}</td>}
+                  {tab === 'geplant' && <td style={{ fontWeight: 600 }}>{z.geplantAm ? fmtDatum(z.geplantAm) : <span className="hint">{z.geplantText}</span>}</td>}
+                  {infoAnzeigen && <td className="info-zelle">
+                    {[z.anlage.planungsnotiz && tab !== 'geplant' ? `⏸ ${z.anlage.planungsnotiz}` : null, z.anlage.notizen]
+                      .filter(Boolean).join(' · ') || ''}
+                  </td>}
                   <td className="no-print" style={{ whiteSpace: 'nowrap' }}>
                     <button className="zeile-btn" onClick={() => setModalAnlage(z.anlage)}>
                       <i className="fas fa-calendar-plus" aria-hidden="true"></i> Planen
@@ -216,7 +228,7 @@ export default function Planung() {
                   </td>
                 </tr>
               ))}
-              {gefiltert.length === 0 && <tr><td colSpan={8} className="hint">Keine Einträge für die aktuelle Auswahl.</td></tr>}
+              {gefiltert.length === 0 && <tr><td colSpan={9} className="hint">Keine Einträge für die aktuelle Auswahl.</td></tr>}
             </tbody>
           </table>
         </div>
