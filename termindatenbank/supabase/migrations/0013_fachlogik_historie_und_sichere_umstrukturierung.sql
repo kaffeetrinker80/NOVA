@@ -65,9 +65,19 @@ alter table nova_termindatenbank_data.td_untersuchungsbewertungen
 create index if not exists td_bewertungen_phase_idx on nova_termindatenbank_data.td_untersuchungsbewertungen(phase_id);
 create index if not exists td_phasen_bereich_idx on nova_termindatenbank_data.td_ueberschreitungsphasen(bereich_id, status);
 
+drop trigger if exists trg_audit_untersuchungsbewertungen on nova_termindatenbank_data.td_untersuchungsbewertungen;
+create trigger trg_audit_untersuchungsbewertungen before insert or update
+  on nova_termindatenbank_data.td_untersuchungsbewertungen
+  for each row execute function nova_termindatenbank_data.td_set_audit_fields();
+drop trigger if exists trg_audit_ueberschreitungsphasen on nova_termindatenbank_data.td_ueberschreitungsphasen;
+create trigger trg_audit_ueberschreitungsphasen before insert or update
+  on nova_termindatenbank_data.td_ueberschreitungsphasen
+  for each row execute function nova_termindatenbank_data.td_set_audit_fields();
+
 -- Zentrale, lesbare Bereichshistorie. Geplante Termine erscheinen nicht als
 -- Untersuchungsergebnis, weil nur abgeschlossene Termine fachlich zählen.
-create or replace view nova_termindatenbank_data.td_v_bereichshistorie as
+create or replace view nova_termindatenbank_data.td_v_bereichshistorie
+with (security_invoker = true) as
 select a.bereich_id, t.datum as zeitpunkt, 'untersuchung'::text as art,
        a.auftragsnummer as referenz, u.art::text as detail,
        coalesce(b.befund, u.ergebnis::text) as ergebnis,
@@ -127,10 +137,18 @@ end $$;
 
 alter table nova_termindatenbank_data.td_untersuchungsbewertungen enable row level security;
 alter table nova_termindatenbank_data.td_ueberschreitungsphasen enable row level security;
-create policy bewertungen_read on nova_termindatenbank_data.td_untersuchungsbewertungen for select using (td_current_rolle() is not null);
-create policy bewertungen_write on nova_termindatenbank_data.td_untersuchungsbewertungen for all using (td_ist_mind_disposition()) with check (td_ist_mind_disposition());
-create policy phasen_read on nova_termindatenbank_data.td_ueberschreitungsphasen for select using (td_current_rolle() is not null);
-create policy phasen_write on nova_termindatenbank_data.td_ueberschreitungsphasen for all using (td_ist_mind_disposition()) with check (td_ist_mind_disposition());
+drop policy if exists bewertungen_read on nova_termindatenbank_data.td_untersuchungsbewertungen;
+drop policy if exists bewertungen_write on nova_termindatenbank_data.td_untersuchungsbewertungen;
+drop policy if exists phasen_read on nova_termindatenbank_data.td_ueberschreitungsphasen;
+drop policy if exists phasen_write on nova_termindatenbank_data.td_ueberschreitungsphasen;
+create policy bewertungen_read on nova_termindatenbank_data.td_untersuchungsbewertungen for select to authenticated using (nova_termindatenbank_data.td_current_rolle() is not null);
+create policy bewertungen_write on nova_termindatenbank_data.td_untersuchungsbewertungen for all to authenticated using (nova_termindatenbank_data.td_ist_mind_disposition()) with check (nova_termindatenbank_data.td_ist_mind_disposition());
+create policy phasen_read on nova_termindatenbank_data.td_ueberschreitungsphasen for select to authenticated using (nova_termindatenbank_data.td_current_rolle() is not null);
+create policy phasen_write on nova_termindatenbank_data.td_ueberschreitungsphasen for all to authenticated using (nova_termindatenbank_data.td_ist_mind_disposition()) with check (nova_termindatenbank_data.td_ist_mind_disposition());
 
 grant select, insert, update on nova_termindatenbank_data.td_untersuchungsbewertungen, nova_termindatenbank_data.td_ueberschreitungsphasen to authenticated;
 grant select on nova_termindatenbank_data.td_v_bereichshistorie to authenticated;
+revoke all on function nova_termindatenbank_data.td_bereich_verschieben(uuid, uuid) from public;
+revoke all on function nova_termindatenbank_data.td_bereiche_zusammenfuehren(uuid, uuid[]) from public;
+grant execute on function nova_termindatenbank_data.td_bereich_verschieben(uuid, uuid) to authenticated;
+grant execute on function nova_termindatenbank_data.td_bereiche_zusammenfuehren(uuid, uuid[]) to authenticated;
