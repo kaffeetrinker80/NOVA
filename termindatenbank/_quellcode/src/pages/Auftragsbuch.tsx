@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { db } from '../lib/data'
 import type { Anlage, Auftrag, Bereich, Kunde, Termin, Untersuchungsart } from '../lib/types'
-import { ART_LABEL, ERGEBNIS_LABEL, STATUS_LABEL, fmtDatum, nummerVoll } from '../lib/types'
+import { ART_LABEL, ERGEBNIS_LABEL, STATUS_LABEL, fmtDatum, nummerVoll, kundeAnzeige } from '../lib/types'
 import { Abschnitt, ErgebnisBadge, Nr, StatusBadge } from '../components/ui'
 import BerichtModal from '../components/BerichtModal'
 
@@ -93,7 +93,7 @@ export default function Auftragsbuch() {
               <label className="f">Kunde
                 <select value={nvKunde} onChange={e => { setNvKunde(e.target.value); setNvAnlage(''); setNvBereich('') }}>
                   <option value="">– wählen –</option>
-                  {kunden.map(k => <option key={k.id} value={k.id}>{k.name_kurz}</option>)}
+                  {kunden.map(k => <option key={k.id} value={k.id}>{kundeAnzeige(k)}</option>)}
                 </select>
               </label>
               <label className="f">Anlage
@@ -148,7 +148,7 @@ export default function Auftragsbuch() {
       <div className="filters">
         <input placeholder="Suche: Auftragsnummer, Kunde, Anlage …" value={suche} onChange={e => setSuche(e.target.value)} style={{ minWidth: 260 }} />
         <select value={fJahr} onChange={e => setFJahr(e.target.value)}><option value="">Jahr: alle</option>{jahre.map(j => <option key={j}>{j}</option>)}</select>
-        <select value={fKunde} onChange={e => setFKunde(e.target.value)}><option value="">Kunde: alle</option>{kunden.map(k => <option key={k.id} value={k.id}>{k.name_kurz}</option>)}</select>
+        <select value={fKunde} onChange={e => setFKunde(e.target.value)}><option value="">Kunde: alle</option>{kunden.map(k => <option key={k.id} value={k.id}>{kundeAnzeige(k)}</option>)}</select>
         <select value={fArt} onChange={e => setFArt(e.target.value)}><option value="">Art: alle</option>{Object.entries(ART_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
         <select value={fStatus} onChange={e => setFStatus(e.target.value)}><option value="">Status: alle</option>{Object.entries(STATUS_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
         <select value={fErgebnis} onChange={e => setFErgebnis(e.target.value)}><option value="">Ergebnis: alle</option>{Object.entries(ERGEBNIS_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
@@ -164,7 +164,7 @@ export default function Auftragsbuch() {
           {gefiltert.map(z => (
             <tr key={z.u.id}>
               <td><Nr>{z.nummer}</Nr></td>
-              <td>{z.kunde?.name_kurz ?? '–'}</td>
+              <td>{kundeAnzeige(z.kunde)}</td>
               <td>{z.anlage?.name ?? '–'}</td>
               <td>{z.bereich?.name ?? '–'}</td>
               <td>{fmtDatum(z.termin?.datum)}</td>
@@ -195,7 +195,7 @@ export default function Auftragsbuch() {
           kundeKurz={(() => {
             const b = bereiche.find(x => x.id === berichtAuftrag.bereich_id)
             const a = anlagen.find(x => x.id === b?.anlage_id)
-            return kunden.find(k => k.id === a?.kunde_id)?.name_kurz
+            return kundeAnzeige(kunden.find(k => k.id === a?.kunde_id))
           })()}
           bereichName={bereiche.find(x => x.id === berichtAuftrag.bereich_id)?.name}
           onClose={() => setBerichtAuftrag(null)}

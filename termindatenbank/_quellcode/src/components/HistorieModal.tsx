@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import type { Anlage, Auftrag, Bereich, Kunde, Termin } from '../lib/types'
-import { ART_LABEL, fmtDatum, nummerVoll } from '../lib/types'
+import { ART_LABEL, fmtDatum, nummerVoll, kundeAnzeige } from '../lib/types'
 import { ErgebnisBadge } from './ui'
 import { phasenErmitteln } from '../lib/phasen'
 
@@ -15,18 +15,24 @@ export default function HistorieModal({ anlage, kunde, termine, auftraege, berei
   onClose: () => void
 }) {
   const bereichName = nurBereich ? bereiche.find(b => b.id === nurBereich)?.name : undefined
+  const bereicheDerAnlage = bereiche.filter(b => b.anlage_id === anlage.id)
   const eigene = useMemo(() =>
-    termine.filter(t => t.anlage_id === anlage.id && t.status !== 'abgesagt'
-        && (!nurBereich || t.bereich_id === nurBereich))
-      .sort((a, b) => b.datum.localeCompare(a.datum)),
-    [termine, anlage, nurBereich])
+    termine.filter(t => {
+      if (t.anlage_id !== anlage.id || t.status === 'abgesagt') return false
+      if (!nurBereich) return true
+      // exakt zugeordnet ODER (unzugeordneter Alt-Termin und dieser Bereich ist der einzige der Anlage)
+      if (t.bereich_id === nurBereich) return true
+      if (!t.bereich_id && bereicheDerAnlage.length === 1) return true
+      return false
+    }).sort((a, b) => b.datum.localeCompare(a.datum)),
+    [termine, anlage, nurBereich, bereiche])
 
   const bereichIds = nurBereich ? new Set([nurBereich])
     : new Set(bereiche.filter(b => b.anlage_id === anlage.id).map(b => b.id))
   const eigeneAuftraege = auftraege.filter(a => bereichIds.has(a.bereich_id))
 
   const phasen = useMemo(() => phasenErmitteln([{
-    id: anlage.id, name: anlage.name, kunde: kunde?.name_kurz ?? '',
+    id: anlage.id, name: anlage.name, kunde: kundeAnzeige(kunde),
     ort: anlage.ort, turnusMonate: anlage.turnus_monate,
     termine: eigene.map(t => t.datum),
   }]), [anlage, kunde, eigene])
@@ -56,7 +62,7 @@ export default function HistorieModal({ anlage, kunde, termine, auftraege, berei
         <div className="modal-kopf">
           <div>
             <strong><i className="fas fa-clock-rotate-left" aria-hidden="true"></i> Untersuchungsverlauf · {anlage.name}{bereichName ? ` › ${bereichName}` : ''}</strong>
-            <div className="hint">{kunde?.name_kurz ?? '–'} · {[anlage.plz, anlage.ort].filter(Boolean).join(' ')} ·
+            <div className="hint">{kundeAnzeige(kunde)} · {[anlage.plz, anlage.ort].filter(Boolean).join(' ')} ·
               Turnus {anlage.turnus_monate === 3 ? '3 Monate' : anlage.turnus_monate === 12 ? '1 Jahr' : anlage.turnus_monate === 36 ? '3 Jahre' : '–'}</div>
           </div>
           <button className="modal-schliessen" onClick={onClose} aria-label="Schließen">×</button>

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { db } from '../lib/data'
 import type { Anlage, Kunde, Termin } from '../lib/types'
-import { fmtDatum } from '../lib/types'
+import { fmtDatum, kundeAnzeige } from '../lib/types'
 import { Abschnitt } from '../components/ui'
 import { phasenErmitteln, jahresStatistik, type AnlagenEingabe, type Phase } from '../lib/phasen'
 
@@ -64,7 +64,7 @@ export default function Auswertungen() {
   }, [])
 
   const eingabe: AnlagenEingabe[] = useMemo(() => anlagen.map(a => ({
-    id: a.id, name: a.name, kunde: kunden.find(k => k.id === a.kunde_id)?.name_kurz ?? '–',
+    id: a.id, name: a.name, kunde: kundeAnzeige(kunden.find(k => k.id === a.kunde_id)),
     ort: a.ort, turnusMonate: a.turnus_monate,
     termine: termine.filter(t => t.anlage_id === a.id).map(t => t.datum),
   })), [anlagen, kunden, termine])

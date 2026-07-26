@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { db, demoModus, supabase } from '../lib/data'
 import { vorschauErzeugen, type ImportVorschau, type LegacyDatensatz } from '../lib/legacyImport'
-import { Abschnitt } from '../components/ui'
+import { Abschnitt, Meldung } from '../components/ui'
 import { useAuth } from '../lib/auth'
 import { fmtDatum, nummerVoll, ART_LABEL } from '../lib/types'
 
@@ -95,7 +95,7 @@ export default function System() {
 
   return (
     <>
-      {meldung && <div className="notice">{meldung}</div>}
+      <Meldung text={meldung} onWeg={() => setMeldung('')} />
 
       <Abschnitt titel="Import: Terminverwaltung V4 (JSON)"
         aktionen={vorschau ? (
@@ -165,6 +165,19 @@ export default function System() {
           Tabelle <code>td_profile</code>, Feld <code>rolle</code>. Alle wichtigen Änderungen werden
           mit Zeitstempel und Nutzer protokolliert.
         </p>
+      </Abschnitt>
+
+      <Abschnitt titel="Wartung">
+        <div style={{ padding: '16px 20px' }}>
+          <p className="hint" style={{ marginTop: 0 }}>
+            Ordnet Termine, die durch früheres Zusammenführen keinem Bereich zugewiesen wurden,
+            nachträglich dem Bereich zu (bei Anlagen mit genau einem Bereich). Behebt fehlende
+            Historie in zusammengeführten Bereichen.
+          </p>
+          <button onClick={async () => { try { setMeldung(await db.historieNachzuordnen()) } catch (e: any) { setMeldung('Fehler: ' + e.message) } }}>
+            <i className="fas fa-wand-magic-sparkles" aria-hidden="true"></i> Historie-Zuordnung reparieren
+          </button>
+        </div>
       </Abschnitt>
 
       <Abschnitt titel="Datensicherung & Export">

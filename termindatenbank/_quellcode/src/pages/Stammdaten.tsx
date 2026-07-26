@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { db } from '../lib/data'
 import type { Anlage, Bereich, Kunde, Kundentyp } from '../lib/types'
-import { fmtDatum } from '../lib/types'
+import { fmtDatum, kundeAnzeige } from '../lib/types'
 import HistorieModal from '../components/HistorieModal'
 import { Meldung } from '../components/ui'
 
@@ -84,10 +84,10 @@ export default function Stammdaten() {
     let ziel: string
     let quellen: string[]
     if (mergeNeu) {
-      if (!mergeNeuName.kurz.trim() || !mergeNeuName.lang.trim() || mergeWahl.size < 1) return
+      if (!mergeNeuName.lang.trim() || mergeWahl.size < 1) return
       await db.kundeAnlegen({ name_lang: mergeNeuName.lang.trim(), name_kurz: mergeNeuName.kurz.trim(), typ: 'hausverwaltung' })
       const alle = await db.kunden()
-      const neu = alle.find(k => k.name_kurz === mergeNeuName.kurz.trim() && k.name_lang === mergeNeuName.lang.trim())
+      const neu = [...alle].reverse().find(k => k.name_lang === mergeNeuName.lang.trim())
       if (!neu) { setMeldung('Neuer Kunde konnte nicht angelegt werden.'); return }
       ziel = neu.id
       quellen = [...mergeWahl]
@@ -187,7 +187,7 @@ export default function Stammdaten() {
   const bereicheDerAnlage = bereiche.filter(b => b.anlage_id === anlageId)
 
   const kundeSpeichern = async () => {
-    if (!kf.name_lang || !kf.name_kurz) return
+    if (!kf.name_lang) return
     await db.kundeAnlegen(kf)
     setNeuKunde(false); setKf({ ...kf, name_lang: '', name_kurz: '' }); laden()
   }
@@ -233,8 +233,8 @@ export default function Stammdaten() {
           </label>
           {neuKunde && (
             <div className="stamm-formular">
-              <input placeholder="Vollständiger Name" value={kf.name_lang} onChange={e => setKf({ ...kf, name_lang: e.target.value })} />
-              <input placeholder="Kurzname (Kalender)" value={kf.name_kurz} onChange={e => setKf({ ...kf, name_kurz: e.target.value })} />
+              <input placeholder="Vollständiger Name (wie in HV)" value={kf.name_lang} onChange={e => setKf({ ...kf, name_lang: e.target.value })} />
+              <input placeholder="Kurzname für Outlook-Titel (optional)" value={kf.name_kurz} onChange={e => setKf({ ...kf, name_kurz: e.target.value })} />
               <select value={kf.typ} onChange={e => setKf({ ...kf, typ: e.target.value as Kundentyp })}>
                 {Object.entries(TYP).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
               </select>
@@ -258,10 +258,10 @@ export default function Stammdaten() {
               </label>
               {mergeNeu && (
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <input style={{ width: 110 }} placeholder="Kurzname" value={mergeNeuName.kurz}
-                    onChange={e => setMergeNeuName({ ...mergeNeuName, kurz: e.target.value })} />
-                  <input style={{ flex: 1 }} placeholder="Voller Name, z. B. AWO Schwaben" value={mergeNeuName.lang}
+                  <input style={{ flex: 1 }} placeholder="Voller Name, z. B. AWO Bezirksverband Schwaben e.V." value={mergeNeuName.lang}
                     onChange={e => setMergeNeuName({ ...mergeNeuName, lang: e.target.value })} />
+                  <input style={{ width: 130 }} placeholder="Kurz (optional)" value={mergeNeuName.kurz}
+                    onChange={e => setMergeNeuName({ ...mergeNeuName, kurz: e.target.value })} />
                 </div>
               )}
               <p className="hint" style={{ margin: 0 }}>
@@ -269,11 +269,11 @@ export default function Stammdaten() {
                 bleiben dort einzeln als Anlagen bearbeitbar (Adresse, Betreuer …).
               </p>
               <button className="primary" onClick={zusammenfuehren}
-                disabled={mergeNeu ? (mergeWahl.size < 1 || !mergeNeuName.kurz.trim() || !mergeNeuName.lang.trim())
+                disabled={mergeNeu ? (mergeWahl.size < 1 || !mergeNeuName.lang.trim())
                                    : mergeWahl.size < 2}>
                 <i className="fas fa-object-group" aria-hidden="true"></i>
                 {mergeNeu
-                  ? (mergeWahl.size < 1 ? 'Kunden ankreuzen' : !mergeNeuName.kurz.trim() || !mergeNeuName.lang.trim() ? 'Namen des neuen Kunden eingeben' : `${mergeWahl.size} Kunden → ${mergeNeuName.kurz.trim()}`)
+                  ? (mergeWahl.size < 1 ? 'Kunden ankreuzen' : !mergeNeuName.lang.trim() ? 'Namen des neuen Kunden eingeben' : `${mergeWahl.size} Kunden → ${mergeNeuName.lang.trim()}`)
                   : (mergeWahl.size < 2 ? 'Mind. 2 Kunden ankreuzen' : `${mergeWahl.size} Kunden zusammenführen`)}
               </button>
             </div>
@@ -284,7 +284,7 @@ export default function Stammdaten() {
                 <label key={k.id} className={`stamm-eintrag merge ${mergeWahl.has(k.id) ? 'markiert' : ''} ${mergeZiel === k.id ? 'ziel' : ''}`}>
                   <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <input type="checkbox" checked={mergeWahl.has(k.id)} onChange={() => mergeToggle(k.id)} />
-                    <strong>{k.name_kurz}</strong>
+                    <strong>{kundeAnzeige(k)}</strong>
                     {mergeWahl.has(k.id) && (
                       <button type="button" className="ziel-stern" title={mergeZiel === k.id ? 'Ziel' : 'Als Ziel wählen'}
                         onClick={e => { e.preventDefault(); setMergeZiel(k.id) }}>
@@ -299,8 +299,8 @@ export default function Stammdaten() {
               ) : (
               <button key={k.id} className={`stamm-eintrag ${k.id === kundeId ? 'aktiv' : ''}`}
                 onClick={() => { setKundeId(k.id); setAnlageId('') }}>
-                <strong>{k.name_kurz}</strong>
-                <span className="hint">{k.name_lang}</span>
+                <strong>{k.name_lang}</strong>
+                {k.name_kurz && <span className="hint">Kurz: {k.name_kurz}</span>}
                 <span className="stamm-zahl">{anlagen.filter(a => a.kunde_id === k.id).length}</span>
               </button>
               )
@@ -312,7 +312,7 @@ export default function Stammdaten() {
         {/* ── Spalte 2: Anlagen des Kunden ── */}
         <div className="stamm-spalte">
           <div className="stamm-kopf">
-            <h3><i className="fas fa-building" aria-hidden="true"></i> Anlagen {kunde ? `– ${kunde.name_kurz} (${anlagenDesKunden.length})` : ''}</h3>
+            <h3><i className="fas fa-building" aria-hidden="true"></i> Anlagen {kunde ? `– ${kundeAnzeige(kunde)} (${anlagenDesKunden.length})` : ''}</h3>
             {kunde && <div style={{ display: 'flex', gap: 6 }}>
               <button className="zeile-btn" style={aMergeModus ? { background: '#6c757d', borderColor: '#6c757d' } : undefined}
                 onClick={() => { setAMergeModus(!aMergeModus); setAMergeWahl(new Set()); setAMergeZiel('') }}

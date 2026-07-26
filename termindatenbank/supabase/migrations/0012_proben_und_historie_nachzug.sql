@@ -1,0 +1,4 @@
+-- (Bereits angewandt: td_anlagen.proben_anzahl, td_historie_nachzuordnen)
+-- 1) td_anlagen.proben_anzahl: Gesamt-Probenzahl aus der Excel-Spalte "Proben"
+-- 2) td_historie_nachzuordnen(): weist unzugeordnete Alt-Termine dem Bereich zu
+--    (bei Anlagen mit genau einem Bereich) -> repariert Historie nach Merge

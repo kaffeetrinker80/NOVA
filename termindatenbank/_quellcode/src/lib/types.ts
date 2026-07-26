@@ -14,7 +14,8 @@ export interface Anlage {
   id: string; kunde_id: string; name: string
   strasse?: string; plz?: string; ort?: string; objekt_referenz?: string
   turnus_monate?: number; naechste_untersuchung?: string
-  notizen?: string; planungsnotiz?: string; objekt_betreuer?: string; aktiv: boolean
+  notizen?: string; planungsnotiz?: string; objekt_betreuer?: string
+  proben_anzahl?: number; aktiv: boolean
 }
 export interface Bereich {
   id: string; anlage_id: string; name: string
@@ -65,4 +66,14 @@ export function fmtDatum(iso?: string): string {
   if (!iso) return '–'
   const [y, m, d] = iso.split('-')
   return `${d}.${m}.${y}`
+}
+
+
+/** Anzeigename eines Kunden: IMMER der volle Name. */
+export function kundeAnzeige(k?: { name_lang?: string; name_kurz?: string }): string {
+  return k?.name_lang || k?.name_kurz || '–'
+}
+/** Kurzname NUR für den Outlook-Titel; fällt auf den vollen Namen zurück. */
+export function kundeOutlook(k?: { name_lang?: string; name_kurz?: string }): string {
+  return (k?.name_kurz && k.name_kurz.trim()) ? k.name_kurz : (k?.name_lang || '')
 }

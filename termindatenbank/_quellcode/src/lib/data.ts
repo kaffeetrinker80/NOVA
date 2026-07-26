@@ -224,6 +224,7 @@ export const db = {
         plz: a.plz, ort: a.ort, objekt_referenz: a.objekt_referenz,
         turnus_monate: a.turnus_monate, naechste_untersuchung: a.naechste_untersuchung,
         notizen: a.notizen, planungsnotiz: (a as any).planungsnotiz ?? null,
+        proben_anzahl: (a as any).proben_anzahl ?? null,
         legacy_quelle: 'Terminverwaltung V4',
       })).filter(a => a.kunde_id)
       const { error } = await supabase.from('td_anlagen').upsert(teil, { onConflict: 'legacy_id' })
@@ -274,7 +275,7 @@ export const db = {
     return `Übernommen: ${v.kunden.length} Kunden, ${v.anlagen.length} Anlagen, ${neueBereiche.length} Bereiche, ${termineOk} historische Termine.`
   },
 
-  async anlageAktualisieren(id: string, patch: Partial<Pick<Anlage, 'name' | 'strasse' | 'plz' | 'ort' | 'notizen' | 'naechste_untersuchung' | 'turnus_monate' | 'aktiv' | 'objekt_betreuer'>> & { planungsnotiz?: string | null }): Promise<void> {
+  async anlageAktualisieren(id: string, patch: Partial<Pick<Anlage, 'name' | 'strasse' | 'plz' | 'ort' | 'notizen' | 'naechste_untersuchung' | 'turnus_monate' | 'aktiv' | 'objekt_betreuer' | 'proben_anzahl'>> & { planungsnotiz?: string | null }): Promise<void> {
     if (!supabase) { const a = demo.anlagen.find(x => x.id === id); if (a) Object.assign(a, patch); return }
     const { error } = await supabase.from('td_anlagen').update(patch).eq('id', id)
     if (error) throw error
@@ -304,6 +305,13 @@ export const db = {
     if (!supabase) return
     const { error } = await supabase.rpc('td_anlage_verwalter_wechseln', { p_anlage: anlageId, p_neuer_kunde: neuerKundeId })
     if (error) throw error
+  },
+
+  async historieNachzuordnen(): Promise<string> {
+    if (!supabase) return 'Demo-Modus.'
+    const { data, error } = await supabase.rpc('td_historie_nachzuordnen')
+    if (error) throw error
+    return data as string
   },
 
   async importStaging(quelle: string, typ: string, zeilen: unknown[]): Promise<number> {

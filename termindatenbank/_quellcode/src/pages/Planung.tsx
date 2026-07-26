@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { db } from '../lib/data'
 import type { Anlage, Bereich, Kunde, Termin } from '../lib/types'
-import { fmtDatum } from '../lib/types'
+import { fmtDatum, kundeAnzeige } from '../lib/types'
 import PlanModal from '../components/PlanModal'
 import HistorieModal from '../components/HistorieModal'
 import type { Auftrag } from '../lib/types'
@@ -62,6 +62,7 @@ export default function Planung() {
   const [bisDatum, setBisDatum] = useState('')
   const [sortSpalte, setSortSpalte] = useState<keyof Zeile | 'kundeName' | 'ort'>('faellig')
   const [infoAnzeigen, setInfoAnzeigen] = useState(true)
+  const [inaktiveAnzeigen, setInaktiveAnzeigen] = useState(false)
   const [sortAuf, setSortAuf] = useState(true)
   const [modalAnlage, setModalAnlage] = useState<Anlage | null>(null)
   const [historieAnlage, setHistorieAnlage] = useState<Anlage | null>(null)
@@ -74,7 +75,7 @@ export default function Planung() {
   }
   useEffect(laden, [])
 
-  const zeilen: Zeile[] = useMemo(() => anlagen.filter(a => a.aktiv).map(a => {
+  const zeilen: Zeile[] = useMemo(() => anlagen.filter(a => inaktiveAnzeigen ? !a.aktiv : a.aktiv).map(a => {
     const zukunft = termine
       .filter(t => t.anlage_id === a.id && t.datum >= heuteIso && (t.status === 'geplant' || t.status === 'bestaetigt'))
       .map(t => t.datum).sort()
@@ -107,13 +108,13 @@ export default function Planung() {
       z = z.filter(x =>
         x.anlage.name.toLowerCase().includes(q) ||
         (x.kunde?.name_lang ?? '').toLowerCase().includes(q) ||
-        (x.kunde?.name_kurz ?? '').toLowerCase().includes(q) ||
+        kundeAnzeige(x.kunde).toLowerCase().includes(q) ||
         (x.anlage.ort ?? '').toLowerCase().includes(q) ||
         (x.anlage.plz ?? '').toLowerCase().includes(q))
     }
 
     const wert = (x: Zeile): string => {
-      if (sortSpalte === 'kundeName') return x.kunde?.name_kurz ?? ''
+      if (sortSpalte === 'kundeName') return kundeAnzeige(x.kunde)
       if (sortSpalte === 'ort') return x.anlage.ort ?? ''
       if (sortSpalte === 'geplantAm') return x.geplantAm ?? '9999'
       if (sortSpalte === 'faellig') return x.faellig ?? '9999'
@@ -176,6 +177,11 @@ export default function Planung() {
           <i className={`fas ${infoAnzeigen ? 'fa-eye-slash' : 'fa-eye'}`} aria-hidden="true"></i>
           Info {infoAnzeigen ? 'ausblenden' : 'anzeigen'}
         </button>
+        <button onClick={() => setInaktiveAnzeigen(!inaktiveAnzeigen)}
+          style={inaktiveAnzeigen ? { background: '#6c757d', color: '#fff', borderColor: '#6c757d' } : undefined}>
+          <i className="fas fa-eye-slash" aria-hidden="true"></i>
+          {inaktiveAnzeigen ? 'Aktive Anlagen zeigen' : 'Ausgeblendete verwalten'}
+        </button>
         <button onClick={() => window.print()}>
           <i className="fas fa-print" aria-hidden="true"></i> Gefilterte Einträge drucken
         </button>
@@ -208,6 +214,7 @@ export default function Planung() {
               <th>PLZ</th>
               <th onClick={() => sortieren('ort')} style={{ cursor: 'pointer' }}>Ort <Pfeil s="ort" /></th>
               <th>Turnus</th>
+              <th>Proben</th>
               <th onClick={() => sortieren('faellig')} style={{ cursor: 'pointer' }}>Nächste Untersuchung <Pfeil s="faellig" /></th>
               {tab === 'geplant' && <th onClick={() => sortieren('geplantAm')} style={{ cursor: 'pointer' }}>Geplant <Pfeil s="geplantAm" /></th>}
               {infoAnzeigen && <th>Info</th>}
@@ -217,11 +224,12 @@ export default function Planung() {
               {gefiltert.slice(0, 500).map(z => (
                 <tr key={z.anlage.id} className={zeilenKlasse(z, tab)}
                   onDoubleClick={() => setModalAnlage(z.anlage)} title="Doppelklick: Termin planen">
-                  <td>{z.kunde?.name_kurz ?? '–'}</td>
+                  <td>{kundeAnzeige(z.kunde)}</td>
                   <td style={{ fontWeight: 600 }}>{z.anlage.name}</td>
                   <td>{z.anlage.plz ?? '–'}</td>
                   <td>{z.anlage.ort ?? '–'}</td>
                   <td>{turnusText(z.anlage.turnus_monate)}</td>
+                  <td>{z.anlage.proben_anzahl ?? '–'}</td>
                   <td>{fmtDatum(z.faellig)}</td>
                   {tab === 'geplant' && <td style={{ fontWeight: 600 }}>{z.geplantAm ? fmtDatum(z.geplantAm) : <span className="hint">{z.geplantText}</span>}</td>}
                   {infoAnzeigen && <td className="info-zelle">
@@ -229,17 +237,28 @@ export default function Planung() {
                       .filter(Boolean).join(' · ') || ''}
                   </td>}
                   <td className="no-print" style={{ whiteSpace: 'nowrap' }}>
-                    <button className="zeile-btn" onClick={() => setModalAnlage(z.anlage)}>
-                      <i className="fas fa-calendar-plus" aria-hidden="true"></i> Planen
-                    </button>{' '}
-                    <button className="zeile-btn" style={{ background: '#6c757d', borderColor: '#6c757d' }}
-                      onClick={() => setHistorieAnlage(z.anlage)} title="Untersuchungsverlauf">
-                      <i className="fas fa-clock-rotate-left" aria-hidden="true"></i>
-                    </button>
+                    {inaktiveAnzeigen ? (
+                      <button className="zeile-btn" onClick={async () => { await db2.anlageAktualisieren(z.anlage.id, { aktiv: true }); laden() }}>
+                        <i className="fas fa-eye" aria-hidden="true"></i> Wieder einblenden
+                      </button>
+                    ) : (<>
+                      <button className="zeile-btn" onClick={() => setModalAnlage(z.anlage)}>
+                        <i className="fas fa-calendar-plus" aria-hidden="true"></i> Planen
+                      </button>{' '}
+                      <button className="zeile-btn" style={{ background: '#6c757d', borderColor: '#6c757d' }}
+                        onClick={() => setHistorieAnlage(z.anlage)} title="Untersuchungsverlauf">
+                        <i className="fas fa-clock-rotate-left" aria-hidden="true"></i>
+                      </button>{' '}
+                      <button className="zeile-btn" style={{ background: '#adb5bd', borderColor: '#adb5bd' }}
+                        onClick={async () => { await db2.anlageAktualisieren(z.anlage.id, { aktiv: false }); laden() }}
+                        title="Anlage ausblenden (inaktiv setzen)">
+                        <i className="fas fa-eye-slash" aria-hidden="true"></i>
+                      </button>
+                    </>)}
                   </td>
                 </tr>
               ))}
-              {gefiltert.length === 0 && <tr><td colSpan={9} className="hint">Keine Einträge für die aktuelle Auswahl.</td></tr>}
+              {gefiltert.length === 0 && <tr><td colSpan={10} className="hint">Keine Einträge für die aktuelle Auswahl.</td></tr>}
             </tbody>
           </table>
         </div>

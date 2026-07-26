@@ -1,15 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
 import { db } from '../lib/data'
 import type { Anlage, Bereich, Kunde, Untersuchungsart } from '../lib/types'
-import { ART_LABEL } from '../lib/types'
+import { ART_LABEL, kundeAnzeige, kundeOutlook } from '../lib/types'
 import {
   ACHTUNG_VARIANTEN, ART_VARIANTEN, PROBENEHMER,
   aushangDrucken, aushangHtml, type AushangDaten,
 } from '../lib/aushang'
 
 interface ArtWahl { art: Untersuchungsart; suffix: string; umfang?: string; proben_geplant?: number; aktiv: boolean }
-const artenStandard = (): ArtWahl[] => [
-  { art: 'legionellen', suffix: '', aktiv: true },
+const artenStandard = (proben?: number): ArtWahl[] => [
+  { art: 'legionellen', suffix: '', aktiv: true, proben_geplant: proben },
   { art: 'mibi', suffix: 'M', umfang: 'Standard', aktiv: false },
   { art: 'chemie', suffix: 'C', aktiv: false },
   { art: 'vorortparameter', suffix: 'V', aktiv: false },
@@ -34,7 +34,7 @@ export default function PlanModal({ anlage, kunde, bereiche, onClose, onSaved }:
   // ── Bereiche & Arten ──
   const eigene = bereiche.filter(b => b.anlage_id === anlage.id)
   const [wahl, setWahl] = useState<Record<string, ArtWahl[]>>(() =>
-    eigene.length === 1 ? { [eigene[0].id]: artenStandard() } : {})
+    eigene.length === 1 ? { [eigene[0].id]: artenStandard(anlage.proben_anzahl) } : {})
   const [neuerBereich, setNeuerBereich] = useState('')
 
   // ── Nummernvergabe ──
@@ -54,7 +54,7 @@ export default function PlanModal({ anlage, kunde, bereiche, onClose, onSaved }:
   useEffect(() => { db.nummerVorschau().then(setVorschau).catch(() => setVorschau('–')) }, [])
 
   const toggleBereich = (id: string) =>
-    setWahl(w => (id in w ? Object.fromEntries(Object.entries(w).filter(([k]) => k !== id)) : { ...w, [id]: artenStandard() }))
+    setWahl(w => (id in w ? Object.fromEntries(Object.entries(w).filter(([k]) => k !== id)) : { ...w, [id]: artenStandard(anlage.proben_anzahl) }))
 
   const bereichAnlegen = async () => {
     if (!neuerBereich.trim()) return
@@ -102,7 +102,7 @@ export default function PlanModal({ anlage, kunde, bereiche, onClose, onSaved }:
   // ── Outlook: Titel exakt im gewohnten Format ──
   const outlookTitel = useMemo(() => {
     const nr = ergebnisse?.[0]?.nummer ?? (manuell && manuellNr ? manuellNr : vorschau)
-    return `Probenahme Nr. ${nr} - ${von} Uhr bis ${bis} Uhr ${anlage.name}, ${anlage.ort ?? ''} - ${kunde?.name_kurz ?? ''}`
+    return `Probenahme Nr. ${nr} - ${von} Uhr bis ${bis} Uhr ${anlage.name}, ${anlage.ort ?? ''} - ${kundeOutlook(kunde)}`
   }, [ergebnisse, vorschau, manuell, manuellNr, von, bis, anlage, kunde])
 
   const outlookBody = useMemo(() => {
@@ -168,7 +168,7 @@ export default function PlanModal({ anlage, kunde, bereiche, onClose, onSaved }:
         <div className="modal-kopf">
           <div>
             <strong>{anlage.name}</strong>
-            <div className="hint">{kunde?.name_kurz ?? '–'} · {[anlage.plz, anlage.ort].filter(Boolean).join(' ')}</div>
+            <div className="hint">{kundeAnzeige(kunde)} · {[anlage.plz, anlage.ort].filter(Boolean).join(' ')}</div>
           </div>
           <button className="modal-schliessen" onClick={onClose} aria-label="Schließen">×</button>
         </div>

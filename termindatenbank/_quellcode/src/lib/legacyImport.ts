@@ -18,7 +18,7 @@ export interface ImportVorschau {
   anlagen: {
     legacy_id: string; kunde_legacy: string; name: string; plz?: string; ort?: string
     objekt_referenz?: string; turnus_monate?: number; naechste_untersuchung?: string
-    notizen?: string; planungsnotiz?: string
+    notizen?: string; planungsnotiz?: string; proben_anzahl?: number
   }[]
   termine: { legacy_id: string; anlage_legacy: string; datum: string; geplant?: boolean }[]
   uebersprungen: number
@@ -108,7 +108,7 @@ export function vorschauErzeugen(datensaetze: LegacyDatensatz[]): ImportVorschau
       kunden.set(kundeKey, {
         legacy_id: kundeKey,
         name_lang: verwaltung,
-        name_kurz: verwaltung,          // Kurzname = voller Name; wird bei Bedarf manuell angepasst
+        name_kurz: '',                  // Kurzname bleibt leer; nur bei Bedarf manuell (für Outlook-Titel)
         typ: kundentyp(verwaltung),
       })
     }
@@ -124,6 +124,7 @@ export function vorschauErzeugen(datensaetze: LegacyDatensatz[]): ImportVorschau
         objekt_referenz: text(rec['Verw. Nr.']) || undefined,
         turnus_monate: parseTurnus(rec['Turnus']),
         naechste_untersuchung: parseDatum(rec['Nächste Unters.']) ?? undefined,
+        proben_anzahl: (() => { const n = parseInt(String(rec['Proben'] ?? '').replace(/\D/g, '')); return Number.isFinite(n) && n > 0 ? n : undefined })(),
         notizen: [
           text(rec['Hygiene Inspektion']) || null,
           rec['Phase'] === true ? 'Alt-Kennzeichen: aktive Überschreitungsphase' : null,
