@@ -124,3 +124,11 @@ src/pages/             Dashboard, Termine, Auftragsbuch, Kunden, Anlagen,
 - Übernahme-Assistent Staging → Live mit Feld-Mapping
 - Auswertungen der Überschreitungsphasen wie im bisherigen Dashboard
 - Probenehmer-Ansicht für mobil (Terminliste + Ist-Erfassung)
+
+## Fachlogik-Ansatz (neu)
+
+Der erste Entwurf für die robuste Behandlung von Prüfberichten, Überschreitungen,
+Nachuntersuchungen und sicheren Bereichs-Umstrukturierungen liegt in
+[`FACHLOGIK_ANSATZ.md`](FACHLOGIK_ANSATZ.md). Die passende, **noch nicht
+produktiv ausgeführte** Datenbankmigration ist
+`supabase/migrations/0013_fachlogik_historie_und_sichere_umstrukturierung.sql`.
