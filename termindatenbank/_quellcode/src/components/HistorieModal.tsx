@@ -45,11 +45,7 @@ export default function HistorieModal({ anlage, kunde, termine, auftraege, berei
   const aktuelleFachphase = fachPhasen.find(p => !['regelturnus_bestaetigt', 'abgeschlossen'].includes(p.status))
   const aktuellePhase = phasen.find(p => p.status === 'aktiv' || p.status === 'prueffall')
   const fokusPhase = aktuellePhase ?? phasen[phasen.length - 1]
-  const relevanteTermine = useMemo(() => {
-    if (!fokusPhase) return vergangene.slice(-8)
-    const ende = fokusPhase.letzteNachuntersuchung ?? heute
-    return vergangene.filter(t => t.datum >= fokusPhase.ueberschreitungsdatum && t.datum <= ende)
-  }, [fokusPhase, vergangene])
+  const relevanteTermine = vergangene
 
   const rolle = (termin: Termin, index: number): { text: string; art: 'start' | 'nu' | 'normal' } => {
     const start = phasen.find(p => p.ueberschreitungsdatum === termin.datum)
