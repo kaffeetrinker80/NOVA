@@ -19,10 +19,12 @@ const PHASE_TEXT: Record<Ueberschreitungsphase['status'], string> = {
 }
 
 function bereichAnsicht(b: Bereich) {
-  const teile = b.name.split(' – ')
-  if (teile.length > 1) return { herkunft: teile[0], titel: teile.slice(1).join(' – '), uebernommen: true }
-  if (b.legacy_quelle === 'Anlagen-Zusammenführung') return { herkunft: b.name, titel: 'Gesamtanlage', uebernommen: true }
-  return { herkunft: '', titel: b.name, uebernommen: false }
+  const titel = b.name.endsWith(' – Gesamtanlage') ? b.name.replace(/ – Gesamtanlage$/, '') : b.name
+  const mergeHinweis = b.legacy_quelle === 'Anlagen-Zusammenführung'
+    || b.name.endsWith(' – Gesamtanlage')
+    || (b.beschreibung ?? '').includes('Übernommen aus früherer Anlage:')
+    || (b.beschreibung ?? '').includes('Zielanlage beim Anlagen-Merge')
+  return { titel, uebernommen: mergeHinweis }
 }
 
 export default function Stammdaten() {
@@ -135,7 +137,7 @@ export default function Stammdaten() {
     const ansicht = bereichAnsicht(bereich)
     const name = bf.name.trim() || ansicht.titel || bereich.name
     await db.bereichAktualisieren(bereich.id, {
-      name: ansicht.herkunft ? `${ansicht.herkunft} – ${name}` : name, strasse: bf.strasse || undefined,
+      name, strasse: bf.strasse || undefined,
       hausnummer: bf.hausnummer || undefined, wwb_details: bf.wwb_details || undefined,
       notizen: bf.notizen || undefined,
     })
@@ -501,7 +503,7 @@ export default function Stammdaten() {
                         <strong><i className={`fas fa-chevron-${b.id === bereichId ? 'down' : 'right'}`} style={{ fontSize: '.7rem', marginRight: 6 }}></i>{ansicht.titel}</strong>
                         <span className={`badge ${status.klasse}`}><i className={`fas ${status.icon}`} aria-hidden="true"></i> {status.text}</span>
                       </span>
-                      {ansicht.herkunft && <span className="bereich-herkunft"><i className="fas fa-layer-group" aria-hidden="true"></i> ehemalige Anlage: {ansicht.herkunft}</span>}
+                      {ansicht.uebernommen && <span className="bereich-herkunft"><i className="fas fa-layer-group" aria-hidden="true"></i> als Bereich aus ehemaliger Anlage übernommen</span>}
                       {(b.strasse || b.hausnummer) && <span className="hint">{[b.strasse, b.hausnummer].filter(Boolean).join(' ')}</span>}
                     </button>
                     {b.id === bereichId && (
