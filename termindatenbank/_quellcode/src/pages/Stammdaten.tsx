@@ -61,7 +61,7 @@ export default function Stammdaten() {
   // Anlagen zusammenführen
   const [aMergeModus, setAMergeModus] = useState(false)
   const [aMergeWahl, setAMergeWahl] = useState<Set<string>>(new Set())
-  const [aMergeZiel, setAMergeZiel] = useState('')
+  const [aMergeName, setAMergeName] = useState('')
 
   // Kunden umbenennen
   const [kName, setKName] = useState({ kurz: '', lang: '' })
@@ -85,10 +85,10 @@ export default function Stammdaten() {
   const kundenGefiltert = useMemo(() => {
     const q = suche.toLowerCase()
     return kunden
-      .filter(k => !q || k.name_lang.toLowerCase().includes(q) || k.name_kurz.toLowerCase().includes(q)
-        || (inaktiveKunden && !k.aktiv))
+      .filter(k => (inaktiveKunden || k.aktiv)
+        && (!q || k.name_lang.toLowerCase().includes(q) || k.name_kurz.toLowerCase().includes(q)))
       .sort((a, b) => a.name_lang.localeCompare(b.name_lang, 'de'))
-  }, [kunden, suche])
+  }, [kunden, suche, inaktiveKunden])
 
   const kunde = kunden.find(k => k.id === kundeId)
 
@@ -157,23 +157,34 @@ export default function Stammdaten() {
   }, [anlageId])
   useEffect(() => {
     setKName({ kurz: kunde?.name_kurz ?? '', lang: kunde?.name_lang ?? '' })
-    setAMergeModus(false); setAMergeWahl(new Set()); setAMergeZiel('')
+    setAMergeModus(false); setAMergeWahl(new Set()); setAMergeName('')
   }, [kundeId])
 
   const aMergeToggle = (id: string) => setAMergeWahl(w => {
     const n = new Set(w)
-    if (n.has(id)) { n.delete(id); if (aMergeZiel === id) setAMergeZiel([...n][0] ?? '') }
-    else { n.add(id); if (!aMergeZiel) setAMergeZiel(id) }
+    if (n.has(id)) n.delete(id)
+    else n.add(id)
     return n
   })
   const anlagenZusammenfuehren = async () => {
-    const ziel = aMergeZiel || [...aMergeWahl][0]
-    const quellen = [...aMergeWahl].filter(id => id !== ziel)
-    if (!ziel || quellen.length === 0) return
+    const quellen = [...aMergeWahl]
+    const name = aMergeName.trim()
+    if (!kundeId || quellen.length < 2 || !name) return
+    const erste = anlagen.find(a => a.id === quellen[0])
     try {
+      const ziel = await db.anlageAnlegenRueckgabe({
+        kunde_id: kundeId,
+        name,
+        strasse: erste?.strasse,
+        plz: erste?.plz,
+        ort: erste?.ort,
+        turnus_monate: erste?.turnus_monate,
+        naechste_untersuchung: erste?.naechste_untersuchung,
+        notizen: `Aus Anlagen-Merge erstellt: ${quellen.map(id => anlagen.find(a => a.id === id)?.name ?? id).join(' / ')}`,
+      })
       const erg = await db.anlagenZusammenfuehren(ziel, quellen)
-      setMeldung(erg + ' Die Quellen sind jetzt Untersuchungsbereiche der Ziel-Anlage, Historie vollständig erhalten.')
-      setAMergeModus(false); setAMergeWahl(new Set()); setAMergeZiel(''); setAnlageId(ziel); laden()
+      setMeldung(erg + ` Neues Objekt „${name}“ enthält jetzt die gewählten Anlagen als eigene Bereiche mit Historie.`)
+      setAMergeModus(false); setAMergeWahl(new Set()); setAMergeName(''); setAnlageId(ziel); laden()
     } catch (e: any) { setMeldung('Fehler: ' + (e.message ?? e)) }
   }
   const kundeUmbenennen = async () => {
@@ -354,8 +365,8 @@ export default function Stammdaten() {
             <h3><i className="fas fa-building" aria-hidden="true"></i> Anlagen {kunde ? `– ${kundeAnzeige(kunde)} (${anlagenDesKunden.length})` : ''}</h3>
             {kunde && <div style={{ display: 'flex', gap: 6 }}>
               <button className="zeile-btn" style={aMergeModus ? { background: '#6c757d', borderColor: '#6c757d' } : undefined}
-                onClick={() => { setAMergeModus(!aMergeModus); setAMergeWahl(new Set()); setAMergeZiel('') }}
-                title="Mehrere Anlagen zu einer zusammenführen (Quellen werden Bereiche)">
+                onClick={() => { setAMergeModus(!aMergeModus); setAMergeWahl(new Set()); setAMergeName('') }}
+                title="Mehrere Anlagen als Bereiche in ein neues Objekt übernehmen">
                 <i className="fas fa-object-group" aria-hidden="true"></i>
               </button>
               {!aMergeModus && <button className="zeile-btn" onClick={() => setNeuAnlage(!neuAnlage)}>
@@ -380,13 +391,16 @@ export default function Stammdaten() {
           {kunde && aMergeModus && (
             <div className="merge-leiste">
               <p className="hint" style={{ margin: 0 }}>
-                Anlagen ankreuzen – <i className="fas fa-star" style={{ color: '#b45309' }}></i> markiert das Ziel.
-                Die Quellen werden zu <strong>Untersuchungsbereichen</strong> der Ziel-Anlage, ihre komplette
-                Historie wandert mit.
+                Anlagen ankreuzen und den Namen des neuen Objekts eingeben. Alle gewählten Anlagen werden
+                darunter zu eigenständigen <strong>Untersuchungsbereichen</strong> mit eigener Historie.
               </p>
-              <button className="primary" onClick={anlagenZusammenfuehren} disabled={aMergeWahl.size < 2}>
+              <input placeholder="Neues Objekt, z. B. AWO Krumbach" value={aMergeName}
+                onChange={e => setAMergeName(e.target.value)} />
+              <button className="primary" onClick={anlagenZusammenfuehren} disabled={aMergeWahl.size < 2 || !aMergeName.trim()}>
                 <i className="fas fa-object-group" aria-hidden="true"></i>
-                {aMergeWahl.size < 2 ? 'Mind. 2 Anlagen ankreuzen' : `${aMergeWahl.size} Anlagen zusammenführen`}
+                {aMergeWahl.size < 2 ? 'Mind. 2 Anlagen ankreuzen'
+                  : !aMergeName.trim() ? 'Namen des neuen Objekts eingeben'
+                  : `${aMergeWahl.size} Anlagen → ${aMergeName.trim()}`}
               </button>
             </div>
           )}
@@ -416,18 +430,12 @@ export default function Stammdaten() {
           <div className="stamm-liste">
             {anlagenDesKunden.map(a => (
               aMergeModus ? (
-                <label key={a.id} className={`stamm-eintrag merge ${aMergeWahl.has(a.id) ? 'markiert' : ''} ${aMergeZiel === a.id ? 'ziel' : ''}`}>
+                <label key={a.id} className={`stamm-eintrag merge ${aMergeWahl.has(a.id) ? 'markiert' : ''}`}>
                   <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <input type="checkbox" checked={aMergeWahl.has(a.id)} onChange={() => aMergeToggle(a.id)} />
                     <strong>{a.name}</strong>
-                    {aMergeWahl.has(a.id) && (
-                      <button type="button" className="ziel-stern" onClick={e => { e.preventDefault(); setAMergeZiel(a.id) }}>
-                        <i className={`${aMergeZiel === a.id ? 'fas' : 'far'} fa-star`} aria-hidden="true"></i>
-                        {aMergeZiel === a.id ? ' Ziel' : ''}
-                      </button>
-                    )}
                   </span>
-                  <span className="hint">{[a.plz, a.ort].filter(Boolean).join(' ')}</span>
+                  <span className="hint">{[a.plz, a.ort].filter(Boolean).join(' ')} · wird eigener Bereich im neuen Objekt</span>
                 </label>
               ) : (
               <button key={a.id} className={`stamm-eintrag ${a.id === anlageId ? 'aktiv' : ''} ${!a.aktiv ? 'inaktiv' : ''}`} onClick={() => setAnlageId(a.id)}>

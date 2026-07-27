@@ -114,6 +114,16 @@ export const db = {
     const { error } = await supabase.from('td_anlagen').insert(a)
     if (error) throw error
   },
+  async anlageAnlegenRueckgabe(a: Omit<Anlage, 'id' | 'aktiv'>): Promise<string> {
+    if (!supabase) {
+      const id = 'a' + (demo.anlagen.length + 1)
+      demo.anlagen.push({ ...a, id, aktiv: true })
+      return id
+    }
+    const { data, error } = await supabase.from('td_anlagen').insert(a).select('id').single()
+    if (error) throw error
+    return data.id
+  },
   async bereichAnlegen(b: Omit<Bereich, 'id' | 'aktiv'>): Promise<void> {
     if (!supabase) { demo.bereiche.push({ ...b, id: 'b' + (demo.bereiche.length + 1), aktiv: true }); return }
     const { error } = await supabase.from('td_bereiche').insert(b)
