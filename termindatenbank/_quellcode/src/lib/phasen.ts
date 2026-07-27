@@ -18,6 +18,7 @@ export interface Phase {
   ueberschreitungsjahr: number
   ersteNachuntersuchung?: string
   letzteNachuntersuchung?: string
+  nachuntersuchungen: string[]
   anzahlNachuntersuchungen: number
   dauerMonate: number | null
   status: 'aktiv' | 'abgeschlossen' | 'prueffall'
@@ -129,6 +130,7 @@ export function phasenErmitteln(anlagen: AnlagenEingabe[]): Phase[] {
           ueberschreitungsjahr: +erkennung.slice(0, 4),
           ersteNachuntersuchung: nachunters[0],
           letzteNachuntersuchung: letzte,
+          nachuntersuchungen: nachunters,
           anzahlNachuntersuchungen: nachunters.length,
           dauerMonate: letzte ? monateZwischen(erkennung, letzte) : null,
           status,
@@ -147,19 +149,34 @@ export interface JahresStatistik {
   untersuchteAnlagen: number
   ueberschritteneAnlagen: number
   quoteProzent: number
+  untersuchteInklNachuntersuchungen: number
+  untersuchungstermineGesamt: number
+  prueffaelle: number
 }
 
 export function jahresStatistik(anlagen: AnlagenEingabe[], phasen: Phase[]): JahresStatistik[] {
-  const proJahr = new Map<number, { unters: Set<string>; ueber: Set<string> }>()
+  const nachuntersuchungen = new Map<string, Set<string>>()
+  for (const p of phasen) {
+    if (!nachuntersuchungen.has(p.anlageId)) nachuntersuchungen.set(p.anlageId, new Set())
+    for (const datum of p.nachuntersuchungen) nachuntersuchungen.get(p.anlageId)!.add(datum)
+  }
+  const proJahr = new Map<number, { unters: Set<string>; alle: Set<string>; ueber: Set<string>; pruef: Set<string>; termine: number }>()
   const holen = (j: number) => {
-    if (!proJahr.has(j)) proJahr.set(j, { unters: new Set(), ueber: new Set() })
+    if (!proJahr.has(j)) proJahr.set(j, { unters: new Set(), alle: new Set(), ueber: new Set(), pruef: new Set(), termine: 0 })
     return proJahr.get(j)!
   }
 
   for (const a of anlagen) {
-    for (const t of new Set(a.termine)) holen(+t.slice(0, 4)).unters.add(a.id)
+    for (const t of new Set(a.termine)) {
+      const jahr = holen(+t.slice(0, 4))
+      jahr.alle.add(a.id); jahr.termine++
+      if (!nachuntersuchungen.get(a.id)?.has(t)) jahr.unters.add(a.id)
+    }
   }
-  for (const p of phasen) holen(p.ueberschreitungsjahr).ueber.add(p.anlageId)
+  for (const p of phasen) {
+    holen(p.ueberschreitungsjahr).ueber.add(p.anlageId)
+    if (p.status === 'prueffall') holen(p.ueberschreitungsjahr).pruef.add(p.anlageId)
+  }
 
   return [...proJahr.entries()]
     .map(([jahr, v]) => ({
@@ -167,6 +184,9 @@ export function jahresStatistik(anlagen: AnlagenEingabe[], phasen: Phase[]): Jah
       untersuchteAnlagen: v.unters.size,
       ueberschritteneAnlagen: v.ueber.size,
       quoteProzent: v.unters.size ? Math.round((v.ueber.size / v.unters.size) * 1000) / 10 : 0,
+      untersuchteInklNachuntersuchungen: v.alle.size,
+      untersuchungstermineGesamt: v.termine,
+      prueffaelle: v.pruef.size,
     }))
     .sort((a, b) => b.jahr - a.jahr)
 }

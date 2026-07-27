@@ -132,11 +132,18 @@ Nachuntersuchungen und sichere Bereichs-Umstrukturierungen liegt in
 [`FACHLOGIK_ANSATZ.md`](FACHLOGIK_ANSATZ.md). Die zugehörige Migration
 `supabase/migrations/0013_fachlogik_historie_und_sichere_umstrukturierung.sql`
 ist im Testprojekt bereits ausgeführt.
+Die darauf folgende Korrektur
+`supabase/migrations/0014_berichtserfassung_audit_und_nacherfassung.sql`
+ist ebenfalls bereits ausgeführt; sie erlaubt die revisionssichere
+Berichtserfassung, ohne Schreibzugriff auf die Änderungshistorie freizugeben.
 
 Im Frontend ist damit folgender Ablauf vorbereitet:
 
 - Nach einem vergangenen Termin erscheint ein Auftrag automatisch unter
   **Planung → Bericht offen**, solange mindestens ein Unterauftrag noch offen ist.
+- Bereits vorhandene Termine – auch historische Übernahmen ohne Nummer – können
+  über **Auftragsbuch → Auftrag / Auftragsnummer nacherfassen** einem Bereich
+  zugeordnet werden. Danach steht die Berichtserfassung unmittelbar bereit.
 - Im Prüfbericht kann der Befund **sauber**, **Überschreitung** oder
   **Verkeimung** fachlich getrennt erfasst werden.
 - Eine Überschreitungsphase wird bewusst eröffnet. Nach Maßnahmenabschluss zählen

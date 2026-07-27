@@ -23,6 +23,7 @@ export default function Auftragsbuch() {
   const [nvKunde, setNvKunde] = useState('')
   const [nvAnlage, setNvAnlage] = useState('')
   const [nvBereich, setNvBereich] = useState('')
+  const [nvTermin, setNvTermin] = useState('')
   const [nvArt, setNvArt] = useState<Untersuchungsart>('legionellen')
   const [nvManuell, setNvManuell] = useState(false)
   const [nvNummer, setNvNummer] = useState('')
@@ -46,7 +47,8 @@ export default function Auftragsbuch() {
   const gefiltert = zeilen.filter(z =>
     (!suche || z.nummer.toLowerCase().includes(suche.toLowerCase())
       || z.kunde?.name_lang.toLowerCase().includes(suche.toLowerCase())
-      || z.anlage?.name.toLowerCase().includes(suche.toLowerCase()))
+      || z.anlage?.name.toLowerCase().includes(suche.toLowerCase())
+      || z.bereich?.name.toLowerCase().includes(suche.toLowerCase()))
     && (!fJahr || String(z.a.jahr) === fJahr)
     && (!fKunde || z.kunde?.id === fKunde)
     && (!fArt || z.u.art === fArt)
@@ -60,13 +62,15 @@ export default function Auftragsbuch() {
 
   const nummerVergeben = async () => {
     if (!nvBereich) { setNvMeldung('Bitte Bereich wählen.'); return }
+    const vorhandenerAuftrag = nvTermin && auftraege.find(a => a.bereich_id === nvBereich && a.termin_id === nvTermin)
+    if (vorhandenerAuftrag) { setNvMeldung(`Für diesen Bereich ist zum gewählten Termin bereits ${vorhandenerAuftrag.auftragsnummer} hinterlegt.`); return }
     if (nvManuell && !/^\d{2}-\d{4}$/.test(nvNummer.trim())) {
       setNvMeldung('Manuelle Nummer im Format JJ-NNNN, z. B. 26-0899.'); return
     }
     try {
-      const nr = await db.auftragAnlegen(nvBereich, undefined,
+      const nr = await db.auftragAnlegen(nvBereich, nvTermin || undefined,
         [{ art: nvArt, suffix: '' }], nvManuell ? nvNummer.trim() : undefined)
-      setNvMeldung(`Auftragsnummer ${nr} vergeben (ohne Termin – im Auftragsbuch geführt).`)
+      setNvMeldung(nvTermin ? `Auftragsnummer ${nr} wurde dem bestehenden Termin zugeordnet.` : `Auftragsnummer ${nr} nacherfasst (ohne Termin – im Auftragsbuch geführt).`)
       setNvNummer(''); setNvManuell(false); laden()
     } catch (e: any) {
       setNvMeldung('Fehler: ' + (e.message ?? e))
@@ -82,22 +86,22 @@ export default function Auftragsbuch() {
     <>
       {nvMeldung && <div className="notice">{nvMeldung}</div>}
 
-      <Abschnitt titel="Auftragsnummer vergeben"
+      <Abschnitt titel="Auftrag / Auftragsnummer nacherfassen"
         aktionen={<button onClick={() => setNvOffen(!nvOffen)}>
           <i className={`fas ${nvOffen ? 'fa-chevron-up' : 'fa-hashtag'}`} aria-hidden="true"></i>
-          {nvOffen ? 'Einklappen' : `Nächste Nummer vergeben`}
+          {nvOffen ? 'Einklappen' : `Auftrag nacherfassen`}
         </button>}>
         {nvOffen && (
           <div style={{ padding: '16px 20px' }}>
             <div className="grid2">
               <label className="f">Kunde
-                <select value={nvKunde} onChange={e => { setNvKunde(e.target.value); setNvAnlage(''); setNvBereich('') }}>
+                <select value={nvKunde} onChange={e => { setNvKunde(e.target.value); setNvAnlage(''); setNvBereich(''); setNvTermin('') }}>
                   <option value="">– wählen –</option>
                   {kunden.map(k => <option key={k.id} value={k.id}>{kundeAnzeige(k)}</option>)}
                 </select>
               </label>
               <label className="f">Anlage
-                <select value={nvAnlage} onChange={e => { setNvAnlage(e.target.value); setNvBereich('') }} disabled={!nvKunde}>
+                <select value={nvAnlage} onChange={e => { setNvAnlage(e.target.value); setNvBereich(''); setNvTermin('') }} disabled={!nvKunde}>
                   <option value="">– wählen –</option>
                   {anlagen.filter(a => a.kunde_id === nvKunde).map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                 </select>
@@ -106,6 +110,12 @@ export default function Auftragsbuch() {
                 <select value={nvBereich} onChange={e => setNvBereich(e.target.value)} disabled={!nvAnlage}>
                   <option value="">– wählen –</option>
                   {bereiche.filter(b => b.anlage_id === nvAnlage).map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                </select>
+              </label>
+              <label className="f">Bestehendem Termin zuordnen
+                <select value={nvTermin} onChange={e => setNvTermin(e.target.value)} disabled={!nvAnlage}>
+                  <option value="">– ohne Termin nacherfassen –</option>
+                  {termine.filter(t => t.anlage_id === nvAnlage && t.status !== 'abgesagt').sort((a, b) => b.datum.localeCompare(a.datum)).map(t => <option key={t.id} value={t.id}>{fmtDatum(t.datum)} · {t.status}</option>)}
                 </select>
               </label>
               <label className="f">Untersuchungsart
@@ -127,7 +137,7 @@ export default function Auftragsbuch() {
                 manuell eingreifen
               </label>
               <button className="primary" onClick={nummerVergeben} disabled={!nvBereich}>
-                <i className="fas fa-hashtag" aria-hidden="true"></i> Nummer vergeben
+                <i className="fas fa-hashtag" aria-hidden="true"></i> {nvTermin ? 'Auftrag zum Termin nacherfassen' : 'Auftragsnummer nacherfassen'}
               </button>
             </div>
             {nvManuell && (
@@ -146,7 +156,7 @@ export default function Auftragsbuch() {
           <i className="fas fa-print" aria-hidden="true"></i> Gefilterte Liste drucken
         </button>}>
       <div className="filters">
-        <input placeholder="Suche: Auftragsnummer, Kunde, Anlage …" value={suche} onChange={e => setSuche(e.target.value)} style={{ minWidth: 260 }} />
+        <input placeholder="Suche: Auftragsnummer, Kunde, Anlage, Bereich …" value={suche} onChange={e => setSuche(e.target.value)} style={{ minWidth: 280 }} />
         <select value={fJahr} onChange={e => setFJahr(e.target.value)}><option value="">Jahr: alle</option>{jahre.map(j => <option key={j}>{j}</option>)}</select>
         <select value={fKunde} onChange={e => setFKunde(e.target.value)}><option value="">Kunde: alle</option>{kunden.map(k => <option key={k.id} value={k.id}>{kundeAnzeige(k)}</option>)}</select>
         <select value={fArt} onChange={e => setFArt(e.target.value)}><option value="">Art: alle</option>{Object.entries(ART_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>

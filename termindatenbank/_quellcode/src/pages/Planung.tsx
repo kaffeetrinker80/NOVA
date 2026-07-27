@@ -267,8 +267,8 @@ export default function Planung() {
                         <i className="fas fa-calendar-plus" aria-hidden="true"></i> Planen
                       </button>{' '}
                       <button className="zeile-btn" style={{ background: '#6c757d', borderColor: '#6c757d' }}
-                        onClick={() => setHistorieAnlage(z.anlage)} title="Untersuchungsverlauf">
-                        <i className="fas fa-clock-rotate-left" aria-hidden="true"></i>
+                        onClick={() => setHistorieAnlage(z.anlage)} title="Untersuchungsverlauf öffnen">
+                        <i className="fas fa-clock-rotate-left" aria-hidden="true"></i> Verlauf
                       </button>{' '}
                       <button className="zeile-btn" style={{ background: '#adb5bd', borderColor: '#adb5bd' }}
                         onClick={async () => { await db2.anlageAktualisieren(z.anlage.id, { aktiv: false }); laden() }}

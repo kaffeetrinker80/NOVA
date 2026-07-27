@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { db } from '../lib/data'
-import type { Anlage, Bereich, Kunde, Termin, Ueberschreitungsphase } from '../lib/types'
+import type { Anlage, Auftrag, Bereich, Kunde, Termin, Ueberschreitungsphase } from '../lib/types'
 import { fmtDatum, kundeAnzeige } from '../lib/types'
 import { Abschnitt } from '../components/ui'
 import { phasenErmitteln, jahresStatistik, type AnlagenEingabe, type Phase } from '../lib/phasen'
 import PhaseModal from '../components/PhaseModal'
+import HistorieModal from '../components/HistorieModal'
 
 /** SVG-Balkendiagramm in NOVAplan-Farben (druckfähig). */
 function Balken({ daten, einheit = '' }: { daten: { label: string; wert: number; farbe?: string }[]; einheit?: string }) {
@@ -52,8 +53,10 @@ export default function Auswertungen() {
   const [kunden, setKunden] = useState<Kunde[]>([])
   const [termine, setTermine] = useState<Termin[]>([])
   const [bereiche, setBereiche] = useState<Bereich[]>([])
+  const [auftraege, setAuftraege] = useState<Auftrag[]>([])
   const [fachPhasen, setFachPhasen] = useState<Ueberschreitungsphase[]>([])
   const [phaseBearbeiten, setPhaseBearbeiten] = useState<Ueberschreitungsphase | null>(null)
+  const [historieAnlage, setHistorieAnlage] = useState<Anlage | null>(null)
 
   const [suche, setSuche] = useState('')
   const [fKunde, setFKunde] = useState('')
@@ -65,14 +68,14 @@ export default function Auswertungen() {
 
   const laden = () => {
     db.anlagen().then(setAnlagen); db.kunden().then(setKunden); db.termine().then(setTermine)
-    db.bereiche().then(setBereiche); db.phasen().then(setFachPhasen)
+    db.bereiche().then(setBereiche); db.auftraege().then(setAuftraege); db.phasen().then(setFachPhasen)
   }
   useEffect(laden, [])
 
   const eingabe: AnlagenEingabe[] = useMemo(() => anlagen.map(a => ({
     id: a.id, name: a.name, kunde: kundeAnzeige(kunden.find(k => k.id === a.kunde_id)),
     ort: a.ort, turnusMonate: a.turnus_monate,
-    termine: termine.filter(t => t.anlage_id === a.id).map(t => t.datum),
+    termine: termine.filter(t => t.anlage_id === a.id && t.datum <= new Date().toISOString().slice(0, 10)).map(t => t.datum),
   })), [anlagen, kunden, termine])
 
   const phasen = useMemo(() => phasenErmitteln(eingabe), [eingabe])
@@ -160,7 +163,7 @@ export default function Auswertungen() {
 
       <Abschnitt titel={`Fachlich geführte Überschreitungsphasen (${fachPhasen.filter(p => !['regelturnus_bestaetigt', 'abgeschlossen'].includes(p.status)).length})`}>
         <div className="table-container"><table><thead><tr><th>Bereich</th><th>Eröffnet</th><th>Auslöser</th><th>Status</th><th>Abschlussregel</th><th className="no-print"></th></tr></thead><tbody>
-          {fachPhasen.filter(p => !['regelturnus_bestaetigt', 'abgeschlossen'].includes(p.status)).map(p => <tr key={p.id} className="amp-red"><td>{bereiche.find(b => b.id === p.bereich_id)?.name ?? '–'}</td><td>{fmtDatum(p.eroeffnet_am)}</td><td>{p.ausloeser}</td><td>{p.status.replace('_', ' ')}</td><td>{p.saubere_nu_erforderlich} saubere NUs oder GA</td><td className="no-print"><button className="zeile-btn" onClick={() => setPhaseBearbeiten(p)}><i className="fas fa-sitemap" aria-hidden="true"></i> Verwalten</button></td></tr>)}
+          {fachPhasen.filter(p => !['regelturnus_bestaetigt', 'abgeschlossen'].includes(p.status)).map(p => <tr key={p.id} className="amp-red"><td>{bereiche.find(b => b.id === p.bereich_id)?.name ?? '–'}</td><td>{fmtDatum(p.eroeffnet_am)}</td><td>{p.ausloeser}</td><td>{p.status.replace('_', ' ')}</td><td>{p.saubere_nu_erforderlich} NUs ohne Befund oder GA</td><td className="no-print"><button className="zeile-btn" onClick={() => setPhaseBearbeiten(p)}><i className="fas fa-sitemap" aria-hidden="true"></i> Verwalten</button></td></tr>)}
           {fachPhasen.filter(p => !['regelturnus_bestaetigt', 'abgeschlossen'].includes(p.status)).length === 0 && <tr><td colSpan={6} className="hint">Noch keine manuell erfasste Überschreitungsphase.</td></tr>}
         </tbody></table></div>
       </Abschnitt>
@@ -202,12 +205,12 @@ export default function Auswertungen() {
       <Abschnitt titel="Untersuchte Anlagen und Überschreitungsquote pro Jahr">
         <div className="table-container">
           <table>
-            <thead><tr><th>Jahr</th><th>Regulär untersucht</th><th>Davon überschritten</th><th>Quote</th></tr></thead>
+            <thead><tr><th>Jahr</th><th>Regulär untersucht</th><th>Davon überschritten</th><th>Quote</th><th>Untersucht inkl. NU</th><th>Termine gesamt</th><th>Prüffälle</th></tr></thead>
             <tbody>
               {statistik.map(s => (
-                <tr key={s.jahr}><td><strong>{s.jahr}</strong></td><td>{s.untersuchteAnlagen}</td><td>{s.ueberschritteneAnlagen}</td><td>{s.quoteProzent} %</td></tr>
+                <tr key={s.jahr}><td><strong>{s.jahr}</strong></td><td>{s.untersuchteAnlagen}</td><td>{s.ueberschritteneAnlagen}</td><td><strong>{s.quoteProzent} %</strong></td><td>{s.untersuchteInklNachuntersuchungen}</td><td>{s.untersuchungstermineGesamt}</td><td>{s.prueffaelle}</td></tr>
               ))}
-              {statistik.length === 0 && <tr><td colSpan={4} className="hint">Nach dem Import erscheinen hier die Auswertungen.</td></tr>}
+              {statistik.length === 0 && <tr><td colSpan={7} className="hint">Nach dem Import erscheinen hier die Auswertungen.</td></tr>}
             </tbody>
           </table>
         </div>
@@ -221,27 +224,32 @@ export default function Auswertungen() {
         </>}>
         <div className="table-container">
           <table>
-            <thead><tr><th>Anlage</th><th>Verwaltung</th><th>Ort</th><th>Regelturnus</th><th>Überschreitung</th><th>Letzte NU</th><th>NU</th><th>Dauer</th><th>Sicherheit</th><th>Status</th></tr></thead>
+            <thead><tr><th>Anlage</th><th>Verwaltung</th><th>Ort</th><th>Regelturnus</th><th>Überschreitung</th><th>1. NU</th><th>Abstand</th><th>Letzte NU</th><th>NU</th><th>Dauer</th><th>Sicherheit</th><th>Status</th><th className="no-print">Verlauf</th></tr></thead>
             <tbody>
-              {gefiltert.slice(0, 400).map((p, i) => (
-                <tr key={p.anlageId + p.ueberschreitungsdatum + i} className={p.status === 'aktiv' ? 'amp-red' : p.status === 'prueffall' ? 'amp-yellow' : ''}>
+              {gefiltert.slice(0, 400).map((p, i) => {
+                const anlage = anlagen.find(a => a.id === p.anlageId)
+                return <tr key={p.anlageId + p.ueberschreitungsdatum + i} className={p.status === 'aktiv' ? 'amp-red' : p.status === 'prueffall' ? 'amp-yellow' : ''}>
                   <td>{p.anlage}</td><td>{p.kunde}</td><td>{p.ort ?? '–'}</td>
                   <td>{p.regelturnusJahre === 1 ? '1 Jahr' : '3 Jahre'}</td>
                   <td>{fmtDatum(p.ueberschreitungsdatum)}</td>
+                  <td>{fmtDatum(p.ersteNachuntersuchung)}</td>
+                  <td>{Math.max(1, Math.round(p.abstandTage / 30.44))} Mon.<div className="hint">{p.abstandTage} Tage</div></td>
                   <td>{p.letzteNachuntersuchung ? fmtDatum(p.letzteNachuntersuchung) : '–'}</td>
                   <td>{p.anzahlNachuntersuchungen}</td>
                   <td>{p.dauerMonate != null ? `${p.dauerMonate} M.` : '–'}</td>
                   <td><span className={`badge ${p.sicherheit === 'hoch' ? 'closed' : p.sicherheit === 'mittel' ? 'medium' : 'check'}`}>{SICHER_TEXT[p.sicherheit]}</span></td>
                   <td><span className={`badge ${STATUS_BADGE[p.status]}`}>{STATUS_TEXT[p.status]}</span></td>
+                  <td className="no-print">{anlage && <button className="zeile-btn" onClick={() => setHistorieAnlage(anlage)}><i className="fas fa-clock-rotate-left" aria-hidden="true"></i> Verlauf</button>}</td>
                 </tr>
-              ))}
-              {gefiltert.length === 0 && <tr><td colSpan={10} className="hint">Keine Phasen für die gewählten Filter.</td></tr>}
+              })}
+              {gefiltert.length === 0 && <tr><td colSpan={13} className="hint">Keine Phasen für die gewählten Filter.</td></tr>}
             </tbody>
           </table>
         </div>
         {gefiltert.length > 400 && <p className="hint" style={{ padding: '10px 20px' }}>Angezeigt: erste 400 von {gefiltert.length} – Filter nutzen.</p>}
       </Abschnitt>
       {phaseBearbeiten && <PhaseModal phase={phaseBearbeiten} bereichName={bereiche.find(b => b.id === phaseBearbeiten.bereich_id)?.name} onClose={() => setPhaseBearbeiten(null)} onSaved={laden} />}
+      {historieAnlage && <HistorieModal anlage={historieAnlage} kunde={kunden.find(k => k.id === historieAnlage.kunde_id)} termine={termine} auftraege={auftraege} bereiche={bereiche} onClose={() => setHistorieAnlage(null)} />}
     </>
   )
 }

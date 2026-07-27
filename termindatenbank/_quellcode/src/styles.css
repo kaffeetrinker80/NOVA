@@ -386,22 +386,33 @@ table.tbl {
 .stamm-eintrag.merge.ziel { outline: 2px solid #b45309; }
 .stamm-eintrag.inaktiv { opacity: .55; }
 
-.hist-phasen { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 24px 4px; }
-.hist-liste { padding: 12px 24px 18px; max-height: 56vh; overflow-y: auto; }
-.hist-eintrag { display: flex; gap: 12px; position: relative; padding-bottom: 14px; }
+.historie-modal { max-width: 720px; }
+.hist-status { margin: 14px 24px 0; padding: 10px 12px; border-radius: 8px; background: #e7f4ed; color: #236443; font-size: .82rem; font-weight: 650; display: flex; gap: 8px; align-items: center; }
+.hist-status.aktiv { background: #fde9e7; color: #99342e; }
+.hist-status.prueffall { background: #fff2d7; color: #8a5a00; }
+.hist-kennzahlen { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 12px 24px 4px; }
+.hist-kennzahlen > div { background: #f6f8fa; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; display: flex; flex-direction: column; gap: 2px; }
+.hist-kennzahlen span { color: var(--text-muted); font-size: .67rem; text-transform: uppercase; letter-spacing: .03em; }
+.hist-kennzahlen strong { color: var(--text-main); font-size: .84rem; }
+.hist-phasen { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 24px 2px; }
+.hist-liste { padding: 16px 24px 20px; max-height: 56vh; overflow-y: auto; }
+.hist-eintrag { display: flex; gap: 14px; position: relative; padding-bottom: 18px; }
 .hist-eintrag::before {
-  content: ''; position: absolute; left: 5px; top: 14px; bottom: 0; width: 2px; background: var(--border);
+  content: ''; position: absolute; left: 5px; top: 14px; bottom: 0; width: 2px; background: #dce4ec;
 }
 .hist-eintrag:last-child::before { display: none; }
 .hist-punkt {
-  width: 12px; height: 12px; border-radius: 50%; background: var(--color-primary);
-  flex-shrink: 0; margin-top: 4px; z-index: 1;
+  width: 11px; height: 11px; border-radius: 50%; background: #73879a;
+  flex-shrink: 0; margin-top: 5px; z-index: 1; box-shadow: 0 0 0 3px #fff;
 }
-.hist-eintrag.hist-rot .hist-punkt { background: #c0392b; }
-.hist-eintrag.hist-gelb .hist-punkt { background: #b45309; }
+.hist-eintrag.hist-start .hist-punkt { background: #b33a3a; }
+.hist-eintrag.hist-nu .hist-punkt { background: #4d82b8; }
 .hist-zeile1 { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.hist-rolle { color: var(--text-muted); font-size: .78rem; margin-top: 2px; }
 .hist-auftrag { margin-top: 4px; display: flex; flex-direction: column; gap: 3px; }
 .hist-unterauftrag { font-size: .8rem; display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.hist-ausblick { margin: 0 0 0 25px; padding-top: 2px; color: var(--text-muted); font-size: .78rem; }
+@media (max-width: 600px) { .hist-kennzahlen { grid-template-columns: 1fr; } }
 
 /* ---------- Passwort-Feld mit Auge ---------- */
 .pw-feld { position: relative; display: flex; }
