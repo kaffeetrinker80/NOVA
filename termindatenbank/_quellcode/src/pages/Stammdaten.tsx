@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { db } from '../lib/data'
-import type { Anlage, Bereich, Kunde, Kundentyp } from '../lib/types'
+import type { Anlage, Bereich, Kunde, Kundentyp, Ueberschreitungsphase } from '../lib/types'
 import { fmtDatum, kundeAnzeige } from '../lib/types'
 import HistorieModal from '../components/HistorieModal'
 import { Meldung } from '../components/ui'
@@ -8,6 +8,21 @@ import { Meldung } from '../components/ui'
 const TYP: Record<Kundentyp, string> = {
   hausverwaltung: 'Hausverwaltung', pflegetraeger: 'Pflegeträger',
   wohnungsbau: 'Wohnungsbau', privatkunde: 'Privatkunde', sonstige: 'Sonstige',
+}
+
+const PHASE_TEXT: Record<Ueberschreitungsphase['status'], string> = {
+  aktiv: 'Überschreitung offen',
+  massnahmen_laufen: 'Maßnahmen laufen',
+  nachuntersuchung: 'NU-Phase',
+  regelturnus_bestaetigt: 'Regelturnus bestätigt',
+  abgeschlossen: 'Phase abgeschlossen',
+}
+
+function bereichAnsicht(b: Bereich) {
+  const teile = b.name.split(' – ')
+  if (teile.length > 1) return { herkunft: teile[0], titel: teile.slice(1).join(' – '), uebernommen: true }
+  if (b.legacy_quelle === 'Anlagen-Zusammenführung') return { herkunft: b.name, titel: 'Gesamtanlage', uebernommen: true }
+  return { herkunft: '', titel: b.name, uebernommen: false }
 }
 
 export default function Stammdaten() {
@@ -56,10 +71,12 @@ export default function Stammdaten() {
   const [bf, setBf] = useState({ name: '', strasse: '', hausnummer: '', wwb_details: '', notizen: '' })
   const [termine, setTermine] = useState<import('../lib/types').Termin[]>([])
   const [auftraege, setAuftraege] = useState<import('../lib/types').Auftrag[]>([])
+  const [phasen, setPhasen] = useState<Ueberschreitungsphase[]>([])
 
   const laden = () => {
     db.kunden().then(setKunden); db.anlagen().then(setAnlagen); db.bereiche().then(setBereiche)
     db.termine().then(setTermine); db.auftraege().then(setAuftraege)
+    db.phasen().then(setPhasen).catch(() => setPhasen([]))
   }
   useEffect(laden, [])
 
@@ -107,15 +124,18 @@ export default function Stammdaten() {
   const anlagenDesKunden = anlagen.filter(a => a.kunde_id === kundeId && (inaktiveAnzeigen || a.aktiv))
   const bereich = bereiche.find(b => b.id === bereichId)
   useEffect(() => {
+    const ansicht = bereich ? bereichAnsicht(bereich) : undefined
     setBf({
-      name: bereich?.name ?? '', strasse: bereich?.strasse ?? '', hausnummer: bereich?.hausnummer ?? '',
+      name: ansicht?.titel ?? '', strasse: bereich?.strasse ?? '', hausnummer: bereich?.hausnummer ?? '',
       wwb_details: bereich?.wwb_details ?? '', notizen: bereich?.notizen ?? '',
     })
   }, [bereichId])
   const bereichSpeichernDetails = async () => {
     if (!bereich) return
+    const ansicht = bereichAnsicht(bereich)
+    const name = bf.name.trim() || ansicht.titel || bereich.name
     await db.bereichAktualisieren(bereich.id, {
-      name: bf.name.trim() || bereich.name, strasse: bf.strasse || undefined,
+      name: ansicht.herkunft ? `${ansicht.herkunft} – ${name}` : name, strasse: bf.strasse || undefined,
       hausnummer: bf.hausnummer || undefined, wwb_details: bf.wwb_details || undefined,
       notizen: bf.notizen || undefined,
     })
@@ -185,6 +205,22 @@ export default function Stammdaten() {
     setKundeId(neuerVerwalter); laden()
   }
   const bereicheDerAnlage = bereiche.filter(b => b.anlage_id === anlageId)
+  const bereichStatus = (b: Bereich) => {
+    const fachPhasen = phasen.filter(p => p.bereich_id === b.id)
+      .sort((a, c) => (c.eroeffnet_am || '').localeCompare(a.eroeffnet_am || ''))
+    const offen = fachPhasen.find(p => !['regelturnus_bestaetigt', 'abgeschlossen'].includes(p.status))
+    const letzte = fachPhasen[0]
+    const bTermine = termine
+      .filter(t => t.bereich_id === b.id)
+      .sort((a, c) => (c.datum || '').localeCompare(a.datum || ''))
+    const bAuftraege = auftraege.filter(a => a.bereich_id === b.id)
+    const hatAuffaellig = bAuftraege.some(a => a.unterauftraege.some(u => ['ueberschritten', 'nachuntersuchung_erforderlich'].includes(u.ergebnis)))
+    if (offen) return { text: PHASE_TEXT[offen.status], klasse: offen.status === 'nachuntersuchung' ? 'medium' : 'active', icon: 'fa-triangle-exclamation' }
+    if (letzte?.status === 'regelturnus_bestaetigt') return { text: 'Regelturnus bestätigt', klasse: 'closed', icon: 'fa-circle-check' }
+    if (hatAuffaellig) return { text: 'Historie auffällig', klasse: 'medium', icon: 'fa-clock-rotate-left' }
+    if (bTermine.length > 0) return { text: `Regelturnus · letzte ${fmtDatum(bTermine[0].datum)}`, klasse: 'closed', icon: 'fa-calendar-check' }
+    return { text: 'Regelturnus', klasse: 'neutral', icon: 'fa-circle-info' }
+  }
 
   const kundeSpeichern = async () => {
     if (!kf.name_lang) return
@@ -455,10 +491,17 @@ export default function Stammdaten() {
 
               {/* Bereichs-Ebene: je WWB eigene Adresse/Details/Historie */}
               <div className="bereich-liste">
-                {bereicheDerAnlage.map(b => (
-                  <div key={b.id} className={`bereich-karte ${b.id === bereichId ? 'aktiv' : ''}`}>
+                {bereicheDerAnlage.map(b => {
+                  const ansicht = bereichAnsicht(b)
+                  const status = bereichStatus(b)
+                  return (
+                  <div key={b.id} className={`bereich-karte ${b.id === bereichId ? 'aktiv' : ''} ${ansicht.uebernommen ? 'uebernommen' : ''}`}>
                     <button className="bereich-kopf" onClick={() => setBereichId(b.id === bereichId ? '' : b.id)}>
-                      <strong><i className={`fas fa-chevron-${b.id === bereichId ? 'down' : 'right'}`} style={{ fontSize: '.7rem', marginRight: 6 }}></i>{b.name}</strong>
+                      <span className="bereich-titelzeile">
+                        <strong><i className={`fas fa-chevron-${b.id === bereichId ? 'down' : 'right'}`} style={{ fontSize: '.7rem', marginRight: 6 }}></i>{ansicht.titel}</strong>
+                        <span className={`badge ${status.klasse}`}><i className={`fas ${status.icon}`} aria-hidden="true"></i> {status.text}</span>
+                      </span>
+                      {ansicht.herkunft && <span className="bereich-herkunft"><i className="fas fa-layer-group" aria-hidden="true"></i> ehemalige Anlage: {ansicht.herkunft}</span>}
                       {(b.strasse || b.hausnummer) && <span className="hint">{[b.strasse, b.hausnummer].filter(Boolean).join(' ')}</span>}
                     </button>
                     {b.id === bereichId && (
@@ -477,7 +520,8 @@ export default function Stammdaten() {
                       </div>
                     )}
                   </div>
-                ))}
+                  )
+                })}
                 <div className="pm-bereich-neu" style={{ margin: '8px 0 0' }}>
                   <input placeholder="Neuer Bereich, z. B. Neubau / Haus 7" value={neuBereichName}
                     onChange={e => setNeuBereichName(e.target.value)} onKeyDown={e => e.key === 'Enter' && bereichSpeichern()} />

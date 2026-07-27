@@ -24,6 +24,7 @@ export interface Bereich {
   id: string; anlage_id: string; name: string
   beschreibung?: string; wwb_details?: string; notizen?: string
   strasse?: string; hausnummer?: string; aktiv: boolean
+  legacy_quelle?: string
 }
 export interface Termin {
   id: string; kunde_id: string; anlage_id: string; bereich_id?: string
