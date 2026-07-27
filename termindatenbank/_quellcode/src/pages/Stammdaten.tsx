@@ -25,7 +25,7 @@ export default function Stammdaten() {
   const [af, setAf] = useState({ name: '', strasse: '', plz: '', ort: '', turnus_monate: 36, naechste_untersuchung: '' })
   const [neuBereichName, setNeuBereichName] = useState('')
 
-  // Zusammenführen-Modus
+  // Übernahme-Modus: bisherige Einzelkunden werden als Anlagen unter einen Zielkunden gehängt.
   const [mergeModus, setMergeModus] = useState(false)
   const [mergeWahl, setMergeWahl] = useState<Set<string>>(new Set())
   const [mergeZiel, setMergeZiel] = useState('')
@@ -97,8 +97,8 @@ export default function Stammdaten() {
       if (!ziel || quellen.length === 0) return
     }
     try {
-      const erg = await db.kundenZusammenfuehren(ziel, quellen)
-      setMeldung(erg + ' Alle Anlagen samt Historie hängen jetzt am Zielkunden.')
+      const erg = await db.kundenAlsAnlagenUebernehmen(ziel, quellen)
+      setMeldung(erg + ' Der Zielkunde bleibt links; die Quellkunden stehen rechts als Anlagen/Objekte.')
       setMergeModus(false); setMergeWahl(new Set()); setMergeZiel('')
       setMergeNeu(false); setMergeNeuName({ kurz: '', lang: '' })
       setKundeId(ziel); laden()
@@ -213,8 +213,8 @@ export default function Stammdaten() {
             <div style={{ display: 'flex', gap: 6 }}>
               <button className="zeile-btn" style={mergeModus ? { background: '#6c757d', borderColor: '#6c757d' } : undefined}
                 onClick={() => { setMergeModus(!mergeModus); setMergeWahl(new Set()); setMergeZiel('') }}
-                title="Mehrere Kunden zu einem zusammenführen">
-                <i className="fas fa-object-group" aria-hidden="true"></i> {mergeModus ? 'Abbrechen' : 'Zusammenführen'}
+                title="Bisherige Einzelkunden als Anlagen unter einem Zielkunden übernehmen">
+                <i className="fas fa-right-long" aria-hidden="true"></i> {mergeModus ? 'Abbrechen' : 'Übernehmen'}
               </button>
               {!mergeModus && <button className="zeile-btn" onClick={() => setNeuKunde(!neuKunde)}>
                 <i className="fas fa-plus" aria-hidden="true"></i> Neu
@@ -250,11 +250,11 @@ export default function Stammdaten() {
             <div className="merge-leiste">
               <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '.82rem' }}>
                 <input type="radio" checked={!mergeNeu} onChange={() => setMergeNeu(false)} />
-                In bestehenden Kunden (<i className="fas fa-star" style={{ color: '#b45309' }}></i>-Stern = Ziel)
+                In bestehenden Zielkunden übernehmen (<i className="fas fa-star" style={{ color: '#b45309' }}></i> = Dachkunde)
               </label>
               <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '.82rem' }}>
                 <input type="radio" checked={mergeNeu} onChange={() => setMergeNeu(true)} />
-                In <strong>neuen</strong> Kunden übernehmen
+                In <strong>neuen</strong> Zielkunden übernehmen
               </label>
               {mergeNeu && (
                 <div style={{ display: 'flex', gap: 8 }}>
@@ -265,16 +265,17 @@ export default function Stammdaten() {
                 </div>
               )}
               <p className="hint" style={{ margin: 0 }}>
-                Alle Objekte der angekreuzten Kunden wandern samt kompletter Historie zum Ziel und
-                bleiben dort einzeln als Anlagen bearbeitbar (Adresse, Betreuer …).
+                Fachlicher AWO-Modus: der Zielkunde bleibt links als Dachkunde. Alle anderen angekreuzten
+                Kunden rutschen eine Ebene nach rechts und erscheinen dort als Anlagen/Objekte – inklusive
+                Bereiche, Termine, Aufträge und Historie. Die Quellkunden werden nur inaktiv archiviert.
               </p>
               <button className="primary" onClick={zusammenfuehren}
                 disabled={mergeNeu ? (mergeWahl.size < 1 || !mergeNeuName.lang.trim())
                                    : mergeWahl.size < 2}>
                 <i className="fas fa-object-group" aria-hidden="true"></i>
                 {mergeNeu
-                  ? (mergeWahl.size < 1 ? 'Kunden ankreuzen' : !mergeNeuName.lang.trim() ? 'Namen des neuen Kunden eingeben' : `${mergeWahl.size} Kunden → ${mergeNeuName.lang.trim()}`)
-                  : (mergeWahl.size < 2 ? 'Mind. 2 Kunden ankreuzen' : `${mergeWahl.size} Kunden zusammenführen`)}
+                  ? (mergeWahl.size < 1 ? 'Kunden ankreuzen' : !mergeNeuName.lang.trim() ? 'Namen des neuen Zielkunden eingeben' : `${mergeWahl.size} Kunden → Anlagen unter ${mergeNeuName.lang.trim()}`)
+                  : (mergeWahl.size < 2 ? 'Ziel + Quellen ankreuzen' : `${mergeWahl.size - 1} Kunde(n) als Anlagen übernehmen`)}
               </button>
             </div>
           )}

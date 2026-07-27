@@ -346,6 +346,13 @@ export const db = {
     return data as string
   },
 
+  async kundenAlsAnlagenUebernehmen(zielId: string, quellenIds: string[]): Promise<string> {
+    if (!supabase) return 'Demo-Modus: Übernahme nur mit Supabase.'
+    const { data, error } = await supabase.rpc('td_kunden_als_anlagen_uebernehmen', { p_ziel: zielId, p_quellen: quellenIds })
+    if (error) throw error
+    return data as string
+  },
+
   async verwalterWechseln(anlageId: string, neuerKundeId: string): Promise<void> {
     if (!supabase) return
     const { error } = await supabase.rpc('td_anlage_verwalter_wechseln', { p_anlage: anlageId, p_neuer_kunde: neuerKundeId })

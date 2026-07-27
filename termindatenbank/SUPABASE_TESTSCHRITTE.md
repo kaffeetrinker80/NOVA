@@ -41,10 +41,38 @@ where table_schema = 'nova_termindatenbank_data'
   and table_name = 'td_v_bereichshistorie';
 ```
 
+## 4. Berichtserfassung / Historie testen
+
+1. In „Planung“ den Reiter „Bericht offen“ öffnen.
+2. Einen Auftrag öffnen und einen Prüfbericht rückwirkend erfassen.
+3. Befund fachlich wählen:
+   - „ohne Befund“
+   - „Überschreitung“
+   - „nicht auswertbar“
+4. Danach den Verlauf der Anlage öffnen und prüfen, ob Bericht, Nachuntersuchungen und Phase sichtbar sind.
+
+## 5. Stammdaten: bisherige Einzelkunden als Anlagen übernehmen
+
+Für Fälle wie AWO:
+
+1. Stammdaten öffnen.
+2. Links „Übernehmen“ aktivieren.
+3. Den künftigen Dachkunden mit dem Stern als Ziel markieren, z. B. „AWO Schwaben“.
+4. Alle bisherigen Einzelkunden anhaken, z. B. „AWO Seniorenheim Aichach - Altbau“.
+5. Ausführen.
+
+Erwartung:
+
+- Der Zielkunde bleibt links aktiv sichtbar.
+- Die angehakten Quellkunden werden nicht gelöscht, sondern inaktiv archiviert.
+- Unter dem Zielkunden erscheinen die Quellkunden rechts als Anlagen/Objekte.
+- Bereiche, Termine, Aufträge und Historie bleiben an den übernommenen Anlagen erhalten.
+- Bei einem Quellkunden mit genau einer Anlage wird der bisherige Kundenname zum neuen Anlagenname. Der alte Anlagenname wird in den Notizen dokumentiert.
+
 ## Was danach kommt
 
-Danach bauen wir im Frontend die drei praktischen Teile darauf auf:
+Danach bauen wir die noch feineren praktischen Teile darauf auf:
 
-1. Prüfbericht erfassen: sauber / Überschreitung / Verkeimung.
-2. Überschreitungsphase starten und die Nachuntersuchungen zählen.
-3. Stammdaten umbauen: Bereiche verschieben, zusammenführen oder archivieren – zuerst am AWO-Testfall.
+1. Bereiche noch flexibler zwischen Anlagen verschieben.
+2. Echte Dubletten bewusst von „als Anlagen übernehmen“ trennen.
+3. Überschreitungsdashboard optisch weiter an das Python-Dashboard angleichen.
