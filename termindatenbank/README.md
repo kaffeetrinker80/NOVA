@@ -127,10 +127,25 @@ src/pages/             Dashboard, Termine, Auftragsbuch, Kunden, Anlagen,
 
 ## Fachlogik-Ansatz (neu)
 
-Der erste Entwurf für die robuste Behandlung von Prüfberichten, Überschreitungen,
-Nachuntersuchungen und sicheren Bereichs-Umstrukturierungen liegt in
-[`FACHLOGIK_ANSATZ.md`](FACHLOGIK_ANSATZ.md). Die passende, **noch nicht
-produktiv ausgeführte** Datenbankmigration ist
-`supabase/migrations/0013_fachlogik_historie_und_sichere_umstrukturierung.sql`.
+Der erste umsetzbare Stand für Prüfberichte, Überschreitungen,
+Nachuntersuchungen und sichere Bereichs-Umstrukturierungen liegt in
+[`FACHLOGIK_ANSATZ.md`](FACHLOGIK_ANSATZ.md). Die zugehörige Migration
+`supabase/migrations/0013_fachlogik_historie_und_sichere_umstrukturierung.sql`
+ist im Testprojekt bereits ausgeführt.
+
+Im Frontend ist damit folgender Ablauf vorbereitet:
+
+- Nach einem vergangenen Termin erscheint ein Auftrag automatisch unter
+  **Planung → Bericht offen**, solange mindestens ein Unterauftrag noch offen ist.
+- Im Prüfbericht kann der Befund **sauber**, **Überschreitung** oder
+  **Verkeimung** fachlich getrennt erfasst werden.
+- Eine Überschreitungsphase wird bewusst eröffnet. Nach Maßnahmenabschluss zählen
+  nur ausdrücklich markierte saubere Nachuntersuchungen; drei davon schließen die
+  Phase regulär. Eine dokumentierte Freigabe des Gesundheitsamts kann den
+  Regelturnus früher wiederherstellen.
+- Ein bereits geplanter Termin nimmt eine Anlage aus der Fälligkeitenliste. Das
+  Ausblenden einer Anlage setzt dagegen ausschließlich den Betreuungsstatus
+  **inaktiv** – für Objekte, die nicht mehr von euch untersucht werden.
+
 Für die sichere Ausführung im bestehenden Testprojekt siehe
 [`SUPABASE_TESTSCHRITTE.md`](SUPABASE_TESTSCHRITTE.md).

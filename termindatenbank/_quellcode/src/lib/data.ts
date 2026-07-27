@@ -213,11 +213,29 @@ export const db = {
     if (error) throw error
     return data as Ueberschreitungsphase[]
   },
+  async phasen(): Promise<Ueberschreitungsphase[]> {
+    if (!supabase) return []
+    const { data, error } = await supabase.from('td_ueberschreitungsphasen').select('*').order('eroeffnet_am', { ascending: false })
+    if (error) throw error
+    return data as Ueberschreitungsphase[]
+  },
+  async bewertungenFuerPhase(phaseId: string): Promise<Untersuchungsbewertung[]> {
+    if (!supabase) return []
+    const { data, error } = await supabase.from('td_untersuchungsbewertungen').select('*').eq('phase_id', phaseId)
+      .order('bewertungsdatum', { ascending: true })
+    if (error) throw error
+    return data as Untersuchungsbewertung[]
+  },
   async phaseAnlegen(eintrag: Omit<Ueberschreitungsphase, 'id'>): Promise<Ueberschreitungsphase> {
     if (!supabase) return { id: 'phase-demo-' + Date.now(), ...eintrag }
     const { data, error } = await supabase.from('td_ueberschreitungsphasen').insert(eintrag).select('*').single()
     if (error) throw error
     return data as Ueberschreitungsphase
+  },
+  async phaseAktualisieren(id: string, patch: Partial<Omit<Ueberschreitungsphase, 'id' | 'bereich_id' | 'ausloesende_bewertung_id'>>): Promise<void> {
+    if (!supabase) return
+    const { error } = await supabase.from('td_ueberschreitungsphasen').update(patch).eq('id', id)
+    if (error) throw error
   },
 
   /** Setzt alle operativen Daten zurück (nur Admin, Testphase). */

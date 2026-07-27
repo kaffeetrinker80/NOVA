@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { db } from '../lib/data'
 import type { Anlage, Bereich, Kunde, Termin } from '../lib/types'
-import { fmtDatum, kundeAnzeige } from '../lib/types'
+import { ART_LABEL, fmtDatum, kundeAnzeige } from '../lib/types'
 import PlanModal from '../components/PlanModal'
 import HistorieModal from '../components/HistorieModal'
+import BerichtModal from '../components/BerichtModal'
 import type { Auftrag } from '../lib/types'
 import { db as db2 } from '../lib/data'
 
-type SubTab = 'next90' | 'nachunters' | 'geplant' | 'alle'
+type SubTab = 'next90' | 'nachunters' | 'berichte' | 'geplant' | 'alle'
 
 interface Zeile {
   anlage: Anlage
@@ -67,6 +68,7 @@ export default function Planung() {
   const [modalAnlage, setModalAnlage] = useState<Anlage | null>(null)
   const [historieAnlage, setHistorieAnlage] = useState<Anlage | null>(null)
   const [auftraege, setAuftraege] = useState<Auftrag[]>([])
+  const [berichtAuftrag, setBerichtAuftrag] = useState<Auftrag | null>(null)
 
   const laden = () => {
     db.anlagen().then(setAnlagen); db.kunden().then(setKunden)
@@ -88,6 +90,17 @@ export default function Planung() {
     }
   }), [anlagen, kunden, termine])
 
+  // Untersuchungstermin liegt zurück, aber mindestens ein Unterauftrag hat noch keinen Befund.
+  const berichteOffen = useMemo(() => auftraege.flatMap(a => {
+    const termin = termine.find(t => t.id === a.termin_id)
+    const bereich = bereiche.find(b => b.id === a.bereich_id)
+    const anlage = anlagen.find(x => x.id === bereich?.anlage_id)
+    const kunde = kunden.find(k => k.id === anlage?.kunde_id)
+    const offen = a.unterauftraege.some(u => u.status !== 'storniert' && u.ergebnis === 'offen')
+    return termin && termin.status !== 'abgesagt' && termin.datum <= heuteIso && offen && bereich && anlage
+      ? [{ auftrag: a, termin, bereich, anlage, kunde }] : []
+  }), [auftraege, termine, bereiche, anlagen, kunden])
+
   const gefiltert = useMemo(() => {
     let z = zeilen
 
@@ -96,6 +109,8 @@ export default function Planung() {
       if (!ueberfaelligeAnzeigen) z = z.filter(x => !(x.faellig! <= heuteIso && x.anlage.turnus_monate !== 3))
     } else if (tab === 'nachunters') {
       z = z.filter(x => x.anlage.turnus_monate === 3 && !x.geplantAm && !x.geplantText)
+    } else if (tab === 'berichte') {
+      z = []
     } else if (tab === 'geplant') {
       z = z.filter(x => !!x.geplantAm || !!x.geplantText)
     } else if (tab === 'alle') {
@@ -126,6 +141,7 @@ export default function Planung() {
   const anz = {
     next90: zeilen.filter(x => !x.geplantAm && !x.geplantText && x.faellig && x.faellig <= plusTage(90)).length,
     nachunters: zeilen.filter(x => x.anlage.turnus_monate === 3 && !x.geplantAm && !x.geplantText).length,
+    berichte: berichteOffen.length,
     geplant: zeilen.filter(x => !!x.geplantAm || !!x.geplantText).length,
     alle: zeilen.length,
   }
@@ -149,6 +165,7 @@ export default function Planung() {
       <div className="tabs" style={{ marginBottom: 12 }}>
         <ST id="next90" icon="fa-calendar-day" label="Nächste 3 Monate" zahl={anz.next90} />
         <ST id="nachunters" icon="fa-flask" label="Nachuntersuchungen" zahl={anz.nachunters} />
+        <ST id="berichte" icon="fa-file-circle-exclamation" label="Bericht offen" zahl={anz.berichte} />
         <ST id="geplant" icon="fa-calendar-check" label="Geplant" zahl={anz.geplant} />
         <ST id="alle" icon="fa-list" label="Alle Anlagen" zahl={anz.alle} />
       </div>
@@ -193,9 +210,10 @@ export default function Planung() {
             <h3>
               {tab === 'next90' && 'Nächste 3 Monate'}
               {tab === 'nachunters' && 'Fällige Nachuntersuchungen (3-Monats-Turnus)'}
+              {tab === 'berichte' && 'Untersuchungen mit offenem Prüfbericht'}
               {tab === 'geplant' && 'Geplante Anlagen'}
               {tab === 'alle' && 'Alle Anlagen'}
-              {' '}({gefiltert.length})
+              {' '}({tab === 'berichte' ? berichteOffen.length : gefiltert.length})
             </h3>
             {tab === 'next90' && (
               <div className="legend">
@@ -206,7 +224,10 @@ export default function Planung() {
             )}
           </div>
         </div>
-        <div className="table-container">
+        {tab === 'berichte' ? <div className="table-container"><table><thead><tr><th>Termin</th><th>Verwaltung</th><th>Anlage</th><th>Bereich</th><th>Auftrag</th><th>Offene Untersuchungsarten</th><th className="no-print"></th></tr></thead><tbody>
+          {berichteOffen.map(x => <tr key={x.auftrag.id} className="amp-yellow"><td>{fmtDatum(x.termin.datum)}</td><td>{kundeAnzeige(x.kunde)}</td><td>{x.anlage.name}</td><td>{x.bereich.name}</td><td className="nr">{x.auftrag.auftragsnummer}</td><td>{x.auftrag.unterauftraege.filter(u => u.status !== 'storniert' && u.ergebnis === 'offen').map(u => ART_LABEL[u.art]).join(', ')}</td><td className="no-print"><button className="zeile-btn" onClick={() => setBerichtAuftrag(x.auftrag)}><i className="fas fa-file-circle-check" aria-hidden="true"></i> Prüfbericht erfassen</button></td></tr>)}
+          {berichteOffen.length === 0 && <tr><td colSpan={7} className="hint">Keine offenen Prüfberichte.</td></tr>}
+        </tbody></table></div> : <div className="table-container">
           <table>
             <thead><tr>
               <th onClick={() => sortieren('kundeName')} style={{ cursor: 'pointer' }}>Verwaltung <Pfeil s="kundeName" /></th>
@@ -261,7 +282,7 @@ export default function Planung() {
               {gefiltert.length === 0 && <tr><td colSpan={10} className="hint">Keine Einträge für die aktuelle Auswahl.</td></tr>}
             </tbody>
           </table>
-        </div>
+        </div>}
         {gefiltert.length > 500 && <p className="hint" style={{ padding: '10px 20px' }}>Angezeigt: erste 500 von {gefiltert.length} – Suche zum Eingrenzen nutzen.</p>}
       </section>
 
@@ -277,6 +298,13 @@ export default function Planung() {
           onClose={() => setModalAnlage(null)}
           onSaved={laden}
         />
+      )}
+      {berichtAuftrag && (
+        <BerichtModal auftrag={berichtAuftrag}
+          bereichId={berichtAuftrag.bereich_id}
+          bereichName={bereiche.find(b => b.id === berichtAuftrag.bereich_id)?.name}
+          kundeKurz={(() => { const b = bereiche.find(x => x.id === berichtAuftrag.bereich_id); const a = anlagen.find(x => x.id === b?.anlage_id); return kundeAnzeige(kunden.find(k => k.id === a?.kunde_id)) })()}
+          onClose={() => setBerichtAuftrag(null)} onSaved={laden} />
       )}
     </>
   )

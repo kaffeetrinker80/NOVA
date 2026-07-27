@@ -39,7 +39,7 @@ export default function BerichtModal({ auftrag, kundeKurz, bereichName, bereichI
         setPhasen(geladen)
         setZeilen(vorher => vorher.map(z => {
           const b = bewertungen.find(x => x.unterauftrag_id === z.id)
-          return b ? { ...z, befund: b.befund, phaseId: b.phase_id, zaehltSauber: b.zaehlt_als_saubere_nachuntersuchung } : z
+          return b ? { ...z, befund: b.befund, phaseId: b.phase_id ?? undefined, zaehltSauber: b.zaehlt_als_saubere_nachuntersuchung } : z
         }))
         const erste = bewertungen[0]
         if (erste) { setBerichtStatus(erste.bericht_status); setBerichtNr(erste.pruefbericht_nummer ?? ''); setBerichtDatum(erste.pruefbericht_datum ?? berichtDatum); setBemerkung(erste.bemerkung ?? '') }

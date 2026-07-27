@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { db } from '../lib/data'
-import type { Anlage, Kunde, Termin } from '../lib/types'
+import type { Anlage, Bereich, Kunde, Termin, Ueberschreitungsphase } from '../lib/types'
 import { fmtDatum, kundeAnzeige } from '../lib/types'
 import { Abschnitt } from '../components/ui'
 import { phasenErmitteln, jahresStatistik, type AnlagenEingabe, type Phase } from '../lib/phasen'
+import PhaseModal from '../components/PhaseModal'
 
 /** SVG-Balkendiagramm in NOVAplan-Farben (druckfähig). */
 function Balken({ daten, einheit = '' }: { daten: { label: string; wert: number; farbe?: string }[]; einheit?: string }) {
@@ -50,6 +51,9 @@ export default function Auswertungen() {
   const [anlagen, setAnlagen] = useState<Anlage[]>([])
   const [kunden, setKunden] = useState<Kunde[]>([])
   const [termine, setTermine] = useState<Termin[]>([])
+  const [bereiche, setBereiche] = useState<Bereich[]>([])
+  const [fachPhasen, setFachPhasen] = useState<Ueberschreitungsphase[]>([])
+  const [phaseBearbeiten, setPhaseBearbeiten] = useState<Ueberschreitungsphase | null>(null)
 
   const [suche, setSuche] = useState('')
   const [fKunde, setFKunde] = useState('')
@@ -59,9 +63,11 @@ export default function Auswertungen() {
   const [fDauer, setFDauer] = useState('')
   const [kpi, setKpi] = useState<KpiWahl>('long12')
 
-  useEffect(() => {
+  const laden = () => {
     db.anlagen().then(setAnlagen); db.kunden().then(setKunden); db.termine().then(setTermine)
-  }, [])
+    db.bereiche().then(setBereiche); db.phasen().then(setFachPhasen)
+  }
+  useEffect(laden, [])
 
   const eingabe: AnlagenEingabe[] = useMemo(() => anlagen.map(a => ({
     id: a.id, name: a.name, kunde: kundeAnzeige(kunden.find(k => k.id === a.kunde_id)),
@@ -152,6 +158,13 @@ export default function Auswertungen() {
         <div className="card"><div className="label">Median Dauer</div><div className="value">{median ?? '–'}{median != null && <span style={{ fontSize: '.75rem', fontWeight: 400 }}> Mon.</span>}</div></div>
       </div>
 
+      <Abschnitt titel={`Fachlich geführte Überschreitungsphasen (${fachPhasen.filter(p => !['regelturnus_bestaetigt', 'abgeschlossen'].includes(p.status)).length})`}>
+        <div className="table-container"><table><thead><tr><th>Bereich</th><th>Eröffnet</th><th>Auslöser</th><th>Status</th><th>Abschlussregel</th><th className="no-print"></th></tr></thead><tbody>
+          {fachPhasen.filter(p => !['regelturnus_bestaetigt', 'abgeschlossen'].includes(p.status)).map(p => <tr key={p.id} className="amp-red"><td>{bereiche.find(b => b.id === p.bereich_id)?.name ?? '–'}</td><td>{fmtDatum(p.eroeffnet_am)}</td><td>{p.ausloeser}</td><td>{p.status.replace('_', ' ')}</td><td>{p.saubere_nu_erforderlich} saubere NUs oder GA</td><td className="no-print"><button className="zeile-btn" onClick={() => setPhaseBearbeiten(p)}><i className="fas fa-sitemap" aria-hidden="true"></i> Verwalten</button></td></tr>)}
+          {fachPhasen.filter(p => !['regelturnus_bestaetigt', 'abgeschlossen'].includes(p.status)).length === 0 && <tr><td colSpan={6} className="hint">Noch keine manuell erfasste Überschreitungsphase.</td></tr>}
+        </tbody></table></div>
+      </Abschnitt>
+
       <div className="filters panel no-print" style={{ borderRadius: 12, marginBottom: 14 }}>
         <div className="suchfeld" style={{ maxWidth: 260 }}>
           <i className="fas fa-magnifying-glass" aria-hidden="true"></i>
@@ -228,6 +241,7 @@ export default function Auswertungen() {
         </div>
         {gefiltert.length > 400 && <p className="hint" style={{ padding: '10px 20px' }}>Angezeigt: erste 400 von {gefiltert.length} – Filter nutzen.</p>}
       </Abschnitt>
+      {phaseBearbeiten && <PhaseModal phase={phaseBearbeiten} bereichName={bereiche.find(b => b.id === phaseBearbeiten.bereich_id)?.name} onClose={() => setPhaseBearbeiten(null)} onSaved={laden} />}
     </>
   )
 }
