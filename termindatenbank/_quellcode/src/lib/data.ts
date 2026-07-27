@@ -330,6 +330,26 @@ export const db = {
     return `Übernommen: ${v.kunden.length} Kunden, ${v.anlagen.length} Anlagen, ${neueBereiche.length} Bereiche, ${termineOk} historische Termine.`
   },
 
+  /** Trägt aus einer erneut geladenen Alt-JSON nur fehlende historische Termine nach.
+   *  Kunden/Anlagen/Bereiche werden dabei nicht verändert. */
+  async legacyHistorieNachtragen(v: import('./legacyImport').ImportVorschau,
+                                fortschritt?: (text: string) => void): Promise<string> {
+    if (!supabase) return 'Demo-Modus: Nachtrag nur mit Supabase möglich.'
+
+    fortschritt?.(`Historie wird nachgetragen (${v.termine.length}) …`)
+    let meldungen: string[] = []
+    for (let i = 0; i < v.termine.length; i += 500) {
+      const { data, error } = await supabase.rpc('td_legacy_historie_nachtragen', {
+        p_termine: v.termine.slice(i, i + 500),
+      })
+      if (error) throw error
+      meldungen.push(data as string)
+      fortschritt?.(`Historie: ${Math.min(i + 500, v.termine.length)} / ${v.termine.length}`)
+    }
+
+    return meldungen.length === 1 ? meldungen[0] : meldungen.join(' · ')
+  },
+
   async anlageAktualisieren(id: string, patch: Partial<Pick<Anlage, 'name' | 'strasse' | 'plz' | 'ort' | 'notizen' | 'naechste_untersuchung' | 'turnus_monate' | 'aktiv' | 'objekt_betreuer' | 'proben_anzahl'>> & { planungsnotiz?: string | null }): Promise<void> {
     if (!supabase) { const a = demo.anlagen.find(x => x.id === id); if (a) Object.assign(a, patch); return }
     const { error } = await supabase.from('td_anlagen').update(patch).eq('id', id)

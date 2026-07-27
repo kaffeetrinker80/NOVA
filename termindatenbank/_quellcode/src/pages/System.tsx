@@ -40,6 +40,14 @@ export default function System() {
     setLaeuft(false)
   }
 
+  const historieNachtragen = async () => {
+    if (!vorschau) return
+    setLaeuft(true); setMeldung('Historie-Nachtrag läuft …')
+    try { setMeldung(await db.legacyHistorieNachtragen(vorschau, setMeldung)) }
+    catch (e: any) { setMeldung('Fehler beim Historie-Nachtrag: ' + e.message) }
+    setLaeuft(false)
+  }
+
   const herunterladen = (inhalt: string, name: string, typ: string) => {
     const a = document.createElement('a')
     a.href = URL.createObjectURL(new Blob(['\ufeff' + inhalt], { type: typ }))
@@ -99,11 +107,19 @@ export default function System() {
 
       <Abschnitt titel="Import: Terminverwaltung V4 (JSON)"
         aktionen={vorschau ? (
-          <button className="primary" onClick={uebernehmen}
-            disabled={laeuft || demoModus || rolle === 'lesend' || rolle === 'probenehmer'}>
-            <i className="fas fa-database" aria-hidden="true"></i>
-            {laeuft ? 'Übernahme läuft …' : 'In die Datenbank übernehmen'}
-          </button>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button onClick={historieNachtragen}
+              disabled={laeuft || demoModus || rolle === 'lesend' || rolle === 'probenehmer'}
+              title="Schreibt nur fehlende Termine aus der JSON nach. Kunden, Anlagen und Bereiche bleiben unverändert.">
+              <i className="fas fa-clock-rotate-left" aria-hidden="true"></i>
+              Nur Historie nachtragen
+            </button>
+            <button className="primary" onClick={uebernehmen}
+              disabled={laeuft || demoModus || rolle === 'lesend' || rolle === 'probenehmer'}>
+              <i className="fas fa-database" aria-hidden="true"></i>
+              {laeuft ? 'Übernahme läuft …' : 'Vollimport übernehmen'}
+            </button>
+          </div>
         ) : undefined}>
         <div style={{ padding: '16px 20px' }}>
           <label className="f" style={{ maxWidth: 460 }}>
@@ -121,7 +137,8 @@ export default function System() {
           )}
           <p className="hint" style={{ marginBottom: 0 }}>
             Verwaltung → Kunde, Objekt → Anlage (+ Standard-Bereich), Historie/„Geplant" → Termine.
-            Erneuter Import überschreibt statt zu duplizieren; Alt-Kennungen bleiben erhalten.
+            „Nur Historie nachtragen" ist für Teststände mit schon bearbeiteten Stammdaten gedacht.
+            Der Vollimport sollte nach einem Reset oder vor manuellen Merges verwendet werden.
           </p>
         </div>
         {vorschau && (

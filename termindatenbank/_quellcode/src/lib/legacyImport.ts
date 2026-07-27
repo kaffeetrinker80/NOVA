@@ -96,6 +96,7 @@ export function vorschauErzeugen(datensaetze: LegacyDatensatz[]): ImportVorschau
   const kunden = new Map<string, ImportVorschau['kunden'][0]>()
   const anlagen = new Map<string, ImportVorschau['anlagen'][0]>()
   const termine: ImportVorschau['termine'] = []
+  const terminKeys = new Set<string>()
   let uebersprungen = 0
 
   for (const rec of datensaetze) {
@@ -130,19 +131,46 @@ export function vorschauErzeugen(datensaetze: LegacyDatensatz[]): ImportVorschau
           rec['Phase'] === true ? 'Alt-Kennzeichen: aktive Überschreitungsphase' : null,
         ].filter(Boolean).join(' · ') || undefined,
       })
+    } else {
+      const a = anlagen.get(anlageKey)!
+      if (a.proben_anzahl == null) {
+        const n = parseInt(String(rec['Proben'] ?? '').replace(/\D/g, ''))
+        a.proben_anzahl = Number.isFinite(n) && n > 0 ? n : undefined
+      }
+      if (a.turnus_monate == null) a.turnus_monate = parseTurnus(rec['Turnus'])
+      if (!a.naechste_untersuchung) a.naechste_untersuchung = parseDatum(rec['Nächste Unters.']) ?? undefined
+      const notiz = [
+        a.notizen || null,
+        text(rec['Hygiene Inspektion']) || null,
+        rec['Phase'] === true ? 'Alt-Kennzeichen: aktive Überschreitungsphase' : null,
+      ].filter(Boolean)
+      a.notizen = [...new Set(notiz)].join(' · ') || undefined
+    }
 
-      for (const datum of untersuchungsdaten(rec)) {
-        termine.push({ legacy_id: `${anlageKey}@${datum}`, anlage_legacy: anlageKey, datum })
+    // Wichtig: Eine Anlage kann in der JSON mehrfach vorkommen, z. B. wegen
+    // getrennter Alt-/Neubau-Zeilen oder nachträglich gepflegter Historie.
+    // Deshalb werden Untersuchungsdaten bei JEDEM Datensatz gesammelt, nicht
+    // nur beim ersten Auftreten der Anlage.
+    for (const datum of untersuchungsdaten(rec)) {
+      const key = `${anlageKey}@${datum}`
+      if (!terminKeys.has(key)) {
+        termine.push({ legacy_id: key, anlage_legacy: anlageKey, datum })
+        terminKeys.add(key)
       }
-      // "Geplant"-Spalte: Datum -> zukünftiger Termin; Freitext -> Planungsnotiz
-      // (beides nimmt die Anlage aus den zeitbasierten Ansichten, wie im alten Dashboard)
-      const geplantRoh = text(rec['Geplant'])
-      const geplant = parseDatum(geplantRoh)
-      if (geplant) {
-        termine.push({ legacy_id: `${anlageKey}@geplant@${geplant}`, anlage_legacy: anlageKey, datum: geplant, geplant: true })
-      } else if (geplantRoh) {
-        anlagen.get(anlageKey)!.planungsnotiz = geplantRoh
+    }
+
+    // "Geplant"-Spalte: Datum -> zukünftiger Termin; Freitext -> Planungsnotiz
+    // (beides nimmt die Anlage aus den zeitbasierten Ansichten, wie im alten Dashboard)
+    const geplantRoh = text(rec['Geplant'])
+    const geplant = parseDatum(geplantRoh)
+    if (geplant) {
+      const key = `${anlageKey}@geplant@${geplant}`
+      if (!terminKeys.has(key)) {
+        termine.push({ legacy_id: key, anlage_legacy: anlageKey, datum: geplant, geplant: true })
+        terminKeys.add(key)
       }
+    } else if (geplantRoh) {
+      anlagen.get(anlageKey)!.planungsnotiz = geplantRoh
     }
   }
 
