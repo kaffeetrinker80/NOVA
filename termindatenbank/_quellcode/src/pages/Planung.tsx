@@ -29,6 +29,36 @@ function turnusText(m?: number): string {
   return m ? `${m} Monate` : '–'
 }
 
+function InfoEditor({ anlage, onSaved }: { anlage: Anlage; onSaved: () => void }) {
+  const [text, setText] = useState(anlage.info ?? '')
+  const [speichert, setSpeichert] = useState(false)
+  const [fehler, setFehler] = useState('')
+  useEffect(() => setText(anlage.info ?? ''), [anlage.id, anlage.info])
+  const geaendert = text !== (anlage.info ?? '')
+  const speichern = async () => {
+    setSpeichert(true)
+    setFehler('')
+    try {
+      await db.anlageAktualisieren(anlage.id, { info: text.trim() || null })
+      onSaved()
+    } catch (e: any) {
+      setFehler(e.message ?? String(e))
+    } finally {
+      setSpeichert(false)
+    }
+  }
+  return <div className="planung-info-editor"
+    onClick={e => e.stopPropagation()} onDoubleClick={e => e.stopPropagation()}>
+    <textarea rows={2} value={text} placeholder="Info eingeben …"
+      onChange={e => setText(e.target.value)} />
+    {geaendert && <button onClick={speichern} disabled={speichert}
+      title="Info speichern" aria-label="Info speichern">
+      <i className="fas fa-floppy-disk" aria-hidden="true"></i>
+    </button>}
+    {fehler && <span className="planung-info-fehler" title={fehler}>!</span>}
+  </div>
+}
+
 /** Ampel-Logik 1:1 aus dem alten Dashboard. */
 function zeilenKlasse(z: Zeile, modus: SubTab): string {
   const f = z.faellig
@@ -261,8 +291,7 @@ export default function Planung() {
                   <td>{fmtDatum(z.faellig)}</td>
                   {tab === 'geplant' && <td style={{ fontWeight: 600 }}>{z.geplantAm ? fmtDatum(z.geplantAm) : <span className="hint">{z.geplantText}</span>}</td>}
                   {infoAnzeigen && <td className="info-zelle">
-                    {[z.bereich.planungsnotiz && tab !== 'geplant' ? `⏸ ${z.bereich.planungsnotiz}` : null, z.bereich.notizen, z.anlage.notizen]
-                      .filter(Boolean).join(' · ') || ''}
+                    <InfoEditor anlage={z.anlage} onSaved={laden} />
                   </td>}
                   <td className="no-print" style={{ whiteSpace: 'nowrap' }}>
                     {inaktiveAnzeigen ? (

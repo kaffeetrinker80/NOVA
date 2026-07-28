@@ -101,11 +101,14 @@ export default function Stammdaten() {
 
   // Anlagen-Detailbearbeitung
   const [notiz, setNotiz] = useState('')
+  const [objektInfo, setObjektInfo] = useState('')
   const [planungsnotiz, setPlanungsnotiz] = useState('')
   const [neuerVerwalter, setNeuerVerwalter] = useState('')
   const [anlageName, setAnlageName] = useState('')
   const [adresse, setAdresse] = useState({ strasse: '', plz: '', ort: '' })
   const [betreuer, setBetreuer] = useState('')
+  const [herausloeseName, setHerausloeseName] = useState('')
+  const [herausloeseKurz, setHerausloeseKurz] = useState('')
 
   // Anlagen zusammenführen
   const [aMergeModus, setAMergeModus] = useState(false)
@@ -277,10 +280,12 @@ export default function Stammdaten() {
   const anlage = anlagen.find(a => a.id === anlageId)
   useEffect(() => { setBereichId('') }, [anlageId])
   useEffect(() => {
-    setNotiz(anlage?.notizen ?? ''); setPlanungsnotiz(anlage?.planungsnotiz ?? '')
+    setNotiz(anlage?.notizen ?? ''); setObjektInfo(anlage?.info ?? '')
+    setPlanungsnotiz(anlage?.planungsnotiz ?? '')
     setNeuerVerwalter(''); setAnlageName(anlage?.name ?? '')
     setAdresse({ strasse: anlage?.strasse ?? '', plz: anlage?.plz ?? '', ort: anlage?.ort ?? '' })
     setBetreuer(anlage?.objekt_betreuer ?? '')
+    setHerausloeseName(anlage?.name ?? ''); setHerausloeseKurz('')
   }, [anlageId])
   useEffect(() => {
     setKName({ kurz: kunde?.name_kurz ?? '', lang: kunde?.name_lang ?? '' })
@@ -305,7 +310,6 @@ export default function Stammdaten() {
         strasse: erste?.strasse,
         plz: erste?.plz,
         ort: erste?.ort,
-        notizen: `Aus Anlagen-Merge erstellt: ${quellen.map(id => anlagen.find(a => a.id === id)?.name ?? id).join(' / ')}`,
       })
       const erg = await db.anlagenZusammenfuehren(ziel, quellen)
       setMeldung(erg + ` Neues Objekt „${name}“ enthält jetzt die gewählten Anlagen als eigene Bereiche mit Historie.`)
@@ -314,8 +318,10 @@ export default function Stammdaten() {
   }
   const kundeUmbenennen = async () => {
     if (!kunde) return
-    await db.kundeAktualisieren(kunde.id, { name_kurz: kName.kurz, name_lang: kName.lang })
-    setMeldung('Kunde umbenannt.'); laden()
+    try {
+      await db.kundeAktualisieren(kunde.id, { name_kurz: kName.kurz, name_lang: kName.lang })
+      setMeldung('Kunde umbenannt.'); laden()
+    } catch (e: any) { setMeldung('Kunde konnte nicht gespeichert werden: ' + (e.message ?? e)) }
   }
   const anlageAktivSetzen = async (aktiv: boolean) => {
     if (!anlage) return
@@ -332,7 +338,8 @@ export default function Stammdaten() {
       name: anlageName.trim() || anlage.name,
       strasse: adresse.strasse || undefined, plz: adresse.plz || undefined, ort: adresse.ort || undefined,
       objekt_betreuer: betreuer || undefined,
-      notizen: notiz || undefined, planungsnotiz: planungsnotiz || null,
+      notizen: notiz || undefined, info: objektInfo || null,
+      planungsnotiz: planungsnotiz || null,
     })
     setMeldung('Objekt-Details gespeichert.'); laden()
   }
@@ -341,6 +348,38 @@ export default function Stammdaten() {
     const erg = await db.verwalterWechseln(anlage.id, neuerVerwalter)
     setMeldung(erg)
     setKundeId(neuerVerwalter); laden()
+  }
+  const anlageAlsKundeHerausloesen = async () => {
+    if (!anlage || !herausloeseName.trim()) return
+    if (!window.confirm(
+      `Anlage „${anlage.name}“ aus „${kundeAnzeige(kunde)}“ herauslösen und künftig unter dem eigenen Kunden „${herausloeseName.trim()}“ führen?\n\n` +
+      'Alle Bereiche, Termine, Aufträge und die Historie bleiben an derselben Anlage.'
+    )) return
+    try {
+      const erg = await db.anlageAlsKundeHerausloesen(anlage.id, herausloeseName.trim(), herausloeseKurz.trim())
+      setMeldung(erg.reaktiviert
+        ? `Früherer Kunde „${erg.kunde_name}“ wurde reaktiviert und die Anlage vollständig zurückverschoben.`
+        : `Kunde „${erg.kunde_name}“ wurde angelegt und die Anlage vollständig herausgelöst.`)
+      setKundeId(erg.kunde_id); setAnlageId(anlage.id); laden()
+    } catch (e: any) { setMeldung('Herauslösen fehlgeschlagen: ' + (e.message ?? e)) }
+  }
+  const bereichAlsAnlageHerausloesen = async (b: Bereich) => {
+    const vorgeschlagen = bereichAnsicht(b).titel
+    const name = window.prompt(
+      `Bereich „${vorgeschlagen}“ wieder als eigene Anlage herauslösen.\n\nName der neuen Anlage:`,
+      vorgeschlagen,
+    )?.trim()
+    if (!name) return
+    if (!window.confirm(
+      `„${vorgeschlagen}“ wirklich als eigene Anlage „${name}“ herauslösen?\n\n` +
+      'Die komplette Bereichshistorie, Termine, Aufträge und Phasen gehen mit.'
+    )) return
+    try {
+      const erg = await db.bereichAlsAnlageHerausloesen(b.id, name)
+      setBereichId(b.id); setAnlageId(erg.anlage_id)
+      setMeldung(`Bereich „${erg.bereich_name}“ wird wieder als eigene Anlage „${erg.anlage_name}“ geführt.`)
+      laden()
+    } catch (e: any) { setMeldung('Herauslösen fehlgeschlagen: ' + (e.message ?? e)) }
   }
   const bereicheDerAnlage = bereiche.filter(b => b.anlage_id === anlageId)
   const bereichStatus = (b: Bereich) => {
@@ -402,8 +441,34 @@ export default function Stammdaten() {
 
   const kundeSpeichern = async () => {
     if (!kf.name_lang) return
-    await db.kundeAnlegen(kf)
-    setNeuKunde(false); setKf({ ...kf, name_lang: '', name_kurz: '' }); laden()
+    const doppelt = kunden.find(k => k.aktiv
+      && k.name_lang.trim().localeCompare(kf.name_lang.trim(), 'de', { sensitivity: 'base' }) === 0)
+    if (doppelt) {
+      setMeldung(`Kunde „${doppelt.name_lang}“ ist bereits vorhanden. Bitte diesen öffnen statt eine Dublette anzulegen.`)
+      setKundeId(doppelt.id)
+      return
+    }
+    try {
+      await db.kundeAnlegen(kf)
+      setNeuKunde(false); setKf({ ...kf, name_lang: '', name_kurz: '' }); laden()
+    } catch (e: any) { setMeldung('Kunde konnte nicht angelegt werden: ' + (e.message ?? e)) }
+  }
+  const kundeEntfernen = async (id: string) => {
+    const k = kunden.find(x => x.id === id)
+    const anzahl = anlagen.filter(a => a.kunde_id === id).length
+    if (anzahl > 0) {
+      setMeldung(`„${k?.name_lang ?? 'Dieser Kunde'}“ hat noch ${anzahl} Anlage(n). Diese zuerst zu einem anderen Kunden verschieben oder löschen.`)
+      return
+    }
+    if (!window.confirm(
+      `Leeren Kunden „${k?.name_lang ?? ''}“ dauerhaft löschen?\n\nDieser Vorgang ist nicht rückgängig zu machen.`
+    ) || !window.confirm('Kunden wirklich endgültig löschen?')) return
+    try {
+      const erg = await db.kundeLoeschen(id)
+      if (kundeId === id) { setKundeId(''); setAnlageId('') }
+      setMeldung(`Kunde „${erg.name}“ wurde gelöscht.`)
+      laden()
+    } catch (e: any) { setMeldung('Löschen fehlgeschlagen: ' + (e.message ?? e)) }
   }
   const anlageSpeichern = async () => {
     if (!af.name.trim() || !kundeId) return
@@ -598,12 +663,19 @@ export default function Stammdaten() {
                   <span className="stamm-zahl">{anlagen.filter(a => a.kunde_id === k.id).length}</span>
                 </label>
               ) : (
-              <button key={k.id} className={`stamm-eintrag ${k.id === kundeId ? 'aktiv' : ''}`}
-                onClick={() => { setKundeId(k.id); setAnlageId('') }}>
-                <strong>{k.name_lang}</strong>
-                {k.name_kurz && <span className="hint">Kurz: {k.name_kurz}</span>}
-                <span className="stamm-zahl">{anlagen.filter(a => a.kunde_id === k.id).length}</span>
-              </button>
+              <div key={k.id} className="anlage-listenzeile">
+                <button className={`stamm-eintrag ${k.id === kundeId ? 'aktiv' : ''}`}
+                  onClick={() => { setKundeId(k.id); setAnlageId('') }}>
+                  <strong>{k.name_lang}</strong>
+                  {k.name_kurz && <span className="hint">Kurz: {k.name_kurz}</span>}
+                  <span className="stamm-zahl">{anlagen.filter(a => a.kunde_id === k.id).length}</span>
+                </button>
+                <button className="anlage-loeschen-knopf" onClick={() => kundeEntfernen(k.id)}
+                  aria-label={`Kunde ${k.name_lang} löschen`}
+                  title="Leeren Kunden dauerhaft löschen">
+                  <i className="fas fa-trash" aria-hidden="true"></i>
+                </button>
+              </div>
               )
             ))}
             {kundenGefiltert.length === 0 && <p className="hint" style={{ padding: '0 14px' }}>Keine Kunden gefunden.</p>}
@@ -833,8 +905,12 @@ export default function Stammdaten() {
                   <input placeholder="z. B. Hr. Maier, 0821 …" value={betreuer} onChange={e => setBetreuer(e.target.value)} />
                   <span className="hint" style={{ fontWeight: 650 }}>Zugang / Notizen</span>
                   <textarea rows={2} placeholder="z. B. Schlüssel beim Hausmeister" value={notiz} onChange={e => setNotiz(e.target.value)} />
-                  <span className="hint" style={{ fontWeight: 650 }}>Planungsvermerk (nimmt Objekt aus Fälligkeits-Ansichten)</span>
-                  <textarea rows={2} placeholder="z. B. Heizung wird erneuert – zurückstellen" value={planungsnotiz} onChange={e => setPlanungsnotiz(e.target.value)} />
+                  <span className="hint" style={{ fontWeight: 650 }}>Info</span>
+                  <textarea rows={2} placeholder="Dieselbe Info erscheint und ist auch in der Planung bearbeitbar."
+                    value={objektInfo} onChange={e => setObjektInfo(e.target.value)} />
+                  <span className="hint" style={{ fontWeight: 650 }}>Planungsvermerk / Zurückstellung</span>
+                  <textarea rows={2} placeholder="Nur verwenden, wenn das Objekt aus den normalen Fälligkeitsansichten genommen werden soll."
+                    value={planungsnotiz} onChange={e => setPlanungsnotiz(e.target.value)} />
                   <button className="primary" onClick={anlageSpeichernDetails}>
                     <i className="fas fa-floppy-disk" aria-hidden="true"></i> Objekt speichern
                   </button>
@@ -848,6 +924,20 @@ export default function Stammdaten() {
                       <i className="fas fa-right-left" aria-hidden="true"></i>
                     </button>
                   </div>
+                  <details className="rueckwaerts-aktion">
+                    <summary><i className="fas fa-rotate-left" aria-hidden="true"></i> Falschen Kunden-Merge rückgängig machen</summary>
+                    <p className="hint">
+                      Führt diese Anlage mit allen WWB und der kompletten Historie wieder unter einem eigenen Kunden.
+                      Ein archivierter Ursprungskunde wird nach Möglichkeit reaktiviert.
+                    </p>
+                    <input placeholder="Vollständiger Kundenname" value={herausloeseName}
+                      onChange={e => setHerausloeseName(e.target.value)} />
+                    <input placeholder="Kurzname (optional)" value={herausloeseKurz}
+                      onChange={e => setHerausloeseKurz(e.target.value)} />
+                    <button onClick={anlageAlsKundeHerausloesen} disabled={!herausloeseName.trim()}>
+                      <i className="fas fa-building-circle-arrow-right" aria-hidden="true"></i> Als eigenen Kunden herauslösen
+                    </button>
+                  </details>
                   {anlage.aktiv
                     ? <button className="secondary" onClick={() => anlageAktivSetzen(false)}><i className="fas fa-pause" aria-hidden="true"></i> Objekt inaktiv setzen</button>
                     : <button className="primary" onClick={() => anlageAktivSetzen(true)}><i className="fas fa-play" aria-hidden="true"></i> Objekt reaktivieren</button>}
@@ -949,6 +1039,10 @@ export default function Stammdaten() {
                             }} title="Auftrag mit Kunde, Anlage und Bereich vorbereitet öffnen"><i className="fas fa-hashtag" aria-hidden="true"></i> Auftrag nacherfassen</button>}
                           {offenePhase && <button onClick={() => setPhaseBearbeiten(offenePhase)}><i className="fas fa-triangle-exclamation" aria-hidden="true"></i> Phase verwalten</button>}
                           <button onClick={() => { setHistorieBereich(b.id); setHistorieOffen(true) }}><i className="fas fa-clock-rotate-left" aria-hidden="true"></i> Vollständige Historie</button>
+                          <button onClick={() => bereichAlsAnlageHerausloesen(b)}
+                            title="Falschen Anlagen-Merge rückgängig machen: diesen Bereich wieder als eigene Anlage führen">
+                            <i className="fas fa-rotate-left" aria-hidden="true"></i> Als eigene Anlage herauslösen
+                          </button>
                           <button className="secondary" onClick={() => bereichEntfernen(b.id)} title="Bereich entfernen"><i className="fas fa-trash-can" aria-hidden="true"></i></button>
                         </div>
                       </div>

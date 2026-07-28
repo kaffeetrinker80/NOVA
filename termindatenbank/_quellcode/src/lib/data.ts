@@ -455,7 +455,7 @@ export const db = {
     return meldungen.length === 1 ? meldungen[0] : meldungen.join(' · ')
   },
 
-  async anlageAktualisieren(id: string, patch: Partial<Pick<Anlage, 'name' | 'strasse' | 'plz' | 'ort' | 'notizen' | 'naechste_untersuchung' | 'turnus_monate' | 'aktiv' | 'objekt_betreuer' | 'proben_anzahl'>> & { planungsnotiz?: string | null }): Promise<void> {
+  async anlageAktualisieren(id: string, patch: Partial<Pick<Anlage, 'name' | 'strasse' | 'plz' | 'ort' | 'notizen' | 'naechste_untersuchung' | 'turnus_monate' | 'aktiv' | 'objekt_betreuer' | 'proben_anzahl'>> & { info?: string | null; planungsnotiz?: string | null }): Promise<void> {
     if (!supabase) { const a = demo.anlagen.find(x => x.id === id); if (a) Object.assign(a, patch); return }
     const { error } = await supabase.from('td_anlagen').update(patch).eq('id', id)
     if (error) throw error
@@ -465,6 +465,18 @@ export const db = {
     if (!supabase) { const k = demo.kunden.find(x => x.id === id); if (k) Object.assign(k, patch); return }
     const { error } = await supabase.from('td_kunden').update(patch).eq('id', id)
     if (error) throw error
+  },
+
+  async kundeLoeschen(id: string): Promise<{ name: string; ansprechpartner: number }> {
+    if (!supabase) {
+      const k = demo.kunden.find(x => x.id === id)
+      return { name: k?.name_lang ?? 'Demo-Kunde', ansprechpartner: 0 }
+    }
+    const { data, error } = await supabase.rpc('td_kunde_sicher_loeschen', {
+      p_kunde: id, p_bestaetigung: 'KUNDE LÖSCHEN',
+    })
+    if (error) throw error
+    return data as { name: string; ansprechpartner: number }
   },
 
   async anlagenZusammenfuehren(zielId: string, quellenIds: string[]): Promise<string> {
@@ -493,6 +505,32 @@ export const db = {
     const { data, error } = await supabase.rpc('td_anlage_verwalter_wechseln', { p_anlage: anlageId, p_neuer_kunde: neuerKundeId })
     if (error) throw error
     return data as string
+  },
+
+  async anlageAlsKundeHerausloesen(anlageId: string, nameLang: string, nameKurz?: string): Promise<{
+    kunde_id: string; kunde_name: string; anlage_name: string; reaktiviert: boolean
+  }> {
+    if (!supabase) return {
+      kunde_id: 'demo', kunde_name: nameLang, anlage_name: 'Demo-Anlage', reaktiviert: false,
+    }
+    const { data, error } = await supabase.rpc('td_anlage_als_kunde_herausloesen', {
+      p_anlage: anlageId, p_name_lang: nameLang, p_name_kurz: nameKurz ?? null,
+    })
+    if (error) throw error
+    return data as { kunde_id: string; kunde_name: string; anlage_name: string; reaktiviert: boolean }
+  },
+
+  async bereichAlsAnlageHerausloesen(bereichId: string, anlagenname: string): Promise<{
+    anlage_id: string; anlage_name: string; bereich_name: string
+  }> {
+    if (!supabase) return {
+      anlage_id: 'demo', anlage_name: anlagenname, bereich_name: 'Demo-Bereich',
+    }
+    const { data, error } = await supabase.rpc('td_bereich_als_anlage_herausloesen', {
+      p_bereich: bereichId, p_anlagenname: anlagenname,
+    })
+    if (error) throw error
+    return data as { anlage_id: string; anlage_name: string; bereich_name: string }
   },
 
   async historieNachzuordnen(): Promise<string> {

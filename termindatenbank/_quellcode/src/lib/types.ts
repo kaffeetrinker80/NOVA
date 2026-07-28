@@ -28,7 +28,7 @@ export interface Anlage {
   id: string; kunde_id: string; name: string
   strasse?: string; plz?: string; ort?: string; objekt_referenz?: string
   turnus_monate?: number; naechste_untersuchung?: string
-  notizen?: string; planungsnotiz?: string; objekt_betreuer?: string
+  notizen?: string; info?: string; planungsnotiz?: string; objekt_betreuer?: string
   proben_anzahl?: number; aktiv: boolean
 }
 export interface Bereich {
