@@ -23,6 +23,16 @@ const PHASE_TEXT: Record<Ueberschreitungsphase['status'], string> = {
   abgeschlossen: 'Phase abgeschlossen',
 }
 
+type StammdatenSuchtreffer = {
+  anlageId: string
+  bereichId?: string
+  titel: string
+  detail: string
+}
+
+const suchtext = (...werte: Array<string | undefined>) =>
+  werte.filter(Boolean).join(' ').toLocaleLowerCase('de')
+
 function bereichAnsicht(b: Bereich) {
   const titel = b.name.endsWith(' – Gesamtanlage') ? b.name.replace(/ – Gesamtanlage$/, '') : b.name
   const mergeHinweis = b.legacy_quelle === 'Anlagen-Zusammenführung'
@@ -122,6 +132,7 @@ export default function Stammdaten() {
   const [historieOffen, setHistorieOffen] = useState(false)
   const [historieBereich, setHistorieBereich] = useState<string | undefined>(undefined)
   const [bereichId, setBereichId] = useState('')
+  const [bereichNachAnlagewechsel, setBereichNachAnlagewechsel] = useState('')
   const [bf, setBf] = useState({
     name: '', strasse: '', hausnummer: '', wwb_details: '', notizen: '',
     turnus_art: 'regelturnus' as Turnusart, turnus_monate: '', naechste_untersuchung: '',
@@ -143,13 +154,57 @@ export default function Stammdaten() {
   }
   useEffect(laden, [])
 
+  const suchtrefferNachKunde = useMemo(() => {
+    const q = suche.trim().toLocaleLowerCase('de')
+    const treffer = new Map<string, StammdatenSuchtreffer[]>()
+    if (!q) return treffer
+    const hinzufuegen = (kunde: string, eintrag: StammdatenSuchtreffer) => {
+      const liste = treffer.get(kunde) ?? []
+      if (!liste.some(x => x.anlageId === eintrag.anlageId && x.bereichId === eintrag.bereichId)) {
+        liste.push(eintrag)
+      }
+      treffer.set(kunde, liste)
+    }
+    for (const a of anlagen) {
+      if (suchtext(a.name, a.strasse, a.plz, a.ort, a.objekt_referenz, a.objekt_betreuer, a.info).includes(q)) {
+        hinzufuegen(a.kunde_id, {
+          anlageId: a.id,
+          titel: `Objekt: ${a.name}`,
+          detail: [a.strasse, [a.plz, a.ort].filter(Boolean).join(' ')].filter(Boolean).join(' · '),
+        })
+      }
+      for (const b of bereiche.filter(x => x.anlage_id === a.id)) {
+        if (suchtext(b.name, b.strasse, b.hausnummer, `${b.strasse ?? ''} ${b.hausnummer ?? ''}`,
+          b.wwb_details, b.beschreibung).includes(q)) {
+          hinzufuegen(a.kunde_id, {
+            anlageId: a.id,
+            bereichId: b.id,
+            titel: `Bereich: ${bereichAnsicht(b).titel}`,
+            detail: [
+              `Objekt ${a.name}`,
+              [b.strasse, b.hausnummer].filter(Boolean).join(' '),
+              [a.plz, a.ort].filter(Boolean).join(' '),
+            ].filter(Boolean).join(' · '),
+          })
+        }
+      }
+    }
+    return treffer
+  }, [anlagen, bereiche, suche])
+
   const kundenGefiltert = useMemo(() => {
-    const q = suche.toLowerCase()
+    const q = suche.trim().toLocaleLowerCase('de')
     return kunden
-      .filter(k => (inaktiveKunden || k.aktiv)
-        && (!q || k.name_lang.toLowerCase().includes(q) || k.name_kurz.toLowerCase().includes(q)))
+      .filter(k => {
+        if (!inaktiveKunden && !k.aktiv) return false
+        if (!q) return true
+        const kundePasst = suchtext(
+          k.name_lang, k.name_kurz, k.strasse, k.plz, k.ort, k.telefon, k.email,
+        ).includes(q)
+        return kundePasst || suchtrefferNachKunde.has(k.id)
+      })
       .sort((a, b) => a.name_lang.localeCompare(b.name_lang, 'de'))
-  }, [kunden, suche, inaktiveKunden])
+  }, [kunden, suche, inaktiveKunden, suchtrefferNachKunde])
 
   const kunde = kunden.find(k => k.id === kundeId)
 
@@ -278,7 +333,10 @@ export default function Stammdaten() {
   }
 
   const anlage = anlagen.find(a => a.id === anlageId)
-  useEffect(() => { setBereichId('') }, [anlageId])
+  useEffect(() => {
+    setBereichId(bereichNachAnlagewechsel)
+    setBereichNachAnlagewechsel('')
+  }, [anlageId])
   useEffect(() => {
     setNotiz(anlage?.notizen ?? ''); setObjektInfo(anlage?.info ?? '')
     setPlanungsnotiz(anlage?.planungsnotiz ?? '')
@@ -568,7 +626,7 @@ export default function Stammdaten() {
           </div>
           <div className="suchfeld" style={{ margin: '0 12px 10px' }}>
             <i className="fas fa-magnifying-glass" aria-hidden="true"></i>
-            <input placeholder="Kunde suchen …" value={suche} onChange={e => setSuche(e.target.value)}
+            <input placeholder="Kunde, Objekt, Bereich oder Adresse suchen …" value={suche} onChange={e => setSuche(e.target.value)}
               onKeyDown={e => e.key === 'Escape' && setSuche('')} />
             {suche && <button className="suchfeld-x" onClick={() => setSuche('')} aria-label="Suche leeren">×</button>}
           </div>
@@ -663,7 +721,7 @@ export default function Stammdaten() {
                   <span className="stamm-zahl">{anlagen.filter(a => a.kunde_id === k.id).length}</span>
                 </label>
               ) : (
-              <div key={k.id} className="anlage-listenzeile">
+              <div key={k.id} className={`anlage-listenzeile kunden-listenzeile ${suche.trim() ? 'mit-suchtreffern' : ''}`}>
                 <button className={`stamm-eintrag ${k.id === kundeId ? 'aktiv' : ''}`}
                   onClick={() => { setKundeId(k.id); setAnlageId('') }}>
                   <strong>{k.name_lang}</strong>
@@ -675,6 +733,27 @@ export default function Stammdaten() {
                   title="Leeren Kunden dauerhaft löschen">
                   <i className="fas fa-trash" aria-hidden="true"></i>
                 </button>
+                {suche.trim() && (suchtrefferNachKunde.get(k.id) ?? []).length > 0 && (
+                  <div className="kunden-suchtreffer">
+                    {(suchtrefferNachKunde.get(k.id) ?? []).slice(0, 4).map(t => (
+                      <button key={`${t.anlageId}-${t.bereichId ?? 'objekt'}`}
+                        onClick={() => {
+                          setKundeId(k.id)
+                          if (t.anlageId !== anlageId) setBereichNachAnlagewechsel(t.bereichId ?? '')
+                          setAnlageId(t.anlageId)
+                          if (t.anlageId === anlageId) setBereichId(t.bereichId ?? '')
+                        }}
+                        title="Diesen Stammdatentreffer direkt öffnen">
+                        <i className={`fas ${t.bereichId ? 'fa-diagram-project' : 'fa-building'}`} aria-hidden="true"></i>
+                        <span><strong>{t.titel}</strong>{t.detail && <small>{t.detail}</small>}</span>
+                        <i className="fas fa-arrow-right" aria-hidden="true"></i>
+                      </button>
+                    ))}
+                    {(suchtrefferNachKunde.get(k.id) ?? []).length > 4 && (
+                      <span className="hint">+ {(suchtrefferNachKunde.get(k.id) ?? []).length - 4} weitere Treffer</span>
+                    )}
+                  </div>
+                )}
               </div>
               )
             ))}
