@@ -12,10 +12,11 @@ type SubTab = 'next90' | 'nachunters' | 'berichte' | 'geplant' | 'alle'
 
 interface Zeile {
   anlage: Anlage
+  bereich: Bereich
   kunde?: Kunde
   geplantAm?: string        // nächster zukünftiger Termin
   geplantText?: string      // Freitext-Planungsvermerk am Objekt
-  faellig?: string          // anlage.naechste_untersuchung
+  faellig?: string          // bereich.naechste_untersuchung
 }
 
 const heuteIso = new Date().toISOString().slice(0, 10)
@@ -35,10 +36,10 @@ function zeilenKlasse(z: Zeile, modus: SubTab): string {
     return f && f < heuteIso ? 'amp-red' : 'amp-yellow'
   }
   if (modus === 'next90') {
-    const istNach = z.anlage.turnus_monate === 3
+    const istNach = z.bereich.turnus_monate === 3
     if (istNach) return 'amp-yellow'                             // 3-Monats-Turnus: immer gelb
     if (f && f <= heuteIso) return 'amp-red overdue-row'         // überfällig: rot (standardmäßig versteckt)
-    const istOrient = z.anlage.turnus_monate === 12 || z.anlage.turnus_monate === 36
+    const istOrient = z.bereich.turnus_monate === 12 || z.bereich.turnus_monate === 36
     if (istOrient && f && f > heuteIso && f <= plusTage(90)) return 'amp-green'
     return ''
   }
@@ -66,7 +67,8 @@ export default function Planung() {
   const [inaktiveAnzeigen, setInaktiveAnzeigen] = useState(false)
   const [sortAuf, setSortAuf] = useState(true)
   const [modalAnlage, setModalAnlage] = useState<Anlage | null>(null)
-  const [historieAnlage, setHistorieAnlage] = useState<Anlage | null>(null)
+  const [historie, setHistorie] = useState<{ anlage: Anlage; bereich: Bereich } | null>(null)
+  const [planBereichId, setPlanBereichId] = useState('')
   const [auftraege, setAuftraege] = useState<Auftrag[]>([])
   const [berichtAuftrag, setBerichtAuftrag] = useState<Auftrag | null>(null)
 
@@ -77,18 +79,22 @@ export default function Planung() {
   }
   useEffect(laden, [])
 
-  const zeilen: Zeile[] = useMemo(() => anlagen.filter(a => inaktiveAnzeigen ? !a.aktiv : a.aktiv).map(a => {
+  const zeilen: Zeile[] = useMemo(() => bereiche.filter(b => b.aktiv).flatMap(b => {
+    const a = anlagen.find(a => a.id === b.anlage_id)
+    if (!a || (inaktiveAnzeigen ? a.aktiv : !a.aktiv)) return []
+    const terminIds = new Set(auftraege.filter(o => o.bereich_id === b.id && o.termin_id).map(o => o.termin_id))
     const zukunft = termine
-      .filter(t => t.anlage_id === a.id && t.datum >= heuteIso && (t.status === 'geplant' || t.status === 'bestaetigt'))
+      .filter(t => (t.bereich_id === b.id || terminIds.has(t.id)) && t.datum >= heuteIso && (t.status === 'geplant' || t.status === 'bestaetigt'))
       .map(t => t.datum).sort()
-    return {
+    return [{
       anlage: a,
+      bereich: b,
       kunde: kunden.find(k => k.id === a.kunde_id),
       geplantAm: zukunft[0],
-      geplantText: a.planungsnotiz || undefined,
-      faellig: a.naechste_untersuchung,
-    }
-  }), [anlagen, kunden, termine])
+      geplantText: b.planungsnotiz || a.planungsnotiz || undefined,
+      faellig: b.naechste_untersuchung,
+    }]
+  }), [anlagen, bereiche, kunden, termine, auftraege, inaktiveAnzeigen])
 
   // Untersuchungstermin liegt zurück, aber mindestens ein Unterauftrag hat noch keinen Befund.
   const berichteOffen = useMemo(() => auftraege.flatMap(a => {
@@ -106,9 +112,9 @@ export default function Planung() {
 
     if (tab === 'next90') {
       z = z.filter(x => !x.geplantAm && !x.geplantText && x.faellig && x.faellig <= plusTage(90))
-      if (!ueberfaelligeAnzeigen) z = z.filter(x => !(x.faellig! <= heuteIso && x.anlage.turnus_monate !== 3))
+      if (!ueberfaelligeAnzeigen) z = z.filter(x => !(x.faellig! <= heuteIso && x.bereich.turnus_monate !== 3))
     } else if (tab === 'nachunters') {
-      z = z.filter(x => x.anlage.turnus_monate === 3 && !x.geplantAm && !x.geplantText)
+      z = z.filter(x => x.bereich.turnus_monate === 3 && !x.geplantAm && !x.geplantText)
     } else if (tab === 'berichte') {
       z = []
     } else if (tab === 'geplant') {
@@ -140,12 +146,12 @@ export default function Planung() {
 
   const anz = {
     next90: zeilen.filter(x => !x.geplantAm && !x.geplantText && x.faellig && x.faellig <= plusTage(90)).length,
-    nachunters: zeilen.filter(x => x.anlage.turnus_monate === 3 && !x.geplantAm && !x.geplantText).length,
+    nachunters: zeilen.filter(x => x.bereich.turnus_monate === 3 && !x.geplantAm && !x.geplantText).length,
     berichte: berichteOffen.length,
     geplant: zeilen.filter(x => !!x.geplantAm || !!x.geplantText).length,
     alle: zeilen.length,
   }
-  const ueberfaellig = zeilen.filter(x => !x.geplantAm && x.faellig && x.faellig <= heuteIso && x.anlage.turnus_monate !== 3).length
+  const ueberfaellig = zeilen.filter(x => !x.geplantAm && x.faellig && x.faellig <= heuteIso && x.bereich.turnus_monate !== 3).length
 
   const sortieren = (s: typeof sortSpalte) => {
     if (s === sortSpalte) setSortAuf(!sortAuf)
@@ -232,7 +238,7 @@ export default function Planung() {
             <thead><tr>
               <th onClick={() => sortieren('kundeName')} style={{ cursor: 'pointer' }}>Verwaltung <Pfeil s="kundeName" /></th>
               <th onClick={() => sortieren('anlage')} style={{ cursor: 'pointer' }}>Wohnanlage/Objekt <Pfeil s="anlage" /></th>
-              <th>PLZ</th>
+              <th>Bereich/WWB</th><th>PLZ</th>
               <th onClick={() => sortieren('ort')} style={{ cursor: 'pointer' }}>Ort <Pfeil s="ort" /></th>
               <th>Turnus</th>
               <th>Proben</th>
@@ -243,18 +249,19 @@ export default function Planung() {
             </tr></thead>
             <tbody>
               {gefiltert.slice(0, 500).map(z => (
-                <tr key={z.anlage.id} className={zeilenKlasse(z, tab)}
-                  onDoubleClick={() => setModalAnlage(z.anlage)} title="Doppelklick: Termin planen">
+                <tr key={z.bereich.id} className={zeilenKlasse(z, tab)}
+                  onDoubleClick={() => { setPlanBereichId(z.bereich.id); setModalAnlage(z.anlage) }} title="Doppelklick: Termin für diesen Bereich planen">
                   <td>{kundeAnzeige(z.kunde)}</td>
                   <td style={{ fontWeight: 600 }}>{z.anlage.name}</td>
+                  <td>{z.bereich.name}</td>
                   <td>{z.anlage.plz ?? '–'}</td>
                   <td>{z.anlage.ort ?? '–'}</td>
-                  <td>{turnusText(z.anlage.turnus_monate)}</td>
-                  <td>{z.anlage.proben_anzahl ?? '–'}</td>
+                  <td>{turnusText(z.bereich.turnus_monate)}</td>
+                  <td>{z.bereich.proben_anzahl ?? '–'}</td>
                   <td>{fmtDatum(z.faellig)}</td>
                   {tab === 'geplant' && <td style={{ fontWeight: 600 }}>{z.geplantAm ? fmtDatum(z.geplantAm) : <span className="hint">{z.geplantText}</span>}</td>}
                   {infoAnzeigen && <td className="info-zelle">
-                    {[z.anlage.planungsnotiz && tab !== 'geplant' ? `⏸ ${z.anlage.planungsnotiz}` : null, z.anlage.notizen]
+                    {[z.bereich.planungsnotiz && tab !== 'geplant' ? `⏸ ${z.bereich.planungsnotiz}` : null, z.bereich.notizen, z.anlage.notizen]
                       .filter(Boolean).join(' · ') || ''}
                   </td>}
                   <td className="no-print" style={{ whiteSpace: 'nowrap' }}>
@@ -263,11 +270,11 @@ export default function Planung() {
                         <i className="fas fa-eye" aria-hidden="true"></i> Wieder einblenden
                       </button>
                     ) : (<>
-                      <button className="zeile-btn" onClick={() => setModalAnlage(z.anlage)}>
+                      <button className="zeile-btn" onClick={() => { setPlanBereichId(z.bereich.id); setModalAnlage(z.anlage) }}>
                         <i className="fas fa-calendar-plus" aria-hidden="true"></i> Planen
                       </button>{' '}
                       <button className="zeile-btn" style={{ background: '#6c757d', borderColor: '#6c757d' }}
-                        onClick={() => setHistorieAnlage(z.anlage)} title="Untersuchungsverlauf öffnen">
+                        onClick={() => setHistorie({ anlage: z.anlage, bereich: z.bereich })} title="Untersuchungsverlauf dieses Bereichs öffnen">
                         <i className="fas fa-clock-rotate-left" aria-hidden="true"></i> Verlauf
                       </button>{' '}
                       <button className="zeile-btn" style={{ background: '#adb5bd', borderColor: '#adb5bd' }}
@@ -286,15 +293,17 @@ export default function Planung() {
         {gefiltert.length > 500 && <p className="hint" style={{ padding: '10px 20px' }}>Angezeigt: erste 500 von {gefiltert.length} – Suche zum Eingrenzen nutzen.</p>}
       </section>
 
-      {historieAnlage && (
-        <HistorieModal anlage={historieAnlage} kunde={kunden.find(k => k.id === historieAnlage.kunde_id)}
-          termine={termine} auftraege={auftraege} bereiche={bereiche} onClose={() => setHistorieAnlage(null)} />
+      {historie && (
+        <HistorieModal anlage={historie.anlage} kunde={kunden.find(k => k.id === historie.anlage.kunde_id)}
+          termine={termine} auftraege={auftraege} bereiche={bereiche} nurBereich={historie.bereich.id}
+          onClose={() => setHistorie(null)} onSaved={laden} />
       )}
       {modalAnlage && (
         <PlanModal
           anlage={modalAnlage}
           kunde={kunden.find(k => k.id === modalAnlage.kunde_id)}
           bereiche={bereiche}
+          startBereichId={planBereichId}
           onClose={() => setModalAnlage(null)}
           onSaved={laden}
         />

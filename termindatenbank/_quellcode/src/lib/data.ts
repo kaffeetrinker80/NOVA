@@ -134,16 +134,20 @@ export const db = {
   async bereichAktualisieren(id: string, patch: Partial<Pick<Bereich,
     'name' | 'beschreibung' | 'wwb_details' | 'strasse' | 'hausnummer' | 'notizen' |
     'turnus_monate' | 'turnus_art' | 'turnus_begruendung' | 'naechste_untersuchung' |
-    'proben_anzahl' | 'planungsnotiz' | 'betreuungsstatus'
+    'proben_anzahl' | 'planungsnotiz' | 'betreuungsstatus' |
+    'standard_legionellen' | 'standard_mibi' | 'standard_mibi_umfang' | 'standard_chemie'
   >>): Promise<void> {
     if (!supabase) { const b = demo.bereiche.find(x => x.id === id); if (b) Object.assign(b, patch); return }
     const { error } = await supabase.from('td_bereiche').update(patch).eq('id', id)
     if (error) throw error
   },
-  async bereichLoeschen(id: string): Promise<void> {
-    if (!supabase) return
-    const { error } = await supabase.from('td_bereiche').delete().eq('id', id)
+  async bereichLoeschen(id: string): Promise<{ name: string; termine: number; auftraege: number; phasen: number }> {
+    if (!supabase) return { name: 'Demo-Bereich', termine: 0, auftraege: 0, phasen: 0 }
+    const { data, error } = await supabase.rpc('td_bereich_sicher_loeschen', {
+      p_bereich: id, p_bestaetigung: 'BEREICH LÖSCHEN',
+    })
     if (error) throw error
+    return data as { name: string; termine: number; auftraege: number; phasen: number }
   },
   async terminAnlegen(t: Omit<Termin, 'id' | 'probenehmer' | 'kalender_exportiert'>): Promise<string> {
     if (!supabase) {
@@ -154,6 +158,23 @@ export const db = {
     const { data, error } = await supabase.from('td_termine').insert(t).select('id').single()
     if (error) throw error
     return data.id
+  },
+  async terminAktualisieren(id: string, patch: Partial<Pick<Termin,
+    'datum' | 'status' | 'fachliche_untersuchungsart' | 'historie_einordnung' |
+    'befund' | 'pruefbericht_nummer' | 'pruefbericht_datum' | 'historie_bemerkung' | 'notizen'
+  >>): Promise<void> {
+    if (!supabase) {
+      const t = demo.termine.find(x => x.id === id)
+      if (t) Object.assign(t, patch)
+      return
+    }
+    const { error } = await supabase.from('td_termine').update(patch).eq('id', id)
+    if (error) throw error
+  },
+  async terminLoeschen(id: string): Promise<void> {
+    if (!supabase) return
+    const { error } = await supabase.from('td_termine').delete().eq('id', id)
+    if (error) throw error
   },
 
   /** Vorschau der nächsten Auftragsnummer (ohne sie zu verbrauchen). */
@@ -346,6 +367,7 @@ export const db = {
           bereich_id: bereichId.get(t.bereich_legacy) ?? null,
           datum: t.datum,
           status: (t as any).geplant ? 'geplant' : 'abgeschlossen',
+          historie_einordnung: (t as any).geplant ? 'regulaer' : 'unbekannt',
           notizen: (t as any).geplant ? 'Geplanter Termin aus Altbestand' : 'Historischer Termin aus Altbestand',
           legacy_quelle: 'Terminverwaltung V4',
         } : null

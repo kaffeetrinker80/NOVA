@@ -8,19 +8,20 @@ import {
 } from '../lib/aushang'
 
 interface ArtWahl { art: Untersuchungsart; suffix: string; umfang?: string; proben_geplant?: number; aktiv: boolean }
-const artenStandard = (proben?: number): ArtWahl[] => [
-  { art: 'legionellen', suffix: '', aktiv: true, proben_geplant: proben },
-  { art: 'mibi', suffix: 'M', umfang: 'Standard', aktiv: false },
-  { art: 'chemie', suffix: 'C', aktiv: false },
+const artenStandard = (bereich?: Bereich): ArtWahl[] => [
+  { art: 'legionellen', suffix: '', aktiv: bereich?.standard_legionellen ?? true, proben_geplant: bereich?.proben_anzahl },
+  { art: 'mibi', suffix: 'M', umfang: bereich?.standard_mibi_umfang ?? 'Standard', aktiv: bereich?.standard_mibi ?? false },
+  { art: 'chemie', suffix: 'C', aktiv: bereich?.standard_chemie ?? false },
   { art: 'vorortparameter', suffix: 'V', aktiv: false },
 ]
 
 interface Ergebnis { bereichName: string; nummer: string }
 
-export default function PlanModal({ anlage, kunde, bereiche, onClose, onSaved }: {
+export default function PlanModal({ anlage, kunde, bereiche, startBereichId, onClose, onSaved }: {
   anlage: Anlage
   kunde: Kunde | undefined
   bereiche: Bereich[]
+  startBereichId?: string
   onClose: () => void
   onSaved: () => void
 }) {
@@ -33,8 +34,10 @@ export default function PlanModal({ anlage, kunde, bereiche, onClose, onSaved }:
 
   // ── Bereiche & Arten ──
   const eigene = bereiche.filter(b => b.anlage_id === anlage.id)
-  const [wahl, setWahl] = useState<Record<string, ArtWahl[]>>(() =>
-    eigene.length === 1 ? { [eigene[0].id]: artenStandard(anlage.proben_anzahl) } : {})
+  const [wahl, setWahl] = useState<Record<string, ArtWahl[]>>(() => {
+    const start = eigene.find(b => b.id === startBereichId) ?? (eigene.length === 1 ? eigene[0] : undefined)
+    return start ? { [start.id]: artenStandard(start) } : {}
+  })
   const [neuerBereich, setNeuerBereich] = useState('')
 
   // ── Nummernvergabe ──
@@ -54,7 +57,7 @@ export default function PlanModal({ anlage, kunde, bereiche, onClose, onSaved }:
   useEffect(() => { db.nummerVorschau().then(setVorschau).catch(() => setVorschau('–')) }, [])
 
   const toggleBereich = (id: string) =>
-    setWahl(w => (id in w ? Object.fromEntries(Object.entries(w).filter(([k]) => k !== id)) : { ...w, [id]: artenStandard(anlage.proben_anzahl) }))
+    setWahl(w => (id in w ? Object.fromEntries(Object.entries(w).filter(([k]) => k !== id)) : { ...w, [id]: artenStandard(eigene.find(b => b.id === id)) }))
 
   const bereichAnlegen = async () => {
     if (!neuerBereich.trim()) return
@@ -73,6 +76,7 @@ export default function PlanModal({ anlage, kunde, bereiche, onClose, onSaved }:
     try {
       const terminId = await db.terminAnlegen({
         kunde_id: anlage.kunde_id, anlage_id: anlage.id,
+        bereich_id: aktiveBereiche.length === 1 ? aktiveBereiche[0][0] : undefined,
         datum, beginn: von, ende: bis, status: 'geplant',
       })
       const erg: Ergebnis[] = []

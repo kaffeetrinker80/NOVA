@@ -36,6 +36,21 @@ export default function Auftragsbuch() {
     db.anlagen().then(setAnlagen); db.bereiche().then(setBereiche); db.termine().then(setTermine)
   }
   useEffect(laden, [])
+  useEffect(() => {
+    const roh = sessionStorage.getItem('novaplan_auftrag_vorbelegung')
+    if (!roh) return
+    try {
+      const v = JSON.parse(roh)
+      setNvKunde(v.kundeId ?? '')
+      setNvAnlage(v.anlageId ?? '')
+      setNvBereich(v.bereichId ?? '')
+      setNvTermin(v.terminId ?? '')
+      setNvOffen(true)
+      setNvMeldung('Kunde, Anlage und Bereich wurden aus den Stammdaten vorbereitet.')
+    } finally {
+      sessionStorage.removeItem('novaplan_auftrag_vorbelegung')
+    }
+  }, [])
 
   const zeilen = useMemo(() => auftraege.flatMap(a => {
     const bereich = bereiche.find(b => b.id === a.bereich_id)
@@ -116,7 +131,7 @@ export default function Auftragsbuch() {
               <label className="f">Bestehendem Termin zuordnen
                 <select value={nvTermin} onChange={e => setNvTermin(e.target.value)} disabled={!nvAnlage}>
                   <option value="">– ohne Termin nacherfassen –</option>
-                  {termine.filter(t => t.anlage_id === nvAnlage && t.status !== 'abgesagt').sort((a, b) => b.datum.localeCompare(a.datum)).map(t => <option key={t.id} value={t.id}>{fmtDatum(t.datum)} · {t.status}</option>)}
+                  {termine.filter(t => t.anlage_id === nvAnlage && t.status !== 'abgesagt' && (!nvBereich || t.bereich_id === nvBereich)).sort((a, b) => b.datum.localeCompare(a.datum)).map(t => <option key={t.id} value={t.id}>{fmtDatum(t.datum)} · {t.status}</option>)}
                 </select>
               </label>
               <label className="f">Fachliche Untersuchungsart

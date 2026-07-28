@@ -412,6 +412,14 @@ table.tbl {
 .hist-auftrag { margin-top: 4px; display: flex; flex-direction: column; gap: 3px; }
 .hist-unterauftrag { font-size: .8rem; display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
 .hist-ausblick { margin: 0 0 0 25px; padding-top: 2px; color: var(--text-muted); font-size: .78rem; }
+.hist-werkzeuge { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 8px 24px 4px; }
+.hist-editor { margin: 12px 24px 4px; padding: 16px; border: 1px solid #bfd4e5; border-radius: 10px; background: #f7fbfe; }
+.hist-editor > strong { display: block; margin-bottom: 12px; color: #24455f; }
+.hist-editor-aktionen { display: flex; gap: 8px; margin-top: 12px; }
+.hist-zeilenaktionen { display: flex; gap: 5px; margin-left: auto; }
+.hist-fachdaten { display: flex; gap: 10px; flex-wrap: wrap; font-size: .82rem; margin: 4px 0; }
+.hist-fachdaten span + span::before { content: "·"; margin-right: 10px; color: #9aa8b2; }
+button.danger, .danger { color: #a62424; }
 @media (max-width: 600px) { .hist-kennzahlen { grid-template-columns: 1fr; } }
 
 /* ---------- Passwort-Feld mit Auge ---------- */
@@ -512,6 +520,13 @@ table.tbl {
   display: block; color: var(--text-main); font-size: .79rem;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+.bereich-standardarten {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px;
+}
+.bereich-standardarten legend { padding: 0 5px; font-size: .78rem; font-weight: 700; color: var(--text-muted); }
+.bereich-standardarten label { display: inline-flex; align-items: center; gap: 5px; font-size: .84rem; }
+.bereich-standardarten select { width: auto; min-width: 170px; }
 @media (max-width: 720px) {
   .bereich-mini-historie { grid-template-columns: 1fr; }
   .bereich-detail-uebersicht { grid-template-columns: 1fr 1fr; }

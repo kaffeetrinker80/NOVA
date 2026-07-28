@@ -17,6 +17,7 @@ export type Folgeentscheidung =
   | 'regelturnus_durch_gesundheitsamt'
 export type Turnusart = 'regelturnus' | 'sonderturnus' | 'behoerdlich'
 export type Betreuungsstatus = 'aktiv' | 'pausiert' | 'nicht_mehr_unser_kunde'
+export type HistorieEinordnung = 'unbekannt' | 'regulaer' | 'als_weitergehend_uebernommen' | 'als_nu_uebernommen'
 
 export interface Kunde {
   id: string; name_lang: string; name_kurz: string; typ: Kundentyp
@@ -37,12 +38,19 @@ export interface Bereich {
   turnus_monate?: number; turnus_art?: Turnusart; turnus_begruendung?: string
   naechste_untersuchung?: string; proben_anzahl?: number
   planungsnotiz?: string; betreuungsstatus?: Betreuungsstatus
+  standard_legionellen?: boolean; standard_mibi?: boolean
+  standard_mibi_umfang?: 'Standard' | 'Komplett' | 'inklusive Enterokokken'
+  standard_chemie?: boolean
   legacy_quelle?: string
 }
 export interface Termin {
   id: string; kunde_id: string; anlage_id: string; bereich_id?: string
   datum: string; beginn?: string; ende?: string
   status: Terminstatus; frist?: string; notizen?: string
+  fachliche_untersuchungsart?: FachlicheUntersuchungsart
+  historie_einordnung?: HistorieEinordnung
+  befund?: Befund; pruefbericht_nummer?: string; pruefbericht_datum?: string
+  historie_bemerkung?: string
   probenehmer: string[]
   kalender_exportiert: boolean
 }
@@ -103,6 +111,16 @@ export const FOLGE_LABEL: Record<Folgeentscheidung, string> = {
   ueberschreitungsphase_starten: 'Überschreitungsphase starten',
   phase_fortfuehren: 'Phase fortführen',
   regelturnus_durch_gesundheitsamt: 'Rückkehr Regelturnus durch Gesundheitsamt',
+}
+export const BEFUND_LABEL: Record<Befund, string> = {
+  offen: 'noch offen', sauber: 'ohne Befund', ueberschreitung: 'Überschreitung',
+  verkeimung: 'Verkeimung', nicht_bewertbar: 'nicht auswertbar',
+}
+export const HISTORIE_EINORDNUNG_LABEL: Record<HistorieEinordnung, string> = {
+  unbekannt: 'noch fachlich ungeklärt',
+  regulaer: 'regulär bei uns durchgeführt',
+  als_weitergehend_uebernommen: 'als weitergehende Untersuchung übernommen (kein Vorverlauf bei uns)',
+  als_nu_uebernommen: 'als Nachuntersuchung übernommen (kein Vorverlauf bei uns)',
 }
 
 export function nummerVoll(a: Auftrag, u: Unterauftrag): string {

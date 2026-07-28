@@ -1,16 +1,51 @@
 import { useEffect, useMemo, useState } from 'react'
 import { db } from '../lib/data'
-import type { Anlage, Auftrag, Bereich, Kunde, Termin, Ueberschreitungsphase } from '../lib/types'
-import { ART_LABEL, fmtDatum, nummerVoll, kundeAnzeige } from '../lib/types'
+import type {
+  Anlage, Auftrag, Befund, Bereich, FachlicheUntersuchungsart, HistorieEinordnung,
+  Kunde, Termin, Ueberschreitungsphase,
+} from '../lib/types'
+import {
+  ART_LABEL, BEFUND_LABEL, FACHLICHE_ART_LABEL, HISTORIE_EINORDNUNG_LABEL,
+  fmtDatum, kundeAnzeige, nummerVoll,
+} from '../lib/types'
 import { ErgebnisBadge } from './ui'
-import { phasenErmitteln } from '../lib/phasen'
 
 const heute = new Date().toISOString().slice(0, 10)
-const turnusText = (m?: number) => m === 3 ? '3 Monate' : m === 12 ? '1 Jahr' : m === 36 ? '3 Jahre' : '–'
-const tageSeit = (von: string, bis: string) => Math.round((+new Date(bis) - +new Date(von)) / 864e5)
+const turnusText = (m?: number) => m === 3 ? '3 Monate' : m === 12 ? '1 Jahr' : m === 36 ? '3 Jahre' : m ? `${m} Monate` : '–'
 
-/** Der gut lesbare Anlagen-Verlauf: Phase, NUs und aktueller Stand auf einen Blick. */
-export default function HistorieModal({ anlage, kunde, termine, auftraege, bereiche, nurBereich, onClose }: {
+type Entwurf = {
+  datum: string
+  fachliche_untersuchungsart: FachlicheUntersuchungsart | ''
+  historie_einordnung: HistorieEinordnung
+  befund: Befund | ''
+  pruefbericht_nummer: string
+  pruefbericht_datum: string
+  historie_bemerkung: string
+}
+
+const leer: Entwurf = {
+  datum: heute,
+  fachliche_untersuchungsart: '',
+  historie_einordnung: 'unbekannt',
+  befund: '',
+  pruefbericht_nummer: '',
+  pruefbericht_datum: '',
+  historie_bemerkung: '',
+}
+
+function ausTermin(t: Termin): Entwurf {
+  return {
+    datum: t.datum,
+    fachliche_untersuchungsart: t.fachliche_untersuchungsart ?? '',
+    historie_einordnung: t.historie_einordnung ?? 'unbekannt',
+    befund: t.befund ?? '',
+    pruefbericht_nummer: t.pruefbericht_nummer ?? '',
+    pruefbericht_datum: t.pruefbericht_datum ?? '',
+    historie_bemerkung: t.historie_bemerkung ?? '',
+  }
+}
+
+export default function HistorieModal({ anlage, kunde, termine, auftraege, bereiche, nurBereich, onClose, onSaved }: {
   anlage: Anlage
   kunde?: Kunde
   termine: Termin[]
@@ -18,98 +53,185 @@ export default function HistorieModal({ anlage, kunde, termine, auftraege, berei
   bereiche: Bereich[]
   nurBereich?: string
   onClose: () => void
+  onSaved?: () => void
 }) {
-  const [fachPhasen, setFachPhasen] = useState<Ueberschreitungsphase[]>([])
-  const bereicheDerAnlage = useMemo(() => bereiche.filter(b => b.anlage_id === anlage.id), [bereiche, anlage.id])
-  const bereichIds = useMemo(() => nurBereich ? [nurBereich] : bereicheDerAnlage.map(b => b.id), [nurBereich, bereicheDerAnlage])
-  const bereichName = nurBereich ? bereiche.find(b => b.id === nurBereich)?.name : undefined
+  const bereich = bereiche.find(b => b.id === nurBereich)
+  const [phasen, setPhasen] = useState<Ueberschreitungsphase[]>([])
+  const [bearbeite, setBearbeite] = useState<string | 'neu' | null>(null)
+  const [entwurf, setEntwurf] = useState<Entwurf>(leer)
+  const [meldung, setMeldung] = useState('')
 
   useEffect(() => {
-    Promise.all(bereichIds.map(id => db.phasenFuerBereich(id))).then(x => setFachPhasen(x.flat())).catch(() => setFachPhasen([]))
-  }, [bereichIds])
+    if (!bereich) return
+    db.phasenFuerBereich(bereich.id).then(setPhasen).catch(() => setPhasen([]))
+  }, [bereich?.id])
 
-  const eigene = useMemo(() => termine.filter(t => {
-    if (t.anlage_id !== anlage.id || t.status === 'abgesagt') return false
-    if (!nurBereich) return true
-    return t.bereich_id === nurBereich || (!t.bereich_id && bereicheDerAnlage.length === 1)
-  }).sort((a, b) => a.datum.localeCompare(b.datum)), [termine, anlage.id, nurBereich, bereicheDerAnlage.length])
+  const auftragTerminIds = useMemo(() => new Set(auftraege.filter(a => a.bereich_id === bereich?.id && a.termin_id).map(a => a.termin_id)), [auftraege, bereich?.id])
+  const eigene = useMemo(() => termine.filter(t =>
+    t.status !== 'abgesagt' && t.anlage_id === anlage.id &&
+    (t.bereich_id === bereich?.id || auftragTerminIds.has(t.id) || (!t.bereich_id && bereiche.filter(b => b.anlage_id === anlage.id).length === 1)),
+  ).sort((a, b) => b.datum.localeCompare(a.datum)), [termine, anlage.id, bereich?.id, bereiche, auftragTerminIds])
+  const eigeneAuftraege = useMemo(() => auftraege.filter(a => a.bereich_id === bereich?.id), [auftraege, bereich?.id])
+  const abgeschlossen = eigene.filter(t => t.datum <= heute)
+  const naechster = eigene.filter(t => t.datum > heute).sort((a, b) => a.datum.localeCompare(b.datum))[0]
+  const offenePhase = phasen.find(p => !['regelturnus_bestaetigt', 'abgeschlossen'].includes(p.status))
+  const letzte = abgeschlossen[0]
 
-  const vergangene = useMemo(() => eigene.filter(t => t.datum <= heute), [eigene])
-  const zukuenftige = useMemo(() => eigene.filter(t => t.datum > heute), [eigene])
-  const eigeneAuftraege = useMemo(() => auftraege.filter(a => bereichIds.includes(a.bereich_id)), [auftraege, bereichIds])
-  const phasen = useMemo(() => phasenErmitteln([{
-    id: anlage.id, name: anlage.name, kunde: kundeAnzeige(kunde), ort: anlage.ort,
-    turnusMonate: anlage.turnus_monate, termine: vergangene.map(t => t.datum),
-  }]), [anlage, kunde, vergangene])
-
-  const aktuelleFachphase = fachPhasen.find(p => !['regelturnus_bestaetigt', 'abgeschlossen'].includes(p.status))
-  const aktuellePhase = phasen.find(p => p.status === 'aktiv' || p.status === 'prueffall')
-  const fokusPhase = aktuellePhase ?? phasen[phasen.length - 1]
-  const relevanteTermine = vergangene
-
-  const rolle = (termin: Termin, index: number): { text: string; art: 'start' | 'nu' | 'normal' } => {
-    const start = phasen.find(p => p.ueberschreitungsdatum === termin.datum)
-    if (start) return { text: 'Überschreitung', art: 'start' }
-    const phase = phasen.find(p => termin.datum > p.ueberschreitungsdatum && termin.datum <= (p.letzteNachuntersuchung ?? heute))
-    if (phase) {
-      const nr = relevanteTermine.filter(t => t.datum > phase.ueberschreitungsdatum && t.datum <= termin.datum).length
-      const vorher = relevanteTermine[index - 1]
-      const abstand = vorher ? tageSeit(vorher.datum, termin.datum) : 0
-      const monate = Math.max(1, Math.round(abstand / 30.44))
-      return { text: `${nr}. Nachuntersuchung · ${monate} ${monate === 1 ? 'Mon.' : 'Mon.'} nach der vorherigen${abstand ? ` (${abstand} Tage)` : ''}`, art: 'nu' }
+  const editieren = (t: Termin) => {
+    setBearbeite(t.id)
+    setEntwurf(ausTermin(t))
+    setMeldung('')
+  }
+  const neu = () => {
+    setBearbeite('neu')
+    setEntwurf(leer)
+    setMeldung('')
+  }
+  const speichern = async () => {
+    if (!bereich || !entwurf.datum) return
+    const patch = {
+      datum: entwurf.datum,
+      status: 'abgeschlossen' as const,
+      fachliche_untersuchungsart: entwurf.fachliche_untersuchungsart || undefined,
+      historie_einordnung: entwurf.historie_einordnung,
+      befund: entwurf.befund || undefined,
+      pruefbericht_nummer: entwurf.pruefbericht_nummer || undefined,
+      pruefbericht_datum: entwurf.pruefbericht_datum || undefined,
+      historie_bemerkung: entwurf.historie_bemerkung || undefined,
     }
-    return { text: 'Regeluntersuchung', art: 'normal' }
+    try {
+      if (bearbeite === 'neu') {
+        await db.terminAnlegen({
+          kunde_id: anlage.kunde_id, anlage_id: anlage.id, bereich_id: bereich.id,
+          ...patch, notizen: 'Historischer Termin manuell nacherfasst',
+        })
+      } else if (bearbeite) {
+        await db.terminAktualisieren(bearbeite, patch)
+      }
+      setMeldung('Historieneintrag gespeichert.')
+      setBearbeite(null)
+      onSaved?.()
+    } catch (e: any) {
+      setMeldung('Fehler: ' + (e.message ?? e))
+    }
+  }
+  const loeschen = async (t: Termin) => {
+    const hatAuftrag = eigeneAuftraege.some(a => a.termin_id === t.id)
+    if (hatAuftrag) {
+      setMeldung('Dieser Termin ist mit einem Auftrag verbunden. Bitte zuerst den Auftrag fachlich bereinigen; der Termin wurde nicht gelöscht.')
+      return
+    }
+    if (!window.confirm(`Historieneintrag vom ${fmtDatum(t.datum)} dauerhaft löschen?`)) return
+    try {
+      await db.terminLoeschen(t.id)
+      setMeldung('Historieneintrag gelöscht.')
+      onSaved?.()
+    } catch (e: any) {
+      setMeldung('Fehler: ' + (e.message ?? e))
+    }
   }
 
-  const statusText = aktuelleFachphase
-    ? `Fachlich geführte Phase · ${aktuelleFachphase.status.replace('_', ' ')} · eröffnet ${fmtDatum(aktuelleFachphase.eroeffnet_am)}`
-    : aktuellePhase?.status === 'aktiv'
-      ? `Phase läuft noch · nächste Untersuchung: ${fmtDatum(anlage.naechste_untersuchung)}`
-      : aktuellePhase?.status === 'prueffall'
-        ? 'Prüffall · Verlauf bitte fachlich prüfen'
-        : `Regelturnus · nächste Untersuchung: ${fmtDatum(anlage.naechste_untersuchung)}`
+  if (!bereich) return <div className="modal-hintergrund">
+    <div className="modal historie-modal">
+      <div className="modal-kopf"><strong>Bereichshistorie</strong><button className="modal-schliessen" onClick={onClose}>×</button></div>
+      <div className="notice">Bitte einen einzelnen Bereich/WWB öffnen. Eine Gesamt-Historie über mehrere Bereiche wird fachlich nicht gebildet.</div>
+    </div>
+  </div>
 
   const auftragZumTermin = (id: string) => eigeneAuftraege.filter(a => a.termin_id === id)
+  const statusText = offenePhase
+    ? `Aktive Phase · ${offenePhase.status.replace(/_/g, ' ')}`
+    : `Regelturnus · nächste Untersuchung ${fmtDatum(bereich.naechste_untersuchung ?? naechster?.datum)}`
 
   return <div className="modal-hintergrund" onClick={e => e.target === e.currentTarget && onClose()}>
-    <div className="modal historie-modal" role="dialog" aria-modal="true" aria-label={`Untersuchungsverlauf ${anlage.name}`}>
+    <div className="modal historie-modal" role="dialog" aria-modal="true" aria-label={`Untersuchungsverlauf ${bereich.name}`}>
       <div className="modal-kopf">
         <div>
-          <strong><i className="fas fa-clock-rotate-left" aria-hidden="true"></i> {anlage.name}{bereichName ? ` › ${bereichName}` : ''}</strong>
-          <div className="hint">{kundeAnzeige(kunde)} | {[anlage.plz, anlage.ort].filter(Boolean).join(' ')} | Regelturnus: {turnusText(anlage.turnus_monate)}</div>
+          <strong><i className="fas fa-clock-rotate-left" aria-hidden="true"></i> {anlage.name} › {bereich.name}</strong>
+          <div className="hint">{kundeAnzeige(kunde)} · Bereichsturnus: {turnusText(bereich.turnus_monate)}</div>
         </div>
         <button className="modal-schliessen" onClick={onClose} aria-label="Schließen">×</button>
       </div>
 
-      <div className={`hist-status ${aktuelleFachphase || aktuellePhase?.status === 'aktiv' ? 'aktiv' : aktuellePhase?.status === 'prueffall' ? 'prueffall' : ''}`}>
-        <i className={`fas ${aktuelleFachphase || aktuellePhase?.status === 'aktiv' ? 'fa-triangle-exclamation' : aktuellePhase?.status === 'prueffall' ? 'fa-circle-question' : 'fa-circle-check'}`} aria-hidden="true"></i>
+      {meldung && <div className="notice" style={{ margin: '12px 20px 0' }}>{meldung}</div>}
+      <div className={`hist-status ${offenePhase ? 'aktiv' : ''}`}>
+        <i className={`fas ${offenePhase ? 'fa-triangle-exclamation' : 'fa-circle-check'}`} aria-hidden="true"></i>
         {statusText}
       </div>
-
       <div className="hist-kennzahlen">
-        <div><span>Letzte Untersuchung</span><strong>{fmtDatum(vergangene[vergangene.length - 1]?.datum)}</strong></div>
-        <div><span>Nächster Termin</span><strong>{fmtDatum(zukuenftige[0]?.datum ?? anlage.naechste_untersuchung)}</strong></div>
-        <div><span>Verlauf</span><strong>{fokusPhase ? `${fokusPhase.anzahlNachuntersuchungen} NU` : 'Regelturnus'}</strong></div>
+        <div><span>Letzte Untersuchung</span><strong>{fmtDatum(letzte?.datum)}</strong></div>
+        <div><span>Letztes Ergebnis</span><strong>{letzte?.befund ? BEFUND_LABEL[letzte.befund] : 'noch ungeklärt'}</strong></div>
+        <div><span>Einträge</span><strong>{abgeschlossen.length}</strong></div>
       </div>
 
-      {fachPhasen.length > 0 && <div className="hist-phasen">{fachPhasen.map(p => <span key={p.id} className={`badge ${['regelturnus_bestaetigt', 'abgeschlossen'].includes(p.status) ? 'closed' : 'active'}`}>Phase {fmtDatum(p.eroeffnet_am)} · {p.status.replace(/_/g, ' ')}</span>)}</div>}
+      <div className="hist-werkzeuge">
+        <button className="primary" onClick={neu}><i className="fas fa-plus" aria-hidden="true"></i> Historieneintrag nacherfassen</button>
+        <span className="hint">Datum, Untersuchungsart, Befund und Prüfbericht sind direkt korrigierbar.</span>
+      </div>
+
+      {bearbeite && <div className="hist-editor">
+        <strong>{bearbeite === 'neu' ? 'Historieneintrag hinzufügen' : 'Historieneintrag bearbeiten'}</strong>
+        <div className="grid2">
+          <label className="f">Untersuchungsdatum<input type="date" value={entwurf.datum} onChange={e => setEntwurf({ ...entwurf, datum: e.target.value })} /></label>
+          <label className="f">Untersuchungsart
+            <select value={entwurf.fachliche_untersuchungsart} onChange={e => setEntwurf({ ...entwurf, fachliche_untersuchungsart: e.target.value as FachlicheUntersuchungsart | '' })}>
+              <option value="">noch nicht erfasst</option>
+              {Object.entries(FACHLICHE_ART_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+          </label>
+          <label className="f">Fachliche Herkunft
+            <select value={entwurf.historie_einordnung} onChange={e => setEntwurf({ ...entwurf, historie_einordnung: e.target.value as HistorieEinordnung })}>
+              {Object.entries(HISTORIE_EINORDNUNG_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+          </label>
+          <label className="f">Befund / Ergebnis
+            <select value={entwurf.befund} onChange={e => setEntwurf({ ...entwurf, befund: e.target.value as Befund | '' })}>
+              <option value="">noch nicht erfasst</option>
+              {Object.entries(BEFUND_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+          </label>
+          <label className="f">Prüfbericht-Nr.<input value={entwurf.pruefbericht_nummer} onChange={e => setEntwurf({ ...entwurf, pruefbericht_nummer: e.target.value })} /></label>
+          <label className="f">Prüfbericht-Datum<input type="date" value={entwurf.pruefbericht_datum} onChange={e => setEntwurf({ ...entwurf, pruefbericht_datum: e.target.value })} /></label>
+        </div>
+        <label className="f">Fachliche Bemerkung<textarea rows={2} value={entwurf.historie_bemerkung} onChange={e => setEntwurf({ ...entwurf, historie_bemerkung: e.target.value })} /></label>
+        <div className="hist-editor-aktionen">
+          <button className="primary" onClick={speichern}><i className="fas fa-floppy-disk"></i> Speichern</button>
+          <button onClick={() => setBearbeite(null)}>Abbrechen</button>
+        </div>
+      </div>}
 
       <div className="hist-liste">
-        {[...relevanteTermine].reverse().map((t) => {
-          const i = relevanteTermine.findIndex(x => x.id === t.id)
-          const r = rolle(t, i); const zug = auftragZumTermin(t.id)
-          return <div key={t.id} className={`hist-eintrag hist-${r.art}`}>
+        {abgeschlossen.map(t => {
+          const zug = auftragZumTermin(t.id)
+          return <div key={t.id} className={`hist-eintrag ${t.befund === 'ueberschreitung' || t.befund === 'verkeimung' ? 'hist-start' : 'hist-normal'}`}>
             <div className="hist-punkt" aria-hidden="true"></div>
             <div className="hist-inhalt">
-              <div className="hist-zeile1"><strong>{fmtDatum(t.datum)}</strong></div>
-              <div className="hist-rolle">{r.text}</div>
-              {zug.map(a => <div key={a.id} className="hist-auftrag">{a.unterauftraege.map(u => <span key={u.id} className="hist-unterauftrag"><span className="nr">{nummerVoll(a, u)}</span> {ART_LABEL[u.art]}{u.proben_ist != null && <> · {u.proben_ist} Proben</>} <ErgebnisBadge s={u.ergebnis} /></span>)}</div>)}
-              {t.notizen && !t.notizen.startsWith('Historischer Termin') && <div className="hint">{t.notizen}</div>}
+              <div className="hist-zeile1">
+                <strong>{fmtDatum(t.datum)}</strong>
+                <span className="hist-zeilenaktionen">
+                  <button className="zeile-btn" onClick={() => editieren(t)}><i className="fas fa-pen"></i> Bearbeiten</button>
+                  <button className="zeile-btn danger" onClick={() => loeschen(t)}><i className="fas fa-trash-can"></i></button>
+                </span>
+              </div>
+              <div className="hist-rolle">{t.fachliche_untersuchungsart ? FACHLICHE_ART_LABEL[t.fachliche_untersuchungsart] : 'Untersuchungsart noch nicht erfasst'}</div>
+              <div className="hist-fachdaten">
+                <span>{t.befund ? BEFUND_LABEL[t.befund] : 'Ergebnis noch nicht erfasst'}</span>
+                {t.pruefbericht_nummer && <span>Prüfbericht {t.pruefbericht_nummer}</span>}
+                {t.pruefbericht_datum && <span>vom {fmtDatum(t.pruefbericht_datum)}</span>}
+              </div>
+              {(t.historie_einordnung ?? 'unbekannt') !== 'regulaer' &&
+                <div className="badge medium">{HISTORIE_EINORDNUNG_LABEL[t.historie_einordnung ?? 'unbekannt']}</div>}
+              {t.historie_bemerkung && <div className="hint">{t.historie_bemerkung}</div>}
+              {zug.map(a => <div key={a.id} className="hist-auftrag">
+                {a.unterauftraege.map(u => <span key={u.id} className="hist-unterauftrag">
+                  <span className="nr">{nummerVoll(a, u)}</span> {ART_LABEL[u.art]}
+                  {u.proben_ist != null && <> · {u.proben_ist} Proben</>} <ErgebnisBadge s={u.ergebnis} />
+                </span>)}
+              </div>)}
             </div>
           </div>
         })}
-        {relevanteTermine.length === 0 && <p className="hint">Noch keine Untersuchungen erfasst.</p>}
-        {zukuenftige[0] && <div className="hist-ausblick"><i className="fas fa-calendar-check" aria-hidden="true"></i> Geplant: {fmtDatum(zukuenftige[0].datum)}</div>}
+        {abgeschlossen.length === 0 && <p className="hint">Noch keine Untersuchungen erfasst.</p>}
       </div>
     </div>
   </div>

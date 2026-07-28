@@ -47,7 +47,7 @@ Für ein neues/anderes Projekt so vorgehen:
 ## Datenmodell (Kette)
 
 ```
-Kunde → Anlage → Untersuchungsbereich (WWB) → Auftrag (26-0897) → Unterauftrag (26-0897-M) → Probe → Ergebnisparameter
+Kunde → Anlage/Objekt → Untersuchungsbereich (WWB) → Auftrag (26-0897) → Unterauftrag (26-0897-M) → Probe → Ergebnisparameter
                                     ↘ Termin (mehrere Bereiche/Aufträge je Termin)
 ```
 
@@ -55,6 +55,9 @@ Kunde → Anlage → Untersuchungsbereich (WWB) → Auftrag (26-0897) → Untera
   Postgres-Funktion `naechste_auftragsnummer()` vergeben – niemals wiederverwendet.
 - **Ein Auftrag = genau ein Untersuchungsbereich.** Mehrere WW-Systeme einer Anlage
   erhalten eigene Hauptnummern (z. B. Haus 3–5 = 26-0897, Haus 7 = 26-0898).
+- **Fälligkeit, Turnus, Probenumfang und Historie werden je Bereich/WWB geführt.**
+  Bei mehreren Bereichen gibt es bewusst keine fachlich irreführende Gesamt-Historie
+  und keine Anlagen-Fälligkeit.
 - **Unteraufträge** je Untersuchungsart mit eigenem Status, Umfang (Mibi: Standard /
   Komplett / inklusive Enterokokken / Freitext), Probenzahlen und Ergebnisstatus –
   eine Überschreitung betrifft nur den jeweiligen Unterauftrag.
@@ -141,6 +144,11 @@ Die Erweiterung
 ergänzt die fachliche Untersuchungsart, Folgeentscheidung, Sonderturnus-Felder,
 den eindeutigen Bereichsimport und den eigenen Hausverwaltungswechsel. Sie ist
 im verbundenen Testprojekt ebenfalls ausgeführt.
+Migration
+`supabase/migrations/0021_bereichshistorie_standardleistungen_loeschen.sql`
+ergänzt die direkt bearbeitbare Alt-Historie, Standard-Leistungsarten je Bereich
+und das doppelt bestätigte, transaktionale Löschen eines Bereichs. Sie ist im
+verbundenen Testprojekt ebenfalls ausgeführt.
 
 Im Frontend ist damit folgender Ablauf vorbereitet:
 
@@ -155,7 +163,7 @@ Im Frontend ist damit folgender Ablauf vorbereitet:
   nur ausdrücklich markierte saubere Nachuntersuchungen; drei davon schließen die
   Phase regulär. Eine dokumentierte Freigabe des Gesundheitsamts kann den
   Regelturnus früher wiederherstellen.
-- Ein bereits geplanter Termin nimmt eine Anlage aus der Fälligkeitenliste. Das
+- Ein bereits geplanter Termin nimmt den zugehörigen Bereich aus der Fälligkeitenliste. Das
   Ausblenden einer Anlage setzt dagegen ausschließlich den Betreuungsstatus
   **inaktiv** – für Objekte, die nicht mehr von euch untersucht werden.
 

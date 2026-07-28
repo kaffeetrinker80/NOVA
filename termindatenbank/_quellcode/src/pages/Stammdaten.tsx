@@ -76,6 +76,9 @@ export default function Stammdaten() {
     name: '', strasse: '', hausnummer: '', wwb_details: '', notizen: '',
     turnus_art: 'regelturnus' as Turnusart, turnus_monate: '', naechste_untersuchung: '',
     proben_anzahl: '', turnus_begruendung: '',
+    standard_legionellen: true, standard_mibi: false,
+    standard_mibi_umfang: 'Standard' as 'Standard' | 'Komplett' | 'inklusive Enterokokken',
+    standard_chemie: false,
   })
   const [termine, setTermine] = useState<import('../lib/types').Termin[]>([])
   const [auftraege, setAuftraege] = useState<import('../lib/types').Auftrag[]>([])
@@ -143,6 +146,10 @@ export default function Stammdaten() {
       naechste_untersuchung: bereich?.naechste_untersuchung ?? '',
       proben_anzahl: bereich?.proben_anzahl != null ? String(bereich.proben_anzahl) : '',
       turnus_begruendung: bereich?.turnus_begruendung ?? '',
+      standard_legionellen: bereich?.standard_legionellen ?? true,
+      standard_mibi: bereich?.standard_mibi ?? false,
+      standard_mibi_umfang: bereich?.standard_mibi_umfang ?? 'Standard',
+      standard_chemie: bereich?.standard_chemie ?? false,
     })
   }, [bereichId])
   const bereichSpeichernDetails = async () => {
@@ -158,11 +165,27 @@ export default function Stammdaten() {
       naechste_untersuchung: bf.naechste_untersuchung || undefined,
       proben_anzahl: bf.proben_anzahl ? +bf.proben_anzahl : undefined,
       turnus_begruendung: bf.turnus_begruendung || undefined,
+      standard_legionellen: bf.standard_legionellen,
+      standard_mibi: bf.standard_mibi,
+      standard_mibi_umfang: bf.standard_mibi_umfang,
+      standard_chemie: bf.standard_chemie,
     })
     setMeldung('Bereich gespeichert.'); laden()
   }
   const bereichEntfernen = async (id: string) => {
-    await db.bereichLoeschen(id); if (bereichId === id) setBereichId(''); setMeldung('Bereich entfernt.'); laden()
+    const b = bereiche.find(x => x.id === id)
+    const anzTermine = termine.filter(t => t.bereich_id === id).length
+    const anzAuftraege = auftraege.filter(a => a.bereich_id === id).length
+    const anzPhasen = phasen.filter(p => p.bereich_id === id).length
+    const text = `ACHTUNG: Bereich „${b?.name ?? ''}“ dauerhaft löschen?\n\n` +
+      `Dabei werden ${anzTermine} Termin(e), ${anzAuftraege} Auftrag/Aufträge und ${anzPhasen} Phase(n) dieses Bereichs gelöscht. Auftragsnummern werden nicht wiederverwendet.\n\nDieser Vorgang ist nicht rückgängig zu machen.`
+    if (!window.confirm(text) || !window.confirm('Wirklich endgültig löschen?')) return
+    try {
+      const erg = await db.bereichLoeschen(id)
+      if (bereichId === id) setBereichId('')
+      setMeldung(`Bereich „${erg.name}“ mit ${erg.termine} Termin(en), ${erg.auftraege} Auftrag/Aufträgen und ${erg.phasen} Phase(n) gelöscht.`)
+      laden()
+    } catch (e: any) { setMeldung('Löschen fehlgeschlagen: ' + (e.message ?? e)) }
   }
 
   const anlage = anlagen.find(a => a.id === anlageId)
@@ -196,8 +219,6 @@ export default function Stammdaten() {
         strasse: erste?.strasse,
         plz: erste?.plz,
         ort: erste?.ort,
-        turnus_monate: erste?.turnus_monate,
-        naechste_untersuchung: erste?.naechste_untersuchung,
         notizen: `Aus Anlagen-Merge erstellt: ${quellen.map(id => anlagen.find(a => a.id === id)?.name ?? id).join(' / ')}`,
       })
       const erg = await db.anlagenZusammenfuehren(ziel, quellen)
@@ -254,10 +275,11 @@ export default function Stammdaten() {
   }
   const termineZumBereich = (b?: Bereich) => {
     if (!b || !anlage) return []
+    const auftragTerminIds = new Set(auftraege.filter(a => a.bereich_id === b.id && a.termin_id).map(a => a.termin_id))
     return termine
       .filter(t => t.status !== 'abgesagt'
         && t.anlage_id === anlage.id
-        && (t.bereich_id === b.id || (!t.bereich_id && bereicheDerAnlage.length === 1)))
+        && (t.bereich_id === b.id || auftragTerminIds.has(t.id) || (!t.bereich_id && bereicheDerAnlage.length === 1)))
       .sort((a, c) => (c.datum || '').localeCompare(a.datum || ''))
   }
   const auftraegeZumBereich = (b?: Bereich) => b ? auftraege.filter(a => a.bereich_id === b.id) : []
@@ -273,7 +295,12 @@ export default function Stammdaten() {
       .filter(a => a.termin_id === t.id)
       .flatMap(a => a.unterauftraege.map(u => ERGEBNIS_LABEL[u.ergebnis]))
       .filter(l => l && l !== 'offen')
-    return [...new Set(labels)].join(', ') || (t.status === 'geplant' ? 'geplant' : 'ohne Bericht')
+    const direkt = t.befund === 'sauber' ? 'ohne Befund'
+      : t.befund === 'ueberschreitung' ? 'Überschreitung'
+      : t.befund === 'verkeimung' ? 'Verkeimung'
+      : t.befund === 'nicht_bewertbar' ? 'nicht auswertbar'
+      : ''
+    return direkt || [...new Set(labels)].join(', ') || (t.status === 'geplant' ? 'geplant' : 'ohne Bericht')
   }
   const letzterAuftragZumBereich = (b: Bereich) => {
     const nachDatum = (a: Auftrag) => termine.find(t => t.id === a.termin_id)?.datum ?? ''
@@ -412,7 +439,7 @@ export default function Stammdaten() {
               <button className="zeile-btn" style={aMergeModus ? { background: '#6c757d', borderColor: '#6c757d' } : undefined}
                 onClick={() => { setAMergeModus(!aMergeModus); setAMergeWahl(new Set()); setAMergeName('') }}
                 title="Mehrere Anlagen als Bereiche in ein neues Objekt übernehmen">
-                <i className="fas fa-object-group" aria-hidden="true"></i>
+                <i className="fas fa-code-merge" aria-hidden="true"></i> {aMergeModus ? 'Merge abbrechen' : 'Anlagen zusammenführen'}
               </button>
               {!aMergeModus && <button className="zeile-btn" onClick={() => setNeuAnlage(!neuAnlage)}>
                 <i className="fas fa-plus" aria-hidden="true"></i> Neu
@@ -458,14 +485,7 @@ export default function Stammdaten() {
                 <input placeholder="PLZ" style={{ width: 90 }} value={af.plz} onChange={e => setAf({ ...af, plz: e.target.value })} />
                 <input placeholder="Ort" style={{ flex: 1 }} value={af.ort} onChange={e => setAf({ ...af, ort: e.target.value })} />
               </div>
-              <select value={af.turnus_monate} onChange={e => setAf({ ...af, turnus_monate: +e.target.value })}>
-                <option value={36}>Turnus: 3 Jahre</option>
-                <option value={12}>Turnus: 1 Jahr</option>
-                <option value={3}>Turnus: 3 Monate (Nachuntersuchung)</option>
-              </select>
-              <label className="f">Nächste Untersuchung
-                <input type="date" value={af.naechste_untersuchung} onChange={e => setAf({ ...af, naechste_untersuchung: e.target.value })} />
-              </label>
+              <p className="hint" style={{ margin: 0 }}>Turnus und Fälligkeit werden anschließend je Bereich/WWB gepflegt.</p>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button className="primary" onClick={anlageSpeichern}>Anlegen</button>
                 <button onClick={() => setNeuAnlage(false)}>Abbrechen</button>
@@ -485,7 +505,7 @@ export default function Stammdaten() {
               ) : (
               <button key={a.id} className={`stamm-eintrag ${a.id === anlageId ? 'aktiv' : ''} ${!a.aktiv ? 'inaktiv' : ''}`} onClick={() => setAnlageId(a.id)}>
                 <strong>{a.name}{!a.aktiv && <span className="badge neutral" style={{ marginLeft: 6 }}>inaktiv</span>}</strong>
-                <span className="hint">{[a.plz, a.ort].filter(Boolean).join(' ')} · fällig {fmtDatum(a.naechste_untersuchung)}</span>
+                <span className="hint">{[a.plz, a.ort].filter(Boolean).join(' ') || 'Adresse noch nicht erfasst'}</span>
                 <span className="stamm-zahl">{bereiche.filter(b => b.anlage_id === a.id).length}</span>
               </button>
               )
@@ -498,8 +518,8 @@ export default function Stammdaten() {
         <div className="stamm-spalte breit">
           <div className="stamm-kopf">
             <h3><i className="fas fa-diagram-project" aria-hidden="true"></i> Untersuchungsbereiche (WWB) {anlage ? `(${bereicheDerAnlage.length})` : ''}</h3>
-            {anlage && <button className="zeile-btn" onClick={() => { setHistorieBereich(undefined); setHistorieOffen(true) }}>
-              <i className="fas fa-clock-rotate-left" aria-hidden="true"></i> Gesamt-Historie
+            {anlage && bereicheDerAnlage.length === 1 && <button className="zeile-btn" onClick={() => { setHistorieBereich(bereicheDerAnlage[0].id); setHistorieOffen(true) }}>
+              <i className="fas fa-clock-rotate-left" aria-hidden="true"></i> Historie
             </button>}
           </div>
           {!anlage && <p className="hint" style={{ padding: '4px 14px' }}>← In der Mitte eine Anlage (Objekt/Standort) wählen.</p>}
@@ -586,7 +606,11 @@ export default function Stammdaten() {
                           <span><small>Letztes Ergebnis</small><strong>{bTermine[0] ? ergebnisZumTermin(bTermine[0], b) : '–'}</strong></span>
                           <span><small>Aktueller Status</small><strong>{status.text}</strong></span>
                           <span><small>Proben / Umfang</small><strong>{probenZumBereich(b) ?? '–'}</strong></span>
-                          <span><small>Untersuchungsart</small><strong>{letzterAuftrag?.fachliche_untersuchungsart ? FACHLICHE_ART_LABEL[letzterAuftrag.fachliche_untersuchungsart] : 'noch nicht erfasst'}</strong></span>
+                          <span><small>Untersuchungsart</small><strong>{bTermine[0]?.fachliche_untersuchungsart
+                            ? FACHLICHE_ART_LABEL[bTermine[0].fachliche_untersuchungsart]
+                            : letzterAuftrag?.fachliche_untersuchungsart
+                              ? FACHLICHE_ART_LABEL[letzterAuftrag.fachliche_untersuchungsart]
+                              : 'noch nicht erfasst'}</strong></span>
                         </div>
                         <input placeholder="Bereichsname, z. B. Altbau / Haus 7" value={bf.name} onChange={e => setBf({ ...bf, name: e.target.value })} />
                         <div style={{ display: 'flex', gap: 8 }}>
@@ -613,11 +637,26 @@ export default function Stammdaten() {
                           </label>
                         </div>
                         <input placeholder="Begründung Sonderturnus / behördliche Vorgabe" value={bf.turnus_begruendung} onChange={e => setBf({ ...bf, turnus_begruendung: e.target.value })} />
+                        <fieldset className="bereich-standardarten">
+                          <legend>Standardmäßig erforderliche Probenahmearten</legend>
+                          <label><input type="checkbox" checked={bf.standard_legionellen} onChange={e => setBf({ ...bf, standard_legionellen: e.target.checked })} /> Legionellen</label>
+                          <label><input type="checkbox" checked={bf.standard_mibi} onChange={e => setBf({ ...bf, standard_mibi: e.target.checked })} /> Mikrobiologie</label>
+                          {bf.standard_mibi && <select value={bf.standard_mibi_umfang} onChange={e => setBf({ ...bf, standard_mibi_umfang: e.target.value as typeof bf.standard_mibi_umfang })}>
+                            <option>Standard</option><option>Komplett</option><option>inklusive Enterokokken</option>
+                          </select>}
+                          <label><input type="checkbox" checked={bf.standard_chemie} onChange={e => setBf({ ...bf, standard_chemie: e.target.checked })} /> Chemie</label>
+                        </fieldset>
                         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                           <button className="primary" onClick={bereichSpeichernDetails}><i className="fas fa-floppy-disk" aria-hidden="true"></i> Speichern</button>
                           {letzterAuftrag
                             ? <button onClick={() => setBerichtAuftrag(letzterAuftrag)}><i className="fas fa-file-circle-check" aria-hidden="true"></i> Bericht erfassen / nacherfassen</button>
-                            : <button onClick={() => { location.hash = '#/auftragsbuch' }} title="Zuerst Auftrag und Auftragsnummer zuordnen"><i className="fas fa-hashtag" aria-hidden="true"></i> Auftrag nacherfassen</button>}
+                            : <button onClick={() => {
+                              sessionStorage.setItem('novaplan_auftrag_vorbelegung', JSON.stringify({
+                                kundeId: kunde?.id, anlageId: anlage.id, bereichId: b.id,
+                                terminId: bTermine[0]?.id ?? '',
+                              }))
+                              location.hash = '#/auftragsbuch'
+                            }} title="Auftrag mit Kunde, Anlage und Bereich vorbereitet öffnen"><i className="fas fa-hashtag" aria-hidden="true"></i> Auftrag nacherfassen</button>}
                           {offenePhase && <button onClick={() => setPhaseBearbeiten(offenePhase)}><i className="fas fa-triangle-exclamation" aria-hidden="true"></i> Phase verwalten</button>}
                           <button onClick={() => { setHistorieBereich(b.id); setHistorieOffen(true) }}><i className="fas fa-clock-rotate-left" aria-hidden="true"></i> Vollständige Historie</button>
                           <button className="secondary" onClick={() => bereichEntfernen(b.id)} title="Bereich entfernen"><i className="fas fa-trash-can" aria-hidden="true"></i></button>
@@ -645,7 +684,7 @@ export default function Stammdaten() {
       {historieOffen && anlage && (
         <HistorieModal anlage={anlage} kunde={kunde} termine={termine}
           auftraege={auftraege} bereiche={bereiche} nurBereich={historieBereich}
-          onClose={() => setHistorieOffen(false)} />
+          onClose={() => setHistorieOffen(false)} onSaved={laden} />
       )}
       {berichtAuftrag && (
         <BerichtModal
