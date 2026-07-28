@@ -361,6 +361,10 @@ table.tbl {
   padding: 10px 12px; border-bottom: 1px solid var(--border);
   display: flex; flex-direction: column; gap: 8px; background: #fffdf4;
 }
+.merge-auswahl-kopf {
+  display: flex; flex-direction: column; gap: 2px;
+  border: 1px solid #ead79b; border-radius: 8px; padding: 8px 10px; background: #fff;
+}
 .stamm-eintrag.merge { cursor: pointer; }
 .stamm-eintrag.merge.markiert { background: var(--amp-yellow); }
 .info-zelle { font-size: .76rem; color: var(--text-muted); max-width: 260px; }
