@@ -271,7 +271,10 @@ table.tbl {
 }
 .stamm-kopf h3 { margin: 0; font-size: .92rem; font-weight: 600; display: flex; gap: 8px; align-items: center; }
 .stamm-formular { padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid var(--border); }
-.stamm-liste { overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 4px; }
+.stamm-liste {
+  overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 4px;
+  flex: 1 1 auto; min-height: 110px;
+}
 .stamm-eintrag {
   text-align: left; border: 1px solid transparent; background: none; border-radius: 8px;
   padding: 8px 10px; display: flex; flex-direction: column; gap: 1px; position: relative;
@@ -301,14 +304,14 @@ table.tbl {
   top: 7px; transform: none;
 }
 .kunden-suchtreffer {
-  display: flex; flex-direction: column; gap: 3px; margin: 3px 4px 7px 12px;
+  display: flex; flex-direction: column; gap: 2px; margin: 2px 4px 5px 12px;
   padding-left: 7px; border-left: 2px solid #c9dbea;
 }
 .kunden-suchtreffer > button {
   width: 100%; display: grid; grid-template-columns: 16px minmax(0, 1fr) 12px;
-  align-items: center; gap: 6px; text-align: left; padding: 5px 7px;
+  align-items: center; gap: 6px; text-align: left; padding: 4px 6px;
   border: 1px solid #dce7f1; border-radius: 7px; background: #f8fbfe;
-  color: var(--text-main); font-size: .72rem;
+  color: var(--text-main); font-size: .69rem;
 }
 .kunden-suchtreffer > button:hover {
   border-color: var(--color-primary); background: #edf6ff;
@@ -318,7 +321,7 @@ table.tbl {
 }
 .kunden-suchtreffer small {
   color: var(--text-muted); overflow: hidden; text-overflow: ellipsis;
-  white-space: nowrap; font-size: .68rem;
+  white-space: nowrap; font-size: .64rem;
 }
 .kunden-suchtreffer > .hint { padding: 2px 7px; }
 .rueckwaerts-aktion {
@@ -405,13 +408,21 @@ table.tbl {
 
 /* ---------- Zusammenführen-Modus & Info-Spalte ---------- */
 .merge-leiste {
-  padding: 10px 12px; border-bottom: 1px solid var(--border);
-  display: flex; flex-direction: column; gap: 8px; background: #fffdf4;
+  padding: 7px 10px; border-bottom: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 5px; background: #fffdf4;
 }
 .merge-auswahl-kopf {
-  display: flex; flex-direction: column; gap: 2px;
-  border: 1px solid #ead79b; border-radius: 8px; padding: 8px 10px; background: #fff;
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  border: 1px solid #ead79b; border-radius: 7px; padding: 5px 8px; background: #fff;
 }
+.merge-zielart {
+  display: flex; flex-wrap: wrap; gap: 5px 12px; font-size: .75rem;
+}
+.merge-zielart label { display: flex; align-items: center; gap: 4px; }
+.merge-neukunde { display: flex; gap: 6px; }
+.merge-leiste label.f { gap: 2px; font-size: .72rem; }
+.merge-leiste input, .merge-leiste select { padding-top: 5px; padding-bottom: 5px; }
+.merge-leiste > button.primary { padding-top: 6px; padding-bottom: 6px; }
 .merge-ziel-bestaetigt {
   display: flex; align-items: center; gap: 5px; color: #236443;
   background: #e7f4ed; border-radius: 7px; padding: 5px 8px; font-size: .76rem;

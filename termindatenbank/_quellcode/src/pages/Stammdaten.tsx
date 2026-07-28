@@ -652,13 +652,21 @@ export default function Stammdaten() {
           {mergeModus && (
             <div className="merge-leiste">
               <div className="merge-auswahl-kopf">
-                <strong>{mergeWahl.size} Quellkunde{mergeWahl.size === 1 ? '' : 'n'} ausgewählt</strong>
-                <span className="hint">Der zuvor geöffnete Kunde bleibt markiert. Weitere kannst du unten anhaken.</span>
+                <strong>{mergeWahl.size} Quellkunde{mergeWahl.size === 1 ? '' : 'n'} markiert</strong>
+                <span className="hint">Weitere Kunden unten anhaken.</span>
               </div>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '.82rem' }}>
-                <input type="radio" checked={!mergeNeu} onChange={() => setMergeNeu(false)} />
-                Mit vorhandenem Kunden zusammenführen
-              </label>
+              <div className="merge-zielart">
+                <label>
+                  <input type="radio" checked={!mergeNeu} onChange={() => setMergeNeu(false)} />
+                  vorhandener Zielkunde
+                </label>
+                <label>
+                  <input type="radio" checked={mergeNeu} onChange={() => {
+                    setMergeNeu(true); setMergeZiel(''); setMergeZielSuche('')
+                  }} />
+                  Zielkunde neu
+                </label>
+              </div>
               {!mergeNeu && <label className="f">Mit welchem Kunden willst du zusammenführen?
                 <input list="merge-zielkunden" value={mergeZielSuche}
                   placeholder="Kundennamen tippen und auswählen …"
@@ -678,25 +686,14 @@ export default function Stammdaten() {
                   Ziel: {kundeAnzeige(kunden.find(k => k.id === mergeZiel))}
                 </span>}
               </label>}
-              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '.82rem' }}>
-                <input type="radio" checked={mergeNeu} onChange={() => {
-                  setMergeNeu(true); setMergeZiel(''); setMergeZielSuche('')
-                }} />
-                Zielkunde nicht vorhanden – <strong>neu anlegen</strong>
-              </label>
               {mergeNeu && (
-                <div style={{ display: 'flex', gap: 8 }}>
+                <div className="merge-neukunde">
                   <input style={{ flex: 1 }} placeholder="Voller Name, z. B. AWO Bezirksverband Schwaben e.V." value={mergeNeuName.lang}
                     onChange={e => setMergeNeuName({ ...mergeNeuName, lang: e.target.value })} />
                   <input style={{ width: 130 }} placeholder="Kurz (optional)" value={mergeNeuName.kurz}
                     onChange={e => setMergeNeuName({ ...mergeNeuName, kurz: e.target.value })} />
                 </div>
               )}
-              <p className="hint" style={{ margin: 0 }}>
-                Der Zielkunde bleibt links bestehen. Die markierten Quellkunden erscheinen danach rechts
-                als Anlagen/Objekte – inklusive aller Bereiche, Termine, Aufträge und der vollständigen
-                Historie. Die bisherigen Quellkunden werden inaktiv archiviert.
-              </p>
               <button className="primary" onClick={zusammenfuehren}
                 disabled={mergeNeu ? (mergeWahl.size < 1 || !mergeNeuName.lang.trim())
                                    : (mergeWahl.size < 1 || !mergeZiel)}>
@@ -735,7 +732,7 @@ export default function Stammdaten() {
                 </button>
                 {suche.trim() && (suchtrefferNachKunde.get(k.id) ?? []).length > 0 && (
                   <div className="kunden-suchtreffer">
-                    {(suchtrefferNachKunde.get(k.id) ?? []).slice(0, 4).map(t => (
+                    {(suchtrefferNachKunde.get(k.id) ?? []).slice(0, 2).map(t => (
                       <button key={`${t.anlageId}-${t.bereichId ?? 'objekt'}`}
                         onClick={() => {
                           setKundeId(k.id)
@@ -749,8 +746,8 @@ export default function Stammdaten() {
                         <i className="fas fa-arrow-right" aria-hidden="true"></i>
                       </button>
                     ))}
-                    {(suchtrefferNachKunde.get(k.id) ?? []).length > 4 && (
-                      <span className="hint">+ {(suchtrefferNachKunde.get(k.id) ?? []).length - 4} weitere Treffer</span>
+                    {(suchtrefferNachKunde.get(k.id) ?? []).length > 2 && (
+                      <span className="hint">+ {(suchtrefferNachKunde.get(k.id) ?? []).length - 2} weitere Treffer</span>
                     )}
                   </div>
                 )}
