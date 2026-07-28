@@ -365,9 +365,58 @@ table.tbl {
   display: flex; flex-direction: column; gap: 2px;
   border: 1px solid #ead79b; border-radius: 8px; padding: 8px 10px; background: #fff;
 }
+.merge-ziel-bestaetigt {
+  display: flex; align-items: center; gap: 5px; color: #236443;
+  background: #e7f4ed; border-radius: 7px; padding: 5px 8px; font-size: .76rem;
+}
 .stamm-eintrag.merge { cursor: pointer; }
 .stamm-eintrag.merge.markiert { background: var(--amp-yellow); }
 .info-zelle { font-size: .76rem; color: var(--text-muted); max-width: 260px; }
+
+/* ---------- Assistent: neue Anlage vollständig erfassen ---------- */
+.neue-anlage-assistent {
+  overflow-y: auto; padding: 0; gap: 0; background: #f8fafc;
+}
+.neu-anlage-abschnitt {
+  display: flex; flex-direction: column; gap: 8px; padding: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.neu-anlage-titelzeile {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+.neu-anlage-titelzeile button { padding: 4px 8px; font-size: .74rem; }
+.neu-anlage-grid {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;
+}
+.neu-anlage-grid.adresse { grid-template-columns: 90px minmax(0, 1fr); }
+.neuer-bereich-block {
+  display: flex; flex-direction: column; gap: 9px; padding: 10px;
+  border: 1px solid var(--border); border-radius: 9px; background: #fff;
+}
+.neu-anlage-leistungen {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 7px 10px;
+  font-size: .78rem;
+}
+.neu-anlage-leistungen label { display: flex; align-items: center; gap: 4px; }
+.neu-anlage-leistungen select { padding: 4px 6px; font-size: .76rem; }
+.bekannter-bericht {
+  border: 1px solid #dce8f3; border-radius: 8px; background: #f7fbff;
+}
+.bekannter-bericht summary {
+  cursor: pointer; padding: 8px 9px; font-size: .78rem; font-weight: 650;
+}
+.bekannter-bericht-inhalt {
+  display: flex; flex-direction: column; gap: 8px; padding: 2px 9px 9px;
+}
+.bekannter-bericht .hint { font-weight: 400; line-height: 1.25; }
+.neu-anlage-aktionen {
+  display: flex; flex-wrap: wrap; gap: 8px; padding: 12px; background: #fff;
+  position: sticky; bottom: 0; border-top: 1px solid var(--border);
+}
+@media (max-width: 1180px) {
+  .neu-anlage-grid { grid-template-columns: 1fr; }
+  .neu-anlage-grid.adresse { grid-template-columns: 90px minmax(0, 1fr); }
+}
 
 /* ---------- Einklappbare Diagramme, Ziel-Stern, inaktive Einträge, Historie ---------- */
 .klappe {

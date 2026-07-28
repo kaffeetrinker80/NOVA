@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
-import type { Anlage, Auftrag, Bereich, FachlicheUntersuchungsart, Kunde, Termin, Untersuchungsart, Untersuchungsbewertung, Ueberschreitungsphase } from './types'
+import type { Anlage, Auftrag, Befund, Bereich, FachlicheUntersuchungsart, Kunde, Termin, Untersuchungsart, Untersuchungsbewertung, Ueberschreitungsphase } from './types'
 
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined
 const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
@@ -125,6 +125,45 @@ export const db = {
     const { data, error } = await supabase.from('td_anlagen').insert(a).select('id').single()
     if (error) throw error
     return data.id
+  },
+  async anlageMitBereichenAnlegen(kundeId: string, anlage: {
+    name: string; strasse?: string; plz?: string; ort?: string; notizen?: string
+  }, bereiche: Array<{
+    name: string; turnus_monate?: number; naechste_untersuchung?: string
+    proben_anzahl?: number; standard_legionellen: boolean; standard_mibi: boolean
+    standard_mibi_umfang: string; standard_chemie: boolean; notizen?: string
+    letzte_untersuchung?: string; pruefbericht_nummer?: string; pruefbericht_datum?: string
+    fachliche_untersuchungsart: FachlicheUntersuchungsart; befund: Befund
+  }>): Promise<string> {
+    if (!supabase) {
+      const id = 'a' + (demo.anlagen.length + 1)
+      demo.anlagen.push({ ...anlage, kunde_id: kundeId, id, aktiv: true })
+      for (const b of bereiche) {
+        const bereichId = 'b' + (demo.bereiche.length + 1)
+        demo.bereiche.push({
+          id: bereichId, anlage_id: id, aktiv: true, name: b.name,
+          turnus_monate: b.turnus_monate, naechste_untersuchung: b.naechste_untersuchung,
+          proben_anzahl: b.proben_anzahl, standard_legionellen: b.standard_legionellen,
+          standard_mibi: b.standard_mibi,
+          standard_mibi_umfang: b.standard_mibi_umfang as Bereich['standard_mibi_umfang'],
+          standard_chemie: b.standard_chemie, notizen: b.notizen,
+        })
+        if (b.letzte_untersuchung) demo.termine.push({
+          id: 't' + (demo.termine.length + 1), kunde_id: kundeId, anlage_id: id,
+          bereich_id: bereichId, datum: b.letzte_untersuchung, status: 'abgeschlossen',
+          fachliche_untersuchungsart: b.fachliche_untersuchungsart, befund: b.befund,
+          pruefbericht_nummer: b.pruefbericht_nummer,
+          pruefbericht_datum: b.pruefbericht_datum, historie_einordnung: 'regulaer',
+          probenehmer: [], kalender_exportiert: false,
+        })
+      }
+      return id
+    }
+    const { data, error } = await supabase.rpc('td_anlage_mit_bereichen_anlegen', {
+      p_kunde: kundeId, p_anlage: anlage, p_bereiche: bereiche,
+    })
+    if (error) throw error
+    return data as string
   },
   async bereichAnlegen(b: Omit<Bereich, 'id' | 'aktiv'>): Promise<void> {
     if (!supabase) { demo.bereiche.push({ ...b, id: 'b' + (demo.bereiche.length + 1), aktiv: true }); return }

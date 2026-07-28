@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { db } from '../lib/data'
-import type { Anlage, Auftrag, Bereich, Kunde, Kundentyp, Turnusart, Ueberschreitungsphase } from '../lib/types'
-import { ERGEBNIS_LABEL, FACHLICHE_ART_LABEL, fmtDatum, kundeAnzeige } from '../lib/types'
+import type {
+  Anlage, Auftrag, Befund, Bereich, FachlicheUntersuchungsart, Kunde, Kundentyp,
+  Turnusart, Ueberschreitungsphase,
+} from '../lib/types'
+import { BEFUND_LABEL, ERGEBNIS_LABEL, FACHLICHE_ART_LABEL, fmtDatum, kundeAnzeige } from '../lib/types'
 import BerichtModal from '../components/BerichtModal'
 import HistorieModal from '../components/HistorieModal'
 import PhaseModal from '../components/PhaseModal'
@@ -29,6 +32,47 @@ function bereichAnsicht(b: Bereich) {
   return { titel, uebernommen: mergeHinweis }
 }
 
+type NeuerBereichForm = {
+  name: string
+  turnus_monate: string
+  proben_anzahl: string
+  standard_legionellen: boolean
+  standard_mibi: boolean
+  standard_mibi_umfang: 'Standard' | 'Komplett' | 'inklusive Enterokokken'
+  standard_chemie: boolean
+  pruefbericht_nummer: string
+  pruefbericht_datum: string
+  letzte_untersuchung: string
+  fachliche_untersuchungsart: FachlicheUntersuchungsart
+  befund: Befund
+  naechste_untersuchung: string
+  notizen: string
+}
+
+const neuerBereichForm = (name = 'Gesamtanlage'): NeuerBereichForm => ({
+  name, turnus_monate: '', proben_anzahl: '',
+  standard_legionellen: true, standard_mibi: false,
+  standard_mibi_umfang: 'Standard', standard_chemie: false,
+  pruefbericht_nummer: '', pruefbericht_datum: '', letzte_untersuchung: '',
+  fachliche_untersuchungsart: 'orientierend', befund: 'offen',
+  naechste_untersuchung: '', notizen: '',
+})
+
+function datumVerschieben(iso: string, tage = 0, monate = 0) {
+  if (!iso) return ''
+  const datum = new Date(`${iso}T12:00:00Z`)
+  if (Number.isNaN(datum.getTime())) return ''
+  if (tage) datum.setUTCDate(datum.getUTCDate() + tage)
+  if (monate) {
+    const tag = datum.getUTCDate()
+    datum.setUTCDate(1)
+    datum.setUTCMonth(datum.getUTCMonth() + monate)
+    const letzterTag = new Date(Date.UTC(datum.getUTCFullYear(), datum.getUTCMonth() + 1, 0)).getUTCDate()
+    datum.setUTCDate(Math.min(tag, letzterTag))
+  }
+  return datum.toISOString().slice(0, 10)
+}
+
 export default function Stammdaten() {
   const [kunden, setKunden] = useState<Kunde[]>([])
   const [anlagen, setAnlagen] = useState<Anlage[]>([])
@@ -41,13 +85,16 @@ export default function Stammdaten() {
   const [neuKunde, setNeuKunde] = useState(false)
   const [kf, setKf] = useState({ name_lang: '', name_kurz: '', typ: 'hausverwaltung' as Kundentyp, telefon: '', email: '', ort: '' })
   const [neuAnlage, setNeuAnlage] = useState(false)
-  const [af, setAf] = useState({ name: '', strasse: '', plz: '', ort: '', turnus_monate: 36, naechste_untersuchung: '' })
+  const [af, setAf] = useState({ name: '', strasse: '', plz: '', ort: '', notizen: '' })
+  const [neueAnlageBereiche, setNeueAnlageBereiche] = useState<NeuerBereichForm[]>([neuerBereichForm()])
+  const [anlageWirdAngelegt, setAnlageWirdAngelegt] = useState(false)
   const [neuBereichName, setNeuBereichName] = useState('')
 
   // Übernahme-Modus: bisherige Einzelkunden werden als Anlagen unter einen Zielkunden gehängt.
   const [mergeModus, setMergeModus] = useState(false)
   const [mergeWahl, setMergeWahl] = useState<Set<string>>(new Set())
   const [mergeZiel, setMergeZiel] = useState('')
+  const [mergeZielSuche, setMergeZielSuche] = useState('')
   const [mergeNeu, setMergeNeu] = useState(false)          // Ziel = neuer Kunde
   const [mergeNeuName, setMergeNeuName] = useState({ kurz: '', lang: '' })
   const [meldung, setMeldung] = useState('')
@@ -112,12 +159,14 @@ export default function Stammdaten() {
   const kundenMergeModusSchalten = () => {
     if (mergeModus) {
       setMergeModus(false); setMergeWahl(new Set()); setMergeZiel('')
+      setMergeZielSuche('')
       setMergeNeu(false); setMergeNeuName({ kurz: '', lang: '' })
       return
     }
     setMergeModus(true)
     setMergeWahl(new Set(kundeId ? [kundeId] : []))
     setMergeZiel('')
+    setMergeZielSuche('')
     setMergeNeu(false)
     setMergeNeuName({ kurz: '', lang: '' })
   }
@@ -142,6 +191,7 @@ export default function Stammdaten() {
       const erg = await db.kundenAlsAnlagenUebernehmen(ziel, quellen)
       setMeldung(erg + ' Der Zielkunde bleibt links; die Quellkunden stehen rechts als Anlagen/Objekte.')
       setMergeModus(false); setMergeWahl(new Set()); setMergeZiel('')
+      setMergeZielSuche('')
       setMergeNeu(false); setMergeNeuName({ kurz: '', lang: '' })
       setKundeId(ziel); laden()
     } catch (e: any) { setMeldung('Fehler: ' + (e.message ?? e)) }
@@ -332,10 +382,76 @@ export default function Stammdaten() {
     setNeuKunde(false); setKf({ ...kf, name_lang: '', name_kurz: '' }); laden()
   }
   const anlageSpeichern = async () => {
-    if (!af.name || !kundeId) return
-    await db.anlageAnlegen({ ...af, kunde_id: kundeId, naechste_untersuchung: af.naechste_untersuchung || undefined })
-    setNeuAnlage(false); setAf({ ...af, name: '' }); laden()
+    if (!af.name.trim() || !kundeId) return
+    if (neueAnlageBereiche.some(b => !b.name.trim())) {
+      setMeldung('Bitte jedem Bereich/WWB einen Namen geben.')
+      return
+    }
+    setAnlageWirdAngelegt(true)
+    try {
+      const id = await db.anlageMitBereichenAnlegen(kundeId, {
+        name: af.name.trim(), strasse: af.strasse || undefined, plz: af.plz || undefined,
+        ort: af.ort || undefined, notizen: af.notizen || undefined,
+      }, neueAnlageBereiche.map(b => ({
+        ...b,
+        name: b.name.trim(),
+        turnus_monate: b.turnus_monate ? Number(b.turnus_monate) : undefined,
+        proben_anzahl: b.proben_anzahl ? Number(b.proben_anzahl) : undefined,
+        naechste_untersuchung: b.naechste_untersuchung || undefined,
+        letzte_untersuchung: b.letzte_untersuchung || undefined,
+        pruefbericht_nummer: b.pruefbericht_nummer || undefined,
+        pruefbericht_datum: b.pruefbericht_datum || undefined,
+        notizen: b.notizen || undefined,
+      })))
+      setNeuAnlage(false)
+      setAf({ name: '', strasse: '', plz: '', ort: '', notizen: '' })
+      setNeueAnlageBereiche([neuerBereichForm()])
+      setAnlageId(id)
+      setMeldung(`„${af.name.trim()}“ wurde mit ${neueAnlageBereiche.length} Bereich${neueAnlageBereiche.length === 1 ? '' : 'en'} vollständig angelegt.`)
+      laden()
+    } catch (e: any) {
+      setMeldung('Fehler beim Anlegen: ' + (e.message ?? e))
+    } finally {
+      setAnlageWirdAngelegt(false)
+    }
   }
+  const neuerBereichAendern = (index: number, patch: Partial<NeuerBereichForm>) =>
+    setNeueAnlageBereiche(alt => alt.map((b, i) => i === index ? { ...b, ...patch } : b))
+  const turnusAendern = (index: number, wert: string) => {
+    const b = neueAnlageBereiche[index]
+    neuerBereichAendern(index, {
+      turnus_monate: wert,
+      naechste_untersuchung: b.letzte_untersuchung && wert
+        ? datumVerschieben(b.letzte_untersuchung, 0, Number(wert)) : b.naechste_untersuchung,
+    })
+  }
+  const pruefberichtDatumAendern = (index: number, wert: string) => {
+    const b = neueAnlageBereiche[index]
+    const untersuchung = wert ? datumVerschieben(wert, -14) : ''
+    neuerBereichAendern(index, {
+      pruefbericht_datum: wert,
+      letzte_untersuchung: untersuchung,
+      naechste_untersuchung: untersuchung && b.turnus_monate
+        ? datumVerschieben(untersuchung, 0, Number(b.turnus_monate)) : '',
+    })
+  }
+  const letzteUntersuchungAendern = (index: number, wert: string) => {
+    const b = neueAnlageBereiche[index]
+    neuerBereichAendern(index, {
+      letzte_untersuchung: wert,
+      naechste_untersuchung: wert && b.turnus_monate
+        ? datumVerschieben(wert, 0, Number(b.turnus_monate)) : b.naechste_untersuchung,
+    })
+  }
+  const bereichHinzufuegen = () => setNeueAnlageBereiche(alt => {
+    const vorbereitet = alt.length === 1 && alt[0].name === 'Gesamtanlage'
+      ? [{ ...alt[0], name: '' }] : alt
+    return [...vorbereitet, neuerBereichForm('')]
+  })
+  const neuenBereichEntfernen = (index: number) => setNeueAnlageBereiche(alt => {
+    const rest = alt.filter((_, i) => i !== index)
+    return rest.length === 1 && !rest[0].name ? [{ ...rest[0], name: 'Gesamtanlage' }] : rest
+  })
   const bereichSpeichern = async () => {
     if (!neuBereichName.trim() || !anlageId) return
     await db.bereichAnlegen({ anlage_id: anlageId, name: neuBereichName.trim() })
@@ -397,15 +513,28 @@ export default function Stammdaten() {
                 Mit vorhandenem Kunden zusammenführen
               </label>
               {!mergeNeu && <label className="f">Mit welchem Kunden willst du zusammenführen?
-                <select value={mergeZiel} onChange={e => setMergeZiel(e.target.value)}>
-                  <option value="">– Zielkunden wählen –</option>
+                <input list="merge-zielkunden" value={mergeZielSuche}
+                  placeholder="Kundennamen tippen und auswählen …"
+                  onChange={e => {
+                    const eingabe = e.target.value
+                    setMergeZielSuche(eingabe)
+                    const treffer = kunden.find(k => k.aktiv && !mergeWahl.has(k.id) && kundeAnzeige(k) === eingabe)
+                    setMergeZiel(treffer?.id ?? '')
+                  }} />
+                <datalist id="merge-zielkunden">
                   {kunden.filter(k => k.aktiv && !mergeWahl.has(k.id))
                     .sort((a, b) => a.name_lang.localeCompare(b.name_lang, 'de'))
-                    .map(k => <option key={k.id} value={k.id}>{kundeAnzeige(k)}</option>)}
-                </select>
+                    .map(k => <option key={k.id} value={kundeAnzeige(k)} />)}
+                </datalist>
+                {mergeZiel && <span className="merge-ziel-bestaetigt">
+                  <i className="fas fa-circle-check" aria-hidden="true"></i>
+                  Ziel: {kundeAnzeige(kunden.find(k => k.id === mergeZiel))}
+                </span>}
               </label>}
               <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '.82rem' }}>
-                <input type="radio" checked={mergeNeu} onChange={() => { setMergeNeu(true); setMergeZiel('') }} />
+                <input type="radio" checked={mergeNeu} onChange={() => {
+                  setMergeNeu(true); setMergeZiel(''); setMergeZielSuche('')
+                }} />
                 Zielkunde nicht vorhanden – <strong>neu anlegen</strong>
               </label>
               {mergeNeu && (
@@ -504,17 +633,121 @@ export default function Stammdaten() {
           )}
           {!kunde && <p className="hint" style={{ padding: '4px 14px' }}>← Links einen Kunden wählen.</p>}
           {neuAnlage && kunde && (
-            <div className="stamm-formular">
-              <input placeholder="Objektname, z. B. Straßbergerstr. 11–47" value={af.name} onChange={e => setAf({ ...af, name: e.target.value })} />
-              <input placeholder="Straße" value={af.strasse} onChange={e => setAf({ ...af, strasse: e.target.value })} />
-              <div style={{ display: 'flex', gap: 8 }}>
-                <input placeholder="PLZ" style={{ width: 90 }} value={af.plz} onChange={e => setAf({ ...af, plz: e.target.value })} />
-                <input placeholder="Ort" style={{ flex: 1 }} value={af.ort} onChange={e => setAf({ ...af, ort: e.target.value })} />
+            <div className="stamm-formular neue-anlage-assistent">
+              <div className="neu-anlage-abschnitt">
+                <strong>1. Objekt / Anlage</strong>
+                <input placeholder="Objektname, z. B. Straßbergerstr. 11–47" value={af.name}
+                  onChange={e => setAf({ ...af, name: e.target.value })} />
+                <input placeholder="Straße" value={af.strasse} onChange={e => setAf({ ...af, strasse: e.target.value })} />
+                <div className="neu-anlage-grid adresse">
+                  <input placeholder="PLZ" value={af.plz} onChange={e => setAf({ ...af, plz: e.target.value })} />
+                  <input placeholder="Ort" value={af.ort} onChange={e => setAf({ ...af, ort: e.target.value })} />
+                </div>
+                <textarea rows={2} placeholder="Notiz zum Objekt (optional)" value={af.notizen}
+                  onChange={e => setAf({ ...af, notizen: e.target.value })} />
               </div>
-              <p className="hint" style={{ margin: 0 }}>Turnus und Fälligkeit werden anschließend je Bereich/WWB gepflegt.</p>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button className="primary" onClick={anlageSpeichern}>Anlegen</button>
-                <button onClick={() => setNeuAnlage(false)}>Abbrechen</button>
+
+              <div className="neu-anlage-abschnitt">
+                <div className="neu-anlage-titelzeile">
+                  <strong>2. Bereiche / WWB</strong>
+                  <button type="button" onClick={bereichHinzufuegen}>
+                    <i className="fas fa-plus" aria-hidden="true"></i> Bereich hinzufügen
+                  </button>
+                </div>
+                <p className="hint">Bei nur einem Bereich wird automatisch eine Gesamtanlage angelegt. Bekannte Angaben können direkt vollständig erfasst werden.</p>
+                {neueAnlageBereiche.map((b, index) => (
+                  <div className="neuer-bereich-block" key={index}>
+                    <div className="neu-anlage-titelzeile">
+                      <strong>{neueAnlageBereiche.length === 1 ? 'Gesamtanlage' : `Bereich / WWB ${index + 1}`}</strong>
+                      {neueAnlageBereiche.length > 1 && <button type="button" className="danger"
+                        onClick={() => neuenBereichEntfernen(index)} title="Diesen noch nicht gespeicherten Bereich entfernen">
+                        <i className="fas fa-trash" aria-hidden="true"></i>
+                      </button>}
+                    </div>
+                    <label className="f">Bereichsname
+                      <input placeholder={neueAnlageBereiche.length === 1 ? 'Gesamtanlage' : 'z. B. Altbau oder WWB 1'}
+                        value={b.name} onChange={e => neuerBereichAendern(index, { name: e.target.value })} />
+                    </label>
+                    <div className="neu-anlage-grid">
+                      <label className="f">Turnus in Monaten
+                        <input type="number" min="1" placeholder="z. B. 12 oder 36" value={b.turnus_monate}
+                          onChange={e => turnusAendern(index, e.target.value)} />
+                      </label>
+                      <label className="f">Probenanzahl / Umfang
+                        <input type="number" min="0" placeholder="optional" value={b.proben_anzahl}
+                          onChange={e => neuerBereichAendern(index, { proben_anzahl: e.target.value })} />
+                      </label>
+                    </div>
+                    <div className="neu-anlage-leistungen">
+                      <label><input type="checkbox" checked={b.standard_legionellen}
+                        onChange={e => neuerBereichAendern(index, { standard_legionellen: e.target.checked })} /> Legionellen</label>
+                      <label><input type="checkbox" checked={b.standard_mibi}
+                        onChange={e => neuerBereichAendern(index, { standard_mibi: e.target.checked })} /> Mibi</label>
+                      {b.standard_mibi && <select aria-label="Mibi-Umfang" value={b.standard_mibi_umfang}
+                        onChange={e => neuerBereichAendern(index, { standard_mibi_umfang: e.target.value as NeuerBereichForm['standard_mibi_umfang'] })}>
+                        <option>Standard</option><option>Komplett</option><option>inklusive Enterokokken</option>
+                      </select>}
+                      <label><input type="checkbox" checked={b.standard_chemie}
+                        onChange={e => neuerBereichAendern(index, { standard_chemie: e.target.checked })} /> Chemie</label>
+                    </div>
+
+                    <details className="bekannter-bericht" open={neueAnlageBereiche.length === 1}>
+                      <summary>Bekannter letzter Prüfbericht (optional)</summary>
+                      <div className="bekannter-bericht-inhalt">
+                        <div className="neu-anlage-grid">
+                          <label className="f">Prüfbericht-Nr.
+                            <input placeholder="optional" value={b.pruefbericht_nummer}
+                              onChange={e => neuerBereichAendern(index, { pruefbericht_nummer: e.target.value })} />
+                          </label>
+                          <label className="f">Datum Prüfbericht
+                            <input type="date" value={b.pruefbericht_datum}
+                              onChange={e => pruefberichtDatumAendern(index, e.target.value)} />
+                          </label>
+                          <label className="f">Letzte Untersuchung
+                            <input type="date" value={b.letzte_untersuchung}
+                              onChange={e => letzteUntersuchungAendern(index, e.target.value)} />
+                            {b.pruefbericht_datum && <span className="hint">zunächst als Prüfbericht minus 14 Tage geschätzt</span>}
+                          </label>
+                          <label className="f">Befund / Status
+                            <select value={b.befund} onChange={e => neuerBereichAendern(index, { befund: e.target.value as Befund })}>
+                              {(Object.keys(BEFUND_LABEL) as Befund[]).map(v => <option key={v} value={v}>{BEFUND_LABEL[v]}</option>)}
+                            </select>
+                          </label>
+                          <label className="f">Untersuchungsart
+                            <select value={b.fachliche_untersuchungsart}
+                              onChange={e => neuerBereichAendern(index, { fachliche_untersuchungsart: e.target.value as FachlicheUntersuchungsart })}>
+                              {(Object.keys(FACHLICHE_ART_LABEL) as FachlicheUntersuchungsart[])
+                                .map(v => <option key={v} value={v}>{FACHLICHE_ART_LABEL[v]}</option>)}
+                            </select>
+                          </label>
+                          <label className="f">Nächste Untersuchung / Fälligkeit
+                            <input type="date" value={b.naechste_untersuchung}
+                              onChange={e => neuerBereichAendern(index, { naechste_untersuchung: e.target.value })} />
+                            {b.letzte_untersuchung && b.turnus_monate && <span className="hint">aus Untersuchung + Turnus berechnet; frei änderbar</span>}
+                          </label>
+                        </div>
+                        <textarea rows={2} placeholder="Bemerkung zu Bereich oder Prüfbericht (optional)" value={b.notizen}
+                          onChange={e => neuerBereichAendern(index, { notizen: e.target.value })} />
+                      </div>
+                    </details>
+                  </div>
+                ))}
+                <button type="button" onClick={bereichHinzufuegen}>
+                  <i className="fas fa-plus" aria-hidden="true"></i> Weiteren Bereich / WWB hinzufügen
+                </button>
+              </div>
+
+              <div className="neu-anlage-aktionen">
+                <button className="primary" onClick={anlageSpeichern}
+                  disabled={anlageWirdAngelegt || !af.name.trim()}>
+                  <i className="fas fa-floppy-disk" aria-hidden="true"></i>
+                  {anlageWirdAngelegt ? 'Wird angelegt …' : 'Anlage vollständig anlegen'}
+                </button>
+                <button onClick={() => {
+                  setNeuAnlage(false)
+                  setAf({ name: '', strasse: '', plz: '', ort: '', notizen: '' })
+                  setNeueAnlageBereiche([neuerBereichForm()])
+                }}>Abbrechen</button>
               </div>
             </div>
           )}
