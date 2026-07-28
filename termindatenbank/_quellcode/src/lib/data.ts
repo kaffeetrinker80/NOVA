@@ -188,6 +188,19 @@ export const db = {
     if (error) throw error
     return data as { name: string; termine: number; auftraege: number; phasen: number }
   },
+  async anlageLoeschen(id: string): Promise<{
+    name: string; bereiche: number; termine: number; auftraege: number; phasen: number
+  }> {
+    if (!supabase) {
+      const a = demo.anlagen.find(x => x.id === id)
+      return { name: a?.name ?? 'Demo-Anlage', bereiche: 0, termine: 0, auftraege: 0, phasen: 0 }
+    }
+    const { data, error } = await supabase.rpc('td_anlage_sicher_loeschen', {
+      p_anlage: id, p_bestaetigung: 'ANLAGE LÖSCHEN',
+    })
+    if (error) throw error
+    return data as { name: string; bereiche: number; termine: number; auftraege: number; phasen: number }
+  },
   async terminAnlegen(t: Omit<Termin, 'id' | 'probenehmer' | 'kalender_exportiert'>): Promise<string> {
     if (!supabase) {
       const id = 't' + (demo.termine.length + 1)

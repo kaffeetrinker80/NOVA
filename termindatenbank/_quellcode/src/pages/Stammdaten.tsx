@@ -249,6 +249,30 @@ export default function Stammdaten() {
       laden()
     } catch (e: any) { setMeldung('Löschen fehlgeschlagen: ' + (e.message ?? e)) }
   }
+  const anlageEntfernen = async (id: string) => {
+    const a = anlagen.find(x => x.id === id)
+    const bereichIds = bereiche.filter(b => b.anlage_id === id).map(b => b.id)
+    const anzTermine = termine.filter(t => t.anlage_id === id || (t.bereich_id && bereichIds.includes(t.bereich_id))).length
+    const anzAuftraege = auftraege.filter(x => bereichIds.includes(x.bereich_id)).length
+    const anzPhasen = phasen.filter(p => bereichIds.includes(p.bereich_id)).length
+    const text = `ACHTUNG: Anlage „${a?.name ?? ''}“ dauerhaft löschen?\n\n` +
+      `Dabei werden ${bereichIds.length} Bereich(e)/WWB, ${anzTermine} Termin(e), ` +
+      `${anzAuftraege} Auftrag/Aufträge und ${anzPhasen} Phase(n) dieser Anlage gelöscht.\n\n` +
+      `Auftragsnummern werden nicht wiederverwendet. Dieser Vorgang ist nicht rückgängig zu machen.`
+    if (!window.confirm(text) || !window.confirm(`„${a?.name ?? 'Diese Anlage'}“ wirklich endgültig löschen?`)) return
+    try {
+      const erg = await db.anlageLoeschen(id)
+      if (anlageId === id) {
+        setAnlageId('')
+        setBereichId('')
+      }
+      setMeldung(
+        `Anlage „${erg.name}“ mit ${erg.bereiche} Bereich(en), ${erg.termine} Termin(en), ` +
+        `${erg.auftraege} Auftrag/Aufträgen und ${erg.phasen} Phase(n) gelöscht.`
+      )
+      laden()
+    } catch (e: any) { setMeldung('Löschen fehlgeschlagen: ' + (e.message ?? e)) }
+  }
 
   const anlage = anlagen.find(a => a.id === anlageId)
   useEffect(() => { setBereichId('') }, [anlageId])
@@ -762,11 +786,18 @@ export default function Stammdaten() {
                   <span className="hint">{[a.plz, a.ort].filter(Boolean).join(' ')} · wird eigener Bereich im neuen Objekt</span>
                 </label>
               ) : (
-              <button key={a.id} className={`stamm-eintrag ${a.id === anlageId ? 'aktiv' : ''} ${!a.aktiv ? 'inaktiv' : ''}`} onClick={() => setAnlageId(a.id)}>
-                <strong>{a.name}{!a.aktiv && <span className="badge neutral" style={{ marginLeft: 6 }}>inaktiv</span>}</strong>
-                <span className="hint">{[a.plz, a.ort].filter(Boolean).join(' ') || 'Adresse noch nicht erfasst'}</span>
-                <span className="stamm-zahl">{bereiche.filter(b => b.anlage_id === a.id).length}</span>
-              </button>
+              <div key={a.id} className="anlage-listenzeile">
+                <button className={`stamm-eintrag ${a.id === anlageId ? 'aktiv' : ''} ${!a.aktiv ? 'inaktiv' : ''}`}
+                  onClick={() => setAnlageId(a.id)}>
+                  <strong>{a.name}{!a.aktiv && <span className="badge neutral" style={{ marginLeft: 6 }}>inaktiv</span>}</strong>
+                  <span className="hint">{[a.plz, a.ort].filter(Boolean).join(' ') || 'Adresse noch nicht erfasst'}</span>
+                  <span className="stamm-zahl">{bereiche.filter(b => b.anlage_id === a.id).length}</span>
+                </button>
+                <button className="anlage-loeschen-knopf" onClick={() => anlageEntfernen(a.id)}
+                  aria-label={`Anlage ${a.name} löschen`} title="Anlage mit allen Bereichen und der vollständigen Historie löschen">
+                  <i className="fas fa-trash" aria-hidden="true"></i>
+                </button>
+              </div>
               )
             ))}
             {kunde && anlagenDesKunden.length === 0 && <p className="hint" style={{ padding: '0 14px' }}>Noch keine Anlagen – oben „Neu“.</p>}

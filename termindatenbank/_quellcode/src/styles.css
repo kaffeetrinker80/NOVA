@@ -285,6 +285,18 @@ table.tbl {
   background: #eef2f7; color: var(--text-muted); border-radius: 999px; padding: 1px 8px;
 }
 .stamm-eintrag.aktiv .stamm-zahl { background: rgba(255,255,255,.25); color: #fff; }
+.anlage-listenzeile { position: relative; }
+.anlage-listenzeile > .stamm-eintrag { width: 100%; padding-right: 68px; }
+.anlage-listenzeile .stamm-zahl { right: 38px; }
+.anlage-loeschen-knopf {
+  position: absolute; right: 5px; top: 50%; transform: translateY(-50%);
+  width: 28px; height: 28px; padding: 0; display: grid; place-items: center;
+  border: 1px solid #e8c5c2; border-radius: 7px; background: #fff;
+  color: #a23b35; opacity: .72;
+}
+.anlage-loeschen-knopf:hover {
+  opacity: 1; color: #fff; background: #a23b35; border-color: #a23b35;
+}
 @media (max-width: 900px) { .stamm-spalten { grid-template-columns: 1fr; } .stamm-spalte { max-height: none; } }
 
 /* ---------- Plan-Modal ---------- */
