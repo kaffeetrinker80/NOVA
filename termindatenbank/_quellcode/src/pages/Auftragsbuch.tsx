@@ -25,7 +25,7 @@ export default function Auftragsbuch() {
   const [nvBereich, setNvBereich] = useState('')
   const [nvTermin, setNvTermin] = useState('')
   const [nvArt, setNvArt] = useState<Untersuchungsart>('legionellen')
-  const [nvFachArt, setNvFachArt] = useState<FachlicheUntersuchungsart>('regeluntersuchung')
+  const [nvFachArt, setNvFachArt] = useState<FachlicheUntersuchungsart>('orientierend')
   const [nvManuell, setNvManuell] = useState(false)
   const [nvNummer, setNvNummer] = useState('')
   const [nvMeldung, setNvMeldung] = useState('')

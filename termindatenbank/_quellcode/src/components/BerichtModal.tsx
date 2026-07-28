@@ -10,10 +10,9 @@ type Zeile = {
 }
 
 const BEFUND_OPTIONEN: Array<[Befund, string]> = [
-  ['sauber', 'ohne Befund'],
+  ['offen', 'unbekannt / nicht erfasst'],
+  ['sauber', 'ohne Befund (= sauber)'],
   ['ueberschreitung', 'Überschreitung'],
-  ['verkeimung', 'Verkeimung'],
-  ['nicht_bewertbar', 'nicht auswertbar'],
 ]
 
 /** Prüfbericht + fachlicher Befund je Unterauftrag. Eine Phase wird nur bewusst eröffnet. */
@@ -32,7 +31,7 @@ export default function BerichtModal({ auftrag, kundeKurz, bereichName, bereichI
   const [berichtNr, setBerichtNr] = useState('')
   const [berichtDatum, setBerichtDatum] = useState(new Date().toISOString().slice(0, 10))
   const [bemerkung, setBemerkung] = useState('')
-  const [fachlicheArt, setFachlicheArt] = useState<FachlicheUntersuchungsart>(auftrag.fachliche_untersuchungsart ?? 'regeluntersuchung')
+  const [fachlicheArt, setFachlicheArt] = useState<FachlicheUntersuchungsart>(auftrag.fachliche_untersuchungsart ?? 'orientierend')
   const [folge, setFolge] = useState<Folgeentscheidung>('regelturnus_bleibt')
   const [phasen, setPhasen] = useState<Ueberschreitungsphase[]>([])
   const [laeuft, setLaeuft] = useState(false); const [fehler, setFehler] = useState('')
@@ -43,7 +42,7 @@ export default function BerichtModal({ auftrag, kundeKurz, bereichName, bereichI
         setPhasen(geladen)
         setZeilen(vorher => vorher.map(z => {
           const b = bewertungen.find(x => x.unterauftrag_id === z.id)
-          return b ? { ...z, befund: b.befund === 'verkeimung' ? 'ueberschreitung' : b.befund, phaseId: b.phase_id ?? undefined, zaehltSauber: b.zaehlt_als_saubere_nachuntersuchung } : z
+          return b ? { ...z, befund: b.befund, phaseId: b.phase_id ?? undefined, zaehltSauber: b.zaehlt_als_saubere_nachuntersuchung } : z
         }))
         const erste = bewertungen[0]
         if (erste) {
@@ -56,7 +55,7 @@ export default function BerichtModal({ auftrag, kundeKurz, bereichName, bereichI
 
   const aktivePhasen = useMemo(() => phasen.filter(p => !['regelturnus_bestaetigt', 'abgeschlossen'].includes(p.status)), [phasen])
   const setZeile = (i: number, patch: Partial<Zeile>) => setZeilen(z => z.map((x, j) => j === i ? { ...x, ...patch } : x))
-  const ergebnisZuBefund = (befund: Befund): Ergebnisstatus => befund === 'sauber' ? 'unauffaellig' : ['ueberschreitung', 'verkeimung'].includes(befund) ? 'ueberschritten' : 'offen'
+  const ergebnisZuBefund = (befund: Befund): Ergebnisstatus => befund === 'sauber' ? 'unauffaellig' : befund === 'ueberschreitung' ? 'ueberschritten' : 'offen'
 
   const speichern = async () => {
     setLaeuft(true); setFehler('')
@@ -72,10 +71,10 @@ export default function BerichtModal({ auftrag, kundeKurz, bereichName, bereichI
           folgeentscheidung: folge,
           bemerkung: bemerkung || undefined,
         })
-        if (z.neuePhase && ['ueberschreitung', 'verkeimung'].includes(z.befund)) {
+        if (z.neuePhase && z.befund === 'ueberschreitung') {
           await db.phaseAnlegen({
             bereich_id: bereichId, ausloesende_bewertung_id: bewertung.id, eroeffnet_am: berichtDatum,
-            ausloeser: z.befund === 'verkeimung' ? 'verkeimung' : 'ueberschreitung', status: 'aktiv',
+            ausloeser: 'ueberschreitung', status: 'aktiv',
             saubere_nu_erforderlich: 3, notizen: berichtNr ? `Prüfbericht ${berichtNr}` : undefined,
           })
         }
@@ -105,12 +104,12 @@ export default function BerichtModal({ auftrag, kundeKurz, bereichName, bereichI
         <label className="f">Hinweis / Maßnahme<input value={bemerkung} onChange={e => setBemerkung(e.target.value)} placeholder="optional" /></label>
       </div>
       <div className="table-container" style={{ padding: '8px 12px' }}><table><thead><tr><th>Nr.</th><th>Art</th><th>Proben</th><th>Abschluss</th><th>Befund</th><th>Folge</th></tr></thead><tbody>
-        {zeilen.map((z, i) => <tr key={z.id} className={['ueberschreitung', 'verkeimung'].includes(z.befund) ? 'amp-red' : z.befund === 'sauber' ? 'amp-green' : ''}>
+        {zeilen.map((z, i) => <tr key={z.id} className={z.befund === 'ueberschreitung' ? 'amp-red' : z.befund === 'sauber' ? 'amp-green' : 'amp-yellow'}>
           <td><span className="nr">{z.nummer}</span></td><td>{ART_LABEL[z.art]}{z.umfang && <div className="hint">{z.umfang}</div>}</td>
           <td><input type="number" min={0} style={{ width: 66 }} value={z.ist ?? ''} onChange={e => setZeile(i, { ist: e.target.value ? +e.target.value : undefined })} />{z.geplant != null && <span className="hint"> / {z.geplant}</span>}</td>
           <td><select value={z.status} onChange={e => setZeile(i, { status: e.target.value as Auftragsstatus })}>{Object.entries(STATUS_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></td>
-          <td><select value={z.befund} onChange={e => setZeile(i, { befund: e.target.value as Befund, neuePhase: false, zaehltSauber: false })}><option value="offen">– Befund wählen –</option>{BEFUND_OPTIONEN.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></td>
-          <td>{z.befund === 'sauber' && aktivePhasen.length > 0 && <><label className="hint"><input type="checkbox" checked={z.zaehltSauber} onChange={e => setZeile(i, { zaehltSauber: e.target.checked, phaseId: e.target.checked ? (z.phaseId ?? aktivePhasen[0].id) : undefined })} /> zählt als NU ohne Befund</label>{z.zaehltSauber && <select value={z.phaseId ?? ''} onChange={e => setZeile(i, { phaseId: e.target.value })} style={{ maxWidth: 150, marginTop: 4 }}>{aktivePhasen.map(p => <option key={p.id} value={p.id}>{p.eroeffnet_am} · {p.status}</option>)}</select>}</>}{['ueberschreitung', 'verkeimung'].includes(z.befund) && <label className="hint"><input type="checkbox" checked={z.neuePhase} onChange={e => setZeile(i, { neuePhase: e.target.checked })} /> neue Phase eröffnen</label>}</td>
+          <td><select value={z.befund} onChange={e => setZeile(i, { befund: e.target.value as Befund, neuePhase: false, zaehltSauber: false })}>{BEFUND_OPTIONEN.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></td>
+          <td>{z.befund === 'sauber' && aktivePhasen.length > 0 && <><label className="hint"><input type="checkbox" checked={z.zaehltSauber} onChange={e => setZeile(i, { zaehltSauber: e.target.checked, phaseId: e.target.checked ? (z.phaseId ?? aktivePhasen[0].id) : undefined })} /> zählt als NU ohne Befund</label>{z.zaehltSauber && <select value={z.phaseId ?? ''} onChange={e => setZeile(i, { phaseId: e.target.value })} style={{ maxWidth: 150, marginTop: 4 }}>{aktivePhasen.map(p => <option key={p.id} value={p.id}>{p.eroeffnet_am} · {p.status}</option>)}</select>}</>}{z.befund === 'ueberschreitung' && <label className="hint"><input type="checkbox" checked={z.neuePhase} onChange={e => setZeile(i, { neuePhase: e.target.checked })} /> neue Phase eröffnen</label>}</td>
         </tr>)}
       </tbody></table></div>
       {aktivePhasen.length > 0 && <p className="hint" style={{ padding: '0 24px' }}><i className="fas fa-triangle-exclamation" aria-hidden="true"></i> Aktive Phase(n): {aktivePhasen.map(p => `${p.eroeffnet_am} · ${p.status}`).join(' | ')}. Eine NU ohne Befund wird nur gezählt, wenn du sie ausdrücklich markierst.</p>}

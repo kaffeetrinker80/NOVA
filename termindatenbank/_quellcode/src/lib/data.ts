@@ -36,7 +36,7 @@ const demo = {
   auftraege: [
     {
       id: 'o1', auftragsnummer: '26-0897', jahr: 2026, bereich_id: 'b1', termin_id: 't1', status: 'offen',
-      fachliche_untersuchungsart: 'regeluntersuchung',
+      fachliche_untersuchungsart: 'orientierend',
       unterauftraege: [
         { id: 'u1', auftrag_id: 'o1', suffix: '', art: 'legionellen', proben_geplant: 14, status: 'offen', ergebnis: 'offen' },
         { id: 'u2', auftrag_id: 'o1', suffix: 'M', art: 'mibi', umfang: 'inklusive Enterokokken', proben_geplant: 3, status: 'offen', ergebnis: 'offen' },
@@ -44,7 +44,7 @@ const demo = {
     },
     {
       id: 'o2', auftragsnummer: '26-0898', jahr: 2026, bereich_id: 'b2', termin_id: 't1', status: 'offen',
-      fachliche_untersuchungsart: 'regeluntersuchung',
+      fachliche_untersuchungsart: 'orientierend',
       unterauftraege: [
         { id: 'u3', auftrag_id: 'o2', suffix: '', art: 'legionellen', proben_geplant: 6, status: 'offen', ergebnis: 'offen' },
       ],

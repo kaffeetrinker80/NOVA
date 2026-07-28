@@ -17,7 +17,7 @@ type Entwurf = {
   datum: string
   fachliche_untersuchungsart: FachlicheUntersuchungsart | ''
   historie_einordnung: HistorieEinordnung
-  befund: Befund | ''
+  befund: Befund
   pruefbericht_nummer: string
   pruefbericht_datum: string
   historie_bemerkung: string
@@ -27,7 +27,7 @@ const leer: Entwurf = {
   datum: heute,
   fachliche_untersuchungsart: '',
   historie_einordnung: 'unbekannt',
-  befund: '',
+  befund: 'offen',
   pruefbericht_nummer: '',
   pruefbericht_datum: '',
   historie_bemerkung: '',
@@ -38,7 +38,7 @@ function ausTermin(t: Termin): Entwurf {
     datum: t.datum,
     fachliche_untersuchungsart: t.fachliche_untersuchungsart ?? '',
     historie_einordnung: t.historie_einordnung ?? 'unbekannt',
-    befund: t.befund ?? '',
+    befund: t.befund ?? 'offen',
     pruefbericht_nummer: t.pruefbericht_nummer ?? '',
     pruefbericht_datum: t.pruefbericht_datum ?? '',
     historie_bemerkung: t.historie_bemerkung ?? '',
@@ -94,7 +94,7 @@ export default function HistorieModal({ anlage, kunde, termine, auftraege, berei
       status: 'abgeschlossen' as const,
       fachliche_untersuchungsart: entwurf.fachliche_untersuchungsart || undefined,
       historie_einordnung: entwurf.historie_einordnung,
-      befund: entwurf.befund || undefined,
+      befund: entwurf.befund,
       pruefbericht_nummer: entwurf.pruefbericht_nummer || undefined,
       pruefbericht_datum: entwurf.pruefbericht_datum || undefined,
       historie_bemerkung: entwurf.historie_bemerkung || undefined,
@@ -185,8 +185,7 @@ export default function HistorieModal({ anlage, kunde, termine, auftraege, berei
             </select>
           </label>
           <label className="f">Befund / Ergebnis
-            <select value={entwurf.befund} onChange={e => setEntwurf({ ...entwurf, befund: e.target.value as Befund | '' })}>
-              <option value="">noch nicht erfasst</option>
+            <select value={entwurf.befund} onChange={e => setEntwurf({ ...entwurf, befund: e.target.value as Befund })}>
               {Object.entries(BEFUND_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
             </select>
           </label>
@@ -203,7 +202,7 @@ export default function HistorieModal({ anlage, kunde, termine, auftraege, berei
       <div className="hist-liste">
         {abgeschlossen.map(t => {
           const zug = auftragZumTermin(t.id)
-          return <div key={t.id} className={`hist-eintrag ${t.befund === 'ueberschreitung' || t.befund === 'verkeimung' ? 'hist-start' : 'hist-normal'}`}>
+          return <div key={t.id} className={`hist-eintrag ${t.befund === 'ueberschreitung' ? 'hist-start hist-befund-rot' : t.befund === 'sauber' ? 'hist-befund-gruen' : 'hist-befund-gelb'}`}>
             <div className="hist-punkt" aria-hidden="true"></div>
             <div className="hist-inhalt">
               <div className="hist-zeile1">

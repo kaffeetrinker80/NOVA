@@ -5,9 +5,9 @@ export type Auftragsstatus = 'offen' | 'beprobt' | 'im_labor' | 'abgeschlossen' 
 export type Ergebnisstatus = 'offen' | 'unauffaellig' | 'ueberschritten' | 'nachuntersuchung_erforderlich'
 export type Rolle = 'admin' | 'disposition' | 'probenehmer' | 'lesend'
 export type BerichtStatus = 'ausstehend' | 'eingegangen' | 'geprueft'
-export type Befund = 'offen' | 'sauber' | 'ueberschreitung' | 'verkeimung' | 'nicht_bewertbar'
+export type Befund = 'offen' | 'sauber' | 'ueberschreitung'
 export type PhasenStatus = 'aktiv' | 'massnahmen_laufen' | 'nachuntersuchung' | 'regelturnus_bestaetigt' | 'abgeschlossen'
-export type FachlicheUntersuchungsart = 'orientierend' | 'regeluntersuchung' | 'weitergehend' | 'nachuntersuchung'
+export type FachlicheUntersuchungsart = 'orientierend' | 'weitergehend' | 'nachuntersuchung' | 'nichtamtliche_eigenprobe'
 export type Folgeentscheidung =
   | 'regelturnus_bleibt'
   | 'weitergehende_untersuchung'
@@ -100,9 +100,9 @@ export const TERMIN_LABEL: Record<Terminstatus, string> = {
 }
 export const FACHLICHE_ART_LABEL: Record<FachlicheUntersuchungsart, string> = {
   orientierend: 'orientierende Untersuchung',
-  regeluntersuchung: 'Regeluntersuchung',
   weitergehend: 'weitergehende Untersuchung',
   nachuntersuchung: 'Nachuntersuchung',
+  nichtamtliche_eigenprobe: 'nichtamtliche Eigenprobe',
 }
 export const FOLGE_LABEL: Record<Folgeentscheidung, string> = {
   regelturnus_bleibt: 'Regelturnus bleibt',
@@ -113,8 +113,9 @@ export const FOLGE_LABEL: Record<Folgeentscheidung, string> = {
   regelturnus_durch_gesundheitsamt: 'Rückkehr Regelturnus durch Gesundheitsamt',
 }
 export const BEFUND_LABEL: Record<Befund, string> = {
-  offen: 'noch offen', sauber: 'ohne Befund', ueberschreitung: 'Überschreitung',
-  verkeimung: 'Verkeimung', nicht_bewertbar: 'nicht auswertbar',
+  offen: 'unbekannt / nicht erfasst',
+  sauber: 'ohne Befund (= sauber)',
+  ueberschreitung: 'Überschreitung',
 }
 export const HISTORIE_EINORDNUNG_LABEL: Record<HistorieEinordnung, string> = {
   unbekannt: 'noch fachlich ungeklärt',

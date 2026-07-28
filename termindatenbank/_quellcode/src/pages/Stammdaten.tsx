@@ -297,10 +297,17 @@ export default function Stammdaten() {
       .filter(l => l && l !== 'offen')
     const direkt = t.befund === 'sauber' ? 'ohne Befund'
       : t.befund === 'ueberschreitung' ? 'Überschreitung'
-      : t.befund === 'verkeimung' ? 'Verkeimung'
-      : t.befund === 'nicht_bewertbar' ? 'nicht auswertbar'
+      : t.befund === 'offen' ? 'unbekannt / nicht erfasst'
       : ''
-    return direkt || [...new Set(labels)].join(', ') || (t.status === 'geplant' ? 'geplant' : 'ohne Bericht')
+    return direkt || [...new Set(labels)].join(', ') || (t.status === 'geplant' ? 'geplant' : 'unbekannt / nicht erfasst')
+  }
+  const befundKlasseZumTermin = (t: import('../lib/types').Termin, b: Bereich) => {
+    if (t.befund === 'ueberschreitung') return 'befund-rot'
+    if (t.befund === 'sauber') return 'befund-gruen'
+    const ergebnisse = auftraegeZumBereich(b).filter(a => a.termin_id === t.id).flatMap(a => a.unterauftraege.map(u => u.ergebnis))
+    if (ergebnisse.includes('ueberschritten')) return 'befund-rot'
+    if (ergebnisse.length && ergebnisse.every(e => e === 'unauffaellig')) return 'befund-gruen'
+    return 'befund-gelb'
   }
   const letzterAuftragZumBereich = (b: Bereich) => {
     const nachDatum = (a: Auftrag) => termine.find(t => t.id === a.termin_id)?.datum ?? ''
@@ -587,7 +594,7 @@ export default function Stammdaten() {
                       </span>
                       <span className="bereich-mini-historie">
                         {bTermine.slice(0, 3).map(t => (
-                          <span key={t.id} className="mini-hist-zeile">
+                          <span key={t.id} className={`mini-hist-zeile ${befundKlasseZumTermin(t, b)}`}>
                             <strong>{fmtDatum(t.datum)}</strong>
                             <em>{ergebnisZumTermin(t, b)}</em>
                           </span>
