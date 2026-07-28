@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { db } from '../lib/data'
 import type { Anlage, Bereich, Kunde, Kundentyp, Ueberschreitungsphase } from '../lib/types'
-import { fmtDatum, kundeAnzeige } from '../lib/types'
+import { ERGEBNIS_LABEL, fmtDatum, kundeAnzeige } from '../lib/types'
 import HistorieModal from '../components/HistorieModal'
 import { Meldung } from '../components/ui'
 
@@ -250,10 +250,13 @@ export default function Stammdaten() {
       .filter(n => n > 0)
     return ausAuftraegen[0] ?? anlage?.proben_anzahl
   }
-  const bereichAktuell = bereich ?? bereicheDerAnlage[0]
-  const aktuelleBereichAnsicht = bereichAktuell ? bereichAnsicht(bereichAktuell) : undefined
-  const aktuelleBereichStatus = bereichAktuell ? bereichStatus(bereichAktuell) : undefined
-  const aktuelleTermine = termineZumBereich(bereichAktuell)
+  const ergebnisZumTermin = (t: import('../lib/types').Termin, b: Bereich) => {
+    const labels = auftraegeZumBereich(b)
+      .filter(a => a.termin_id === t.id)
+      .flatMap(a => a.unterauftraege.map(u => ERGEBNIS_LABEL[u.ergebnis]))
+      .filter(l => l && l !== 'offen')
+    return [...new Set(labels)].join(', ') || (t.status === 'geplant' ? 'geplant' : 'ohne Bericht')
+  }
 
   const kundeSpeichern = async () => {
     if (!kf.name_lang) return
@@ -481,37 +484,6 @@ export default function Stammdaten() {
 
           {anlage && (
             <div className="bereich-raster">
-              {bereichAktuell && aktuelleBereichAnsicht && aktuelleBereichStatus && (
-                <section className="arbeitsbereich-kopf">
-                  <div className="crumbs">
-                    <span>{kundeAnzeige(kunde)}</span>
-                    <i className="fas fa-chevron-right" aria-hidden="true"></i>
-                    <span>{anlage.name}</span>
-                    <i className="fas fa-chevron-right" aria-hidden="true"></i>
-                    <strong>{aktuelleBereichAnsicht.titel}</strong>
-                  </div>
-                  <div className="arbeitsbereich-status">
-                    <span className={`badge ${aktuelleBereichStatus.klasse}`}><i className={`fas ${aktuelleBereichStatus.icon}`} aria-hidden="true"></i> {aktuelleBereichStatus.text}</span>
-                    <span><i className="fas fa-flask" aria-hidden="true"></i> Proben: <strong>{probenZumBereich(bereichAktuell) ?? '–'}</strong></span>
-                    <span><i className="fas fa-calendar-check" aria-hidden="true"></i> Nächste: <strong>{fmtDatum(anlage.naechste_untersuchung)}</strong></span>
-                  </div>
-                  <div className="mini-historie">
-                    <div className="mini-historie-kopf">
-                      <strong>Letzte Untersuchungen</strong>
-                      <button onClick={() => { setHistorieBereich(bereichAktuell.id); setHistorieOffen(true) }}>
-                        <i className="fas fa-clock-rotate-left" aria-hidden="true"></i> Vollständige Historie
-                      </button>
-                    </div>
-                    {aktuelleTermine.slice(0, 3).map(t => (
-                      <div key={t.id} className="mini-hist-zeile">
-                        <strong>{fmtDatum(t.datum)}</strong>
-                        <span>{t.status === 'geplant' ? 'geplant' : 'Untersuchung'}</span>
-                      </div>
-                    ))}
-                    {aktuelleTermine.length === 0 && <p className="hint" style={{ margin: 0 }}>Noch keine Historie zu diesem Bereich.</p>}
-                  </div>
-                </section>
-              )}
               {/* Objekt-Ebene: Adresse, Betreuer, Zugang, Aktiv, Verwalterwechsel */}
               <details className="objekt-box">
                 <summary><i className="fas fa-building" aria-hidden="true"></i> Objekt: {anlage.name}
@@ -555,6 +527,7 @@ export default function Stammdaten() {
                 {bereicheDerAnlage.map(b => {
                   const ansicht = bereichAnsicht(b)
                   const status = bereichStatus(b)
+                  const bTermine = termineZumBereich(b)
                   return (
                   <div key={b.id} className={`bereich-karte ${b.id === bereichId ? 'aktiv' : ''} ${ansicht.uebernommen ? 'uebernommen' : ''}`}>
                     <button className="bereich-kopf" onClick={() => setBereichId(b.id === bereichId ? '' : b.id)}>
@@ -562,11 +535,26 @@ export default function Stammdaten() {
                         <strong><i className={`fas fa-chevron-${b.id === bereichId ? 'down' : 'right'}`} style={{ fontSize: '.7rem', marginRight: 6 }}></i>{ansicht.titel}</strong>
                         <span className={`badge ${status.klasse}`}><i className={`fas ${status.icon}`} aria-hidden="true"></i> {status.text}</span>
                       </span>
-                      {ansicht.uebernommen && <span className="bereich-herkunft"><i className="fas fa-layer-group" aria-hidden="true"></i> als Bereich aus ehemaliger Anlage übernommen</span>}
+                      <span className="bereich-meta-row">
+                        <span><i className="fas fa-flask" aria-hidden="true"></i> Proben: <strong>{probenZumBereich(b) ?? '–'}</strong></span>
+                        <span><i className="fas fa-calendar-check" aria-hidden="true"></i> Letzte: <strong>{fmtDatum(bTermine[0]?.datum)}</strong></span>
+                      </span>
+                      <span className="bereich-mini-historie">
+                        {bTermine.slice(0, 3).map(t => (
+                          <span key={t.id} className="mini-hist-zeile">
+                            <strong>{fmtDatum(t.datum)}</strong>
+                            <em>{ergebnisZumTermin(t, b)}</em>
+                          </span>
+                        ))}
+                        {bTermine.length === 0 && <span className="hint">Noch keine Historie zu diesem Bereich.</span>}
+                      </span>
                       {(b.strasse || b.hausnummer) && <span className="hint">{[b.strasse, b.hausnummer].filter(Boolean).join(' ')}</span>}
                     </button>
                     {b.id === bereichId && (
                       <div className="stamm-formular" style={{ borderBottom: 'none', paddingTop: 6 }}>
+                        <span className="hint" style={{ fontWeight: 650 }}>
+                          Details und Historie zu: {ansicht.titel}
+                        </span>
                         <input placeholder="Bereichsname, z. B. Altbau / Haus 7" value={bf.name} onChange={e => setBf({ ...bf, name: e.target.value })} />
                         <div style={{ display: 'flex', gap: 8 }}>
                           <input placeholder="Straße (falls abweichend)" style={{ flex: 1 }} value={bf.strasse} onChange={e => setBf({ ...bf, strasse: e.target.value })} />
@@ -575,7 +563,7 @@ export default function Stammdaten() {
                         <input placeholder="WW-System-Details (optional)" value={bf.wwb_details} onChange={e => setBf({ ...bf, wwb_details: e.target.value })} />
                         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                           <button className="primary" onClick={bereichSpeichernDetails}><i className="fas fa-floppy-disk" aria-hidden="true"></i> Speichern</button>
-                          <button onClick={() => { setHistorieBereich(b.id); setHistorieOffen(true) }}><i className="fas fa-clock-rotate-left" aria-hidden="true"></i> Historie</button>
+                          <button onClick={() => { setHistorieBereich(b.id); setHistorieOffen(true) }}><i className="fas fa-clock-rotate-left" aria-hidden="true"></i> Vollständige Historie</button>
                           <button className="secondary" onClick={() => bereichEntfernen(b.id)} title="Bereich entfernen"><i className="fas fa-trash-can" aria-hidden="true"></i></button>
                         </div>
                       </div>

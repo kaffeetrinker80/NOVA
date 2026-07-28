@@ -64,7 +64,7 @@ export const ART_LABEL: Record<Untersuchungsart, string> = {
   vorortparameter: 'Vorortparameter', sonstiges: 'Sonstiges',
 }
 export const ERGEBNIS_LABEL: Record<Ergebnisstatus, string> = {
-  offen: 'offen', unauffaellig: 'unauffällig', ueberschritten: 'überschritten',
+  offen: 'offen', unauffaellig: 'ohne Befund', ueberschritten: 'Überschreitung',
   nachuntersuchung_erforderlich: 'Nachuntersuchung',
 }
 export const STATUS_LABEL: Record<Auftragsstatus, string> = {
