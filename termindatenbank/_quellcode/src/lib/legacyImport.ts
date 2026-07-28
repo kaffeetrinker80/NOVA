@@ -20,7 +20,14 @@ export interface ImportVorschau {
     objekt_referenz?: string; turnus_monate?: number; naechste_untersuchung?: string
     notizen?: string; planungsnotiz?: string; proben_anzahl?: number
   }[]
-  termine: { legacy_id: string; anlage_legacy: string; datum: string; geplant?: boolean }[]
+  bereiche: {
+    legacy_id: string; anlage_legacy: string; name: string
+    turnus_monate?: number; naechste_untersuchung?: string; proben_anzahl?: number
+  }[]
+  termine: {
+    legacy_id: string; anlage_legacy: string; bereich_legacy: string
+    datum: string; geplant?: boolean
+  }[]
   uebersprungen: number
 }
 
@@ -69,9 +76,16 @@ function untersuchungsdaten(rec: LegacyDatensatz): string[] {
   return [...new Set(datumsliste)].sort()
 }
 
-/** Stabile Anlagen-Kennung – bewusst ohne Verwaltung, damit ein Verwalterwechsel die Anlage nicht dupliziert. */
+/**
+ * Stabile Anlagen-Kennung.
+ *
+ * Die Verwaltung gehört bewusst dazu: gleich adressierte Alt-/Neubau-Zeilen
+ * müssen beim Import getrennt bleiben. Ein echter Verwalterwechsel wird später
+ * als ausdrückliche Fachaktion durchgeführt und darf nicht beim Import geraten
+ * werden.
+ */
 function anlagenSchluessel(rec: LegacyDatensatz): string {
-  return ['Verw. Nr.', 'Wohnanlage/Objekt', 'PLZ', 'Ort']
+  return ['Verwaltung', 'Verw. Nr.', 'Wohnanlage/Objekt', 'PLZ', 'Ort']
     .map(f => text(rec[f]).toLowerCase()).join('|')
 }
 
@@ -95,6 +109,7 @@ function kundentyp(name: string): string {
 export function vorschauErzeugen(datensaetze: LegacyDatensatz[]): ImportVorschau {
   const kunden = new Map<string, ImportVorschau['kunden'][0]>()
   const anlagen = new Map<string, ImportVorschau['anlagen'][0]>()
+  const bereiche = new Map<string, ImportVorschau['bereiche'][0]>()
   const termine: ImportVorschau['termine'] = []
   const terminKeys = new Set<string>()
   let uebersprungen = 0
@@ -115,6 +130,7 @@ export function vorschauErzeugen(datensaetze: LegacyDatensatz[]): ImportVorschau
     }
 
     const anlageKey = 'anl:' + anlagenSchluessel(rec)
+    const bereichKey = anlageKey + '#gesamt'
     if (!anlagen.has(anlageKey)) {
       anlagen.set(anlageKey, {
         legacy_id: anlageKey,
@@ -147,14 +163,31 @@ export function vorschauErzeugen(datensaetze: LegacyDatensatz[]): ImportVorschau
       a.notizen = [...new Set(notiz)].join(' · ') || undefined
     }
 
+    if (!bereiche.has(bereichKey)) {
+      bereiche.set(bereichKey, {
+        legacy_id: bereichKey,
+        anlage_legacy: anlageKey,
+        name: 'Gesamtanlage',
+        turnus_monate: parseTurnus(rec['Turnus']),
+        naechste_untersuchung: parseDatum(rec['Nächste Unters.']) ?? undefined,
+        proben_anzahl: (() => {
+          const n = parseInt(String(rec['Proben'] ?? '').replace(/\D/g, ''))
+          return Number.isFinite(n) && n > 0 ? n : undefined
+        })(),
+      })
+    }
+
     // Wichtig: Eine Anlage kann in der JSON mehrfach vorkommen, z. B. wegen
     // getrennter Alt-/Neubau-Zeilen oder nachträglich gepflegter Historie.
     // Deshalb werden Untersuchungsdaten bei JEDEM Datensatz gesammelt, nicht
     // nur beim ersten Auftreten der Anlage.
     for (const datum of untersuchungsdaten(rec)) {
-      const key = `${anlageKey}@${datum}`
+      const key = `${bereichKey}@${datum}`
       if (!terminKeys.has(key)) {
-        termine.push({ legacy_id: key, anlage_legacy: anlageKey, datum })
+        termine.push({
+          legacy_id: key, anlage_legacy: anlageKey,
+          bereich_legacy: bereichKey, datum,
+        })
         terminKeys.add(key)
       }
     }
@@ -164,9 +197,12 @@ export function vorschauErzeugen(datensaetze: LegacyDatensatz[]): ImportVorschau
     const geplantRoh = text(rec['Geplant'])
     const geplant = parseDatum(geplantRoh)
     if (geplant) {
-      const key = `${anlageKey}@geplant@${geplant}`
+      const key = `${bereichKey}@geplant@${geplant}`
       if (!terminKeys.has(key)) {
-        termine.push({ legacy_id: key, anlage_legacy: anlageKey, datum: geplant, geplant: true })
+        termine.push({
+          legacy_id: key, anlage_legacy: anlageKey,
+          bereich_legacy: bereichKey, datum: geplant, geplant: true,
+        })
         terminKeys.add(key)
       }
     } else if (geplantRoh) {
@@ -177,6 +213,7 @@ export function vorschauErzeugen(datensaetze: LegacyDatensatz[]): ImportVorschau
   return {
     kunden: [...kunden.values()],
     anlagen: [...anlagen.values()],
+    bereiche: [...bereiche.values()],
     termine,
     uebersprungen,
   }

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { db } from '../lib/data'
-import type { Anlage, Auftrag, Bereich, Kunde, Termin, Untersuchungsart } from '../lib/types'
-import { ART_LABEL, ERGEBNIS_LABEL, STATUS_LABEL, fmtDatum, nummerVoll, kundeAnzeige } from '../lib/types'
+import type { Anlage, Auftrag, Bereich, FachlicheUntersuchungsart, Kunde, Termin, Untersuchungsart } from '../lib/types'
+import { ART_LABEL, ERGEBNIS_LABEL, FACHLICHE_ART_LABEL, STATUS_LABEL, fmtDatum, nummerVoll, kundeAnzeige } from '../lib/types'
 import { Abschnitt, ErgebnisBadge, Nr, StatusBadge } from '../components/ui'
 import BerichtModal from '../components/BerichtModal'
 
@@ -25,6 +25,7 @@ export default function Auftragsbuch() {
   const [nvBereich, setNvBereich] = useState('')
   const [nvTermin, setNvTermin] = useState('')
   const [nvArt, setNvArt] = useState<Untersuchungsart>('legionellen')
+  const [nvFachArt, setNvFachArt] = useState<FachlicheUntersuchungsart>('regeluntersuchung')
   const [nvManuell, setNvManuell] = useState(false)
   const [nvNummer, setNvNummer] = useState('')
   const [nvMeldung, setNvMeldung] = useState('')
@@ -69,7 +70,7 @@ export default function Auftragsbuch() {
     }
     try {
       const nr = await db.auftragAnlegen(nvBereich, nvTermin || undefined,
-        [{ art: nvArt, suffix: '' }], nvManuell ? nvNummer.trim() : undefined)
+        [{ art: nvArt, suffix: '' }], nvManuell ? nvNummer.trim() : undefined, nvFachArt)
       setNvMeldung(nvTermin ? `Auftragsnummer ${nr} wurde dem bestehenden Termin zugeordnet.` : `Auftragsnummer ${nr} nacherfasst (ohne Termin – im Auftragsbuch geführt).`)
       setNvNummer(''); setNvManuell(false); laden()
     } catch (e: any) {
@@ -118,7 +119,12 @@ export default function Auftragsbuch() {
                   {termine.filter(t => t.anlage_id === nvAnlage && t.status !== 'abgesagt').sort((a, b) => b.datum.localeCompare(a.datum)).map(t => <option key={t.id} value={t.id}>{fmtDatum(t.datum)} · {t.status}</option>)}
                 </select>
               </label>
-              <label className="f">Untersuchungsart
+              <label className="f">Fachliche Untersuchungsart
+                <select value={nvFachArt} onChange={e => setNvFachArt(e.target.value as FachlicheUntersuchungsart)}>
+                  {Object.entries(FACHLICHE_ART_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+              </label>
+              <label className="f">Labor-/Leistungsart
                 <select value={nvArt} onChange={e => setNvArt(e.target.value as Untersuchungsart)}>
                   {Object.entries(ART_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                 </select>
@@ -168,7 +174,7 @@ export default function Auftragsbuch() {
       <table>
         <thead><tr>
           <th>Nr.</th><th>Kunde</th><th>Anlage</th><th>Bereich</th><th>Termin</th>
-          <th>Art / Umfang</th><th>Proben (Soll/Ist)</th><th>Status</th><th>Ergebnis</th><th></th>
+          <th>Untersuchung</th><th>Laborart / Umfang</th><th>Proben (Soll/Ist)</th><th>Status</th><th>Ergebnis</th><th></th>
         </tr></thead>
         <tbody>
           {gefiltert.map(z => (
@@ -178,6 +184,7 @@ export default function Auftragsbuch() {
               <td>{z.anlage?.name ?? '–'}</td>
               <td>{z.bereich?.name ?? '–'}</td>
               <td>{fmtDatum(z.termin?.datum)}</td>
+              <td>{z.a.fachliche_untersuchungsart ? FACHLICHE_ART_LABEL[z.a.fachliche_untersuchungsart] : <span className="hint">nicht erfasst</span>}</td>
               <td>{ART_LABEL[z.u.art]}{z.u.umfang ? <div className="hint">{z.u.umfang}</div> : null}</td>
               <td>
                 {z.u.proben_geplant ?? '–'} / {bearbeite === z.u.id
@@ -193,7 +200,7 @@ export default function Auftragsbuch() {
               </td>
             </tr>
           ))}
-          {gefiltert.length === 0 && <tr><td colSpan={10} className="hint">Keine Aufträge für die gewählten Filter.</td></tr>}
+          {gefiltert.length === 0 && <tr><td colSpan={11} className="hint">Keine Aufträge für die gewählten Filter.</td></tr>}
         </tbody>
       </table>
       </div>

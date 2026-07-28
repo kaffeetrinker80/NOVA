@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { db } from '../lib/data'
-import type { Anlage, Bereich, Kunde, Kundentyp, Ueberschreitungsphase } from '../lib/types'
-import { ERGEBNIS_LABEL, fmtDatum, kundeAnzeige } from '../lib/types'
+import type { Anlage, Auftrag, Bereich, Kunde, Kundentyp, Turnusart, Ueberschreitungsphase } from '../lib/types'
+import { ERGEBNIS_LABEL, FACHLICHE_ART_LABEL, fmtDatum, kundeAnzeige } from '../lib/types'
+import BerichtModal from '../components/BerichtModal'
 import HistorieModal from '../components/HistorieModal'
+import PhaseModal from '../components/PhaseModal'
 import { Meldung } from '../components/ui'
 
 const TYP: Record<Kundentyp, string> = {
@@ -70,10 +72,16 @@ export default function Stammdaten() {
   const [historieOffen, setHistorieOffen] = useState(false)
   const [historieBereich, setHistorieBereich] = useState<string | undefined>(undefined)
   const [bereichId, setBereichId] = useState('')
-  const [bf, setBf] = useState({ name: '', strasse: '', hausnummer: '', wwb_details: '', notizen: '' })
+  const [bf, setBf] = useState({
+    name: '', strasse: '', hausnummer: '', wwb_details: '', notizen: '',
+    turnus_art: 'regelturnus' as Turnusart, turnus_monate: '', naechste_untersuchung: '',
+    proben_anzahl: '', turnus_begruendung: '',
+  })
   const [termine, setTermine] = useState<import('../lib/types').Termin[]>([])
   const [auftraege, setAuftraege] = useState<import('../lib/types').Auftrag[]>([])
   const [phasen, setPhasen] = useState<Ueberschreitungsphase[]>([])
+  const [berichtAuftrag, setBerichtAuftrag] = useState<Auftrag | null>(null)
+  const [phaseBearbeiten, setPhaseBearbeiten] = useState<Ueberschreitungsphase | null>(null)
 
   const laden = () => {
     db.kunden().then(setKunden); db.anlagen().then(setAnlagen); db.bereiche().then(setBereiche)
@@ -130,6 +138,11 @@ export default function Stammdaten() {
     setBf({
       name: ansicht?.titel ?? '', strasse: bereich?.strasse ?? '', hausnummer: bereich?.hausnummer ?? '',
       wwb_details: bereich?.wwb_details ?? '', notizen: bereich?.notizen ?? '',
+      turnus_art: bereich?.turnus_art ?? 'regelturnus',
+      turnus_monate: bereich?.turnus_monate != null ? String(bereich.turnus_monate) : '',
+      naechste_untersuchung: bereich?.naechste_untersuchung ?? '',
+      proben_anzahl: bereich?.proben_anzahl != null ? String(bereich.proben_anzahl) : '',
+      turnus_begruendung: bereich?.turnus_begruendung ?? '',
     })
   }, [bereichId])
   const bereichSpeichernDetails = async () => {
@@ -140,6 +153,11 @@ export default function Stammdaten() {
       name, strasse: bf.strasse || undefined,
       hausnummer: bf.hausnummer || undefined, wwb_details: bf.wwb_details || undefined,
       notizen: bf.notizen || undefined,
+      turnus_art: bf.turnus_art,
+      turnus_monate: bf.turnus_monate ? +bf.turnus_monate : undefined,
+      naechste_untersuchung: bf.naechste_untersuchung || undefined,
+      proben_anzahl: bf.proben_anzahl ? +bf.proben_anzahl : undefined,
+      turnus_begruendung: bf.turnus_begruendung || undefined,
     })
     setMeldung('Bereich gespeichert.'); laden()
   }
@@ -213,8 +231,8 @@ export default function Stammdaten() {
   }
   const verwalterWechseln = async () => {
     if (!anlage || !neuerVerwalter) return
-    await db.verwalterWechseln(anlage.id, neuerVerwalter)
-    setMeldung('Verwalter gewechselt – Objekt und komplette Historie hängen jetzt am neuen Kunden.')
+    const erg = await db.verwalterWechseln(anlage.id, neuerVerwalter)
+    setMeldung(erg)
     setKundeId(neuerVerwalter); laden()
   }
   const bereicheDerAnlage = bereiche.filter(b => b.anlage_id === anlageId)
@@ -248,7 +266,7 @@ export default function Stammdaten() {
       .flatMap(a => a.unterauftraege)
       .map(u => u.proben_ist ?? u.proben_geplant ?? 0)
       .filter(n => n > 0)
-    return ausAuftraegen[0] ?? anlage?.proben_anzahl
+    return ausAuftraegen[0] ?? b?.proben_anzahl ?? anlage?.proben_anzahl
   }
   const ergebnisZumTermin = (t: import('../lib/types').Termin, b: Bereich) => {
     const labels = auftraegeZumBereich(b)
@@ -256,6 +274,10 @@ export default function Stammdaten() {
       .flatMap(a => a.unterauftraege.map(u => ERGEBNIS_LABEL[u.ergebnis]))
       .filter(l => l && l !== 'offen')
     return [...new Set(labels)].join(', ') || (t.status === 'geplant' ? 'geplant' : 'ohne Bericht')
+  }
+  const letzterAuftragZumBereich = (b: Bereich) => {
+    const nachDatum = (a: Auftrag) => termine.find(t => t.id === a.termin_id)?.datum ?? ''
+    return [...auftraegeZumBereich(b)].sort((a, c) => nachDatum(c).localeCompare(nachDatum(a)))[0]
   }
 
   const kundeSpeichern = async () => {
@@ -528,6 +550,10 @@ export default function Stammdaten() {
                   const ansicht = bereichAnsicht(b)
                   const status = bereichStatus(b)
                   const bTermine = termineZumBereich(b)
+                  const letzterAuftrag = letzterAuftragZumBereich(b)
+                  const offenePhase = phasen
+                    .filter(p => p.bereich_id === b.id && !['regelturnus_bestaetigt', 'abgeschlossen'].includes(p.status))
+                    .sort((a, c) => c.eroeffnet_am.localeCompare(a.eroeffnet_am))[0]
                   return (
                   <div key={b.id} className={`bereich-karte ${b.id === bereichId ? 'aktiv' : ''} ${ansicht.uebernommen ? 'uebernommen' : ''}`}>
                     <button className="bereich-kopf" onClick={() => setBereichId(b.id === bereichId ? '' : b.id)}>
@@ -555,14 +581,44 @@ export default function Stammdaten() {
                         <span className="hint" style={{ fontWeight: 650 }}>
                           Details und Historie zu: {ansicht.titel}
                         </span>
+                        <div className="bereich-detail-uebersicht">
+                          <span><small>Letzter Termin</small><strong>{fmtDatum(bTermine[0]?.datum)}</strong></span>
+                          <span><small>Letztes Ergebnis</small><strong>{bTermine[0] ? ergebnisZumTermin(bTermine[0], b) : '–'}</strong></span>
+                          <span><small>Aktueller Status</small><strong>{status.text}</strong></span>
+                          <span><small>Proben / Umfang</small><strong>{probenZumBereich(b) ?? '–'}</strong></span>
+                          <span><small>Untersuchungsart</small><strong>{letzterAuftrag?.fachliche_untersuchungsart ? FACHLICHE_ART_LABEL[letzterAuftrag.fachliche_untersuchungsart] : 'noch nicht erfasst'}</strong></span>
+                        </div>
                         <input placeholder="Bereichsname, z. B. Altbau / Haus 7" value={bf.name} onChange={e => setBf({ ...bf, name: e.target.value })} />
                         <div style={{ display: 'flex', gap: 8 }}>
                           <input placeholder="Straße (falls abweichend)" style={{ flex: 1 }} value={bf.strasse} onChange={e => setBf({ ...bf, strasse: e.target.value })} />
                           <input placeholder="Haus-Nr." style={{ width: 90 }} value={bf.hausnummer} onChange={e => setBf({ ...bf, hausnummer: e.target.value })} />
                         </div>
                         <input placeholder="WW-System-Details (optional)" value={bf.wwb_details} onChange={e => setBf({ ...bf, wwb_details: e.target.value })} />
+                        <div className="grid2">
+                          <label className="f">Turnus
+                            <select value={bf.turnus_art} onChange={e => setBf({ ...bf, turnus_art: e.target.value as Turnusart })}>
+                              <option value="regelturnus">Regelturnus</option>
+                              <option value="sonderturnus">Sonderturnus</option>
+                              <option value="behoerdlich">behördlich festgelegt</option>
+                            </select>
+                          </label>
+                          <label className="f">Turnus in Monaten
+                            <input type="number" min={1} max={120} value={bf.turnus_monate} onChange={e => setBf({ ...bf, turnus_monate: e.target.value })} placeholder="12 oder 36" />
+                          </label>
+                          <label className="f">Nächste Untersuchung
+                            <input type="date" value={bf.naechste_untersuchung} onChange={e => setBf({ ...bf, naechste_untersuchung: e.target.value })} />
+                          </label>
+                          <label className="f">Probenanzahl / Umfang
+                            <input type="number" min={1} value={bf.proben_anzahl} onChange={e => setBf({ ...bf, proben_anzahl: e.target.value })} />
+                          </label>
+                        </div>
+                        <input placeholder="Begründung Sonderturnus / behördliche Vorgabe" value={bf.turnus_begruendung} onChange={e => setBf({ ...bf, turnus_begruendung: e.target.value })} />
                         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                           <button className="primary" onClick={bereichSpeichernDetails}><i className="fas fa-floppy-disk" aria-hidden="true"></i> Speichern</button>
+                          {letzterAuftrag
+                            ? <button onClick={() => setBerichtAuftrag(letzterAuftrag)}><i className="fas fa-file-circle-check" aria-hidden="true"></i> Bericht erfassen / nacherfassen</button>
+                            : <button onClick={() => { location.hash = '#/auftragsbuch' }} title="Zuerst Auftrag und Auftragsnummer zuordnen"><i className="fas fa-hashtag" aria-hidden="true"></i> Auftrag nacherfassen</button>}
+                          {offenePhase && <button onClick={() => setPhaseBearbeiten(offenePhase)}><i className="fas fa-triangle-exclamation" aria-hidden="true"></i> Phase verwalten</button>}
                           <button onClick={() => { setHistorieBereich(b.id); setHistorieOffen(true) }}><i className="fas fa-clock-rotate-left" aria-hidden="true"></i> Vollständige Historie</button>
                           <button className="secondary" onClick={() => bereichEntfernen(b.id)} title="Bereich entfernen"><i className="fas fa-trash-can" aria-hidden="true"></i></button>
                         </div>
@@ -590,6 +646,24 @@ export default function Stammdaten() {
         <HistorieModal anlage={anlage} kunde={kunde} termine={termine}
           auftraege={auftraege} bereiche={bereiche} nurBereich={historieBereich}
           onClose={() => setHistorieOffen(false)} />
+      )}
+      {berichtAuftrag && (
+        <BerichtModal
+          auftrag={berichtAuftrag}
+          kundeKurz={kundeAnzeige(kunde)}
+          bereichName={bereiche.find(b => b.id === berichtAuftrag.bereich_id)?.name}
+          bereichId={berichtAuftrag.bereich_id}
+          onClose={() => setBerichtAuftrag(null)}
+          onSaved={laden}
+        />
+      )}
+      {phaseBearbeiten && (
+        <PhaseModal
+          phase={phaseBearbeiten}
+          bereichName={bereiche.find(b => b.id === phaseBearbeiten.bereich_id)?.name}
+          onClose={() => setPhaseBearbeiten(null)}
+          onSaved={laden}
+        />
       )}
     </>
   )

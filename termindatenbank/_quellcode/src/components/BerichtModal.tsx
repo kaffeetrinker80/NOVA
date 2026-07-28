@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { db } from '../lib/data'
-import type { Auftrag, Auftragsstatus, Befund, BerichtStatus, Ergebnisstatus, Ueberschreitungsphase } from '../lib/types'
-import { ART_LABEL, STATUS_LABEL, nummerVoll } from '../lib/types'
+import type { Auftrag, Auftragsstatus, Befund, BerichtStatus, Ergebnisstatus, FachlicheUntersuchungsart, Folgeentscheidung, Ueberschreitungsphase } from '../lib/types'
+import { ART_LABEL, FACHLICHE_ART_LABEL, FOLGE_LABEL, STATUS_LABEL, nummerVoll } from '../lib/types'
 
 type Zeile = {
   id: string; nummer: string; art: Auftrag['unterauftraege'][number]['art']; umfang?: string
@@ -12,6 +12,7 @@ type Zeile = {
 const BEFUND_OPTIONEN: Array<[Befund, string]> = [
   ['sauber', 'ohne Befund'],
   ['ueberschreitung', 'Überschreitung'],
+  ['verkeimung', 'Verkeimung'],
   ['nicht_bewertbar', 'nicht auswertbar'],
 ]
 
@@ -31,6 +32,8 @@ export default function BerichtModal({ auftrag, kundeKurz, bereichName, bereichI
   const [berichtNr, setBerichtNr] = useState('')
   const [berichtDatum, setBerichtDatum] = useState(new Date().toISOString().slice(0, 10))
   const [bemerkung, setBemerkung] = useState('')
+  const [fachlicheArt, setFachlicheArt] = useState<FachlicheUntersuchungsart>(auftrag.fachliche_untersuchungsart ?? 'regeluntersuchung')
+  const [folge, setFolge] = useState<Folgeentscheidung>('regelturnus_bleibt')
   const [phasen, setPhasen] = useState<Ueberschreitungsphase[]>([])
   const [laeuft, setLaeuft] = useState(false); const [fehler, setFehler] = useState('')
 
@@ -43,7 +46,11 @@ export default function BerichtModal({ auftrag, kundeKurz, bereichName, bereichI
           return b ? { ...z, befund: b.befund === 'verkeimung' ? 'ueberschreitung' : b.befund, phaseId: b.phase_id ?? undefined, zaehltSauber: b.zaehlt_als_saubere_nachuntersuchung } : z
         }))
         const erste = bewertungen[0]
-        if (erste) { setBerichtStatus(erste.bericht_status); setBerichtNr(erste.pruefbericht_nummer ?? ''); setBerichtDatum(erste.pruefbericht_datum ?? berichtDatum); setBemerkung(erste.bemerkung ?? '') }
+        if (erste) {
+          setBerichtStatus(erste.bericht_status); setBerichtNr(erste.pruefbericht_nummer ?? '')
+          setBerichtDatum(erste.pruefbericht_datum ?? berichtDatum); setBemerkung(erste.bemerkung ?? '')
+          setFolge(erste.folgeentscheidung ?? 'regelturnus_bleibt')
+        }
       }).catch(e => setFehler(e.message ?? String(e)))
   }, [auftrag.id, bereichId])
 
@@ -54,6 +61,7 @@ export default function BerichtModal({ auftrag, kundeKurz, bereichName, bereichI
   const speichern = async () => {
     setLaeuft(true); setFehler('')
     try {
+      await db.auftragAktualisieren(auftrag.id, { fachliche_untersuchungsart: fachlicheArt })
       for (const z of zeilen) {
         await db.unterauftragAktualisieren(z.id, { proben_ist: z.ist, status: z.status, ergebnis: ergebnisZuBefund(z.befund) })
         const bewertung = await db.bewertungSpeichern({
@@ -61,6 +69,7 @@ export default function BerichtModal({ auftrag, kundeKurz, bereichName, bereichI
           pruefbericht_datum: berichtDatum || undefined, befund: z.befund, bewertungsdatum: berichtDatum || undefined,
           zaehlt_als_saubere_nachuntersuchung: z.befund === 'sauber' && z.zaehltSauber,
           phase_id: z.befund === 'sauber' && z.zaehltSauber ? z.phaseId : null,
+          folgeentscheidung: folge,
           bemerkung: bemerkung || undefined,
         })
         if (z.neuePhase && ['ueberschreitung', 'verkeimung'].includes(z.befund)) {
@@ -80,6 +89,16 @@ export default function BerichtModal({ auftrag, kundeKurz, bereichName, bereichI
       <div className="modal-kopf"><div><strong>Prüfbericht & Befund · <span className="nr">{auftrag.auftragsnummer}</span></strong><div className="hint">{[kundeKurz, bereichName].filter(Boolean).join(' · ')}</div></div><button className="modal-schliessen" onClick={onClose} aria-label="Schließen">×</button></div>
       {fehler && <div className="notice" style={{ margin: '12px 24px 0' }}>{fehler}</div>}
       <div className="grid2" style={{ padding: '16px 24px 4px' }}>
+        <label className="f">Untersuchungsart
+          <select value={fachlicheArt} onChange={e => setFachlicheArt(e.target.value as FachlicheUntersuchungsart)}>
+            {Object.entries(FACHLICHE_ART_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </select>
+        </label>
+        <label className="f">Folgeentscheidung
+          <select value={folge} onChange={e => setFolge(e.target.value as Folgeentscheidung)}>
+            {Object.entries(FOLGE_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </select>
+        </label>
         <label className="f">Prüfbericht-Nr.<input value={berichtNr} onChange={e => setBerichtNr(e.target.value)} placeholder="z. B. 26-002288" /></label>
         <label className="f">Berichtdatum<input type="date" value={berichtDatum} onChange={e => setBerichtDatum(e.target.value)} /></label>
         <label className="f">Berichtsstatus<select value={berichtStatus} onChange={e => setBerichtStatus(e.target.value as BerichtStatus)}><option value="ausstehend">ausstehend</option><option value="eingegangen">eingegangen</option><option value="geprueft">geprüft</option></select></label>
@@ -91,7 +110,7 @@ export default function BerichtModal({ auftrag, kundeKurz, bereichName, bereichI
           <td><input type="number" min={0} style={{ width: 66 }} value={z.ist ?? ''} onChange={e => setZeile(i, { ist: e.target.value ? +e.target.value : undefined })} />{z.geplant != null && <span className="hint"> / {z.geplant}</span>}</td>
           <td><select value={z.status} onChange={e => setZeile(i, { status: e.target.value as Auftragsstatus })}>{Object.entries(STATUS_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></td>
           <td><select value={z.befund} onChange={e => setZeile(i, { befund: e.target.value as Befund, neuePhase: false, zaehltSauber: false })}><option value="offen">– Befund wählen –</option>{BEFUND_OPTIONEN.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></td>
-          <td>{z.befund === 'sauber' && aktivePhasen.length > 0 && <><label className="hint"><input type="checkbox" checked={z.zaehltSauber} onChange={e => setZeile(i, { zaehltSauber: e.target.checked, phaseId: e.target.checked ? (z.phaseId ?? aktivePhasen[0].id) : undefined })} /> zählt als NU ohne Befund</label>{z.zaehltSauber && <select value={z.phaseId ?? ''} onChange={e => setZeile(i, { phaseId: e.target.value })} style={{ maxWidth: 150, marginTop: 4 }}>{aktivePhasen.map(p => <option key={p.id} value={p.id}>{p.eroeffnet_am} · {p.status}</option>)}</select>}</>}{z.befund === 'ueberschreitung' && <label className="hint"><input type="checkbox" checked={z.neuePhase} onChange={e => setZeile(i, { neuePhase: e.target.checked })} /> neue Phase eröffnen</label>}</td>
+          <td>{z.befund === 'sauber' && aktivePhasen.length > 0 && <><label className="hint"><input type="checkbox" checked={z.zaehltSauber} onChange={e => setZeile(i, { zaehltSauber: e.target.checked, phaseId: e.target.checked ? (z.phaseId ?? aktivePhasen[0].id) : undefined })} /> zählt als NU ohne Befund</label>{z.zaehltSauber && <select value={z.phaseId ?? ''} onChange={e => setZeile(i, { phaseId: e.target.value })} style={{ maxWidth: 150, marginTop: 4 }}>{aktivePhasen.map(p => <option key={p.id} value={p.id}>{p.eroeffnet_am} · {p.status}</option>)}</select>}</>}{['ueberschreitung', 'verkeimung'].includes(z.befund) && <label className="hint"><input type="checkbox" checked={z.neuePhase} onChange={e => setZeile(i, { neuePhase: e.target.checked })} /> neue Phase eröffnen</label>}</td>
         </tr>)}
       </tbody></table></div>
       {aktivePhasen.length > 0 && <p className="hint" style={{ padding: '0 24px' }}><i className="fas fa-triangle-exclamation" aria-hidden="true"></i> Aktive Phase(n): {aktivePhasen.map(p => `${p.eroeffnet_am} · ${p.status}`).join(' | ')}. Eine NU ohne Befund wird nur gezählt, wenn du sie ausdrücklich markierst.</p>}

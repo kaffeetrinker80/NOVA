@@ -71,3 +71,29 @@ als saubere Nachuntersuchung einer offenen Phase zugeordnet werden. Bei
 diesen Untersuchungsbereich eröffnet werden.
 
 Diese Schritte sollten erst nach einer Testausführung der neuen Migration auf einer Kopie erfolgen.
+
+## Erweiterung 0020
+
+Die Migration `0020_fachlogik_bereich_bericht_import.sql` und der zugehörige
+Frontend-Stand ergänzen:
+
+- fachliche Untersuchungsart je Auftrag: orientierend, Regeluntersuchung,
+  weitergehende Untersuchung oder Nachuntersuchung
+- Folgeentscheidung getrennt vom Befund
+- Verkeimung als eigener auswählbarer Befund
+- Turnus, Sonderturnus/behördliche Grundlage, nächste Untersuchung und
+  Probenanzahl direkt am Bereich/WWB
+- direkte Berichtserfassung und Phasenverwaltung aus der geöffneten
+  Bereichskachel
+- Hausverwaltungswechsel als eigene transaktionale Aktion; die Anlage behält
+  ihre ID und damit alle Bereiche, Aufträge, Berichte und Phasen
+
+Der Legacy-Import enthält die Verwaltung nun bewusst in der stabilen
+Anlagenkennung. Gleich adressierte Zeilen wie „AWO Seniorenheim Aichach –
+Altbau“ und „… – Neubau“ werden dadurch nicht mehr vorzeitig zusammengeworfen.
+Jeder importierte Termin erhält sofort eine eindeutige Bereichs-ID.
+
+Wichtig: Ein mit einem älteren Frontend bereits zusammengeworfener Altbestand
+kann ohne die ursprüngliche JSON-Zeilenherkunft nicht sicher wieder getrennt
+werden. Dafür ist nach Bereitstellung dieses Stands ein erneuter Reset/Neuimport
+mit derselben Original-JSON erforderlich.

@@ -136,6 +136,11 @@ Die darauf folgende Korrektur
 `supabase/migrations/0014_berichtserfassung_audit_und_nacherfassung.sql`
 ist ebenfalls bereits ausgeführt; sie erlaubt die revisionssichere
 Berichtserfassung, ohne Schreibzugriff auf die Änderungshistorie freizugeben.
+Die Erweiterung
+`supabase/migrations/0020_fachlogik_bereich_bericht_import.sql`
+ergänzt die fachliche Untersuchungsart, Folgeentscheidung, Sonderturnus-Felder,
+den eindeutigen Bereichsimport und den eigenen Hausverwaltungswechsel. Sie ist
+im verbundenen Testprojekt ebenfalls ausgeführt.
 
 Im Frontend ist damit folgender Ablauf vorbereitet:
 

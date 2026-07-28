@@ -497,8 +497,24 @@ table.tbl {
 .bereich-karte.uebernommen .stamm-formular {
   background: linear-gradient(90deg, #f5faff 0, #fff 60%);
 }
+.bereich-detail-uebersicht {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px;
+  margin: 2px 0 5px;
+}
+.bereich-detail-uebersicht > span {
+  min-width: 0; border: 1px solid var(--border); border-radius: 7px;
+  padding: 7px 8px; background: #f8fbfe;
+}
+.bereich-detail-uebersicht small {
+  display: block; color: var(--text-muted); font-size: .7rem; margin-bottom: 2px;
+}
+.bereich-detail-uebersicht strong {
+  display: block; color: var(--text-main); font-size: .79rem;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 @media (max-width: 720px) {
   .bereich-mini-historie { grid-template-columns: 1fr; }
+  .bereich-detail-uebersicht { grid-template-columns: 1fr 1fr; }
 }
 
 /* ---------- KPI-Auswahl in Karte (wie Original) ---------- */

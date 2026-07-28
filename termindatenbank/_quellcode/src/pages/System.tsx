@@ -131,6 +131,7 @@ export default function System() {
             <div className="cards" style={{ marginTop: 14 }}>
               <div className="card"><div className="label">Verwaltungen</div><div className="value">{vorschau.kunden.length}</div></div>
               <div className="card"><div className="label">Anlagen</div><div className="value">{vorschau.anlagen.length}</div></div>
+              <div className="card"><div className="label">Bereiche / WWB</div><div className="value">{vorschau.bereiche.length}</div></div>
               <div className="card"><div className="label">Termine (inkl. geplant)</div><div className="value">{vorschau.termine.length}</div></div>
               <div className="card"><div className="label">Übersprungen</div><div className="value">{vorschau.uebersprungen}</div></div>
             </div>

@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
-import type { Anlage, Auftrag, Bereich, Kunde, Termin, Untersuchungsart, Untersuchungsbewertung, Ueberschreitungsphase } from './types'
+import type { Anlage, Auftrag, Bereich, FachlicheUntersuchungsart, Kunde, Termin, Untersuchungsart, Untersuchungsbewertung, Ueberschreitungsphase } from './types'
 
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined
 const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
@@ -36,6 +36,7 @@ const demo = {
   auftraege: [
     {
       id: 'o1', auftragsnummer: '26-0897', jahr: 2026, bereich_id: 'b1', termin_id: 't1', status: 'offen',
+      fachliche_untersuchungsart: 'regeluntersuchung',
       unterauftraege: [
         { id: 'u1', auftrag_id: 'o1', suffix: '', art: 'legionellen', proben_geplant: 14, status: 'offen', ergebnis: 'offen' },
         { id: 'u2', auftrag_id: 'o1', suffix: 'M', art: 'mibi', umfang: 'inklusive Enterokokken', proben_geplant: 3, status: 'offen', ergebnis: 'offen' },
@@ -43,6 +44,7 @@ const demo = {
     },
     {
       id: 'o2', auftragsnummer: '26-0898', jahr: 2026, bereich_id: 'b2', termin_id: 't1', status: 'offen',
+      fachliche_untersuchungsart: 'regeluntersuchung',
       unterauftraege: [
         { id: 'u3', auftrag_id: 'o2', suffix: '', art: 'legionellen', proben_geplant: 6, status: 'offen', ergebnis: 'offen' },
       ],
@@ -129,7 +131,11 @@ export const db = {
     const { error } = await supabase.from('td_bereiche').insert(b)
     if (error) throw error
   },
-  async bereichAktualisieren(id: string, patch: Partial<Pick<Bereich, 'name' | 'beschreibung' | 'wwb_details' | 'strasse' | 'hausnummer' | 'notizen'>>): Promise<void> {
+  async bereichAktualisieren(id: string, patch: Partial<Pick<Bereich,
+    'name' | 'beschreibung' | 'wwb_details' | 'strasse' | 'hausnummer' | 'notizen' |
+    'turnus_monate' | 'turnus_art' | 'turnus_begruendung' | 'naechste_untersuchung' |
+    'proben_anzahl' | 'planungsnotiz' | 'betreuungsstatus'
+  >>): Promise<void> {
     if (!supabase) { const b = demo.bereiche.find(x => x.id === id); if (b) Object.assign(b, patch); return }
     const { error } = await supabase.from('td_bereiche').update(patch).eq('id', id)
     if (error) throw error
@@ -167,7 +173,7 @@ export const db = {
    *  der Zähler wird nachgezogen, damit die Automatik nie kollidiert). */
   async auftragAnlegen(bereichId: string, terminId: string | undefined, arten: {
     art: Untersuchungsart; suffix: string; umfang?: string; proben_geplant?: number
-  }[], nummerManuell?: string): Promise<string> {
+  }[], nummerManuell?: string, fachlicheArt?: FachlicheUntersuchungsart): Promise<string> {
     if (!supabase) {
       const jahr = new Date().getFullYear()
       demo.zaehler[jahr] = (demo.zaehler[jahr] ?? 0) + 1
@@ -175,6 +181,7 @@ export const db = {
       const id = 'o' + (demo.auftraege.length + 1)
       demo.auftraege.push({
         id, auftragsnummer: nr, jahr, bereich_id: bereichId, termin_id: terminId, status: 'offen',
+        fachliche_untersuchungsart: fachlicheArt,
         unterauftraege: arten.map((x, i) => ({
           id: id + '-u' + i, auftrag_id: id, suffix: x.suffix, art: x.art,
           umfang: x.umfang, proben_geplant: x.proben_geplant, status: 'offen', ergebnis: 'offen',
@@ -188,7 +195,14 @@ export const db = {
       p_nummer_manuell: nummerManuell?.trim() || null,
     })
     if (error) throw error
-    return (data as any).nummer as string
+    const nr = (data as any).nummer as string
+    if (fachlicheArt) {
+      const { error: fachFehler } = await supabase.from('td_auftraege')
+        .update({ fachliche_untersuchungsart: fachlicheArt })
+        .eq('auftragsnummer', nr)
+      if (fachFehler) throw fachFehler
+    }
+    return nr
   },
 
   async unterauftragAktualisieren(id: string, patch: Partial<{ proben_ist: number; status: string; ergebnis: string; notizen: string }>): Promise<void> {
@@ -200,6 +214,16 @@ export const db = {
       return
     }
     const { error } = await supabase.from('td_unterauftraege').update(patch).eq('id', id)
+    if (error) throw error
+  },
+
+  async auftragAktualisieren(id: string, patch: Partial<{ fachliche_untersuchungsart: FachlicheUntersuchungsart; notizen: string }>): Promise<void> {
+    if (!supabase) {
+      const a = demo.auftraege.find(x => x.id === id)
+      if (a) Object.assign(a, patch)
+      return
+    }
+    const { error } = await supabase.from('td_auftraege').update(patch).eq('id', id)
     if (error) throw error
   },
 
@@ -291,19 +315,25 @@ export const db = {
     const anlageId = new Map(anlagenDb.map(a => [a.legacy_id, a.id]))
     const anlageZuKunde = new Map(v.anlagen.map(a => [a.legacy_id, a.kunde_legacy]))
 
-    // Je Anlage ein Standard-Untersuchungsbereich, sofern noch keiner existiert
-    fortschritt?.('Untersuchungsbereiche werden angelegt …')
-    const bereicheDb = await alleZeilen<any>('td_bereiche', 'anlage_id', 'anlage_id')
-    const hatBereich = new Set(bereicheDb.map(b => b.anlage_id))
-    const neueBereiche = anlagenDb
-      .filter(a => !hatBereich.has(a.id))
-      .map(a => ({ anlage_id: a.id, name: 'Gesamtanlage',
-                   beschreibung: 'Aus Altbestand übernommen – bei mehreren WW-Systemen später aufteilbar',
-                   legacy_quelle: 'Terminverwaltung V4' }))
-    for (let i = 0; i < neueBereiche.length; i += 500) {
-      const { error } = await supabase.from('td_bereiche').insert(neueBereiche.slice(i, i + 500))
+    // Jeder Import-Datensatz bekommt sofort einen stabilen Bereich. Dadurch
+    // bleiben Alt-/Neubau und mehrere WWB bereits vor späteren Merges trennbar.
+    fortschritt?.(`Untersuchungsbereiche werden übernommen (${v.bereiche.length}) …`)
+    for (let i = 0; i < v.bereiche.length; i += 500) {
+      const teil = v.bereiche.slice(i, i + 500).map(b => ({
+        legacy_id: b.legacy_id,
+        anlage_id: anlageId.get(b.anlage_legacy),
+        name: b.name,
+        beschreibung: 'Aus Altbestand eindeutig übernommen',
+        turnus_monate: b.turnus_monate,
+        naechste_untersuchung: b.naechste_untersuchung,
+        proben_anzahl: b.proben_anzahl,
+        legacy_quelle: 'Terminverwaltung V4',
+      })).filter(b => b.anlage_id)
+      const { error } = await supabase.from('td_bereiche').upsert(teil, { onConflict: 'legacy_id' })
       if (error) throw error
     }
+    const bereicheDb = await alleZeilen<any>('td_bereiche', 'id, legacy_id, anlage_id', 'id')
+    const bereichId = new Map(bereicheDb.map(b => [b.legacy_id, b.id]))
 
     fortschritt?.(`Historische Termine werden übernommen (${v.termine.length}) …`)
     let termineOk = 0
@@ -313,6 +343,7 @@ export const db = {
         const kid = kundeId.get(anlageZuKunde.get(t.anlage_legacy) ?? '')
         return aid && kid ? {
           legacy_id: t.legacy_id, anlage_id: aid, kunde_id: kid,
+          bereich_id: bereichId.get(t.bereich_legacy) ?? null,
           datum: t.datum,
           status: (t as any).geplant ? 'geplant' : 'abgeschlossen',
           notizen: (t as any).geplant ? 'Geplanter Termin aus Altbestand' : 'Historischer Termin aus Altbestand',
@@ -327,7 +358,7 @@ export const db = {
       fortschritt?.(`Termine: ${Math.min(i + 500, v.termine.length)} / ${v.termine.length}`)
     }
 
-    return `Übernommen: ${v.kunden.length} Kunden, ${v.anlagen.length} Anlagen, ${neueBereiche.length} Bereiche, ${termineOk} historische Termine.`
+    return `Übernommen: ${v.kunden.length} Kunden, ${v.anlagen.length} Anlagen, ${v.bereiche.length} Bereiche, ${termineOk} historische Termine.`
   },
 
   /** Trägt aus einer erneut geladenen Alt-JSON nur fehlende historische Termine nach.
@@ -383,10 +414,11 @@ export const db = {
     return data as string
   },
 
-  async verwalterWechseln(anlageId: string, neuerKundeId: string): Promise<void> {
-    if (!supabase) return
-    const { error } = await supabase.rpc('td_anlage_verwalter_wechseln', { p_anlage: anlageId, p_neuer_kunde: neuerKundeId })
+  async verwalterWechseln(anlageId: string, neuerKundeId: string): Promise<string> {
+    if (!supabase) return 'Demo-Modus: Verwalterwechsel nur mit Supabase möglich.'
+    const { data, error } = await supabase.rpc('td_anlage_verwalter_wechseln', { p_anlage: anlageId, p_neuer_kunde: neuerKundeId })
     if (error) throw error
+    return data as string
   },
 
   async historieNachzuordnen(): Promise<string> {

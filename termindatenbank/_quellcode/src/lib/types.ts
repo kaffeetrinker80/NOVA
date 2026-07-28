@@ -7,6 +7,16 @@ export type Rolle = 'admin' | 'disposition' | 'probenehmer' | 'lesend'
 export type BerichtStatus = 'ausstehend' | 'eingegangen' | 'geprueft'
 export type Befund = 'offen' | 'sauber' | 'ueberschreitung' | 'verkeimung' | 'nicht_bewertbar'
 export type PhasenStatus = 'aktiv' | 'massnahmen_laufen' | 'nachuntersuchung' | 'regelturnus_bestaetigt' | 'abgeschlossen'
+export type FachlicheUntersuchungsart = 'orientierend' | 'regeluntersuchung' | 'weitergehend' | 'nachuntersuchung'
+export type Folgeentscheidung =
+  | 'regelturnus_bleibt'
+  | 'weitergehende_untersuchung'
+  | 'nachuntersuchung'
+  | 'ueberschreitungsphase_starten'
+  | 'phase_fortfuehren'
+  | 'regelturnus_durch_gesundheitsamt'
+export type Turnusart = 'regelturnus' | 'sonderturnus' | 'behoerdlich'
+export type Betreuungsstatus = 'aktiv' | 'pausiert' | 'nicht_mehr_unser_kunde'
 
 export interface Kunde {
   id: string; name_lang: string; name_kurz: string; typ: Kundentyp
@@ -24,6 +34,9 @@ export interface Bereich {
   id: string; anlage_id: string; name: string
   beschreibung?: string; wwb_details?: string; notizen?: string
   strasse?: string; hausnummer?: string; aktiv: boolean
+  turnus_monate?: number; turnus_art?: Turnusart; turnus_begruendung?: string
+  naechste_untersuchung?: string; proben_anzahl?: number
+  planungsnotiz?: string; betreuungsstatus?: Betreuungsstatus
   legacy_quelle?: string
 }
 export interface Termin {
@@ -42,6 +55,7 @@ export interface Unterauftrag {
 export interface Auftrag {
   id: string; auftragsnummer: string; jahr: number
   bereich_id: string; termin_id?: string
+  fachliche_untersuchungsart?: FachlicheUntersuchungsart
   status: Auftragsstatus; notizen?: string
   unterauftraege: Unterauftrag[]
 }
@@ -49,6 +63,7 @@ export interface Untersuchungsbewertung {
   id: string; unterauftrag_id: string; bericht_status: BerichtStatus
   pruefbericht_nummer?: string; pruefbericht_datum?: string; befund: Befund
   bewertungsdatum?: string; zaehlt_als_saubere_nachuntersuchung: boolean
+  folgeentscheidung?: Folgeentscheidung
   bemerkung?: string; phase_id?: string | null
 }
 export interface Ueberschreitungsphase {
@@ -74,6 +89,20 @@ export const STATUS_LABEL: Record<Auftragsstatus, string> = {
 export const TERMIN_LABEL: Record<Terminstatus, string> = {
   geplant: 'geplant', bestaetigt: 'bestätigt', abgeschlossen: 'abgeschlossen',
   abgesagt: 'abgesagt', verschoben: 'verschoben',
+}
+export const FACHLICHE_ART_LABEL: Record<FachlicheUntersuchungsart, string> = {
+  orientierend: 'orientierende Untersuchung',
+  regeluntersuchung: 'Regeluntersuchung',
+  weitergehend: 'weitergehende Untersuchung',
+  nachuntersuchung: 'Nachuntersuchung',
+}
+export const FOLGE_LABEL: Record<Folgeentscheidung, string> = {
+  regelturnus_bleibt: 'Regelturnus bleibt',
+  weitergehende_untersuchung: 'weitergehende Untersuchung erforderlich',
+  nachuntersuchung: 'Nachuntersuchung erforderlich',
+  ueberschreitungsphase_starten: 'Überschreitungsphase starten',
+  phase_fortfuehren: 'Phase fortführen',
+  regelturnus_durch_gesundheitsamt: 'Rückkehr Regelturnus durch Gesundheitsamt',
 }
 
 export function nummerVoll(a: Auftrag, u: Unterauftrag): string {
