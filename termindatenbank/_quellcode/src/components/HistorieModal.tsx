@@ -95,7 +95,8 @@ export default function HistorieModal({ anlage, kunde, termine, auftraege, berei
       {fachPhasen.length > 0 && <div className="hist-phasen">{fachPhasen.map(p => <span key={p.id} className={`badge ${['regelturnus_bestaetigt', 'abgeschlossen'].includes(p.status) ? 'closed' : 'active'}`}>Phase {fmtDatum(p.eroeffnet_am)} · {p.status.replace(/_/g, ' ')}</span>)}</div>}
 
       <div className="hist-liste">
-        {relevanteTermine.map((t, i) => {
+        {[...relevanteTermine].reverse().map((t) => {
+          const i = relevanteTermine.findIndex(x => x.id === t.id)
           const r = rolle(t, i); const zug = auftragZumTermin(t.id)
           return <div key={t.id} className={`hist-eintrag hist-${r.art}`}>
             <div className="hist-punkt" aria-hidden="true"></div>

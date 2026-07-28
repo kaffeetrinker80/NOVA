@@ -234,6 +234,26 @@ export default function Stammdaten() {
     if (bTermine.length > 0) return { text: `Regelturnus · letzte ${fmtDatum(bTermine[0].datum)}`, klasse: 'closed', icon: 'fa-calendar-check' }
     return { text: 'Regelturnus', klasse: 'neutral', icon: 'fa-circle-info' }
   }
+  const termineZumBereich = (b?: Bereich) => {
+    if (!b || !anlage) return []
+    return termine
+      .filter(t => t.status !== 'abgesagt'
+        && t.anlage_id === anlage.id
+        && (t.bereich_id === b.id || (!t.bereich_id && bereicheDerAnlage.length === 1)))
+      .sort((a, c) => (c.datum || '').localeCompare(a.datum || ''))
+  }
+  const auftraegeZumBereich = (b?: Bereich) => b ? auftraege.filter(a => a.bereich_id === b.id) : []
+  const probenZumBereich = (b?: Bereich) => {
+    const ausAuftraegen = auftraegeZumBereich(b)
+      .flatMap(a => a.unterauftraege)
+      .map(u => u.proben_ist ?? u.proben_geplant ?? 0)
+      .filter(n => n > 0)
+    return ausAuftraegen[0] ?? anlage?.proben_anzahl
+  }
+  const bereichAktuell = bereich ?? bereicheDerAnlage[0]
+  const aktuelleBereichAnsicht = bereichAktuell ? bereichAnsicht(bereichAktuell) : undefined
+  const aktuelleBereichStatus = bereichAktuell ? bereichStatus(bereichAktuell) : undefined
+  const aktuelleTermine = termineZumBereich(bereichAktuell)
 
   const kundeSpeichern = async () => {
     if (!kf.name_lang) return
@@ -461,8 +481,39 @@ export default function Stammdaten() {
 
           {anlage && (
             <div className="bereich-raster">
+              {bereichAktuell && aktuelleBereichAnsicht && aktuelleBereichStatus && (
+                <section className="arbeitsbereich-kopf">
+                  <div className="crumbs">
+                    <span>{kundeAnzeige(kunde)}</span>
+                    <i className="fas fa-chevron-right" aria-hidden="true"></i>
+                    <span>{anlage.name}</span>
+                    <i className="fas fa-chevron-right" aria-hidden="true"></i>
+                    <strong>{aktuelleBereichAnsicht.titel}</strong>
+                  </div>
+                  <div className="arbeitsbereich-status">
+                    <span className={`badge ${aktuelleBereichStatus.klasse}`}><i className={`fas ${aktuelleBereichStatus.icon}`} aria-hidden="true"></i> {aktuelleBereichStatus.text}</span>
+                    <span><i className="fas fa-flask" aria-hidden="true"></i> Proben: <strong>{probenZumBereich(bereichAktuell) ?? '–'}</strong></span>
+                    <span><i className="fas fa-calendar-check" aria-hidden="true"></i> Nächste: <strong>{fmtDatum(anlage.naechste_untersuchung)}</strong></span>
+                  </div>
+                  <div className="mini-historie">
+                    <div className="mini-historie-kopf">
+                      <strong>Letzte Untersuchungen</strong>
+                      <button onClick={() => { setHistorieBereich(bereichAktuell.id); setHistorieOffen(true) }}>
+                        <i className="fas fa-clock-rotate-left" aria-hidden="true"></i> Vollständige Historie
+                      </button>
+                    </div>
+                    {aktuelleTermine.slice(0, 3).map(t => (
+                      <div key={t.id} className="mini-hist-zeile">
+                        <strong>{fmtDatum(t.datum)}</strong>
+                        <span>{t.status === 'geplant' ? 'geplant' : 'Untersuchung'}</span>
+                      </div>
+                    ))}
+                    {aktuelleTermine.length === 0 && <p className="hint" style={{ margin: 0 }}>Noch keine Historie zu diesem Bereich.</p>}
+                  </div>
+                </section>
+              )}
               {/* Objekt-Ebene: Adresse, Betreuer, Zugang, Aktiv, Verwalterwechsel */}
-              <details className="objekt-box" open>
+              <details className="objekt-box">
                 <summary><i className="fas fa-building" aria-hidden="true"></i> Objekt: {anlage.name}
                   {!anlage.aktiv && <span className="badge neutral" style={{ marginLeft: 6 }}>inaktiv</span>}</summary>
                 <div className="stamm-formular" style={{ borderBottom: 'none' }}>

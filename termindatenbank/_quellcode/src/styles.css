@@ -434,13 +434,32 @@ table.tbl {
 @media (max-width: 1100px) { .stamm-spalten { grid-template-columns: 1fr; } }
 
 .bereich-raster { display: flex; flex-direction: column; overflow-y: auto; }
-.objekt-box { border-bottom: 1px solid var(--border); }
+.arbeitsbereich-kopf {
+  order: 1; margin: 10px 12px 4px; padding: 12px;
+  border: 1px solid #cfe0ee; border-radius: 8px; background: #f7fbff;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.crumbs { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; font-size: .82rem; color: var(--text-muted); }
+.crumbs strong { color: var(--text-main); }
+.arbeitsbereich-status { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; font-size: .82rem; }
+.arbeitsbereich-status > span:not(.badge) {
+  border: 1px solid var(--border); border-radius: 999px; padding: 4px 9px; background: #fff; color: var(--text-muted);
+}
+.mini-historie { border-top: 1px solid #dbe8f3; padding-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+.mini-historie-kopf { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.mini-historie-kopf button { padding: 5px 9px; font-size: .78rem; }
+.mini-hist-zeile {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  border: 1px solid var(--border); border-radius: 7px; padding: 6px 8px; background: #fff; font-size: .82rem;
+}
+.mini-hist-zeile span { color: var(--text-muted); }
+.objekt-box { order: 3; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); margin-top: 8px; }
 .objekt-box > summary {
   list-style: none; cursor: pointer; padding: 10px 14px; font-weight: 600; font-size: .88rem;
   background: #f4f8fc; display: flex; align-items: center; gap: 8px;
 }
 .objekt-box > summary::-webkit-details-marker { display: none; }
-.bereich-liste { padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.bereich-liste { order: 2; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
 .bereich-karte { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
 .bereich-karte.uebernommen { border-color: #b8d6f2; box-shadow: inset 3px 0 0 #4d82b8; }
 .bereich-karte.aktiv { border-color: var(--color-primary); }
