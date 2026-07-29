@@ -499,8 +499,6 @@ export default function Stammdaten() {
     const statusDatum = offen?.eroeffnet_am ?? letzterTermin?.datum
     if (offen) return { text: `${PHASE_TEXT[offen.status]}${statusDatum ? ` · seit ${fmtDatum(statusDatum)}` : ''}`, klasse: 'active', icon: 'fa-triangle-exclamation' }
     if (b.turnus_art === 'nachuntersuchung') return { text: `Nachuntersuchung${statusDatum ? ` · seit ${fmtDatum(statusDatum)}` : ''}`, klasse: 'active', icon: 'fa-flask-vial' }
-    if (letzterTermin?.fachliche_untersuchungsart === 'weitergehend') return { text: `Weitergehende Untersuchung · seit ${fmtDatum(letzterTermin.datum)}`, klasse: 'active', icon: 'fa-triangle-exclamation' }
-    if (letzterTermin?.fachliche_untersuchungsart === 'nachuntersuchung') return { text: `Nachuntersuchung · seit ${fmtDatum(letzterTermin.datum)}`, klasse: 'active', icon: 'fa-flask-vial' }
     if (letzte?.status === 'regelturnus_bestaetigt') return { text: `Regelturnus · seit ${fmtDatum(letzte.gesundheitsamt_freigabe_am ?? letzte.abgeschlossen_am ?? letzte.eroeffnet_am)}`, klasse: 'closed', icon: 'fa-circle-check' }
     if (hatAuffaellig) return { text: `Weitergehende Untersuchung${statusDatum ? ` · seit ${fmtDatum(statusDatum)}` : ''}`, klasse: 'active', icon: 'fa-triangle-exclamation' }
     if (naechsterTermin) return { text: `Termin ausstehend · ${fmtDatum(naechsterTermin.datum)}`, klasse: 'medium', icon: 'fa-clock' }
@@ -1082,6 +1080,10 @@ export default function Stammdaten() {
 	                    .sort((a, c) => c.datum.localeCompare(a.datum))
 	                  const letzterTermin = vergangeneTermine[0]
 	                  const letzterAuftrag = letzterAuftragZumBereich(b)
+	                  const turnusAuswahl = bf.turnus_art === 'regelturnus'
+	                    ? bf.turnus_monate === '12' ? 'regel_12'
+	                      : bf.turnus_monate === '36' ? 'regel_36' : 'regel_individuell'
+	                    : bf.turnus_art
                   const offenePhase = phasen
                     .filter(p => p.bereich_id === b.id && !['regelturnus_bestaetigt', 'abgeschlossen'].includes(p.status))
                     .sort((a, c) => c.eroeffnet_am.localeCompare(a.eroeffnet_am))[0]
@@ -1136,36 +1138,46 @@ export default function Stammdaten() {
                         </div>
                         <input placeholder="WW-System-Details (optional)" value={bf.wwb_details} onChange={e => setBf({ ...bf, wwb_details: e.target.value })} />
                         <div className="grid2">
-                          <label className="f">Turnus
-	                            <select value={bf.turnus_art} onChange={e => {
-	                              const turnusArt = e.target.value as Turnusart
-	                              const monate = turnusArt === 'nachuntersuchung' ? '3' : bf.turnus_monate
+	                          <label className="f">Turnus / aktuelle Phase
+	                            <select value={turnusAuswahl} onChange={e => {
+	                              const auswahl = e.target.value
+	                              const turnusArt: Turnusart = auswahl.startsWith('regel_')
+	                                ? 'regelturnus' : auswahl as Turnusart
+	                              const monate = auswahl === 'regel_12' ? '12'
+	                                : auswahl === 'regel_36' ? '36'
+	                                  : turnusArt === 'nachuntersuchung' ? '3' : bf.turnus_monate
 	                              setBf({
 	                                ...bf,
 	                                turnus_art: turnusArt,
 	                                turnus_monate: monate,
-	                                naechste_untersuchung: turnusArt === 'nachuntersuchung' && letzterTermin
-	                                  ? datumVerschieben(letzterTermin.datum, 0, 3)
+	                                naechste_untersuchung: letzterTermin && ['regel_12', 'regel_36', 'nachuntersuchung'].includes(auswahl)
+	                                  ? datumVerschieben(letzterTermin.datum, 0, Number(monate))
 	                                  : bf.naechste_untersuchung,
 	                              })
 	                            }}>
-	                              <option value="regelturnus">Regelturnus</option>
-	                              <option value="nachuntersuchung">Nachuntersuchung (Vorgabe: 3 Monate)</option>
-                              <option value="sonderturnus">Sonderturnus</option>
-                              <option value="behoerdlich">behördlich festgelegt</option>
-                            </select>
-                          </label>
-                          <label className="f">Turnus in Monaten
+	                              <option value="regel_12">Regelturnus 1 Jahr – öffentliche Abgabe</option>
+	                              <option value="regel_36">Regelturnus 3 Jahre – gewerblich, nicht öffentlich</option>
+	                              {turnusAuswahl === 'regel_individuell' && <option value="regel_individuell">Regelturnus – individuell</option>}
+	                              <option value="nachuntersuchung">Nachuntersuchung – Vorgabe 3 Monate</option>
+	                              <option value="sonderturnus">Sonderturnus – individuell</option>
+	                              <option value="behoerdlich">behördlich festgelegt</option>
+	                            </select>
+	                          </label>
+	                          <label className="f">Turnus in Monaten (anpassbar)
                             <input type="number" min={1} max={120} value={bf.turnus_monate} onChange={e => setBf({ ...bf, turnus_monate: e.target.value })} placeholder="12 oder 36" />
                           </label>
                           <label className="f">Nächste Untersuchung
                             <input type="date" value={bf.naechste_untersuchung} onChange={e => setBf({ ...bf, naechste_untersuchung: e.target.value })} />
                           </label>
-                          <label className="f">Probenanzahl / Umfang
-                            <input type="number" min={1} value={bf.proben_anzahl} onChange={e => setBf({ ...bf, proben_anzahl: e.target.value })} />
-                          </label>
-                        </div>
-                        <input placeholder="Begründung Sonderturnus / behördliche Vorgabe" value={bf.turnus_begruendung} onChange={e => setBf({ ...bf, turnus_begruendung: e.target.value })} />
+	                          <label className="f">Probenanzahl / Umfang
+	                            <input type="number" min={1} value={bf.proben_anzahl} onChange={e => setBf({ ...bf, proben_anzahl: e.target.value })} />
+	                          </label>
+	                        </div>
+	                        <span className="hint turnus-hinweis">
+	                          1 Jahr: Trinkwasserabgabe an die Öffentlichkeit, z. B. Hotels, Schulen oder Sportstätten.
+	                          3 Jahre: ausschließlich gewerbliche, nicht öffentliche Abgabe, z. B. vermietete Mehrfamilienhäuser.
+	                        </span>
+	                        <input placeholder="Begründung Sonderturnus / behördliche Vorgabe" value={bf.turnus_begruendung} onChange={e => setBf({ ...bf, turnus_begruendung: e.target.value })} />
                         <fieldset className="bereich-standardarten">
                           <legend>Standardmäßig erforderliche Probenahmearten</legend>
                           <label><input type="checkbox" checked={bf.standard_legionellen} onChange={e => setBf({ ...bf, standard_legionellen: e.target.checked })} /> Legionellen</label>
