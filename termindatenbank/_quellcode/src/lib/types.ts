@@ -15,7 +15,7 @@ export type Folgeentscheidung =
   | 'ueberschreitungsphase_starten'
   | 'phase_fortfuehren'
   | 'regelturnus_durch_gesundheitsamt'
-export type Turnusart = 'regelturnus' | 'sonderturnus' | 'behoerdlich'
+export type Turnusart = 'regelturnus' | 'nachuntersuchung' | 'sonderturnus' | 'behoerdlich'
 export type Betreuungsstatus = 'aktiv' | 'pausiert' | 'nicht_mehr_unser_kunde'
 export type HistorieEinordnung = 'unbekannt' | 'regulaer' | 'als_weitergehend_uebernommen' | 'als_nu_uebernommen'
 

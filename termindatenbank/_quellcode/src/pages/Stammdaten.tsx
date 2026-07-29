@@ -137,6 +137,7 @@ export default function Stammdaten() {
     name: '', strasse: '', hausnummer: '', wwb_details: '', notizen: '',
     turnus_art: 'regelturnus' as Turnusart, turnus_monate: '', naechste_untersuchung: '',
     proben_anzahl: '', turnus_begruendung: '',
+    letzte_untersuchungsart: '' as FachlicheUntersuchungsart | '',
     standard_legionellen: true, standard_mibi: false,
     standard_mibi_umfang: 'Standard' as 'Standard' | 'Komplett' | 'inklusive Enterokokken',
     standard_chemie: false,
@@ -258,6 +259,20 @@ export default function Stammdaten() {
   const bereich = bereiche.find(b => b.id === bereichId)
   useEffect(() => {
     const ansicht = bereich ? bereichAnsicht(bereich) : undefined
+    const letzterTermin = bereich
+      ? termine
+          .filter(t => t.bereich_id === bereich.id && t.status === 'abgeschlossen')
+          .sort((a, c) => c.datum.localeCompare(a.datum))[0]
+      : undefined
+    const letzterAuftrag = bereich
+      ? auftraege
+          .filter(a => a.bereich_id === bereich.id)
+          .sort((a, c) => {
+            const aDatum = termine.find(t => t.id === a.termin_id)?.datum ?? ''
+            const cDatum = termine.find(t => t.id === c.termin_id)?.datum ?? ''
+            return cDatum.localeCompare(aDatum)
+          })[0]
+      : undefined
     setBf({
       name: ansicht?.titel ?? '', strasse: bereich?.strasse ?? '', hausnummer: bereich?.hausnummer ?? '',
       wwb_details: bereich?.wwb_details ?? '', notizen: bereich?.notizen ?? '',
@@ -266,12 +281,14 @@ export default function Stammdaten() {
       naechste_untersuchung: bereich?.naechste_untersuchung ?? '',
       proben_anzahl: bereich?.proben_anzahl != null ? String(bereich.proben_anzahl) : '',
       turnus_begruendung: bereich?.turnus_begruendung ?? '',
+      letzte_untersuchungsart: letzterTermin?.fachliche_untersuchungsart
+        ?? letzterAuftrag?.fachliche_untersuchungsart ?? '',
       standard_legionellen: bereich?.standard_legionellen ?? true,
       standard_mibi: bereich?.standard_mibi ?? false,
       standard_mibi_umfang: bereich?.standard_mibi_umfang ?? 'Standard',
       standard_chemie: bereich?.standard_chemie ?? false,
     })
-  }, [bereichId])
+  }, [bereichId, termine, auftraege])
   const bereichSpeichernDetails = async () => {
     if (!bereich) return
     const ansicht = bereichAnsicht(bereich)
@@ -290,6 +307,18 @@ export default function Stammdaten() {
       standard_mibi_umfang: bf.standard_mibi_umfang,
       standard_chemie: bf.standard_chemie,
     })
+    const letzterTermin = letzterAbgeschlossenerTerminZumBereich(bereich)
+    const letzterAuftrag = letzterAuftragZumBereich(bereich)
+    if (letzterTermin) {
+      await db.terminAktualisieren(letzterTermin.id, {
+        fachliche_untersuchungsart: bf.letzte_untersuchungsart || null,
+      })
+    }
+    if (letzterAuftrag && (!letzterTermin || letzterAuftrag.termin_id === letzterTermin.id)) {
+      await db.auftragAktualisieren(letzterAuftrag.id, {
+        fachliche_untersuchungsart: bf.letzte_untersuchungsart || null,
+      })
+    }
     setMeldung('Bereich gespeichert.'); laden()
   }
   const bereichEntfernen = async (id: string) => {
@@ -440,21 +469,43 @@ export default function Stammdaten() {
     } catch (e: any) { setMeldung('Herauslösen fehlgeschlagen: ' + (e.message ?? e)) }
   }
   const bereicheDerAnlage = bereiche.filter(b => b.anlage_id === anlageId)
+  const heute = new Date().toISOString().slice(0, 10)
+  const letzterAbgeschlossenerTerminZumBereich = (b?: Bereich) =>
+    termineZumBereich(b)
+      .filter(t => t.status === 'abgeschlossen' || t.datum < heute)
+      .sort((a, c) => c.datum.localeCompare(a.datum))[0]
+  const naechsterGeplanterTerminZumBereich = (b?: Bereich) =>
+    termineZumBereich(b)
+      .filter(t => ['geplant', 'bestaetigt', 'verschoben'].includes(t.status) && t.datum >= heute)
+      .sort((a, c) => a.datum.localeCompare(c.datum))[0]
+  const zukunftZumBereich = (b: Bereich) => {
+    const termin = naechsterGeplanterTerminZumBereich(b)
+    if (b.naechste_untersuchung && termin) {
+      return `Nächste ${fmtDatum(b.naechste_untersuchung)} · Termin ${fmtDatum(termin.datum)}`
+    }
+    if (termin) return `Termin ${fmtDatum(termin.datum)}`
+    if (b.naechste_untersuchung) return `Nächste ${fmtDatum(b.naechste_untersuchung)}`
+    return 'Nächste Untersuchung noch offen'
+  }
   const bereichStatus = (b: Bereich) => {
     const fachPhasen = phasen.filter(p => p.bereich_id === b.id)
       .sort((a, c) => (c.eroeffnet_am || '').localeCompare(a.eroeffnet_am || ''))
     const offen = fachPhasen.find(p => !['regelturnus_bestaetigt', 'abgeschlossen'].includes(p.status))
     const letzte = fachPhasen[0]
-    const bTermine = termine
-      .filter(t => t.bereich_id === b.id)
-      .sort((a, c) => (c.datum || '').localeCompare(a.datum || ''))
+    const letzterTermin = letzterAbgeschlossenerTerminZumBereich(b)
+    const naechsterTermin = naechsterGeplanterTerminZumBereich(b)
     const bAuftraege = auftraege.filter(a => a.bereich_id === b.id)
     const hatAuffaellig = bAuftraege.some(a => a.unterauftraege.some(u => ['ueberschritten', 'nachuntersuchung_erforderlich'].includes(u.ergebnis)))
-    if (offen) return { text: PHASE_TEXT[offen.status], klasse: offen.status === 'nachuntersuchung' ? 'medium' : 'active', icon: 'fa-triangle-exclamation' }
-    if (letzte?.status === 'regelturnus_bestaetigt') return { text: 'Regelturnus bestätigt', klasse: 'closed', icon: 'fa-circle-check' }
-    if (hatAuffaellig) return { text: 'Historie auffällig', klasse: 'medium', icon: 'fa-clock-rotate-left' }
-    if (bTermine.length > 0) return { text: `Regelturnus · letzte ${fmtDatum(bTermine[0].datum)}`, klasse: 'closed', icon: 'fa-calendar-check' }
-    return { text: 'Regelturnus', klasse: 'neutral', icon: 'fa-circle-info' }
+    const statusDatum = offen?.eroeffnet_am ?? letzterTermin?.datum
+    if (offen) return { text: `${PHASE_TEXT[offen.status]}${statusDatum ? ` · seit ${fmtDatum(statusDatum)}` : ''}`, klasse: 'active', icon: 'fa-triangle-exclamation' }
+    if (b.turnus_art === 'nachuntersuchung') return { text: `Nachuntersuchung${statusDatum ? ` · seit ${fmtDatum(statusDatum)}` : ''}`, klasse: 'active', icon: 'fa-flask-vial' }
+    if (letzterTermin?.fachliche_untersuchungsart === 'weitergehend') return { text: `Weitergehende Untersuchung · seit ${fmtDatum(letzterTermin.datum)}`, klasse: 'active', icon: 'fa-triangle-exclamation' }
+    if (letzterTermin?.fachliche_untersuchungsart === 'nachuntersuchung') return { text: `Nachuntersuchung · seit ${fmtDatum(letzterTermin.datum)}`, klasse: 'active', icon: 'fa-flask-vial' }
+    if (letzte?.status === 'regelturnus_bestaetigt') return { text: `Regelturnus · seit ${fmtDatum(letzte.gesundheitsamt_freigabe_am ?? letzte.abgeschlossen_am ?? letzte.eroeffnet_am)}`, klasse: 'closed', icon: 'fa-circle-check' }
+    if (hatAuffaellig) return { text: `Weitergehende Untersuchung${statusDatum ? ` · seit ${fmtDatum(statusDatum)}` : ''}`, klasse: 'active', icon: 'fa-triangle-exclamation' }
+    if (naechsterTermin) return { text: `Termin ausstehend · ${fmtDatum(naechsterTermin.datum)}`, klasse: 'medium', icon: 'fa-clock' }
+    if (letzterTermin) return { text: `Regelturnus · seit ${fmtDatum(letzterTermin.datum)}`, klasse: 'closed', icon: 'fa-calendar-check' }
+    return { text: 'Regelturnus · Datum noch nicht erfasst', klasse: 'closed', icon: 'fa-circle-info' }
   }
   const termineZumBereich = (b?: Bereich) => {
     if (!b || !anlage) return []
@@ -1024,9 +1075,13 @@ export default function Stammdaten() {
               <div className="bereich-liste">
                 {bereicheDerAnlage.map(b => {
                   const ansicht = bereichAnsicht(b)
-                  const status = bereichStatus(b)
-                  const bTermine = termineZumBereich(b)
-                  const letzterAuftrag = letzterAuftragZumBereich(b)
+	                  const status = bereichStatus(b)
+	                  const bTermine = termineZumBereich(b)
+	                  const vergangeneTermine = bTermine
+	                    .filter(t => t.status === 'abgeschlossen' || t.datum < heute)
+	                    .sort((a, c) => c.datum.localeCompare(a.datum))
+	                  const letzterTermin = vergangeneTermine[0]
+	                  const letzterAuftrag = letzterAuftragZumBereich(b)
                   const offenePhase = phasen
                     .filter(p => p.bereich_id === b.id && !['regelturnus_bestaetigt', 'abgeschlossen'].includes(p.status))
                     .sort((a, c) => c.eroeffnet_am.localeCompare(a.eroeffnet_am))[0]
@@ -1035,20 +1090,20 @@ export default function Stammdaten() {
                     <button className="bereich-kopf" onClick={() => setBereichId(b.id === bereichId ? '' : b.id)}>
                       <span className="bereich-titelzeile">
                         <strong><i className={`fas fa-chevron-${b.id === bereichId ? 'down' : 'right'}`} style={{ fontSize: '.7rem', marginRight: 6 }}></i>{ansicht.titel}</strong>
-                        <span className={`badge ${status.klasse}`}><i className={`fas ${status.icon}`} aria-hidden="true"></i> {status.text}</span>
+	                        <span className="badge high bereich-zukunft"><i className="fas fa-calendar-plus" aria-hidden="true"></i> {zukunftZumBereich(b)}</span>
                       </span>
                       <span className="bereich-meta-row">
                         <span><i className="fas fa-flask" aria-hidden="true"></i> Proben: <strong>{probenZumBereich(b) ?? '–'}</strong></span>
-                        <span><i className="fas fa-calendar-check" aria-hidden="true"></i> Letzte: <strong>{fmtDatum(bTermine[0]?.datum)}</strong></span>
+	                        <span><i className="fas fa-calendar-check" aria-hidden="true"></i> Letzte: <strong>{fmtDatum(letzterTermin?.datum)}</strong></span>
                       </span>
                       <span className="bereich-mini-historie">
-                        {bTermine.slice(0, 3).map(t => (
+	                        {vergangeneTermine.slice(0, 3).map(t => (
                           <span key={t.id} className={`mini-hist-zeile ${befundKlasseZumTermin(t, b)}`}>
                             <strong>{fmtDatum(t.datum)}</strong>
                             <em>{ergebnisZumTermin(t, b)}</em>
                           </span>
                         ))}
-                        {bTermine.length === 0 && <span className="hint">Noch keine Historie zu diesem Bereich.</span>}
+	                        {vergangeneTermine.length === 0 && <span className="hint">Noch keine Historie zu diesem Bereich.</span>}
                       </span>
                       {(b.strasse || b.hausnummer) && <span className="hint">{[b.strasse, b.hausnummer].filter(Boolean).join(' ')}</span>}
                     </button>
@@ -1058,15 +1113,21 @@ export default function Stammdaten() {
                           Details und Historie zu: {ansicht.titel}
                         </span>
                         <div className="bereich-detail-uebersicht">
-                          <span><small>Letzter Termin</small><strong>{fmtDatum(bTermine[0]?.datum)}</strong></span>
-                          <span><small>Letztes Ergebnis</small><strong>{bTermine[0] ? ergebnisZumTermin(bTermine[0], b) : '–'}</strong></span>
-                          <span><small>Aktueller Status</small><strong>{status.text}</strong></span>
-                          <span><small>Proben / Umfang</small><strong>{probenZumBereich(b) ?? '–'}</strong></span>
-                          <span><small>Untersuchungsart</small><strong>{bTermine[0]?.fachliche_untersuchungsart
-                            ? FACHLICHE_ART_LABEL[bTermine[0].fachliche_untersuchungsart]
-                            : letzterAuftrag?.fachliche_untersuchungsart
-                              ? FACHLICHE_ART_LABEL[letzterAuftrag.fachliche_untersuchungsart]
-                              : 'noch nicht erfasst'}</strong></span>
+	                          <span><small>Letzter Termin</small><strong>{fmtDatum(letzterTermin?.datum)}</strong></span>
+	                          <span><small>Letztes Ergebnis</small><strong>{letzterTermin ? ergebnisZumTermin(letzterTermin, b) : '–'}</strong></span>
+	                          <span className={`detail-status ${status.klasse}`}><small>Aktueller Status</small><strong><i className={`fas ${status.icon}`} aria-hidden="true"></i> {status.text}</strong></span>
+	                          <span><small>Proben / Umfang</small><strong>{probenZumBereich(b) ?? '–'}</strong></span>
+	                          <label className="detail-untersuchungsart"><small>Art der letzten Untersuchung</small>
+	                            <select value={bf.letzte_untersuchungsart}
+	                              disabled={!letzterTermin && !letzterAuftrag}
+	                              onChange={e => setBf({ ...bf, letzte_untersuchungsart: e.target.value as FachlicheUntersuchungsart | '' })}
+	                              title="Fachliche Einordnung der zuletzt durchgeführten Untersuchung – nicht die Laborleistung">
+	                              <option value="">noch nicht erfasst</option>
+	                              {(Object.keys(FACHLICHE_ART_LABEL) as FachlicheUntersuchungsart[]).map(art =>
+	                                <option key={art} value={art}>{FACHLICHE_ART_LABEL[art]}</option>
+	                              )}
+	                            </select>
+	                          </label>
                         </div>
                         <input placeholder="Bereichsname, z. B. Altbau / Haus 7" value={bf.name} onChange={e => setBf({ ...bf, name: e.target.value })} />
                         <div style={{ display: 'flex', gap: 8 }}>
@@ -1076,8 +1137,20 @@ export default function Stammdaten() {
                         <input placeholder="WW-System-Details (optional)" value={bf.wwb_details} onChange={e => setBf({ ...bf, wwb_details: e.target.value })} />
                         <div className="grid2">
                           <label className="f">Turnus
-                            <select value={bf.turnus_art} onChange={e => setBf({ ...bf, turnus_art: e.target.value as Turnusart })}>
-                              <option value="regelturnus">Regelturnus</option>
+	                            <select value={bf.turnus_art} onChange={e => {
+	                              const turnusArt = e.target.value as Turnusart
+	                              const monate = turnusArt === 'nachuntersuchung' ? '3' : bf.turnus_monate
+	                              setBf({
+	                                ...bf,
+	                                turnus_art: turnusArt,
+	                                turnus_monate: monate,
+	                                naechste_untersuchung: turnusArt === 'nachuntersuchung' && letzterTermin
+	                                  ? datumVerschieben(letzterTermin.datum, 0, 3)
+	                                  : bf.naechste_untersuchung,
+	                              })
+	                            }}>
+	                              <option value="regelturnus">Regelturnus</option>
+	                              <option value="nachuntersuchung">Nachuntersuchung (Vorgabe: 3 Monate)</option>
                               <option value="sonderturnus">Sonderturnus</option>
                               <option value="behoerdlich">behördlich festgelegt</option>
                             </select>

@@ -212,9 +212,9 @@ export const db = {
     return data.id
   },
   async terminAktualisieren(id: string, patch: Partial<Pick<Termin,
-    'datum' | 'status' | 'fachliche_untersuchungsart' | 'historie_einordnung' |
-    'befund' | 'pruefbericht_nummer' | 'pruefbericht_datum' | 'historie_bemerkung' | 'notizen'
-  >>): Promise<void> {
+    'datum' | 'status' | 'historie_einordnung' | 'befund' | 'pruefbericht_nummer' |
+    'pruefbericht_datum' | 'historie_bemerkung' | 'notizen'
+  >> & { fachliche_untersuchungsart?: FachlicheUntersuchungsart | null }): Promise<void> {
     if (!supabase) {
       const t = demo.termine.find(x => x.id === id)
       if (t) Object.assign(t, patch)
@@ -290,7 +290,7 @@ export const db = {
     if (error) throw error
   },
 
-  async auftragAktualisieren(id: string, patch: Partial<{ fachliche_untersuchungsart: FachlicheUntersuchungsart; notizen: string }>): Promise<void> {
+  async auftragAktualisieren(id: string, patch: Partial<{ fachliche_untersuchungsart: FachlicheUntersuchungsart | null; notizen: string }>): Promise<void> {
     if (!supabase) {
       const a = demo.auftraege.find(x => x.id === id)
       if (a) Object.assign(a, patch)
