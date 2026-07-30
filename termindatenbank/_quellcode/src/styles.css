@@ -444,7 +444,11 @@ table.tbl {
 .planung-info-fehler {
   color: #a23b35; font-weight: 800; cursor: help; padding-top: 4px;
 }
-.planung-objekt strong { display: block; font-weight: 650; }
+.planung-objekt-link {
+  display: block; width: fit-content; color: #0645d8; font-weight: 650;
+  text-decoration: underline; text-underline-offset: 2px;
+}
+.planung-objekt-link:hover { color: #0037aa; }
 .planung-objekt small {
   display: block; margin-top: 3px; color: var(--text-muted); font-size: .72rem;
 }

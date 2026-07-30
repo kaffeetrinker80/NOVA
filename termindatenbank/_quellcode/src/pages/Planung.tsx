@@ -40,6 +40,19 @@ function istGesamtbereich(bereich: Bereich, anlage: Anlage): boolean {
     || name === anlagenname
 }
 
+function googleMapsLink(anlage: Anlage, bereich: Bereich): string {
+  const bereichAdresse = [bereich.strasse, bereich.hausnummer]
+    .filter(Boolean)
+    .join(' ')
+    .trim()
+  const suchAdresse = [
+    bereichAdresse || anlage.strasse || anlage.name,
+    anlage.plz,
+    anlage.ort,
+  ].filter(Boolean).join(', ')
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(suchAdresse)}`
+}
+
 function InfoEditor({ anlage, onSaved }: { anlage: Anlage; onSaved: () => void }) {
   const [text, setText] = useState(anlage.info ?? '')
   const [speichert, setSpeichert] = useState(false)
@@ -305,7 +318,14 @@ export default function Planung() {
                   onDoubleClick={() => { setPlanBereichId(z.bereich.id); setModalAnlage(z.anlage) }} title="Doppelklick: Termin für diesen Bereich planen">
                   <td>{kundeAnzeige(z.kunde)}</td>
                   <td className="planung-objekt">
-                    <strong>{z.anlage.name}</strong>
+                    <a className="planung-objekt-link"
+                      href={googleMapsLink(z.anlage, z.bereich)}
+                      target="_blank" rel="noopener noreferrer"
+                      title={`${z.anlage.name} in Google Maps öffnen`}
+                      onClick={e => e.stopPropagation()}
+                      onDoubleClick={e => e.stopPropagation()}>
+                      {z.anlage.name}
+                    </a>
                     {!istGesamtbereich(z.bereich, z.anlage) && (
                       <small><i className="fas fa-code-branch" aria-hidden="true"></i> {z.bereich.name}</small>
                     )}
