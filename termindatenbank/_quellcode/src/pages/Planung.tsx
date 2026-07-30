@@ -17,6 +17,7 @@ interface Zeile {
   geplantAm?: string        // nächster zukünftiger Termin
   geplantText?: string      // Freitext-Planungsvermerk am Objekt
   faellig?: string          // bereich.naechste_untersuchung
+  pruefbericht?: string     // letzter erfasster Prüfbericht, sonst letzter Untersuchungstermin
 }
 
 const heuteIso = new Date().toISOString().slice(0, 10)
@@ -27,6 +28,16 @@ function turnusText(m?: number): string {
   if (m === 12) return '1 Jahr'
   if (m === 36) return '3 Jahre'
   return m ? `${m} Monate` : '–'
+}
+
+function istGesamtbereich(bereich: Bereich, anlage: Anlage): boolean {
+  const name = bereich.name.trim().toLocaleLowerCase('de')
+  const anlagenname = anlage.name.trim().toLocaleLowerCase('de')
+  return name === 'gesamtanlage'
+    || /(?:–|-)\s*gesamtanlage$/.test(name)
+    || name === `${anlagenname} – gesamtanlage`
+    || name === `${anlagenname} - gesamtanlage`
+    || name === anlagenname
 }
 
 function InfoEditor({ anlage, onSaved }: { anlage: Anlage; onSaved: () => void }) {
@@ -113,9 +124,15 @@ export default function Planung() {
     const a = anlagen.find(a => a.id === b.anlage_id)
     if (!a || (inaktiveAnzeigen ? a.aktiv : !a.aktiv)) return []
     const terminIds = new Set(auftraege.filter(o => o.bereich_id === b.id && o.termin_id).map(o => o.termin_id))
-    const zukunft = termine
-      .filter(t => (t.bereich_id === b.id || terminIds.has(t.id)) && t.datum >= heuteIso && (t.status === 'geplant' || t.status === 'bestaetigt'))
+    const bereichTermine = termine
+      .filter(t => (t.bereich_id === b.id || terminIds.has(t.id)) && t.status !== 'abgesagt')
+    const zukunft = bereichTermine
+      .filter(t => t.datum >= heuteIso && (t.status === 'geplant' || t.status === 'bestaetigt'))
       .map(t => t.datum).sort()
+    const vergangen = bereichTermine
+      .filter(t => t.status === 'abgeschlossen' || t.datum < heuteIso)
+      .sort((x, y) => y.datum.localeCompare(x.datum))
+    const letzterMitPruefbericht = vergangen.find(t => t.pruefbericht_datum)
     return [{
       anlage: a,
       bereich: b,
@@ -123,6 +140,7 @@ export default function Planung() {
       geplantAm: zukunft[0],
       geplantText: b.planungsnotiz || a.planungsnotiz || undefined,
       faellig: b.naechste_untersuchung,
+      pruefbericht: letzterMitPruefbericht?.pruefbericht_datum || vergangen[0]?.datum,
     }]
   }), [anlagen, bereiche, kunden, termine, auftraege, inaktiveAnzeigen])
 
@@ -161,6 +179,7 @@ export default function Planung() {
         (x.kunde?.name_lang ?? '').toLowerCase().includes(q) ||
         kundeAnzeige(x.kunde).toLowerCase().includes(q) ||
         (x.anlage.ort ?? '').toLowerCase().includes(q) ||
+        x.bereich.name.toLowerCase().includes(q) ||
         (x.anlage.plz ?? '').toLowerCase().includes(q))
     }
 
@@ -261,61 +280,82 @@ export default function Planung() {
           </div>
         </div>
         {tab === 'berichte' ? <div className="table-container"><table><thead><tr><th>Termin</th><th>Verwaltung</th><th>Anlage</th><th>Bereich</th><th>Auftrag</th><th>Offene Untersuchungsarten</th><th className="no-print"></th></tr></thead><tbody>
-          {berichteOffen.map(x => <tr key={x.auftrag.id} className="amp-yellow"><td>{fmtDatum(x.termin.datum)}</td><td>{kundeAnzeige(x.kunde)}</td><td>{x.anlage.name}</td><td>{x.bereich.name}</td><td className="nr">{x.auftrag.auftragsnummer}</td><td>{x.auftrag.unterauftraege.filter(u => u.status !== 'storniert' && u.ergebnis === 'offen').map(u => ART_LABEL[u.art]).join(', ')}</td><td className="no-print"><button className="zeile-btn" onClick={() => setBerichtAuftrag(x.auftrag)}><i className="fas fa-file-circle-check" aria-hidden="true"></i> Prüfbericht erfassen</button></td></tr>)}
+          {berichteOffen.map(x => <tr key={x.auftrag.id} className="amp-yellow"><td>{fmtDatum(x.termin.datum)}</td><td>{kundeAnzeige(x.kunde)}</td><td>{x.anlage.name}</td><td>{istGesamtbereich(x.bereich, x.anlage) ? '–' : x.bereich.name}</td><td className="nr">{x.auftrag.auftragsnummer}</td><td>{x.auftrag.unterauftraege.filter(u => u.status !== 'storniert' && u.ergebnis === 'offen').map(u => ART_LABEL[u.art]).join(', ')}</td><td className="no-print"><button className="zeile-btn" onClick={() => setBerichtAuftrag(x.auftrag)}><i className="fas fa-file-circle-check" aria-hidden="true"></i> Prüfbericht erfassen</button></td></tr>)}
           {berichteOffen.length === 0 && <tr><td colSpan={7} className="hint">Keine offenen Prüfberichte.</td></tr>}
         </tbody></table></div> : <div className="table-container">
           <table>
             <thead><tr>
               <th onClick={() => sortieren('kundeName')} style={{ cursor: 'pointer' }}>Verwaltung <Pfeil s="kundeName" /></th>
               <th onClick={() => sortieren('anlage')} style={{ cursor: 'pointer' }}>Wohnanlage/Objekt <Pfeil s="anlage" /></th>
-              <th>Bereich/WWB</th><th>PLZ</th>
+              <th className="zahl-zelle">Proben</th>
+              <th>PLZ</th>
               <th onClick={() => sortieren('ort')} style={{ cursor: 'pointer' }}>Ort <Pfeil s="ort" /></th>
               <th>Turnus</th>
-              <th>Proben</th>
+              <th>Prüfbericht</th>
               <th onClick={() => sortieren('faellig')} style={{ cursor: 'pointer' }}>Nächste Untersuchung <Pfeil s="faellig" /></th>
-              {tab === 'geplant' && <th onClick={() => sortieren('geplantAm')} style={{ cursor: 'pointer' }}>Geplant <Pfeil s="geplantAm" /></th>}
               {infoAnzeigen && <th>Info</th>}
-              <th className="no-print"></th>
+              <th onClick={() => sortieren('geplantAm')} style={{ cursor: 'pointer' }}>Geplant <Pfeil s="geplantAm" /></th>
+              <th className="no-print aktion-kopf">Planen</th>
+              <th className="no-print aktion-kopf">Verlauf</th>
+              <th className="no-print aktion-kopf" aria-label="Ausblenden"></th>
             </tr></thead>
             <tbody>
               {gefiltert.slice(0, 500).map(z => (
                 <tr key={z.bereich.id} className={zeilenKlasse(z, tab)}
                   onDoubleClick={() => { setPlanBereichId(z.bereich.id); setModalAnlage(z.anlage) }} title="Doppelklick: Termin für diesen Bereich planen">
                   <td>{kundeAnzeige(z.kunde)}</td>
-                  <td style={{ fontWeight: 600 }}>{z.anlage.name}</td>
-                  <td>{z.bereich.name}</td>
+                  <td className="planung-objekt">
+                    <strong>{z.anlage.name}</strong>
+                    {!istGesamtbereich(z.bereich, z.anlage) && (
+                      <small><i className="fas fa-code-branch" aria-hidden="true"></i> {z.bereich.name}</small>
+                    )}
+                  </td>
+                  <td className="zahl-zelle">{z.bereich.proben_anzahl ?? '–'}</td>
                   <td>{z.anlage.plz ?? '–'}</td>
                   <td>{z.anlage.ort ?? '–'}</td>
                   <td>{turnusText(z.bereich.turnus_monate)}</td>
-                  <td>{z.bereich.proben_anzahl ?? '–'}</td>
+                  <td>{fmtDatum(z.pruefbericht)}</td>
                   <td>{fmtDatum(z.faellig)}</td>
-                  {tab === 'geplant' && <td style={{ fontWeight: 600 }}>{z.geplantAm ? fmtDatum(z.geplantAm) : <span className="hint">{z.geplantText}</span>}</td>}
                   {infoAnzeigen && <td className="info-zelle">
                     <InfoEditor anlage={z.anlage} onSaved={laden} />
                   </td>}
-                  <td className="no-print" style={{ whiteSpace: 'nowrap' }}>
+                  <td className="planung-geplant">
+                    {z.geplantAm
+                      ? <strong>{fmtDatum(z.geplantAm)}</strong>
+                      : z.geplantText
+                        ? <span className="hint">{z.geplantText}</span>
+                        : <span className="hint">–</span>}
+                  </td>
+                  <td className="no-print aktion-zelle">
                     {inaktiveAnzeigen ? (
-                      <button className="zeile-btn" onClick={async () => { await db2.anlageAktualisieren(z.anlage.id, { aktiv: true }); laden() }}>
-                        <i className="fas fa-eye" aria-hidden="true"></i> Wieder einblenden
+                      <button className="zeile-btn icon-aktion" onClick={async () => { await db2.anlageAktualisieren(z.anlage.id, { aktiv: true }); laden() }}
+                        title="Anlage wieder einblenden" aria-label="Anlage wieder einblenden">
+                        <i className="fas fa-eye" aria-hidden="true"></i>
                       </button>
-                    ) : (<>
-                      <button className="zeile-btn" onClick={() => { setPlanBereichId(z.bereich.id); setModalAnlage(z.anlage) }}>
-                        <i className="fas fa-calendar-plus" aria-hidden="true"></i> Planen
-                      </button>{' '}
-                      <button className="zeile-btn" style={{ background: '#6c757d', borderColor: '#6c757d' }}
-                        onClick={() => setHistorie({ anlage: z.anlage, bereich: z.bereich })} title="Untersuchungsverlauf dieses Bereichs öffnen">
-                        <i className="fas fa-clock-rotate-left" aria-hidden="true"></i> Verlauf
-                      </button>{' '}
-                      <button className="zeile-btn" style={{ background: '#adb5bd', borderColor: '#adb5bd' }}
-                        onClick={async () => { await db2.anlageAktualisieren(z.anlage.id, { aktiv: false }); laden() }}
-                        title="Anlage ausblenden (inaktiv setzen)">
-                        <i className="fas fa-eye-slash" aria-hidden="true"></i>
+                    ) : (
+                      <button className="zeile-btn icon-aktion" onClick={() => { setPlanBereichId(z.bereich.id); setModalAnlage(z.anlage) }}
+                        title="Diesen Bereich planen" aria-label="Diesen Bereich planen">
+                        <i className="fas fa-calendar-plus" aria-hidden="true"></i>
                       </button>
-                    </>)}
+                    )}
+                  </td>
+                  <td className="no-print aktion-zelle">
+                    {!inaktiveAnzeigen && <button className="zeile-btn icon-aktion verlauf-aktion"
+                      onClick={() => setHistorie({ anlage: z.anlage, bereich: z.bereich })}
+                      title="Untersuchungsverlauf dieses Bereichs öffnen" aria-label="Verlauf öffnen">
+                      <i className="fas fa-clock-rotate-left" aria-hidden="true"></i>
+                    </button>}
+                  </td>
+                  <td className="no-print aktion-zelle">
+                    {!inaktiveAnzeigen && <button className="zeile-btn icon-aktion ausblenden-aktion"
+                      onClick={async () => { await db2.anlageAktualisieren(z.anlage.id, { aktiv: false }); laden() }}
+                      title="Anlage ausblenden (inaktiv setzen)" aria-label="Anlage ausblenden">
+                      <i className="fas fa-eye-slash" aria-hidden="true"></i>
+                    </button>}
                   </td>
                 </tr>
               ))}
-              {gefiltert.length === 0 && <tr><td colSpan={10} className="hint">Keine Einträge für die aktuelle Auswahl.</td></tr>}
+              {gefiltert.length === 0 && <tr><td colSpan={infoAnzeigen ? 13 : 12} className="hint">Keine Einträge für die aktuelle Auswahl.</td></tr>}
             </tbody>
           </table>
         </div>}

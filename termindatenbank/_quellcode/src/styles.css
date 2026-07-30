@@ -444,6 +444,21 @@ table.tbl {
 .planung-info-fehler {
   color: #a23b35; font-weight: 800; cursor: help; padding-top: 4px;
 }
+.planung-objekt strong { display: block; font-weight: 650; }
+.planung-objekt small {
+  display: block; margin-top: 3px; color: var(--text-muted); font-size: .72rem;
+}
+.planung-objekt small i { margin-right: 4px; color: #4d82b8; }
+.zahl-zelle { text-align: center; }
+.planung-geplant { min-width: 88px; }
+.aktion-kopf { text-align: center; width: 58px; }
+.aktion-zelle { width: 58px; text-align: center; padding-left: 4px; padding-right: 4px; }
+.icon-aktion {
+  width: 32px; height: 32px; padding: 0; margin: 0 auto;
+  display: inline-grid; place-items: center; border-radius: 50%;
+}
+.verlauf-aktion { background: #6c757d; border-color: #6c757d; }
+.ausblenden-aktion { background: #adb5bd; border-color: #adb5bd; }
 
 /* ---------- Assistent: neue Anlage vollständig erfassen ---------- */
 .neue-anlage-assistent {
