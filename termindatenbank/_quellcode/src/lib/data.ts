@@ -290,6 +290,53 @@ export const db = {
     if (error) throw error
   },
 
+  /** Ergänzt eine Labor-/Leistungsart zu einer bestehenden Hauptnummer.
+   *  Die Datenbank vergibt das Suffix und verhindert doppelte Arten. */
+  async unterauftragHinzufuegen(
+    auftragId: string,
+    art: Untersuchungsart,
+    umfang?: string,
+    probenGeplant?: number,
+  ): Promise<string> {
+    if (!supabase) {
+      const a = demo.auftraege.find(x => x.id === auftragId)
+      if (!a) throw new Error('Auftrag nicht gefunden')
+      if (a.unterauftraege.some(x => x.art === art)) {
+        throw new Error(`Diese Untersuchungsart ist bei ${a.auftragsnummer} bereits vorhanden`)
+      }
+      const grundSuffix: Record<Untersuchungsart, string> = {
+        legionellen: a.unterauftraege.some(x => x.suffix === '') ? 'L' : '',
+        mibi: 'M',
+        chemie: 'C',
+        vorortparameter: 'V',
+        sonstiges: 'S',
+      }
+      const suffix = grundSuffix[art]
+      if (a.unterauftraege.some(x => x.suffix === suffix)) {
+        throw new Error(`Das Suffix -${suffix} ist bei ${a.auftragsnummer} bereits belegt`)
+      }
+      a.unterauftraege.push({
+        id: `${a.id}-u${a.unterauftraege.length + 1}`,
+        auftrag_id: a.id,
+        suffix,
+        art,
+        umfang: umfang?.trim() || undefined,
+        proben_geplant: probenGeplant,
+        status: 'offen',
+        ergebnis: 'offen',
+      })
+      return suffix ? `${a.auftragsnummer}-${suffix}` : a.auftragsnummer
+    }
+    const { data, error } = await supabase.rpc('td_unterauftrag_hinzufuegen', {
+      p_auftrag: auftragId,
+      p_art: art,
+      p_umfang: umfang?.trim() || null,
+      p_proben_geplant: probenGeplant ?? null,
+    })
+    if (error) throw error
+    return (data as any).nummer as string
+  },
+
   async auftragAktualisieren(id: string, patch: Partial<{ fachliche_untersuchungsart: FachlicheUntersuchungsart | null; notizen: string }>): Promise<void> {
     if (!supabase) {
       const a = demo.auftraege.find(x => x.id === id)

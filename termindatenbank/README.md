@@ -150,6 +150,13 @@ ergänzt die direkt bearbeitbare Alt-Historie, Standard-Leistungsarten je Bereic
 und das doppelt bestätigte, transaktionale Löschen eines Bereichs. Sie ist im
 verbundenen Testprojekt ebenfalls ausgeführt.
 
+Migration
+`supabase/migrations/0028_unterauftraege_nachtraeglich_ergaenzen.sql`
+ergänzt bestehende Hauptaufträge nachträglich um Legionellen, Mibi oder Chemie,
+ohne eine neue laufende Auftragsnummer zu verbrauchen. Vor dem Einsatz der
+zugehörigen Schaltfläche **Anteil** muss diese Migration einmal im Supabase
+SQL-Editor ausgeführt werden.
+
 Im Frontend ist damit folgender Ablauf vorbereitet:
 
 - Nach einem vergangenen Termin erscheint ein Auftrag automatisch unter

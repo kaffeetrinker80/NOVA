@@ -1,5 +1,22 @@
 # NOVAplan – Testschritte für diesen Ansatz
 
+## Aktuelles Update v3.11: Untersuchungsanteile ergänzen
+
+Vor dem Test der neuen Schaltfläche **Auftragsbuch → Anteil** einmal den
+vollständigen Inhalt von
+`supabase/migrations/0028_unterauftraege_nachtraeglich_ergaenzen.sql`
+im Supabase SQL-Editor ausführen.
+
+Danach:
+
+1. Einen bestehenden Legionellenauftrag im Auftragsbuch öffnen.
+2. **Anteil** anklicken und Mibi auswählen.
+3. Erwartung: Aus `26-0087` wird für den ergänzten Anteil `26-0087-M`.
+   Die Hauptnummer `26-0087` bleibt unverändert und der Jahreszähler wird nicht erhöht.
+4. Über **Bericht** für Legionellen und Mibi getrennte Befunde erfassen.
+5. Erneut **Anteil** öffnen: Mibi wird nicht mehr angeboten und kann nicht doppelt
+   angelegt werden. Chemie bleibt als `26-0087-C` ergänzbar.
+
 ## 1. Git aktualisieren
 
 1. Die ZIP-Datei entpacken.

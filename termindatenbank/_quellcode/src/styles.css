@@ -462,6 +462,22 @@ table.tbl {
   display: inline-grid; place-items: center; border-radius: 50%;
 }
 .verlauf-aktion { background: #6c757d; border-color: #6c757d; }
+.auftrag-aktionen {
+  white-space: nowrap; display: flex; align-items: center; gap: 5px;
+}
+.unterauftrag-plus {
+  background: #fff; color: var(--color-primary); border-color: #9fc4df;
+}
+.unterauftrag-plus:hover { color: #fff; background: var(--color-primary); }
+.unterauftrag-modal { max-width: 670px; }
+.unterauftrag-inhalt {
+  display: flex; flex-direction: column; gap: 14px; padding: 16px 24px 4px;
+}
+.unterauftrag-vorhanden {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+}
+.unterauftrag-nummer { color: var(--color-primary); font-weight: 750; background: #f4f8fc; }
+.unterauftrag-hinweis { margin: 0; }
 .ausblenden-aktion { background: #adb5bd; border-color: #adb5bd; }
 
 /* ---------- Assistent: neue Anlage vollständig erfassen ---------- */

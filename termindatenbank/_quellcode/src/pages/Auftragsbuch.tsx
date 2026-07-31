@@ -5,6 +5,115 @@ import { ART_LABEL, ERGEBNIS_LABEL, FACHLICHE_ART_LABEL, STATUS_LABEL, fmtDatum,
 import { Abschnitt, ErgebnisBadge, Nr, StatusBadge } from '../components/ui'
 import BerichtModal from '../components/BerichtModal'
 
+const ERGAENZBARE_ARTEN: Untersuchungsart[] = ['legionellen', 'mibi', 'chemie']
+
+function UnterauftragErgaenzenModal({ auftrag, onClose, onSaved }: {
+  auftrag: Auftrag
+  onClose: () => void
+  onSaved: (nummer: string) => void
+}) {
+  const fehlendeArten = ERGAENZBARE_ARTEN.filter(art =>
+    !auftrag.unterauftraege.some(u => u.art === art),
+  )
+  const [art, setArt] = useState<Untersuchungsart>(fehlendeArten[0] ?? 'mibi')
+  const [umfang, setUmfang] = useState('')
+  const [proben, setProben] = useState('')
+  const [laeuft, setLaeuft] = useState(false)
+  const [fehler, setFehler] = useState('')
+
+  const suffix = art === 'mibi'
+    ? 'M'
+    : art === 'chemie'
+      ? 'C'
+      : auftrag.unterauftraege.some(u => u.suffix === '') ? 'L' : ''
+  const nummer = suffix ? `${auftrag.auftragsnummer}-${suffix}` : auftrag.auftragsnummer
+
+  const speichern = async () => {
+    setLaeuft(true)
+    setFehler('')
+    try {
+      const neueNummer = await db.unterauftragHinzufuegen(
+        auftrag.id,
+        art,
+        umfang,
+        proben ? Number(proben) : undefined,
+      )
+      onSaved(neueNummer)
+    } catch (e: any) {
+      setFehler(e.message ?? String(e))
+    } finally {
+      setLaeuft(false)
+    }
+  }
+
+  return <div className="modal-hintergrund" onMouseDown={e => {
+    if (e.target === e.currentTarget) onClose()
+  }}>
+    <div className="modal unterauftrag-modal" role="dialog" aria-modal="true"
+      aria-label={`Untersuchungsanteil zu ${auftrag.auftragsnummer} ergänzen`}>
+      <div className="modal-kopf">
+        <div>
+          <strong>Untersuchungsanteil ergänzen · <span className="nr">{auftrag.auftragsnummer}</span></strong>
+          <div className="hint">Die Hauptnummer bleibt bestehen; es wird keine neue laufende Nummer verbraucht.</div>
+        </div>
+        <button className="modal-schliessen" onClick={onClose} aria-label="Schließen">×</button>
+      </div>
+
+      <div className="unterauftrag-inhalt">
+        <div className="unterauftrag-vorhanden">
+          <span className="hint">Bereits vorhanden:</span>
+          {auftrag.unterauftraege.map(u =>
+            <span className="badge neutral" key={u.id}>{nummerVoll(auftrag, u)} · {ART_LABEL[u.art]}</span>,
+          )}
+        </div>
+
+        {fehlendeArten.length ? <>
+          <div className="grid2">
+            <label className="f">Untersuchungsart
+              <select value={art} onChange={e => {
+                setArt(e.target.value as Untersuchungsart)
+                setUmfang('')
+              }}>
+                {fehlendeArten.map(v => <option key={v} value={v}>{ART_LABEL[v]}</option>)}
+              </select>
+            </label>
+            <label className="f">Neue Nummer
+              <input value={nummer} readOnly className="unterauftrag-nummer" />
+            </label>
+            <label className="f">Geplante Probenzahl
+              <input type="number" min="1" value={proben}
+                onChange={e => setProben(e.target.value)} placeholder="optional" />
+            </label>
+            {art === 'mibi' && <label className="f">Mibi-Umfang
+              <input list="mibi-umfang-werte" value={umfang}
+                onChange={e => setUmfang(e.target.value)} placeholder="optional auswählen oder eingeben" />
+              <datalist id="mibi-umfang-werte">
+                <option value="Standard" />
+                <option value="Komplett" />
+                <option value="inklusive Enterokokken" />
+              </datalist>
+            </label>}
+          </div>
+          <p className="notice unterauftrag-hinweis">
+            Der neue Anteil startet mit Status <strong>offen</strong> und Befund <strong>nicht erfasst</strong>.
+            Prüfbericht und Ergebnis können anschließend getrennt bearbeitet werden.
+          </p>
+          {fehler && <p className="notice">{fehler}</p>}
+        </> : <p className="notice">Legionellen, Mibi und Chemie sind bei diesem Auftrag bereits angelegt.</p>}
+      </div>
+
+      <div className="pm-fuss">
+        <button onClick={onClose}>Abbrechen</button>
+        {fehlendeArten.length > 0 && <button className="primary" onClick={speichern}
+          disabled={laeuft || (!!proben && Number(proben) < 1)}>
+          <i className="fas fa-plus" aria-hidden="true"></i>
+          {laeuft ? 'Wird ergänzt …' : `${ART_LABEL[art]} als ${nummer} ergänzen`}
+        </button>}
+      </div>
+    </div>
+  </div>
+}
+
 export default function Auftragsbuch() {
   const [auftraege, setAuftraege] = useState<Auftrag[]>([])
   const [kunden, setKunden] = useState<Kunde[]>([])
@@ -30,6 +139,7 @@ export default function Auftragsbuch() {
   const [nvNummer, setNvNummer] = useState('')
   const [nvMeldung, setNvMeldung] = useState('')
   const [berichtAuftrag, setBerichtAuftrag] = useState<Auftrag | null>(null)
+  const [ergaenzeAuftrag, setErgaenzeAuftrag] = useState<Auftrag | null>(null)
 
   const laden = () => {
     db.auftraege().then(setAuftraege); db.kunden().then(setKunden)
@@ -208,9 +318,13 @@ export default function Auftragsbuch() {
               </td>
               <td><StatusBadge s={z.u.status} /></td>
               <td><ErgebnisBadge s={z.u.ergebnis} /></td>
-              <td className="no-print" style={{ whiteSpace: 'nowrap' }}>
+              <td className="no-print auftrag-aktionen">
                 <button className="zeile-btn" onClick={() => setBerichtAuftrag(z.a)} title="Prüfbericht erfassen">
                   <i className="fas fa-file-circle-check" aria-hidden="true"></i> Bericht
+                </button>
+                <button className="zeile-btn unterauftrag-plus" onClick={() => setErgaenzeAuftrag(z.a)}
+                  title="Mibi, Chemie oder Legionellen nachträglich ergänzen">
+                  <i className="fas fa-plus" aria-hidden="true"></i> Anteil
                 </button>
               </td>
             </tr>
@@ -233,6 +347,17 @@ export default function Auftragsbuch() {
           bereichId={berichtAuftrag.bereich_id}
           onClose={() => setBerichtAuftrag(null)}
           onSaved={laden}
+        />
+      )}
+      {ergaenzeAuftrag && (
+        <UnterauftragErgaenzenModal
+          auftrag={ergaenzeAuftrag}
+          onClose={() => setErgaenzeAuftrag(null)}
+          onSaved={nummer => {
+            setErgaenzeAuftrag(null)
+            setNvMeldung(`${nummer} wurde nachträglich ergänzt. Die Hauptnummer bleibt unverändert.`)
+            laden()
+          }}
         />
       )}
     </>
