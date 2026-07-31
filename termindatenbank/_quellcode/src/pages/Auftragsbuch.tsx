@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { db } from '../lib/data'
-import type { Anlage, Auftrag, Bereich, FachlicheUntersuchungsart, Kunde, Stornogrund, Termin, Untersuchungsart, Unterauftrag } from '../lib/types'
+import type { Anlage, Auftrag, Bereich, FachlicheUntersuchungsart, Kunde, Stornogrund, Termin, Ueberschreitungsphase, Untersuchungsart, Unterauftrag } from '../lib/types'
 import { ART_LABEL, ERGEBNIS_LABEL, FACHLICHE_ART_LABEL, STATUS_LABEL, STORNOGRUND_LABEL, fmtDatum, nummerVoll, kundeAnzeige } from '../lib/types'
 import { Abschnitt, ErgebnisBadge, Meldung, Nr, StatusBadge } from '../components/ui'
 import BerichtModal from '../components/BerichtModal'
@@ -11,6 +11,10 @@ const ART_SUFFIX: Record<Untersuchungsart, string> = {
   legionellen: '', mibi: 'M', chemie: 'C', vorortparameter: 'V', sonstiges: 'S',
 }
 const AKTUELLES_JAHR = new Date().getFullYear()
+const heuteLokal = () => {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
 
 type AuftragSchnelltreffer = {
   art: 'kunde' | 'anlage' | 'bereich'
@@ -248,6 +252,7 @@ export default function Auftragsbuch() {
   const [anlagen, setAnlagen] = useState<Anlage[]>([])
   const [bereiche, setBereiche] = useState<Bereich[]>([])
   const [termine, setTermine] = useState<Termin[]>([])
+  const [phasen, setPhasen] = useState<Ueberschreitungsphase[]>([])
   const [suche, setSuche] = useState('')
   const [fJahr, setFJahr] = useState(String(AKTUELLES_JAHR)); const [fKunde, setFKunde] = useState('')
   const [fArt, setFArt] = useState(''); const [fStatus, setFStatus] = useState('')
@@ -262,6 +267,7 @@ export default function Auftragsbuch() {
   const [nvAnlage, setNvAnlage] = useState('')
   const [nvBereich, setNvBereich] = useState('')
   const [nvTermin, setNvTermin] = useState('')
+  const [nvDatum, setNvDatum] = useState(heuteLokal)
   const [nvArten, setNvArten] = useState<Partial<Record<Untersuchungsart, boolean>>>({
     legionellen: true, mibi: false, chemie: false, vorortparameter: false,
   })
@@ -271,6 +277,7 @@ export default function Auftragsbuch() {
   const [nvManuell, setNvManuell] = useState(false)
   const [nvNummer, setNvNummer] = useState('')
   const [nvSuche, setNvSuche] = useState('')
+  const [nvLaeuft, setNvLaeuft] = useState(false)
   const [nvMeldung, setNvMeldung] = useState('')
   const [berichtAuftrag, setBerichtAuftrag] = useState<Auftrag | null>(null)
   const [ergaenzeAuftrag, setErgaenzeAuftrag] = useState<Auftrag | null>(null)
@@ -282,6 +289,7 @@ export default function Auftragsbuch() {
   const laden = () => {
     db.auftraege().then(setAuftraege); db.kunden().then(setKunden)
     db.anlagen().then(setAnlagen); db.bereiche().then(setBereiche); db.termine().then(setTermine)
+    db.phasen().then(setPhasen).catch(() => setPhasen([]))
     db.nummernstaende().then(setNummernstaende)
   }
   useEffect(laden, [])
@@ -432,14 +440,28 @@ export default function Auftragsbuch() {
     return ergebnis
   }, [blockAnsicht, blockStand, blockPrefix, gefiltert])
 
-  const nvTerminDatum = termine.find(t => t.id === nvTermin)?.datum
-  const nvNummernJahr = nvTerminDatum ? Number(nvTerminDatum.slice(0, 4)) : blockJahr
+  const nvTerminDaten = termine.find(t => t.id === nvTermin)
+  const nvBereichDaten = bereiche.find(b => b.id === nvBereich)
+  const nvPhaseOffen = phasen.some(p => p.bereich_id === nvBereich
+    && !['regelturnus_bestaetigt', 'abgeschlossen'].includes(p.status))
+  const nvIstNachuntersuchung = nvPhaseOffen || nvBereichDaten?.turnus_art === 'nachuntersuchung'
+  const nvNummernJahr = Number((nvTerminDaten?.datum ?? nvDatum).slice(0, 4)) || blockJahr
+
+  useEffect(() => {
+    if (!nvBereich) return
+    if (nvTerminDaten?.datum) setNvDatum(nvTerminDaten.datum)
+    setNvFachArt(nvTerminDaten?.fachliche_untersuchungsart
+      ?? (nvIstNachuntersuchung ? 'nachuntersuchung' : 'orientierend'))
+  }, [nvBereich, nvTermin, nvTerminDaten?.datum,
+    nvTerminDaten?.fachliche_untersuchungsart, nvIstNachuntersuchung])
+
   useEffect(() => {
     if (nvOffen) db.nummerVorschau(nvNummernJahr).then(setNvVorschau).catch(() => setNvVorschau('–'))
   }, [nvOffen, auftraege, nvNummernJahr])
 
   const nummerVergeben = async () => {
     if (!nvBereich) { setNvMeldung('Bitte Bereich wählen.'); return }
+    if (!nvDatum) { setNvMeldung('Bitte Untersuchungsdatum angeben.'); return }
     const vorhandenerAuftrag = nvTermin && auftraege.find(a => a.bereich_id === nvBereich && a.termin_id === nvTermin)
     if (vorhandenerAuftrag) { setNvMeldung(`Für diesen Bereich ist zum gewählten Termin bereits ${vorhandenerAuftrag.auftragsnummer} hinterlegt.`); return }
     if (nvManuell && !/^\d{2}-\d{4}$/.test(nvNummer.trim())) {
@@ -447,6 +469,8 @@ export default function Auftragsbuch() {
     }
     const aktiveArten = NACHERFASSBARE_ARTEN.filter(art => nvArten[art])
     if (!aktiveArten.length) { setNvMeldung('Bitte mindestens eine Labor-/Leistungsart auswählen.'); return }
+    setNvLaeuft(true)
+    let neuAngelegterTermin = ''
     try {
       const arten = aktiveArten.map((art, index) => ({
         art,
@@ -454,12 +478,32 @@ export default function Auftragsbuch() {
         umfang: art === 'mibi' ? nvMibiUmfang : undefined,
         proben_geplant: nvProben[art] ? Number(nvProben[art]) : undefined,
       }))
-      const nr = await db.auftragAnlegen(nvBereich, nvTermin || undefined,
+      let terminId = nvTermin
+      if (terminId) {
+        await db.terminAktualisieren(terminId, { fachliche_untersuchungsart: nvFachArt })
+      } else {
+        terminId = await db.terminAnlegen({
+          kunde_id: nvKunde,
+          anlage_id: nvAnlage,
+          bereich_id: nvBereich,
+          datum: nvDatum,
+          status: 'geplant',
+          fachliche_untersuchungsart: nvFachArt,
+          historie_einordnung: 'regulaer',
+        })
+        neuAngelegterTermin = terminId
+      }
+      const nr = await db.auftragAnlegen(nvBereich, terminId,
         arten, nvManuell ? nvNummer.trim() : undefined, nvFachArt, nvNummernJahr)
-      setNvMeldung(nvTermin ? `Auftragsnummer ${nr} wurde dem bestehenden Termin zugeordnet.` : `Auftragsnummer ${nr} nacherfasst (ohne Termin – im Auftragsbuch geführt).`)
+      setNvMeldung(nvTermin
+        ? `Auftragsnummer ${nr} wurde dem bestehenden Termin am ${fmtDatum(nvDatum)} zugeordnet.`
+        : `Spontaner Termin am ${fmtDatum(nvDatum)} und Auftrag ${nr} wurden gemeinsam angelegt.`)
       setNvNummer(''); setNvManuell(false); laden()
     } catch (e: any) {
+      if (neuAngelegterTermin) await db.terminLoeschen(neuAngelegterTermin).catch(() => undefined)
       setNvMeldung('Fehler: ' + (e.message ?? e))
+    } finally {
+      setNvLaeuft(false)
     }
   }
 
@@ -506,7 +550,8 @@ export default function Auftragsbuch() {
         {nvOffen && (
           <div style={{ padding: '16px 20px' }}>
             <p className="hint direktauftrag-hinweis">
-              Für Altbestand oder Aufträge, die nicht über Dashboard → Planen angelegt wurden.
+              Für spontane Untersuchungen und Altbestand: Termin und Auftrag werden genauso verknüpft
+              wie bei Dashboard → Planen.
             </p>
             <div className="auftrag-schnellsuche">
               <div className="suchfeld">
@@ -551,16 +596,26 @@ export default function Auftragsbuch() {
                   {bereiche.filter(b => b.anlage_id === nvAnlage).map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                 </select>
               </label>
-              <label className="f">Bestehendem Termin zuordnen
+              <label className="f">Vorhandenen Termin verwenden (optional)
                 <select value={nvTermin} onChange={e => setNvTermin(e.target.value)} disabled={!nvAnlage}>
-                  <option value="">– ohne Termin nacherfassen –</option>
+                  <option value="">– neuen/spontanen Termin erfassen –</option>
                   {termine.filter(t => t.anlage_id === nvAnlage && t.status !== 'abgesagt' && (!nvBereich || t.bereich_id === nvBereich)).sort((a, b) => b.datum.localeCompare(a.datum)).map(t => <option key={t.id} value={t.id}>{fmtDatum(t.datum)} · {t.status}</option>)}
                 </select>
+              </label>
+              <label className="f">Untersuchungstermin
+                <input type="date" value={nvDatum} onChange={e => setNvDatum(e.target.value)}
+                  disabled={!!nvTermin} />
+                <span className="hint">{nvTermin ? 'Datum des vorhandenen Termins' : 'Heute für eine spontane Untersuchung; für Altbestand anpassen'}</span>
               </label>
               <label className="f">Fachliche Untersuchungsart
                 <select value={nvFachArt} onChange={e => setNvFachArt(e.target.value as FachlicheUntersuchungsart)}>
                   {Object.entries(FACHLICHE_ART_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                 </select>
+                <span className={`hint ${nvIstNachuntersuchung ? 'direktauftrag-nu' : ''}`}>
+                  {nvIstNachuntersuchung
+                    ? 'Automatisch als Nachuntersuchung vorgeschlagen: NU-Turnus oder offene Phase vorhanden.'
+                    : 'Ohne offene Phase: orientierende Untersuchung oder bei Bedarf nichtamtliche Eigenprobe wählen.'}
+                </span>
               </label>
             </div>
             <fieldset className="nacherfass-arten">
@@ -593,9 +648,10 @@ export default function Auftragsbuch() {
                 <input type="checkbox" checked={nvManuell} onChange={e => setNvManuell(e.target.checked)} />
                 manuell eingreifen
               </label>
-              <button className="primary" onClick={nummerVergeben} disabled={!nvBereich}>
+              <button className="primary" onClick={nummerVergeben} disabled={!nvBereich || !nvDatum || nvLaeuft}>
                 <i className="fas fa-hashtag" aria-hidden="true"></i>
-                {nvTermin ? 'Zu vorhandenem Termin anlegen' : 'Auftrag ohne Termin anlegen'}
+                {nvLaeuft ? 'Wird angelegt …'
+                  : nvTermin ? 'Mit vorhandenem Termin verknüpfen' : 'Spontanen Termin & Auftrag anlegen'}
               </button>
             </div>
             {nvManuell && (

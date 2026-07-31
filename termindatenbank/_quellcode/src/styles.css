@@ -682,6 +682,7 @@ button.danger, .danger { color: #a62424; }
   overflow: hidden; text-overflow: ellipsis;
 }
 .auftrag-suchtreffer > .hint { padding: 8px 10px; }
+.direktauftrag-nu { color: #a24b24; font-weight: 650; }
 
 /* ---------- Schneller Seitenanfang ---------- */
 .nach-oben {

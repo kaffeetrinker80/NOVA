@@ -1,5 +1,26 @@
 # NOVAplan – Testschritte für diesen Ansatz
 
+## Aktuelles Update v3.18: Spontantermin mit Auftrag
+
+Für dieses Update ist keine neue SQL-Migration erforderlich.
+
+1. Im Auftragsbuch die **Direkte Erfassung** öffnen und einen Bereich über die
+   Schnellsuche auswählen.
+2. Erwartung: Das Untersuchungsdatum ist mit heute vorbelegt und kann für eine
+   Nach- oder Altdokumentation geändert werden.
+3. Bei einem Bereich mit offener Überschreitungs-/NU-Phase oder NU-Turnus muss
+   automatisch **Nachuntersuchung** vorgeschlagen werden.
+4. Ohne offene Phase wird **orientierende Untersuchung** vorgeschlagen;
+   **nichtamtliche Eigenprobe** bleibt manuell auswählbar.
+5. **Spontanen Termin & Auftrag anlegen** wählen.
+6. Erwartung: Es entstehen ein verknüpfter Termin und die Auftragsnummer aus
+   dem Jahr des Untersuchungsdatums. Der Auftrag erscheint wie ein normal über
+   das Dashboard geplanter Auftrag im Auftragsbuch und weiteren Ablauf.
+7. Alternativ einen vorhandenen Termin auswählen. Dessen Datum wird übernommen
+   und gesperrt; der neue Auftrag wird genau diesem Termin zugeordnet.
+8. Eine bereits belegte manuelle Nummer testen. Erwartung: Die Fehlermeldung
+   erscheint und ein dafür neu angelegter Spontantermin bleibt nicht zurück.
+
 ## Aktuelles Update v3.17: Direkte Auftragserfassung mit Schnellsuche
 
 Für dieses Update ist keine neue SQL-Migration erforderlich.
