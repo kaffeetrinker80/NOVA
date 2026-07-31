@@ -1,5 +1,37 @@
 # NOVAplan – Testschritte für diesen Ansatz
 
+## Aktuelles Update v3.14: Auftragsnummernblock und flexible GA-Freigabe
+
+Die Migration `0030_auftragsnummernblock_altbestand.sql` ist im Projekt
+`kaffeetrinker80` bereits ausgeführt.
+
+Test Auftragsbuch:
+
+1. Auftragsbuch öffnen und das Jahr 2026 wählen.
+2. Erwartung: Der Nummernblock wird vom aktuellen Stand absteigend bis
+   `26-0001` angezeigt. Freie Nummern sind dezente leere Zeilen.
+3. Bei einer freien Nummer **Belegen** anklicken.
+4. Erwartung: Die Nacherfassung öffnet sich mit genau dieser Nummer. Erst beim
+   Speichern entsteht ein echter Auftrag.
+5. **Blockstand setzen** öffnen und testweise nur denselben aktuellen Stand
+   bestätigen. Der Zähler darf dabei nicht sinken.
+
+Test Überschreitungsphase:
+
+1. Eine saubere weitergehende Legionellen-Untersuchung öffnen.
+2. Nur wenn das Gesundheitsamt sie anerkennt, die Option
+   **vom Gesundheitsamt als saubere NU anerkannt** aktivieren.
+3. In **Phase verwalten** prüfen, ob sie im Zähler erscheint.
+4. Eine vorzeitige GA-Freigabe vor `3/3` mit Datum und Begründung erfassen.
+5. Erwartung: Die Phase wird als durch das Gesundheitsamt beendet dokumentiert.
+
+## Wichtig ab v3.13b: Produktions-Build mit Supabase
+
+Die fertig gebaute Version ist wieder mit dem Projekt `kaffeetrinker80`
+verbunden. Ein Produktions-Build ohne `VITE_SUPABASE_URL` und
+`VITE_SUPABASE_ANON_KEY` wird künftig automatisch abgebrochen, statt unbemerkt
+mit den drei Demo-Kunden ausgeliefert zu werden.
+
 ## Aktuelles Update v3.13: getrennte Prüfberichte L / M / C
 
 Für dieses Update ist **keine neue SQL-Migration** erforderlich. Die vorhandene

@@ -18,7 +18,9 @@ npm run dev        # startet im Demo-Modus (ohne Supabase, In-Memory-Beispieldat
 ## Supabase verbinden
 
 Bereits erledigt für das Projekt **kaffeetrinker80** (`avuimpwjslrgpdahyloa`):
-Alle vier Migrationen sind live, `.env` ist mit den echten Zugangsdaten befüllt.
+Die Migrationen sind live und die fertig gebaute App ist mit diesem Projekt verbunden.
+Für einen neuen Build muss `_quellcode/.env` lokal mit Projekt-URL und
+Publishable Key vorhanden sein; diese Datei ist bewusst nicht Teil der ZIP.
 Alle Tabellen/Views/Funktionen liegen in einem **eigenen Schema `nova_termindatenbank_data`**
 (nicht in `public`) und tragen zusätzlich das Präfix **`td_`**
 (z. B. `nova_termindatenbank_data.td_kunden`, `…td_termine`, `…td_auftraege`).

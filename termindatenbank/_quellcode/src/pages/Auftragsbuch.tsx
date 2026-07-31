@@ -10,6 +10,7 @@ const NACHERFASSBARE_ARTEN: Untersuchungsart[] = ['legionellen', 'mibi', 'chemie
 const ART_SUFFIX: Record<Untersuchungsart, string> = {
   legionellen: '', mibi: 'M', chemie: 'C', vorortparameter: 'V', sonstiges: 'S',
 }
+const AKTUELLES_JAHR = new Date().getFullYear()
 
 function UnterauftragErgaenzenModal({ auftrag, onClose, onSaved }: {
   auftrag: Auftrag
@@ -234,7 +235,7 @@ export default function Auftragsbuch() {
   const [bereiche, setBereiche] = useState<Bereich[]>([])
   const [termine, setTermine] = useState<Termin[]>([])
   const [suche, setSuche] = useState('')
-  const [fJahr, setFJahr] = useState(''); const [fKunde, setFKunde] = useState('')
+  const [fJahr, setFJahr] = useState(String(AKTUELLES_JAHR)); const [fKunde, setFKunde] = useState('')
   const [fArt, setFArt] = useState(''); const [fStatus, setFStatus] = useState('')
   const [fErgebnis, setFErgebnis] = useState('')
   const [bearbeite, setBearbeite] = useState<string | null>(null)
@@ -258,10 +259,15 @@ export default function Auftragsbuch() {
   const [berichtAuftrag, setBerichtAuftrag] = useState<Auftrag | null>(null)
   const [ergaenzeAuftrag, setErgaenzeAuftrag] = useState<Auftrag | null>(null)
   const [verwalteUnterauftrag, setVerwalteUnterauftrag] = useState<{ auftrag: Auftrag; unterauftrag: Unterauftrag } | null>(null)
+  const [nummernstaende, setNummernstaende] = useState<Array<{ jahr: number; letzter_wert: number }>>([])
+  const [leereNummern, setLeereNummern] = useState(true)
+  const [blockBearbeiten, setBlockBearbeiten] = useState(false)
+  const [blockWert, setBlockWert] = useState('')
 
   const laden = () => {
     db.auftraege().then(setAuftraege); db.kunden().then(setKunden)
     db.anlagen().then(setAnlagen); db.bereiche().then(setBereiche); db.termine().then(setTermine)
+    db.nummernstaende().then(setNummernstaende)
   }
   useEffect(laden, [])
   useEffect(() => {
@@ -300,7 +306,41 @@ export default function Auftragsbuch() {
     && (!fErgebnis || z.u.ergebnis === fErgebnis),
   )
 
-  const jahre = [...new Set(zeilen.map(z => z.a.jahr))].sort().reverse()
+  const jahre = [...new Set([
+    AKTUELLES_JAHR,
+    ...zeilen.map(z => z.a.jahr),
+    ...nummernstaende.map(z => z.jahr),
+  ])].sort().reverse()
+  const blockJahr = Number(fJahr || AKTUELLES_JAHR)
+  const blockStand = nummernstaende.find(x => x.jahr === blockJahr)?.letzter_wert ?? 0
+  const blockPrefix = String(blockJahr % 100).padStart(2, '0')
+  const blockAnsicht = !!fJahr && leereNummern
+    && !suche.trim() && !fKunde && !fArt && !fStatus && !fErgebnis
+  const buchZeilen = useMemo(() => {
+    if (!blockAnsicht || blockStand < 1) {
+      return gefiltert.map(z => ({ typ: 'belegt' as const, z }))
+    }
+    const belegt = new Map<string, typeof gefiltert>()
+    for (const z of gefiltert) {
+      const vorhanden = belegt.get(z.a.auftragsnummer) ?? []
+      vorhanden.push(z)
+      belegt.set(z.a.auftragsnummer, vorhanden)
+    }
+    const ergebnis: Array<
+      { typ: 'belegt'; z: (typeof gefiltert)[number] }
+      | { typ: 'frei'; nummer: string }
+    > = []
+    for (let lauf = blockStand; lauf >= 1; lauf--) {
+      const nummer = `${blockPrefix}-${String(lauf).padStart(4, '0')}`
+      const vorhandene = belegt.get(nummer)
+      if (vorhandene?.length) {
+        vorhandene.forEach(z => ergebnis.push({ typ: 'belegt', z }))
+      } else {
+        ergebnis.push({ typ: 'frei', nummer })
+      }
+    }
+    return ergebnis
+  }, [blockAnsicht, blockStand, blockPrefix, gefiltert])
 
   useEffect(() => { if (nvOffen) db.nummerVorschau().then(setNvVorschau).catch(() => setNvVorschau('–')) }, [nvOffen, auftraege])
 
@@ -329,6 +369,34 @@ export default function Auftragsbuch() {
     }
   }
 
+  const blockstandSpeichern = async () => {
+    const wert = Number(blockWert)
+    if (!Number.isInteger(wert) || wert < 1 || wert > 9999) {
+      setNvMeldung('Bitte einen Nummernstand zwischen 0001 und 9999 eingeben.')
+      return
+    }
+    try {
+      const erg = await db.nummernblockSetzen(blockJahr, wert)
+      setNvMeldung(`Nummernblock ${erg.jahr} ist bis ${erg.nummer} vorbereitet. Freie Nummern wurden nicht als Aufträge angelegt.`)
+      setBlockWert('')
+      setBlockBearbeiten(false)
+      db.nummernstaende().then(setNummernstaende)
+      db.nummerVorschau().then(setNvVorschau)
+    } catch (e: any) {
+      setNvMeldung('Nummernblock konnte nicht gesetzt werden: ' + (e.message ?? e))
+    }
+  }
+
+  const freieNummerBelegen = (nummer: string) => {
+    setNvNummer(nummer)
+    setNvManuell(true)
+    setNvOffen(true)
+    setNvMeldung(`${nummer} ist frei und für die Nacherfassung ausgewählt.`)
+    window.setTimeout(() => document.getElementById('auftrag-nacherfassen')?.scrollIntoView({
+      behavior: 'smooth', block: 'start',
+    }), 0)
+  }
+
   const speichern = async (id: string, feld: string, wert: string) => {
     await db.unterauftragAktualisieren(id, { [feld]: feld === 'proben_ist' ? +wert : wert } as any)
     laden()
@@ -338,6 +406,7 @@ export default function Auftragsbuch() {
     <>
       {nvMeldung && <div className="notice">{nvMeldung}</div>}
 
+      <div id="auftrag-nacherfassen">
       <Abschnitt titel="Auftrag / Auftragsnummer nacherfassen"
         aktionen={<button onClick={() => setNvOffen(!nvOffen)}>
           <i className={`fas ${nvOffen ? 'fa-chevron-up' : 'fa-hashtag'}`} aria-hidden="true"></i>
@@ -420,11 +489,37 @@ export default function Auftragsbuch() {
           </div>
         )}
       </Abschnitt>
+      </div>
 
-      <Abschnitt titel={`Auftragsbuch (${gefiltert.length})`}
+      <Abschnitt titel={`Auftragsbuch (${gefiltert.length} belegte Einträge)`}
         aktionen={<button onClick={() => window.print()}>
           <i className="fas fa-print" aria-hidden="true"></i> Gefilterte Liste drucken
         </button>}>
+      <div className="auftragsblock-leiste">
+        <div>
+          <strong>Nummernblock {blockJahr}</strong>
+          <span className="hint">{blockStand
+            ? ` ${blockPrefix}-0001 bis ${blockPrefix}-${String(blockStand).padStart(4, '0')}`
+            : ' noch nicht vorbereitet'}</span>
+        </div>
+        <label className="auftragsblock-leer">
+          <input type="checkbox" checked={leereNummern} onChange={e => setLeereNummern(e.target.checked)} />
+          freie Nummern anzeigen
+        </label>
+        {blockBearbeiten
+          ? <div className="auftragsblock-setzen">
+              <span>{blockPrefix}-</span>
+              <input inputMode="numeric" maxLength={4} value={blockWert}
+                onChange={e => setBlockWert(e.target.value.replace(/\D/g, ''))}
+                placeholder={String(blockStand || 1).padStart(4, '0')} autoFocus />
+              <button className="primary" onClick={blockstandSpeichern}>Block vorbereiten</button>
+              <button onClick={() => setBlockBearbeiten(false)}>Abbrechen</button>
+            </div>
+          : <button onClick={() => {
+              setBlockWert(blockStand ? String(blockStand).padStart(4, '0') : '')
+              setBlockBearbeiten(true)
+            }}><i className="fas fa-layer-group" aria-hidden="true"></i> Blockstand setzen</button>}
+      </div>
       <div className="filters">
         <input placeholder="Suche: Auftragsnummer, Kunde, Anlage, Bereich …" value={suche} onChange={e => setSuche(e.target.value)} style={{ minWidth: 280 }} />
         <select value={fJahr} onChange={e => setFJahr(e.target.value)}><option value="">Jahr: alle</option>{jahre.map(j => <option key={j}>{j}</option>)}</select>
@@ -441,8 +536,18 @@ export default function Auftragsbuch() {
           <th>Untersuchung</th><th>Laborart / Umfang</th><th>Proben (Soll/Ist)</th><th>Status</th><th>Ergebnis</th><th></th>
         </tr></thead>
         <tbody>
-          {gefiltert.map(z => (
-            <tr key={z.u.id} className={z.u.status === 'storniert' ? 'unterauftrag-storniert' : ''}>
+          {buchZeilen.map(eintrag => {
+            if (eintrag.typ === 'frei') return <tr key={eintrag.nummer} className="auftragsnummer-frei">
+              <td><Nr>{eintrag.nummer}</Nr></td>
+              <td colSpan={9}><span className="hint">freie Auftragsnummer</span></td>
+              <td className="no-print auftrag-aktionen">
+                <button className="zeile-btn unterauftrag-plus" onClick={() => freieNummerBelegen(eintrag.nummer)}>
+                  <i className="fas fa-plus" aria-hidden="true"></i> Belegen
+                </button>
+              </td>
+            </tr>
+            const z = eintrag.z
+            return <tr key={z.u.id} className={z.u.status === 'storniert' ? 'unterauftrag-storniert' : ''}>
               <td><Nr>{z.nummer}</Nr></td>
               <td>{kundeAnzeige(z.kunde)}</td>
               <td>{z.anlage?.name ?? '–'}</td>
@@ -476,8 +581,8 @@ export default function Auftragsbuch() {
                 </button>
               </td>
             </tr>
-          ))}
-          {gefiltert.length === 0 && <tr><td colSpan={11} className="hint">Keine Aufträge für die gewählten Filter.</td></tr>}
+          })}
+          {buchZeilen.length === 0 && <tr><td colSpan={11} className="hint">Keine Aufträge für die gewählten Filter.</td></tr>}
         </tbody>
       </table>
       </div>

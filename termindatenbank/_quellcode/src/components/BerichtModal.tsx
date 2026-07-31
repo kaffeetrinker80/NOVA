@@ -192,7 +192,11 @@ export default function BerichtModal({ auftrag, kundeKurz, bereichName, bereichI
                   </select>
                 </label>
                 {z.befund === 'sauber' && aktivePhasen.length > 0 && <div>
-                  <label className="hint"><input type="checkbox" checked={z.zaehltSauber} onChange={e => setZeile(i, { zaehltSauber: e.target.checked, phaseId: e.target.checked ? (z.phaseId ?? aktivePhasen[0].id) : undefined })} /> zählt als NU ohne Befund</label>
+                  <label className="hint"><input type="checkbox" checked={z.zaehltSauber} onChange={e => setZeile(i, { zaehltSauber: e.target.checked, phaseId: e.target.checked ? (z.phaseId ?? aktivePhasen[0].id) : undefined })} /> {fachlicheArt === 'weitergehend'
+                    ? 'vom Gesundheitsamt als saubere NU anerkannt'
+                    : fachlicheArt === 'nachuntersuchung'
+                      ? 'als saubere Nachuntersuchung zählen'
+                      : 'vom Gesundheitsamt als saubere NU anerkannt'}</label>
                   {z.zaehltSauber && <select value={z.phaseId ?? ''} onChange={e => setZeile(i, { phaseId: e.target.value })}>{aktivePhasen.map(p => <option key={p.id} value={p.id}>{p.eroeffnet_am} · {p.status}</option>)}</select>}
                 </div>}
                 {z.befund === 'ueberschreitung' && <label className="hint"><input type="checkbox" checked={z.neuePhase} onChange={e => setZeile(i, { neuePhase: e.target.checked })} /> neue Überschreitungsphase eröffnen</label>}

@@ -11,6 +11,7 @@ export default function PhaseModal({ phase, bereichName, onClose, onSaved }: {
   const [massnahmenAm, setMassnahmenAm] = useState(phase.massnahmen_abschluss_am ?? '')
   const [gaAm, setGaAm] = useState(phase.gesundheitsamt_freigabe_am ?? '')
   const [gaAz, setGaAz] = useState(phase.gesundheitsamt_aktenzeichen ?? '')
+  const [gaGrund, setGaGrund] = useState(phase.begruendung_abweichung ?? '')
   const [notiz, setNotiz] = useState(phase.notizen ?? '')
   const [fehler, setFehler] = useState(''); const [laeuft, setLaeuft] = useState(false)
   useEffect(() => { db.bewertungenFuerPhase(phase.id).then(setBewertungen).catch(e => setFehler(e.message ?? String(e))) }, [phase.id])
@@ -19,10 +20,18 @@ export default function PhaseModal({ phase, bereichName, onClose, onSaved }: {
   const speichern = async (aktion: 'massnahmen' | 'regelturnus' | 'abschluss') => {
     if (aktion === 'abschluss' && saubere.length < phase.saubere_nu_erforderlich) { setFehler(`Für den Standardabschluss fehlen noch ${phase.saubere_nu_erforderlich - saubere.length} Nachuntersuchung(en) ohne Befund.`); return }
     if (aktion === 'regelturnus' && !gaAm) { setFehler('Für die vorzeitige Rückkehr zum Regelturnus bitte das Datum der GA-Freigabe eintragen.'); return }
+    if (aktion === 'regelturnus' && !gaGrund.trim()) { setFehler('Bitte die Entscheidung bzw. Begründung des Gesundheitsamts dokumentieren.'); return }
     setLaeuft(true); setFehler('')
     try {
       if (aktion === 'massnahmen') await db.phaseAktualisieren(phase.id, { status: 'nachuntersuchung', massnahmen_abschluss_am: massnahmenAm || heute, notizen: notiz || undefined })
-      if (aktion === 'regelturnus') await db.phaseAktualisieren(phase.id, { status: 'regelturnus_bestaetigt', gesundheitsamt_freigabe_am: gaAm, gesundheitsamt_aktenzeichen: gaAz || undefined, abgeschlossen_am: gaAm, notizen: notiz || undefined })
+      if (aktion === 'regelturnus') await db.phaseAktualisieren(phase.id, {
+        status: 'regelturnus_bestaetigt',
+        gesundheitsamt_freigabe_am: gaAm,
+        gesundheitsamt_aktenzeichen: gaAz || undefined,
+        begruendung_abweichung: gaGrund.trim(),
+        abgeschlossen_am: gaAm,
+        notizen: notiz || undefined,
+      })
       if (aktion === 'abschluss') await db.phaseAktualisieren(phase.id, { status: 'abgeschlossen', massnahmen_abschluss_am: massnahmenAm || undefined, abgeschlossen_am: heute, notizen: notiz || undefined })
       onSaved(); onClose()
     } catch (e: any) { setFehler(e.message ?? String(e)); setLaeuft(false) }
@@ -30,15 +39,27 @@ export default function PhaseModal({ phase, bereichName, onClose, onSaved }: {
   return <div className="modal-hintergrund" onClick={e => e.target === e.currentTarget && onClose()}><div className="modal" role="dialog" aria-modal="true" aria-label="Überschreitungsphase">
     <div className="modal-kopf"><div><strong>Überschreitungsphase verwalten</strong><div className="hint">{bereichName ?? 'Untersuchungsbereich'} · eröffnet {fmtDatum(phase.eroeffnet_am)} · {phase.ausloeser}</div></div><button className="modal-schliessen" onClick={onClose} aria-label="Schließen">×</button></div>
     {fehler && <div className="notice" style={{ margin: '12px 24px 0' }}>{fehler}</div>}
-    <div style={{ padding: '16px 24px 4px' }}><div className="notice" style={{ margin: 0 }}>Nachuntersuchungen ohne Befund: <strong>{saubere.length} / {phase.saubere_nu_erforderlich}</strong></div>
-      <div className="hint" style={{ margin: '8px 0 12px' }}>{saubere.length ? saubere.map(b => fmtDatum(b.bewertungsdatum)).join(' · ') : 'Noch keine als ohne Befund gezählte Nachuntersuchung.'}</div>
+    <div style={{ padding: '16px 24px 4px' }}>
+      <div className="notice" style={{ margin: 0 }}>
+        Anerkannte saubere Nachuntersuchungen: <strong>{saubere.length} / {phase.saubere_nu_erforderlich}</strong>
+      </div>
+      <div className="hint" style={{ margin: '8px 0 12px' }}>
+        Standardablauf: weitergehende Untersuchung + drei saubere NUs. Eine saubere weitergehende
+        Untersuchung zählt nur nach ausdrücklicher Anerkennung durch das Gesundheitsamt als NU.
+        {saubere.length
+          ? <> Gezählt: {saubere.map(b => fmtDatum(b.bewertungsdatum)).join(' · ')}</>
+          : ' Noch keine Untersuchung als saubere NU anerkannt.'}
+      </div>
       <label className="f">Maßnahmen abgeschlossen am<input type="date" value={massnahmenAm} onChange={e => setMassnahmenAm(e.target.value)} /></label>
       <label className="f">Notiz<input value={notiz} onChange={e => setNotiz(e.target.value)} placeholder="optional" /></label>
       <div className="pm-fuss" style={{ margin: '8px 0 0' }}><button onClick={() => speichern('massnahmen')} disabled={laeuft}><i className="fas fa-screwdriver-wrench" aria-hidden="true"></i> Maßnahmenabschluss setzen</button></div>
       <hr style={{ border: 0, borderTop: '1px solid #e5e7eb', margin: '16px 0' }} />
-      <label className="f">GA-Freigabe für Regelturnus<input type="date" value={gaAm} onChange={e => setGaAm(e.target.value)} /></label>
-      <label className="f">Aktenzeichen / Hinweis<input value={gaAz} onChange={e => setGaAz(e.target.value)} placeholder="optional" /></label>
+      <strong>Vorzeitige Rückkehr in den Regelturnus</strong>
+      <p className="hint">Das Gesundheitsamt kann die Phase auch vor 3/3 beenden. Diese Entscheidung wird mit Datum und Begründung dokumentiert.</p>
+      <label className="f">Datum der GA-Freigabe<input type="date" value={gaAm} onChange={e => setGaAm(e.target.value)} /></label>
+      <label className="f">Aktenzeichen<input value={gaAz} onChange={e => setGaAz(e.target.value)} placeholder="optional" /></label>
+      <label className="f">Entscheidung / Begründung<input value={gaGrund} onChange={e => setGaGrund(e.target.value)} placeholder="z. B. Rückkehr nach WGU + 2 sauberen NUs freigegeben" /></label>
     </div>
-    <div className="pm-fuss"><button onClick={() => speichern('abschluss')} disabled={laeuft || saubere.length < phase.saubere_nu_erforderlich}><i className="fas fa-check-double" aria-hidden="true"></i> Nach 3 NUs ohne Befund abschließen</button><button onClick={() => speichern('regelturnus')} disabled={laeuft || !gaAm}><i className="fas fa-landmark" aria-hidden="true"></i> GA-Freigabe übernehmen</button><button onClick={onClose}>Abbrechen</button></div>
+    <div className="pm-fuss"><button onClick={() => speichern('abschluss')} disabled={laeuft || saubere.length < phase.saubere_nu_erforderlich}><i className="fas fa-check-double" aria-hidden="true"></i> Nach {phase.saubere_nu_erforderlich} anerkannten NUs abschließen</button><button onClick={() => speichern('regelturnus')} disabled={laeuft || !gaAm || !gaGrund.trim()}><i className="fas fa-landmark" aria-hidden="true"></i> Vorzeitige GA-Freigabe übernehmen</button><button onClick={onClose}>Abbrechen</button></div>
   </div></div>
 }

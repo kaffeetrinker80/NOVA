@@ -3,6 +3,14 @@ import type { Anlage, Auftrag, Befund, Bereich, FachlicheUntersuchungsart, Kunde
 
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined
 const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
+const demoBuildErlaubt = import.meta.env.DEV || import.meta.env.VITE_ALLOW_DEMO_BUILD === 'true'
+
+if ((!url || !key) && !demoBuildErlaubt) {
+  throw new Error(
+    'Produktions-Build ohne Supabase-Verbindung verhindert. ' +
+    'VITE_SUPABASE_URL und VITE_SUPABASE_ANON_KEY müssen beim Build gesetzt sein.',
+  )
+}
 
 export const supabase: SupabaseClient<any, any, any> | null = url && key
   ? createClient(url, key, { db: { schema: 'nova_termindatenbank_data' } })
@@ -239,6 +247,37 @@ export const db = {
     const { data, error } = await supabase.rpc('td_nummer_vorschau')
     if (error) throw error
     return data as string
+  },
+
+  /** Höchster reservierter/verwendeter Nummernstand je Jahr. */
+  async nummernstaende(): Promise<Array<{ jahr: number; letzter_wert: number }>> {
+    if (!supabase) {
+      return Object.entries(demo.zaehler).map(([jahr, letzter_wert]) => ({
+        jahr: Number(jahr), letzter_wert,
+      }))
+    }
+    const { data, error } = await supabase.from('td_auftragsnummern_zaehler')
+      .select('jahr, letzter_wert').order('jahr', { ascending: false })
+    if (error) throw error
+    return data as Array<{ jahr: number; letzter_wert: number }>
+  },
+
+  /** Zieht den Blockstand nur nach oben; bereits reservierte Nummern werden nie freigegeben. */
+  async nummernblockSetzen(jahr: number, letzterWert: number): Promise<{
+    jahr: number; letzter_wert: number; nummer: string
+  }> {
+    if (!supabase) {
+      demo.zaehler[jahr] = Math.max(demo.zaehler[jahr] ?? 0, letzterWert)
+      return {
+        jahr, letzter_wert: demo.zaehler[jahr],
+        nummer: `${String(jahr % 100).padStart(2, '0')}-${String(demo.zaehler[jahr]).padStart(4, '0')}`,
+      }
+    }
+    const { data, error } = await supabase.rpc('td_nummernblock_bis', {
+      p_jahr: jahr, p_letzter_wert: letzterWert,
+    })
+    if (error) throw error
+    return data as { jahr: number; letzter_wert: number; nummer: string }
   },
 
   /** Legt für einen Bereich einen Hauptauftrag mit zentral vergebener Nummer + Unteraufträgen an.
