@@ -138,7 +138,11 @@ security definer
 set search_path = nova_termindatenbank_data, pg_catalog
 as $$
 declare
-  v_u nova_termindatenbank_data.td_unterauftraege%rowtype;
+  v_suffix text;
+  v_ergebnis nova_termindatenbank_data.td_ergebnisstatus;
+  v_status nova_termindatenbank_data.td_auftragsstatus;
+  v_proben_ist integer;
+  v_art nova_termindatenbank_data.td_untersuchungsart;
   v_nummer text;
 begin
   if not nova_termindatenbank_data.td_ist_mind_disposition() then
@@ -148,23 +152,27 @@ begin
     raise exception 'Bestätigungstext stimmt nicht';
   end if;
 
-  select u,
+  select u.suffix,
+         u.ergebnis,
+         u.status,
+         u.proben_ist,
+         u.art,
          a.auftragsnummer || case when u.suffix = '' then '' else '-' || u.suffix end
-    into v_u, v_nummer
+    into v_suffix, v_ergebnis, v_status, v_proben_ist, v_art, v_nummer
     from nova_termindatenbank_data.td_unterauftraege u
     join nova_termindatenbank_data.td_auftraege a on a.id = u.auftrag_id
    where u.id = p_unterauftrag
    for update of u;
 
-  if v_u.id is null then
+  if v_nummer is null then
     raise exception 'Unterauftrag nicht gefunden';
   end if;
-  if v_u.suffix = '' then
+  if v_suffix = '' then
     raise exception 'Die Hauptnummer kann hier nicht gelöscht werden';
   end if;
-  if v_u.ergebnis <> 'offen'
-     or v_u.status not in ('offen', 'storniert')
-     or coalesce(v_u.proben_ist, 0) <> 0
+  if v_ergebnis <> 'offen'
+     or v_status not in ('offen', 'storniert')
+     or coalesce(v_proben_ist, 0) <> 0
      or exists (
        select 1 from nova_termindatenbank_data.td_untersuchungsbewertungen
         where unterauftrag_id = p_unterauftrag
@@ -183,8 +191,8 @@ begin
   insert into nova_termindatenbank_data.td_aenderungshistorie
     (tabelle, datensatz_id, feld, alter_wert, neuer_wert, geaendert_von)
   values
-    ('td_unterauftraege', v_u.id, 'unterbericht_geloescht',
-     v_nummer || ' / ' || v_u.art::text, 'gelöscht', auth.uid());
+    ('td_unterauftraege', p_unterauftrag, 'unterbericht_geloescht',
+     v_nummer || ' / ' || v_art::text, 'gelöscht', auth.uid());
 
   delete from nova_termindatenbank_data.td_unterauftraege
    where id = p_unterauftrag;

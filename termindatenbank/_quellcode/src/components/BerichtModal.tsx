@@ -14,6 +14,7 @@ const BEFUND_OPTIONEN: Array<[Befund, string]> = [
   ['sauber', 'ohne Befund (= sauber)'],
   ['ueberschreitung', 'Überschreitung'],
 ]
+const ABSCHLUSS_STATUS: Auftragsstatus[] = ['offen', 'abgeschlossen', 'storniert']
 
 /** Prüfbericht + fachlicher Befund je Unterauftrag. Eine Phase wird nur bewusst eröffnet. */
 export default function BerichtModal({ auftrag, kundeKurz, bereichName, bereichId, onClose, onSaved }: {
@@ -23,7 +24,7 @@ export default function BerichtModal({ auftrag, kundeKurz, bereichName, bereichI
   const [zeilen, setZeilen] = useState<Zeile[]>(() => auftrag.unterauftraege.map(u => ({
     id: u.id, nummer: nummerVoll(auftrag, u), art: u.art, umfang: u.umfang,
     geplant: u.proben_geplant, ist: u.proben_ist ?? u.proben_geplant ?? undefined,
-    status: (u.status === 'offen' || u.status === 'beprobt' ? 'abgeschlossen' : u.status) as Auftragsstatus,
+    status: (['offen', 'beprobt', 'im_labor'].includes(u.status) ? 'abgeschlossen' : u.status) as Auftragsstatus,
     befund: u.ergebnis === 'unauffaellig' ? 'sauber' : u.ergebnis === 'ueberschritten' ? 'ueberschreitung' : 'offen',
     zaehltSauber: false, neuePhase: false,
   })))
@@ -108,7 +109,7 @@ export default function BerichtModal({ auftrag, kundeKurz, bereichName, bereichI
         {zeilen.map((z, i) => <tr key={z.id} className={z.status === 'storniert' ? 'unterauftrag-storniert' : z.befund === 'ueberschreitung' ? 'amp-red' : z.befund === 'sauber' ? 'amp-green' : 'amp-yellow'}>
           <td><span className="nr">{z.nummer}</span></td><td>{ART_LABEL[z.art]}{z.umfang && <div className="hint">{z.umfang}</div>}</td>
           <td><input type="number" min={0} style={{ width: 66 }} value={z.ist ?? ''} disabled={z.status === 'storniert'} onChange={e => setZeile(i, { ist: e.target.value ? +e.target.value : undefined })} />{z.geplant != null && <span className="hint"> / {z.geplant}</span>}</td>
-          <td><select value={z.status} disabled={z.status === 'storniert'} onChange={e => setZeile(i, { status: e.target.value as Auftragsstatus })}>{Object.entries(STATUS_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></td>
+          <td><select value={z.status} disabled={z.status === 'storniert'} onChange={e => setZeile(i, { status: e.target.value as Auftragsstatus })}>{ABSCHLUSS_STATUS.map(v => <option key={v} value={v}>{STATUS_LABEL[v]}</option>)}</select></td>
           <td>{z.status === 'storniert'
             ? <span className="badge neutral">nicht durchgeführt</span>
             : <select value={z.befund} onChange={e => setZeile(i, { befund: e.target.value as Befund, neuePhase: false, zaehltSauber: false })}>{BEFUND_OPTIONEN.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>}</td>
