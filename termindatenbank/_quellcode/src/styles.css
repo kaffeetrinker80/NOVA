@@ -56,6 +56,18 @@ header {
 .dashboard-meta { margin: 7px 0 0 0; color: rgba(255,255,255,0.74); font-size: 0.78rem; line-height: 1.2; }
 .header-user { margin-top: 8px; font-size: 0.8rem; color: rgba(255,255,255,0.8); }
 .header-user a { color: rgba(255,255,255,0.92); }
+.header-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.online-anzeige {
+  flex: 0 0 auto; display: flex; align-items: center; gap: 6px;
+  max-width: 42%; padding: 5px 9px; border-radius: 999px;
+  background: rgba(255,255,255,.09); color: rgba(255,255,255,.9);
+  font-size: .72rem; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.online-punkt {
+  width: 7px; height: 7px; flex: 0 0 7px; border-radius: 50%; background: #93a4ae;
+  box-shadow: 0 0 0 2px rgba(255,255,255,.08);
+}
+.online-punkt.verbunden { background: #42d77d; box-shadow: 0 0 0 2px rgba(66,215,125,.18); }
 
 /* ---------- Tab-Navigation ---------- */
 .tabs {
@@ -233,6 +245,8 @@ table.tbl {
 }
 @media (max-width: 760px) {
   .brand-logo { width: 52px; height: 52px; }
+  .header-top { flex-wrap: wrap; }
+  .online-anzeige { max-width: 100%; margin-left: 66px; }
 }
 
 /* ==========================================================

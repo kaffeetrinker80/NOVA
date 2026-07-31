@@ -19,6 +19,13 @@ export default function System() {
       .then(({ data }) => setNutzer((data as any[]) ?? []))
   }, [])
 
+  const nutzerEindeutig = Array.from(nutzer.reduce((map, eintrag) => {
+    const key = eintrag.anzeigename.trim().toLocaleLowerCase('de-DE')
+    const vorhanden = map.get(key)
+    if (!vorhanden || (!vorhanden.aktiv && eintrag.aktiv)) map.set(key, eintrag)
+    return map
+  }, new Map<string, (typeof nutzer)[number]>()).values())
+
   const lesen = async (file: File) => {
     setDateiname(file.name); setMeldung(''); setVorschau(null)
     try {
@@ -96,7 +103,7 @@ export default function System() {
   const zuruecksetzen = async () => {
     if (resetText !== 'RESET') return
     setLaeuft(true)
-    try { setMeldung(await db.resetAlleDaten(false)); setVorschau(null); setResetText('') }
+    try { setMeldung(await db.resetAlleDaten(true)); setVorschau(null); setResetText('') }
     catch (e: any) { setMeldung('Fehler beim Zurücksetzen: ' + e.message) }
     setLaeuft(false)
   }
@@ -167,14 +174,14 @@ export default function System() {
           <table>
             <thead><tr><th>Name</th><th>Rolle</th><th>Status</th></tr></thead>
             <tbody>
-              {nutzer.map((n, i) => (
+              {nutzerEindeutig.map((n, i) => (
                 <tr key={i}>
                   <td>{n.anzeigename}</td>
                   <td>{{ admin: 'Admin', disposition: 'Disposition', probenehmer: 'Probenehmer', lesend: 'Lesend' }[n.rolle] ?? n.rolle}</td>
                   <td><span className={`badge ${n.aktiv ? 'closed' : 'neutral'}`}>{n.aktiv ? 'aktiv' : 'inaktiv'}</span></td>
                 </tr>
               ))}
-              {nutzer.length === 0 && <tr><td colSpan={3} className="hint">Nur mit Supabase-Verbindung sichtbar.</td></tr>}
+              {nutzerEindeutig.length === 0 && <tr><td colSpan={3} className="hint">Nur mit Supabase-Verbindung sichtbar.</td></tr>}
             </tbody>
           </table>
         </div>
@@ -218,9 +225,10 @@ export default function System() {
       <Abschnitt titel="Testphase: Daten zurücksetzen">
         <div style={{ padding: '16px 20px' }}>
           <p className="hint" style={{ marginTop: 0 }}>
-            Löscht <strong>alle</strong> Kunden, Anlagen, Bereiche, Termine und Aufträge für einen
-            frischen Testlauf. Der Auftragsnummern-Zähler bleibt stehen – vergebene Nummern werden
-            nie erneut vergeben. Nur für Admins.
+            Löscht <strong>alle</strong> Kunden, Anlagen, Bereiche, Termine, Aufträge, Unteraufträge,
+            Berichte und Überschreitungsphasen für einen frischen Testlauf. Auch das Auftragsbuch
+            einschließlich Nummernzähler wird geleert; die nächste Nummer des Jahres beginnt wieder
+            bei <code>0001</code>. Benutzerkonten und Rollen bleiben erhalten. Nur für Admins.
           </p>
           <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
             <label className="f">Zur Bestätigung „RESET" eingeben

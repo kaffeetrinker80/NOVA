@@ -7,6 +7,7 @@ import Auftragsbuch from './pages/Auftragsbuch'
 import Stammdaten from './pages/Stammdaten'
 import Auswertungen from './pages/Auswertungen'
 import System from './pages/System'
+import OnlineNutzer from './components/OnlineNutzer'
 
 const ROLLE_LABEL: Record<string, string> = {
   admin: 'Admin', disposition: 'Disposition', probenehmer: 'Probenehmer', lesend: 'Lesend',
@@ -65,7 +66,8 @@ export default function App() {
   return (
     <>
       <header>
-        <div className="header-inner">
+        <div className="header-top">
+          <div className="header-inner">
         <img className="brand-logo" src={`${import.meta.env.BASE_URL}nova_logo_web.png`} alt=""
              onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} />
         <div className="header-text">
@@ -82,6 +84,10 @@ export default function App() {
           <p className="dashboard-meta">Stand: {stand}</p>
         </div>
         </div>
+        </div>
+          {!demoModus && session && rolle && anzeigename && (
+            <OnlineNutzer userId={session.user.id} anzeigename={anzeigename} rolle={rolle} />
+          )}
         </div>
         <div className="header-user">
           {demoModus ? 'Demo-Modus (ohne Supabase)' : (

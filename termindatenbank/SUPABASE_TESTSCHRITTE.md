@@ -1,5 +1,24 @@
 # NOVAplan – Testschritte für diesen Ansatz
 
+## Update v3.21: vollständiger Testreset und Online-Anzeige
+
+Die Migration `0034_reset_testphase_komplett.sql` ist im verbundenen
+Supabase-Projekt bereits eingespielt. Für dieses Projekt muss nur noch die
+neue Oberfläche hochgeladen werden.
+
+1. Unter **System → Testphase: Daten zurücksetzen** `RESET` eingeben.
+   Erwartung: Stammdaten, Termine, Aufträge, Unteraufträge, Berichte,
+   Überschreitungsphasen und der Nummernzähler werden gelöscht.
+2. Danach einen neuen Auftrag im Jahr 2026 anlegen.
+   Erwartung: erste Nummer `26-0001`.
+3. Erwartung nach dem Reset: Benutzerkonten und Rollen sind weiterhin vorhanden.
+   Doppelte Profile mit identischem Anzeigenamen erscheinen in der Benutzerliste
+   nur einmal, zum Beispiel `Marco Neudecker · Admin`.
+4. NOVAplan gleichzeitig in zwei verschiedenen Benutzerkonten öffnen.
+   Erwartung: rechts im Header erscheinen ein grüner Punkt und die eindeutigen
+   Vornamen der aktuell verbundenen Personen. Zwei Sitzungen mit demselben
+   Anzeigenamen werden nur einmal dargestellt.
+
 ## Update v3.20: offene Phase hat Vorrang
 
 Für dieses Update ist keine neue SQL-Migration erforderlich.
