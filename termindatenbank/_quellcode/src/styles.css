@@ -597,7 +597,9 @@ table.tbl {
 .hist-zeile1 { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .hist-rolle { color: var(--text-muted); font-size: .78rem; margin-top: 2px; }
 .hist-auftrag { margin-top: 4px; display: flex; flex-direction: column; gap: 3px; }
-.hist-unterauftrag { font-size: .8rem; display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.hist-auftrag-kopf { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.hist-unterauftrag { font-size: .8rem; display: flex; align-items: flex-start; justify-content: space-between; gap: 7px; flex-wrap: wrap; }
+.hist-berichtsdaten { color: var(--text-muted); font-size: .74rem; }
 .hist-ausblick { margin: 0 0 0 25px; padding-top: 2px; color: var(--text-muted); font-size: .78rem; }
 .hist-werkzeuge { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 8px 24px 4px; }
 .hist-editor { margin: 12px 24px 4px; padding: 16px; border: 1px solid #bfd4e5; border-radius: 10px; background: #f7fbfe; }
@@ -612,6 +614,28 @@ table.tbl {
 .hist-befund-rot .hist-inhalt { background: var(--amp-red); }
 button.danger, .danger { color: #a62424; }
 @media (max-width: 600px) { .hist-kennzahlen { grid-template-columns: 1fr; } }
+
+/* ---------- Getrennte Prüfberichte je Unterauftrag ---------- */
+.bericht-modal { max-width: 920px; }
+.bericht-legio-art {
+  margin: 14px 24px 4px; padding: 12px 14px; border: 1px solid #bfd4e5;
+  border-radius: 9px; background: #f3f8fc; display: grid;
+  grid-template-columns: minmax(260px, 1fr) 1fr; gap: 14px; align-items: end;
+}
+.bericht-karten { padding: 12px 24px; display: flex; flex-direction: column; gap: 12px; max-height: 62vh; overflow-y: auto; }
+.bericht-karte { border: 1px solid var(--border); border-left: 5px solid #d9bd68; border-radius: 10px; padding: 13px; background: #fffdf5; }
+.bericht-karte.bericht-gruen { border-left-color: #65a67c; background: #f5fbf7; }
+.bericht-karte.bericht-rot { border-left-color: #c95b55; background: #fff7f6; }
+.bericht-karte-kopf { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+.bericht-felder { display: grid; grid-template-columns: repeat(3, minmax(170px, 1fr)); gap: 10px; }
+.bericht-proben { display: flex; align-items: center; gap: 8px; }
+.bericht-proben input { width: 90px; }
+.bericht-folge { margin-top: 11px; padding: 10px; border-radius: 8px; background: rgba(66, 122, 168, .07); display: grid; grid-template-columns: minmax(250px, 1fr) 1fr; gap: 12px; align-items: end; }
+.bericht-trennung { margin-top: 9px; color: #536f83; }
+@media (max-width: 720px) {
+  .bericht-legio-art, .bericht-felder, .bericht-folge { grid-template-columns: 1fr; }
+  .bericht-karten { padding: 10px 14px; }
+}
 
 /* ---------- Passwort-Feld mit Auge ---------- */
 .pw-feld { position: relative; display: flex; }

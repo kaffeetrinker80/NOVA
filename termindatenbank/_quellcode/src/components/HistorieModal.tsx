@@ -2,13 +2,14 @@ import { useEffect, useMemo, useState } from 'react'
 import { db } from '../lib/data'
 import type {
   Anlage, Auftrag, Befund, Bereich, FachlicheUntersuchungsart, HistorieEinordnung,
-  Kunde, Termin, Ueberschreitungsphase,
+  Kunde, Termin, Ueberschreitungsphase, Untersuchungsbewertung,
 } from '../lib/types'
 import {
   ART_LABEL, BEFUND_LABEL, FACHLICHE_ART_LABEL, HISTORIE_EINORDNUNG_LABEL,
   fmtDatum, kundeAnzeige, nummerVoll,
 } from '../lib/types'
 import { ErgebnisBadge } from './ui'
+import BerichtModal from './BerichtModal'
 
 const heute = new Date().toISOString().slice(0, 10)
 const turnusText = (m?: number) => m === 3 ? '3 Monate' : m === 12 ? '1 Jahr' : m === 36 ? '3 Jahre' : m ? `${m} Monate` : '–'
@@ -57,6 +58,8 @@ export default function HistorieModal({ anlage, kunde, termine, auftraege, berei
 }) {
   const bereich = bereiche.find(b => b.id === nurBereich)
   const [phasen, setPhasen] = useState<Ueberschreitungsphase[]>([])
+  const [bewertungen, setBewertungen] = useState<Untersuchungsbewertung[]>([])
+  const [berichtAuftrag, setBerichtAuftrag] = useState<Auftrag | null>(null)
   const [bearbeite, setBearbeite] = useState<string | 'neu' | null>(null)
   const [entwurf, setEntwurf] = useState<Entwurf>(leer)
   const [meldung, setMeldung] = useState('')
@@ -72,10 +75,30 @@ export default function HistorieModal({ anlage, kunde, termine, auftraege, berei
     (t.bereich_id === bereich?.id || auftragTerminIds.has(t.id) || (!t.bereich_id && bereiche.filter(b => b.anlage_id === anlage.id).length === 1)),
   ).sort((a, b) => b.datum.localeCompare(a.datum)), [termine, anlage.id, bereich?.id, bereiche, auftragTerminIds])
   const eigeneAuftraege = useMemo(() => auftraege.filter(a => a.bereich_id === bereich?.id), [auftraege, bereich?.id])
+  const unterauftragIds = useMemo(() => eigeneAuftraege.flatMap(a => a.unterauftraege.map(u => u.id)), [eigeneAuftraege])
+  useEffect(() => {
+    if (!unterauftragIds.length) {
+      setBewertungen([])
+      return
+    }
+    db.bewertungenFuerUnterauftraege(unterauftragIds).then(setBewertungen).catch(() => setBewertungen([]))
+  }, [unterauftragIds.join('|')])
+  const bewertungFuer = (unterauftragId: string) => bewertungen.find(b => b.unterauftrag_id === unterauftragId)
+  const auftragZumTermin = (id: string) => eigeneAuftraege.filter(a => a.termin_id === id)
+  const befundFuerTermin = (t: Termin): Befund => {
+    const unterauftraege = auftragZumTermin(t.id).flatMap(a => a.unterauftraege).filter(u => u.status !== 'storniert')
+    const fachlich = unterauftraege.filter(u => u.art === 'legionellen')
+    const relevant = fachlich.length ? fachlich : unterauftraege
+    const befunde = relevant.map(u => bewertungFuer(u.id)?.befund)
+    if (befunde.includes('ueberschreitung')) return 'ueberschreitung'
+    if (befunde.length && befunde.every(b => b === 'sauber')) return 'sauber'
+    return t.befund ?? 'offen'
+  }
   const abgeschlossen = eigene.filter(t => t.datum <= heute)
   const naechster = eigene.filter(t => t.datum > heute).sort((a, b) => a.datum.localeCompare(b.datum))[0]
   const offenePhase = phasen.find(p => !['regelturnus_bestaetigt', 'abgeschlossen'].includes(p.status))
   const letzte = abgeschlossen[0]
+  const letzterBefund = letzte ? befundFuerTermin(letzte) : undefined
 
   const editieren = (t: Termin) => {
     setBearbeite(t.id)
@@ -138,7 +161,6 @@ export default function HistorieModal({ anlage, kunde, termine, auftraege, berei
     </div>
   </div>
 
-  const auftragZumTermin = (id: string) => eigeneAuftraege.filter(a => a.termin_id === id)
   const statusText = offenePhase
     ? `Aktive Phase · ${offenePhase.status.replace(/_/g, ' ')}`
     : `Regelturnus · nächste Untersuchung ${fmtDatum(bereich.naechste_untersuchung ?? naechster?.datum)}`
@@ -160,7 +182,7 @@ export default function HistorieModal({ anlage, kunde, termine, auftraege, berei
       </div>
       <div className="hist-kennzahlen">
         <div><span>Letzte Untersuchung</span><strong>{fmtDatum(letzte?.datum)}</strong></div>
-        <div><span>Letztes Ergebnis</span><strong>{letzte?.befund ? BEFUND_LABEL[letzte.befund] : 'noch ungeklärt'}</strong></div>
+        <div><span>Letztes Ergebnis Legionellen</span><strong>{letzterBefund ? BEFUND_LABEL[letzterBefund] : 'noch ungeklärt'}</strong></div>
         <div><span>Einträge</span><strong>{abgeschlossen.length}</strong></div>
       </div>
 
@@ -202,7 +224,8 @@ export default function HistorieModal({ anlage, kunde, termine, auftraege, berei
       <div className="hist-liste">
         {abgeschlossen.map(t => {
           const zug = auftragZumTermin(t.id)
-          return <div key={t.id} className={`hist-eintrag ${t.befund === 'ueberschreitung' ? 'hist-start hist-befund-rot' : t.befund === 'sauber' ? 'hist-befund-gruen' : 'hist-befund-gelb'}`}>
+          const fachBefund = befundFuerTermin(t)
+          return <div key={t.id} className={`hist-eintrag ${fachBefund === 'ueberschreitung' ? 'hist-start hist-befund-rot' : fachBefund === 'sauber' ? 'hist-befund-gruen' : 'hist-befund-gelb'}`}>
             <div className="hist-punkt" aria-hidden="true"></div>
             <div className="hist-inhalt">
               <div className="hist-zeile1">
@@ -222,16 +245,40 @@ export default function HistorieModal({ anlage, kunde, termine, auftraege, berei
                 <div className="badge medium">{HISTORIE_EINORDNUNG_LABEL[t.historie_einordnung ?? 'unbekannt']}</div>}
               {t.historie_bemerkung && <div className="hint">{t.historie_bemerkung}</div>}
               {zug.map(a => <div key={a.id} className="hist-auftrag">
-                {a.unterauftraege.map(u => <span key={u.id} className="hist-unterauftrag">
-                  <span className="nr">{nummerVoll(a, u)}</span> {ART_LABEL[u.art]}
-                  {u.proben_ist != null && <> · {u.proben_ist} Proben</>} <ErgebnisBadge s={u.ergebnis} />
-                </span>)}
+                <div className="hist-auftrag-kopf">
+                  <span className="hint">Auftragsberichte</span>
+                  <button className="zeile-btn" onClick={() => setBerichtAuftrag(a)}><i className="fas fa-file-pen"></i> Berichte bearbeiten</button>
+                </div>
+                {a.unterauftraege.map(u => {
+                  const bw = bewertungFuer(u.id)
+                  return <span key={u.id} className="hist-unterauftrag">
+                    <span><span className="nr">{nummerVoll(a, u)}</span> {ART_LABEL[u.art]}
+                      {u.proben_ist != null && <> · {u.proben_ist} Proben</>} <ErgebnisBadge s={u.ergebnis} /></span>
+                    {bw && <span className="hist-berichtsdaten">
+                      {bw.pruefbericht_nummer && <>Prüfbericht {bw.pruefbericht_nummer}</>}
+                      {bw.pruefbericht_datum && <> · {fmtDatum(bw.pruefbericht_datum)}</>}
+                      {' · '}{BEFUND_LABEL[bw.befund]}
+                    </span>}
+                  </span>
+                })}
               </div>)}
             </div>
           </div>
         })}
         {abgeschlossen.length === 0 && <p className="hint">Noch keine Untersuchungen erfasst.</p>}
       </div>
+      {berichtAuftrag && <BerichtModal
+        auftrag={berichtAuftrag}
+        kundeKurz={kundeAnzeige(kunde)}
+        bereichName={bereich.name}
+        bereichId={bereich.id}
+        onClose={() => setBerichtAuftrag(null)}
+        onSaved={() => {
+          db.bewertungenFuerUnterauftraege(unterauftragIds).then(setBewertungen).catch(() => undefined)
+          setMeldung('Auftragsberichte gespeichert.')
+          onSaved?.()
+        }}
+      />}
     </div>
   </div>
 }

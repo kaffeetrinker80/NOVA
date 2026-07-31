@@ -1,5 +1,26 @@
 # NOVAplan – Testschritte für diesen Ansatz
 
+## Aktuelles Update v3.13: getrennte Prüfberichte L / M / C
+
+Für dieses Update ist **keine neue SQL-Migration** erforderlich. Die vorhandene
+Tabelle `td_untersuchungsbewertungen` speichert bereits genau eine Bewertung je
+Unterauftrag.
+
+Test:
+
+1. Einen Auftrag mit Legionellen und Mibi oder Chemie über **Bericht** öffnen.
+2. Für jeden Anteil eine andere Prüfbericht-Nr., ein anderes Berichtdatum und
+   einen eigenen Befund eintragen.
+3. Schließen und erneut öffnen. Erwartung: Alle Angaben bleiben je `26-xxxx`,
+   `26-xxxx-M` und `26-xxxx-C` getrennt erhalten.
+4. Bei Mibi oder Chemie eine Überschreitung setzen. Erwartung: Der Befund ist in
+   der Historie sichtbar, verändert aber weder Legionellen-Turnus noch NU-Phase.
+5. **Verlauf** öffnen und bei einem älteren echten Auftrag
+   **Berichte bearbeiten** wählen. Erwartung: Auch historische Unterberichte
+   lassen sich direkt korrigieren.
+6. In Planung prüfen: Die Spalte **Prüfbericht** verwendet nun das zuletzt
+   erfasste echte Prüfbericht-Datum, falls eines vorhanden ist.
+
 ## Aktuelles Update v3.11: Untersuchungsanteile ergänzen
 
 Vor dem Test der neuen Schaltfläche **Auftragsbuch → Anteil** einmal den

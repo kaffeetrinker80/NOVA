@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { db } from '../lib/data'
-import type { Anlage, Bereich, Kunde, Termin } from '../lib/types'
+import type { Anlage, Bereich, Kunde, Termin, Untersuchungsbewertung } from '../lib/types'
 import { ART_LABEL, fmtDatum, kundeAnzeige } from '../lib/types'
 import PlanModal from '../components/PlanModal'
 import HistorieModal from '../components/HistorieModal'
@@ -124,12 +124,18 @@ export default function Planung() {
   const [historie, setHistorie] = useState<{ anlage: Anlage; bereich: Bereich } | null>(null)
   const [planBereichId, setPlanBereichId] = useState('')
   const [auftraege, setAuftraege] = useState<Auftrag[]>([])
+  const [bewertungen, setBewertungen] = useState<Untersuchungsbewertung[]>([])
   const [berichtAuftrag, setBerichtAuftrag] = useState<Auftrag | null>(null)
 
   const laden = () => {
     db.anlagen().then(setAnlagen); db.kunden().then(setKunden)
     db.bereiche().then(setBereiche); db.termine().then(setTermine)
-    db.auftraege().then(setAuftraege)
+    db.auftraege().then(a => {
+      setAuftraege(a)
+      const ids = a.flatMap(x => x.unterauftraege.map(u => u.id))
+      if (ids.length) db.bewertungenFuerUnterauftraege(ids).then(setBewertungen)
+      else setBewertungen([])
+    })
   }
   useEffect(laden, [])
 
@@ -146,6 +152,10 @@ export default function Planung() {
       .filter(t => t.status === 'abgeschlossen' || t.datum < heuteIso)
       .sort((x, y) => y.datum.localeCompare(x.datum))
     const letzterMitPruefbericht = vergangen.find(t => t.pruefbericht_datum)
+    const unterauftragIds = new Set(auftraege.filter(o => o.bereich_id === b.id).flatMap(o => o.unterauftraege.map(u => u.id)))
+    const letzterAuftragsbericht = bewertungen
+      .filter(x => unterauftragIds.has(x.unterauftrag_id) && x.pruefbericht_datum)
+      .sort((x, y) => (y.pruefbericht_datum ?? '').localeCompare(x.pruefbericht_datum ?? ''))[0]
     return [{
       anlage: a,
       bereich: b,
@@ -153,9 +163,9 @@ export default function Planung() {
       geplantAm: zukunft[0],
       geplantText: b.planungsnotiz || a.planungsnotiz || undefined,
       faellig: b.naechste_untersuchung,
-      pruefbericht: letzterMitPruefbericht?.pruefbericht_datum || vergangen[0]?.datum,
+      pruefbericht: letzterAuftragsbericht?.pruefbericht_datum || letzterMitPruefbericht?.pruefbericht_datum || vergangen[0]?.datum,
     }]
-  }), [anlagen, bereiche, kunden, termine, auftraege, inaktiveAnzeigen])
+  }), [anlagen, bereiche, kunden, termine, auftraege, bewertungen, inaktiveAnzeigen])
 
   // Untersuchungstermin liegt zurück, aber mindestens ein Unterauftrag hat noch keinen Befund.
   const berichteOffen = useMemo(() => auftraege.flatMap(a => {

@@ -4,7 +4,7 @@ import type {
   Anlage, Auftrag, Befund, Bereich, FachlicheUntersuchungsart, Kunde, Kundentyp,
   Turnusart, Ueberschreitungsphase,
 } from '../lib/types'
-import { BEFUND_LABEL, ERGEBNIS_LABEL, FACHLICHE_ART_LABEL, fmtDatum, kundeAnzeige } from '../lib/types'
+import { ART_LABEL, BEFUND_LABEL, ERGEBNIS_LABEL, FACHLICHE_ART_LABEL, fmtDatum, kundeAnzeige } from '../lib/types'
 import BerichtModal from '../components/BerichtModal'
 import HistorieModal from '../components/HistorieModal'
 import PhaseModal from '../components/PhaseModal'
@@ -495,7 +495,9 @@ export default function Stammdaten() {
     const letzterTermin = letzterAbgeschlossenerTerminZumBereich(b)
     const naechsterTermin = naechsterGeplanterTerminZumBereich(b)
     const bAuftraege = auftraege.filter(a => a.bereich_id === b.id)
-    const hatAuffaellig = bAuftraege.some(a => a.unterauftraege.some(u => ['ueberschritten', 'nachuntersuchung_erforderlich'].includes(u.ergebnis)))
+    const hatAuffaellig = bAuftraege.some(a => a.unterauftraege.some(u =>
+      u.art === 'legionellen' && u.status !== 'storniert'
+      && ['ueberschritten', 'nachuntersuchung_erforderlich'].includes(u.ergebnis)))
     const statusDatum = offen?.eroeffnet_am ?? letzterTermin?.datum
     if (offen) return { text: `${PHASE_TEXT[offen.status]}${statusDatum ? ` · seit ${fmtDatum(statusDatum)}` : ''}`, klasse: 'active', icon: 'fa-triangle-exclamation' }
     if (b.turnus_art === 'nachuntersuchung') return { text: `Nachuntersuchung${statusDatum ? ` · seit ${fmtDatum(statusDatum)}` : ''}`, klasse: 'active', icon: 'fa-flask-vial' }
@@ -523,22 +525,28 @@ export default function Stammdaten() {
     return ausAuftraegen[0] ?? b?.proben_anzahl ?? anlage?.proben_anzahl
   }
   const ergebnisZumTermin = (t: import('../lib/types').Termin, b: Bereich) => {
-    const labels = auftraegeZumBereich(b)
+    const unterauftraege = auftraegeZumBereich(b)
       .filter(a => a.termin_id === t.id)
-      .flatMap(a => a.unterauftraege.map(u => ERGEBNIS_LABEL[u.ergebnis]))
-      .filter(l => l && l !== 'offen')
+      .flatMap(a => a.unterauftraege)
+      .filter(u => u.status !== 'storniert')
+    const labels = unterauftraege
+      .filter(u => u.ergebnis !== 'offen')
+      .map(u => unterauftraege.length > 1 ? `${ART_LABEL[u.art]}: ${ERGEBNIS_LABEL[u.ergebnis]}` : ERGEBNIS_LABEL[u.ergebnis])
     const direkt = t.befund === 'sauber' ? 'ohne Befund'
       : t.befund === 'ueberschreitung' ? 'Überschreitung'
       : t.befund === 'offen' ? 'unbekannt / nicht erfasst'
       : ''
-    return direkt || [...new Set(labels)].join(', ') || (t.status === 'geplant' ? 'geplant' : 'unbekannt / nicht erfasst')
+    return [...new Set(labels)].join(' · ') || direkt || (t.status === 'geplant' ? 'geplant' : 'unbekannt / nicht erfasst')
   }
   const befundKlasseZumTermin = (t: import('../lib/types').Termin, b: Bereich) => {
-    if (t.befund === 'ueberschreitung') return 'befund-rot'
-    if (t.befund === 'sauber') return 'befund-gruen'
-    const ergebnisse = auftraegeZumBereich(b).filter(a => a.termin_id === t.id).flatMap(a => a.unterauftraege.map(u => u.ergebnis))
+    const alle = auftraegeZumBereich(b).filter(a => a.termin_id === t.id)
+      .flatMap(a => a.unterauftraege).filter(u => u.status !== 'storniert')
+    const legionellen = alle.filter(u => u.art === 'legionellen')
+    const ergebnisse = (legionellen.length ? legionellen : alle).map(u => u.ergebnis)
     if (ergebnisse.includes('ueberschritten')) return 'befund-rot'
     if (ergebnisse.length && ergebnisse.every(e => e === 'unauffaellig')) return 'befund-gruen'
+    if (t.befund === 'ueberschreitung') return 'befund-rot'
+    if (t.befund === 'sauber') return 'befund-gruen'
     return 'befund-gelb'
   }
   const letzterAuftragZumBereich = (b: Bereich) => {
