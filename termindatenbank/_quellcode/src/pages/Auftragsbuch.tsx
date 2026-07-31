@@ -4,6 +4,7 @@ import type { Anlage, Auftrag, Bereich, FachlicheUntersuchungsart, Kunde, Storno
 import { ART_LABEL, ERGEBNIS_LABEL, FACHLICHE_ART_LABEL, STATUS_LABEL, STORNOGRUND_LABEL, fmtDatum, nummerVoll, kundeAnzeige } from '../lib/types'
 import { Abschnitt, ErgebnisBadge, Meldung, Nr, StatusBadge } from '../components/ui'
 import BerichtModal from '../components/BerichtModal'
+import { naechsteFachlicheArt, offenePhaseFuerBereich } from '../lib/turnus'
 
 const ERGAENZBARE_ARTEN: Untersuchungsart[] = ['legionellen', 'mibi', 'chemie']
 const NACHERFASSBARE_ARTEN: Untersuchungsart[] = ['legionellen', 'mibi', 'chemie', 'vorortparameter']
@@ -442,18 +443,20 @@ export default function Auftragsbuch() {
 
   const nvTerminDaten = termine.find(t => t.id === nvTermin)
   const nvBereichDaten = bereiche.find(b => b.id === nvBereich)
-  const nvPhaseOffen = phasen.some(p => p.bereich_id === nvBereich
-    && !['regelturnus_bestaetigt', 'abgeschlossen'].includes(p.status))
-  const nvIstNachuntersuchung = nvPhaseOffen || nvBereichDaten?.turnus_art === 'nachuntersuchung'
+  const nvPhaseOffen = nvBereich ? offenePhaseFuerBereich(nvBereich, phasen) : undefined
+  const nvDreiMonatsTurnus = nvBereichDaten?.turnus_monate === 3
+  const nvVorgeschlageneArt = naechsteFachlicheArt(nvBereichDaten, phasen)
+  const nvIstNachuntersuchung = nvVorgeschlageneArt === 'nachuntersuchung'
+  const nvIstWeitergehend = nvVorgeschlageneArt === 'weitergehend'
   const nvNummernJahr = Number((nvTerminDaten?.datum ?? nvDatum).slice(0, 4)) || blockJahr
 
   useEffect(() => {
     if (!nvBereich) return
     if (nvTerminDaten?.datum) setNvDatum(nvTerminDaten.datum)
     setNvFachArt(nvTerminDaten?.fachliche_untersuchungsart
-      ?? (nvIstNachuntersuchung ? 'nachuntersuchung' : 'orientierend'))
+      ?? nvVorgeschlageneArt)
   }, [nvBereich, nvTermin, nvTerminDaten?.datum,
-    nvTerminDaten?.fachliche_untersuchungsart, nvIstNachuntersuchung])
+    nvTerminDaten?.fachliche_untersuchungsart, nvVorgeschlageneArt])
 
   useEffect(() => {
     if (nvOffen) db.nummerVorschau(nvNummernJahr).then(setNvVorschau).catch(() => setNvVorschau('–'))
@@ -611,9 +614,15 @@ export default function Auftragsbuch() {
                 <select value={nvFachArt} onChange={e => setNvFachArt(e.target.value as FachlicheUntersuchungsart)}>
                   {Object.entries(FACHLICHE_ART_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                 </select>
-                <span className={`hint ${nvIstNachuntersuchung ? 'direktauftrag-nu' : ''}`}>
-                  {nvIstNachuntersuchung
-                    ? 'Automatisch als Nachuntersuchung vorgeschlagen: NU-Turnus oder offene Phase vorhanden.'
+                <span className={`hint ${nvIstNachuntersuchung || nvIstWeitergehend ? 'direktauftrag-nu' : ''}`}>
+                  {nvTerminDaten?.fachliche_untersuchungsart
+                    ? 'Untersuchungsart aus dem vorhandenen Termin übernommen.'
+                    : nvIstWeitergehend
+                    ? `Automatisch als weitergehende Untersuchung vorgeschlagen: offene Phase „${nvPhaseOffen?.status.replace('_', ' ')}“.`
+                    : nvIstNachuntersuchung
+                    ? `Automatisch als Nachuntersuchung vorgeschlagen: ${nvPhaseOffen?.status === 'nachuntersuchung'
+                      ? 'Bereich befindet sich in der NU-Phase'
+                      : nvDreiMonatsTurnus ? 'Turnus beträgt 3 Monate' : 'NU-Turnus gespeichert'}.`
                     : 'Ohne offene Phase: orientierende Untersuchung oder bei Bedarf nichtamtliche Eigenprobe wählen.'}
                 </span>
               </label>

@@ -9,6 +9,7 @@ import BerichtModal from '../components/BerichtModal'
 import HistorieModal from '../components/HistorieModal'
 import PhaseModal from '../components/PhaseModal'
 import { Meldung } from '../components/ui'
+import { istNachuntersuchungsTurnus, konsistenteTurnusart, offenePhaseFuerBereich } from '../lib/turnus'
 
 const TYP: Record<Kundentyp, string> = {
   hausverwaltung: 'Hausverwaltung', pflegetraeger: 'Pflegeträger',
@@ -293,12 +294,19 @@ export default function Stammdaten() {
     if (!bereich) return
     const ansicht = bereichAnsicht(bereich)
     const name = bf.name.trim() || ansicht.titel || bereich.name
+    const turnusMonate = bf.turnus_monate ? +bf.turnus_monate : undefined
+    const turnusArt = konsistenteTurnusart(turnusMonate, bf.turnus_art)
+    const offenePhase = offenePhaseFuerBereich(bereich.id, phasen)
+    const rueckkehrRegelturnus = !!offenePhase && (turnusMonate === 12 || turnusMonate === 36)
+    if (rueckkehrRegelturnus && !window.confirm(
+      `Mit ${turnusMonate === 12 ? '1 Jahr' : '3 Jahren'} wird die offene Phase beendet und der Bereich in den Regelturnus zurückgeführt. Fortfahren?`
+    )) return
     await db.bereichAktualisieren(bereich.id, {
       name, strasse: bf.strasse || undefined,
       hausnummer: bf.hausnummer || undefined, wwb_details: bf.wwb_details || undefined,
       notizen: bf.notizen || undefined,
-      turnus_art: bf.turnus_art,
-      turnus_monate: bf.turnus_monate ? +bf.turnus_monate : undefined,
+      turnus_art: turnusArt,
+      turnus_monate: turnusMonate,
       naechste_untersuchung: bf.naechste_untersuchung || undefined,
       proben_anzahl: bf.proben_anzahl ? +bf.proben_anzahl : undefined,
       turnus_begruendung: bf.turnus_begruendung || undefined,
@@ -307,6 +315,14 @@ export default function Stammdaten() {
       standard_mibi_umfang: bf.standard_mibi_umfang,
       standard_chemie: bf.standard_chemie,
     })
+    if (rueckkehrRegelturnus && offenePhase) {
+      await db.phaseAktualisieren(offenePhase.id, {
+        status: 'abgeschlossen',
+        abgeschlossen_am: heute,
+        notizen: [offenePhase.notizen, `Rückkehr in den ${turnusMonate === 12 ? '1-' : '3-'}Jahres-Regelturnus über Stammdaten`]
+          .filter(Boolean).join(' · '),
+      })
+    }
     const letzterTermin = letzterAbgeschlossenerTerminZumBereich(bereich)
     const letzterAuftrag = letzterAuftragZumBereich(bereich)
     if (letzterTermin) {
@@ -500,7 +516,7 @@ export default function Stammdaten() {
       && ['ueberschritten', 'nachuntersuchung_erforderlich'].includes(u.ergebnis)))
     const statusDatum = offen?.eroeffnet_am ?? letzterTermin?.datum
     if (offen) return { text: `${PHASE_TEXT[offen.status]}${statusDatum ? ` · seit ${fmtDatum(statusDatum)}` : ''}`, klasse: 'active', icon: 'fa-triangle-exclamation' }
-    if (b.turnus_art === 'nachuntersuchung') return { text: `Nachuntersuchung${statusDatum ? ` · seit ${fmtDatum(statusDatum)}` : ''}`, klasse: 'active', icon: 'fa-flask-vial' }
+    if (istNachuntersuchungsTurnus(b)) return { text: `Nachuntersuchung${statusDatum ? ` · seit ${fmtDatum(statusDatum)}` : ''}`, klasse: 'active', icon: 'fa-flask-vial' }
     if (letzte?.status === 'regelturnus_bestaetigt') return { text: `Regelturnus · seit ${fmtDatum(letzte.gesundheitsamt_freigabe_am ?? letzte.abgeschlossen_am ?? letzte.eroeffnet_am)}`, klasse: 'closed', icon: 'fa-circle-check' }
     if (hatAuffaellig) return { text: `Weitergehende Untersuchung${statusDatum ? ` · seit ${fmtDatum(statusDatum)}` : ''}`, klasse: 'active', icon: 'fa-triangle-exclamation' }
     if (naechsterTermin) return { text: `Termin ausstehend · ${fmtDatum(naechsterTermin.datum)}`, klasse: 'medium', icon: 'fa-clock' }
@@ -1172,7 +1188,11 @@ export default function Stammdaten() {
 	                            </select>
 	                          </label>
 	                          <label className="f">Turnus in Monaten (anpassbar)
-                            <input type="number" min={1} max={120} value={bf.turnus_monate} onChange={e => setBf({ ...bf, turnus_monate: e.target.value })} placeholder="12 oder 36" />
+                            <input type="number" min={1} max={120} value={bf.turnus_monate} onChange={e => {
+                              const wert = e.target.value
+                              const monate = wert ? Number(wert) : undefined
+                              setBf({ ...bf, turnus_monate: wert, turnus_art: konsistenteTurnusart(monate, bf.turnus_art) })
+                            }} placeholder="12 oder 36" />
                           </label>
                           <label className="f">Nächste Untersuchung
                             <input type="date" value={bf.naechste_untersuchung} onChange={e => setBf({ ...bf, naechste_untersuchung: e.target.value })} />
@@ -1252,6 +1272,7 @@ export default function Stammdaten() {
       {phaseBearbeiten && (
         <PhaseModal
           phase={phaseBearbeiten}
+          bereich={bereiche.find(b => b.id === phaseBearbeiten.bereich_id)}
           bereichName={bereiche.find(b => b.id === phaseBearbeiten.bereich_id)?.name}
           onClose={() => setPhaseBearbeiten(null)}
           onSaved={laden}

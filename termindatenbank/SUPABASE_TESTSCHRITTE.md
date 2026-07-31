@@ -1,5 +1,43 @@
 # NOVAplan – Testschritte für diesen Ansatz
 
+## Update v3.19: konsistente Turnus- und Phasenlogik
+
+Die Migration `0033_turnuslogik_konsistent.sql` ist im verbundenen Projekt
+bereits eingespielt.
+
+1. Einen Bereich auf **3 Monate** stellen und speichern. Erwartung:
+   **Nachuntersuchung** wird automatisch gesetzt; Regelturnus ist nicht möglich.
+2. AWO Sozialzentrum Neuburg, Joseph-Haydn-Str. 11 öffnen. Erwartung:
+   3 Monate / Nachuntersuchung; der Status wird nicht grün als Regelturnus gezeigt.
+3. Im Dashboard denselben Bereich planen. Erwartung: Der Auftrag erhält
+   **Nachuntersuchung** als fachliche Untersuchungsart.
+4. Einen Bereich mit neuer offener Überschreitungsphase planen. Erwartung:
+   Zunächst wird **weitergehende Untersuchung** vorgeschlagen.
+5. In der Phase **Maßnahmenabschluss setzen**. Erwartung: Phase und Bereich
+   wechseln auf Nachuntersuchung / 3 Monate; die nächste Untersuchung wird
+   zunächst drei Monate nach Maßnahmenabschluss gesetzt und bleibt bearbeitbar.
+6. Die Phase nach 3/3 oder per GA-Freigabe abschließen. Zuvor muss **1 Jahr**
+   oder **3 Jahre** gewählt werden. Erwartung: Der Bereich wechselt zurück in
+   den Regelturnus und wird nicht mehr rot als NU angezeigt.
+7. In den Stammdaten während einer offenen Phase direkt 1 oder 3 Jahre wählen.
+   Erwartung: Eine Warnung bestätigt den Phasenabschluss.
+8. Eine Neuanlage oder einen Excel-Neuimport mit 3 Monaten testen. Erwartung:
+   Der Bereich wird unmittelbar als Nachuntersuchung gespeichert.
+
+## Korrektur v3.18a: Drei Monate als Nachuntersuchung erkennen
+
+Für dieses Update ist keine neue SQL-Migration erforderlich.
+
+1. Im Auftragsbuch die direkte Erfassung öffnen.
+2. `AWO Sozialzentrum Neuburg` und die Anlage
+   `Joseph-Haydn-Str. 11 (Schwimmbad + Turnhalle)` auswählen.
+3. Erwartung: Wegen des gespeicherten Turnus von drei Monaten wird automatisch
+   **Nachuntersuchung** vorgeschlagen und der Grund direkt darunter angezeigt.
+4. Einen Bereich mit zwölf Monaten oder einem Jahr ohne offene Phase auswählen.
+   Erwartung: Dort bleibt **orientierende Untersuchung** voreingestellt.
+5. Falls ein vorhandener Termin bereits eine Untersuchungsart besitzt, muss
+   diese konkrete Terminangabe Vorrang vor der Turnus-Ableitung haben.
+
 ## Aktuelles Update v3.18: Spontantermin mit Auftrag
 
 Für dieses Update ist keine neue SQL-Migration erforderlich.

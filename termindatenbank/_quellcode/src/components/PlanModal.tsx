@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { db } from '../lib/data'
-import type { Anlage, Bereich, Kunde, Untersuchungsart } from '../lib/types'
+import type { Anlage, Bereich, Kunde, Untersuchungsart, Ueberschreitungsphase } from '../lib/types'
 import { ART_LABEL, kundeAnzeige, kundeOutlook } from '../lib/types'
 import {
   ACHTUNG_VARIANTEN, ART_VARIANTEN, PROBENEHMER,
   aushangDrucken, aushangHtml, type AushangDaten,
 } from '../lib/aushang'
+import { naechsteFachlicheArt } from '../lib/turnus'
 
 interface ArtWahl { art: Untersuchungsart; suffix: string; umfang?: string; proben_geplant?: number; aktiv: boolean }
 const artenStandard = (bereich?: Bereich): ArtWahl[] => [
@@ -17,10 +18,11 @@ const artenStandard = (bereich?: Bereich): ArtWahl[] => [
 
 interface Ergebnis { bereichName: string; nummer: string }
 
-export default function PlanModal({ anlage, kunde, bereiche, startBereichId, onClose, onSaved }: {
+export default function PlanModal({ anlage, kunde, bereiche, phasen, startBereichId, onClose, onSaved }: {
   anlage: Anlage
   kunde: Kunde | undefined
   bereiche: Bereich[]
+  phasen: Ueberschreitungsphase[]
   startBereichId?: string
   onClose: () => void
   onSaved: () => void
@@ -85,6 +87,7 @@ export default function PlanModal({ anlage, kunde, bereiche, startBereichId, onC
       const erg: Ergebnis[] = []
       let erste = true
       for (const [bereichId, arten] of aktiveBereiche) {
+        const gewaehlterBereich = eigene.find(b => b.id === bereichId)
         const aktive = arten.filter(a => a.aktiv)
         const payload = aktive.length === 1
           ? [{ ...aktive[0], suffix: '' }]
@@ -93,7 +96,7 @@ export default function PlanModal({ anlage, kunde, bereiche, startBereichId, onC
           bereichId, terminId,
           payload.map(({ aktiv, ...rest }) => rest),
           erste && manuell ? manuellNr.trim() : undefined, // manueller Eingriff gilt für den ersten Bereich
-          undefined,
+          naechsteFachlicheArt(gewaehlterBereich, phasen),
           nummernJahr,
         )
         erg.push({ bereichName: eigene.find(b => b.id === bereichId)?.name ?? '?', nummer: nr })

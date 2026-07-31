@@ -5,6 +5,7 @@ import type {
   FachlicheUntersuchungsart, Folgeentscheidung, Ueberschreitungsphase,
 } from '../lib/types'
 import { ART_LABEL, FACHLICHE_ART_LABEL, FOLGE_LABEL, STATUS_LABEL, nummerVoll } from '../lib/types'
+import { datumPlusMonate, datumPlusTage } from '../lib/turnus'
 
 type Zeile = {
   id: string
@@ -55,9 +56,11 @@ export default function BerichtModal({ auftrag, kundeKurz, bereichName, bereichI
     berichtDatum: heute,
     befund: u.ergebnis === 'unauffaellig' ? 'sauber' : u.ergebnis === 'ueberschritten' ? 'ueberschreitung' : 'offen',
     bemerkung: '',
-    folge: 'regelturnus_bleibt',
+    folge: u.ergebnis === 'ueberschritten'
+      ? 'weitergehende_untersuchung'
+      : auftrag.fachliche_untersuchungsart === 'nachuntersuchung' ? 'phase_fortfuehren' : 'regelturnus_bleibt',
     zaehltSauber: false,
-    neuePhase: false,
+    neuePhase: u.ergebnis === 'ueberschritten',
   })))
   const [fachlicheArt, setFachlicheArt] = useState<FachlicheUntersuchungsart>(auftrag.fachliche_untersuchungsart ?? 'orientierend')
   const [phasen, setPhasen] = useState<Ueberschreitungsphase[]>([])
@@ -125,15 +128,28 @@ export default function BerichtModal({ auftrag, kundeKurz, bereichName, bereichI
           bemerkung: z.bemerkung || undefined,
         })
         if (istLegionellen && z.neuePhase && z.befund === 'ueberschreitung') {
-          await db.phaseAnlegen({
-            bereich_id: bereichId,
-            ausloesende_bewertung_id: bewertung.id,
-            eroeffnet_am: z.berichtDatum || heute,
-            ausloeser: 'ueberschreitung',
-            status: 'aktiv',
-            saubere_nu_erforderlich: 3,
-            notizen: z.berichtNr ? `Prüfbericht ${z.berichtNr}` : undefined,
+          if (aktivePhasen.length === 0) {
+            await db.phaseAnlegen({
+              bereich_id: bereichId,
+              ausloesende_bewertung_id: bewertung.id,
+              eroeffnet_am: z.berichtDatum || heute,
+              ausloeser: 'ueberschreitung',
+              status: 'aktiv',
+              saubere_nu_erforderlich: 3,
+              notizen: z.berichtNr ? `Prüfbericht ${z.berichtNr}` : undefined,
+            })
+          }
+        }
+        if (istLegionellen && ['nachuntersuchung', 'phase_fortfuehren'].includes(z.folge)
+          && (z.folge === 'nachuntersuchung' || fachlicheArt === 'nachuntersuchung')) {
+          const basis = z.berichtDatum ? datumPlusTage(z.berichtDatum, -14) : heute
+          await db.bereichAktualisieren(bereichId, {
+            turnus_art: 'nachuntersuchung', turnus_monate: 3,
+            naechste_untersuchung: datumPlusMonate(basis, 3),
           })
+          if (aktivePhasen[0] && z.folge === 'nachuntersuchung') {
+            await db.phaseAktualisieren(aktivePhasen[0].id, { status: 'nachuntersuchung' })
+          }
         }
       }
       onSaved()
@@ -186,7 +202,10 @@ export default function BerichtModal({ auftrag, kundeKurz, bereichName, bereichI
                   setZeile(i, {
                     befund,
                     status: befund === 'sauber' ? 'abgeschlossen' : z.status,
-                    neuePhase: false,
+                    folge: befund === 'ueberschreitung'
+                      ? 'weitergehende_untersuchung'
+                      : fachlicheArt === 'nachuntersuchung' ? 'phase_fortfuehren' : 'regelturnus_bleibt',
+                    neuePhase: befund === 'ueberschreitung' && aktivePhasen.length === 0,
                     zaehltSauber: false,
                   })
                 }}>{BEFUND_OPTIONEN.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
@@ -195,7 +214,14 @@ export default function BerichtModal({ auftrag, kundeKurz, bereichName, bereichI
 
               {istLegionellen && <div className="bericht-folge">
                 <label className="f">Folgeentscheidung
-                  <select value={z.folge} onChange={e => setZeile(i, { folge: e.target.value as Folgeentscheidung })}>
+                  <select value={z.folge} onChange={e => {
+                    const folge = e.target.value as Folgeentscheidung
+                    setZeile(i, {
+                      folge,
+                      neuePhase: z.befund === 'ueberschreitung' && aktivePhasen.length === 0
+                        && ['weitergehende_untersuchung', 'ueberschreitungsphase_starten'].includes(folge),
+                    })
+                  }}>
                     {Object.entries(FOLGE_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                   </select>
                 </label>

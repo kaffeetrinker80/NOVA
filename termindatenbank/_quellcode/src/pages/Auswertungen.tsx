@@ -258,7 +258,7 @@ export default function Auswertungen() {
         </div>
         {gefiltert.length > 400 && <p className="hint" style={{ padding: '10px 20px' }}>Angezeigt: erste 400 von {gefiltert.length} – Filter nutzen.</p>}
       </Abschnitt>
-      {phaseBearbeiten && <PhaseModal phase={phaseBearbeiten} bereichName={bereiche.find(b => b.id === phaseBearbeiten.bereich_id)?.name} onClose={() => setPhaseBearbeiten(null)} onSaved={laden} />}
+      {phaseBearbeiten && <PhaseModal phase={phaseBearbeiten} bereich={bereiche.find(b => b.id === phaseBearbeiten.bereich_id)} bereichName={bereiche.find(b => b.id === phaseBearbeiten.bereich_id)?.name} onClose={() => setPhaseBearbeiten(null)} onSaved={laden} />}
       {historie && <HistorieModal anlage={historie.anlage} kunde={kunden.find(k => k.id === historie.anlage.kunde_id)} termine={termine} auftraege={auftraege} bereiche={bereiche} nurBereich={historie.bereichId} onClose={() => setHistorie(null)} onSaved={laden} />}
     </>
   )

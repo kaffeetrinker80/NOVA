@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { db } from '../lib/data'
-import type { Anlage, Bereich, Kunde, Termin, Untersuchungsbewertung } from '../lib/types'
+import type { Anlage, Bereich, Kunde, Termin, Untersuchungsbewertung, Ueberschreitungsphase } from '../lib/types'
 import { ART_LABEL, fmtDatum, kundeAnzeige } from '../lib/types'
 import PlanModal from '../components/PlanModal'
 import HistorieModal from '../components/HistorieModal'
 import BerichtModal from '../components/BerichtModal'
 import type { Auftrag } from '../lib/types'
 import { db as db2 } from '../lib/data'
+import { istNachuntersuchungsTurnus } from '../lib/turnus'
 
 type SubTab = 'next90' | 'nachunters' | 'berichte' | 'geplant' | 'alle'
 
@@ -90,7 +91,7 @@ function zeilenKlasse(z: Zeile, modus: SubTab): string {
     return f && f < heuteIso ? 'amp-red' : 'amp-yellow'
   }
   if (modus === 'next90') {
-    const istNach = z.bereich.turnus_monate === 3
+    const istNach = istNachuntersuchungsTurnus(z.bereich)
     if (istNach) return 'amp-yellow'                             // 3-Monats-Turnus: immer gelb
     if (f && f <= heuteIso) return 'amp-red overdue-row'         // überfällig: rot (standardmäßig versteckt)
     const istOrient = z.bereich.turnus_monate === 12 || z.bereich.turnus_monate === 36
@@ -125,11 +126,13 @@ export default function Planung() {
   const [planBereichId, setPlanBereichId] = useState('')
   const [auftraege, setAuftraege] = useState<Auftrag[]>([])
   const [bewertungen, setBewertungen] = useState<Untersuchungsbewertung[]>([])
+  const [phasen, setPhasen] = useState<Ueberschreitungsphase[]>([])
   const [berichtAuftrag, setBerichtAuftrag] = useState<Auftrag | null>(null)
 
   const laden = () => {
     db.anlagen().then(setAnlagen); db.kunden().then(setKunden)
     db.bereiche().then(setBereiche); db.termine().then(setTermine)
+    db.phasen().then(setPhasen).catch(() => setPhasen([]))
     db.auftraege().then(a => {
       setAuftraege(a)
       const ids = a.flatMap(x => x.unterauftraege.map(u => u.id))
@@ -183,9 +186,9 @@ export default function Planung() {
 
     if (tab === 'next90') {
       z = z.filter(x => !x.geplantAm && !x.geplantText && x.faellig && x.faellig <= plusTage(90))
-      if (!ueberfaelligeAnzeigen) z = z.filter(x => !(x.faellig! <= heuteIso && x.bereich.turnus_monate !== 3))
+      if (!ueberfaelligeAnzeigen) z = z.filter(x => !(x.faellig! <= heuteIso && !istNachuntersuchungsTurnus(x.bereich)))
     } else if (tab === 'nachunters') {
-      z = z.filter(x => x.bereich.turnus_monate === 3 && !x.geplantAm && !x.geplantText)
+      z = z.filter(x => istNachuntersuchungsTurnus(x.bereich) && !x.geplantAm && !x.geplantText)
     } else if (tab === 'berichte') {
       z = []
     } else if (tab === 'geplant') {
@@ -218,12 +221,12 @@ export default function Planung() {
 
   const anz = {
     next90: zeilen.filter(x => !x.geplantAm && !x.geplantText && x.faellig && x.faellig <= plusTage(90)).length,
-    nachunters: zeilen.filter(x => x.bereich.turnus_monate === 3 && !x.geplantAm && !x.geplantText).length,
+    nachunters: zeilen.filter(x => istNachuntersuchungsTurnus(x.bereich) && !x.geplantAm && !x.geplantText).length,
     berichte: berichteOffen.length,
     geplant: zeilen.filter(x => !!x.geplantAm || !!x.geplantText).length,
     alle: zeilen.length,
   }
-  const ueberfaellig = zeilen.filter(x => !x.geplantAm && x.faellig && x.faellig <= heuteIso && x.bereich.turnus_monate !== 3).length
+  const ueberfaellig = zeilen.filter(x => !x.geplantAm && x.faellig && x.faellig <= heuteIso && !istNachuntersuchungsTurnus(x.bereich)).length
 
   const sortieren = (s: typeof sortSpalte) => {
     if (s === sortSpalte) setSortAuf(!sortAuf)
@@ -402,6 +405,7 @@ export default function Planung() {
           anlage={modalAnlage}
           kunde={kunden.find(k => k.id === modalAnlage.kunde_id)}
           bereiche={bereiche}
+          phasen={phasen}
           startBereichId={planBereichId}
           onClose={() => setModalAnlage(null)}
           onSaved={laden}

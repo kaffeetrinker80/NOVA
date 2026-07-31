@@ -150,7 +150,9 @@ export const db = {
         const bereichId = 'b' + (demo.bereiche.length + 1)
         demo.bereiche.push({
           id: bereichId, anlage_id: id, aktiv: true, name: b.name,
-          turnus_monate: b.turnus_monate, naechste_untersuchung: b.naechste_untersuchung,
+          turnus_monate: b.turnus_monate,
+          turnus_art: b.turnus_monate === 3 ? 'nachuntersuchung' : 'regelturnus',
+          naechste_untersuchung: b.naechste_untersuchung,
           proben_anzahl: b.proben_anzahl, standard_legionellen: b.standard_legionellen,
           standard_mibi: b.standard_mibi,
           standard_mibi_umfang: b.standard_mibi_umfang as Bereich['standard_mibi_umfang'],
@@ -545,6 +547,7 @@ export const db = {
         name: b.name,
         beschreibung: null,
         turnus_monate: b.turnus_monate,
+        turnus_art: b.turnus_monate === 3 ? 'nachuntersuchung' : 'regelturnus',
         naechste_untersuchung: b.naechste_untersuchung,
         proben_anzahl: b.proben_anzahl,
         legacy_quelle: 'Terminverwaltung V4',
