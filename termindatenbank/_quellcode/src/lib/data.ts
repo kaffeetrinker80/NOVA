@@ -238,13 +238,12 @@ export const db = {
   },
 
   /** Vorschau der nächsten Auftragsnummer (ohne sie zu verbrauchen). */
-  async nummerVorschau(): Promise<string> {
+  async nummerVorschau(jahr = new Date().getFullYear()): Promise<string> {
     if (!supabase) {
-      const jahr = new Date().getFullYear()
       const demoNaechste = ((demo as any).zaehler?.[jahr] ?? 0) + 1
       return `${String(jahr % 100).padStart(2, '0')}-${String(demoNaechste).padStart(4, '0')}`
     }
-    const { data, error } = await supabase.rpc('td_nummer_vorschau')
+    const { data, error } = await supabase.rpc('td_nummer_vorschau', { p_jahr: jahr })
     if (error) throw error
     return data as string
   },
@@ -262,34 +261,26 @@ export const db = {
     return data as Array<{ jahr: number; letzter_wert: number }>
   },
 
-  /** Zieht den Blockstand nur nach oben; bereits reservierte Nummern werden nie freigegeben. */
-  async nummernblockSetzen(jahr: number, letzterWert: number): Promise<{
-    jahr: number; letzter_wert: number; nummer: string
-  }> {
-    if (!supabase) {
-      demo.zaehler[jahr] = Math.max(demo.zaehler[jahr] ?? 0, letzterWert)
-      return {
-        jahr, letzter_wert: demo.zaehler[jahr],
-        nummer: `${String(jahr % 100).padStart(2, '0')}-${String(demo.zaehler[jahr]).padStart(4, '0')}`,
-      }
-    }
-    const { data, error } = await supabase.rpc('td_nummernblock_bis', {
-      p_jahr: jahr, p_letzter_wert: letzterWert,
-    })
-    if (error) throw error
-    return data as { jahr: number; letzter_wert: number; nummer: string }
-  },
-
   /** Legt für einen Bereich einen Hauptauftrag mit zentral vergebener Nummer + Unteraufträgen an.
    *  nummerManuell: optionaler manueller Eingriff (Format JJ-NNNN, Eindeutigkeit wird geprüft,
    *  der Zähler wird nachgezogen, damit die Automatik nie kollidiert). */
   async auftragAnlegen(bereichId: string, terminId: string | undefined, arten: {
     art: Untersuchungsart; suffix: string; umfang?: string; proben_geplant?: number
-  }[], nummerManuell?: string, fachlicheArt?: FachlicheUntersuchungsart): Promise<string> {
+  }[], nummerManuell?: string, fachlicheArt?: FachlicheUntersuchungsart,
+  nummernJahr = new Date().getFullYear()): Promise<string> {
     if (!supabase) {
-      const jahr = new Date().getFullYear()
-      demo.zaehler[jahr] = (demo.zaehler[jahr] ?? 0) + 1
-      const nr = `${String(jahr % 100).padStart(2, '0')}-${String(demo.zaehler[jahr]).padStart(4, '0')}`
+      const jahr = nummerManuell
+        ? 2000 + Number(nummerManuell.slice(0, 2))
+        : nummernJahr
+      if (nummerManuell) {
+        demo.zaehler[jahr] = Math.max(
+          demo.zaehler[jahr] ?? 0,
+          Number(nummerManuell.slice(3)),
+        )
+      } else {
+        demo.zaehler[jahr] = (demo.zaehler[jahr] ?? 0) + 1
+      }
+      const nr = nummerManuell ?? `${String(jahr % 100).padStart(2, '0')}-${String(demo.zaehler[jahr]).padStart(4, '0')}`
       const id = 'o' + (demo.auftraege.length + 1)
       demo.auftraege.push({
         id, auftragsnummer: nr, jahr, bereich_id: bereichId, termin_id: terminId, status: 'offen',
@@ -305,6 +296,7 @@ export const db = {
       p_bereich: bereichId, p_termin: terminId ?? null,
       p_arten: arten.map(a => ({ ...a, umfang: a.umfang ?? null, proben_geplant: a.proben_geplant ?? null })),
       p_nummer_manuell: nummerManuell?.trim() || null,
+      p_nummernjahr: nummernJahr,
     })
     if (error) throw error
     const nr = (data as any).nummer as string
@@ -330,6 +322,28 @@ export const db = {
     }
     const { error } = await supabase.from('td_unterauftraege').update(patch).eq('id', id)
     if (error) throw error
+  },
+
+  /** Manuelle Freigabe des gemeinsamen Probenahmeberichts einer Hauptnummer. */
+  async probenahmeberichtFreigeben(auftragId: string, freigegeben: boolean): Promise<{
+    nummer: string; freigegeben: boolean; freigegeben_am?: string
+  }> {
+    if (!supabase) {
+      const a = demo.auftraege.find(x => x.id === auftragId)
+      if (!a) throw new Error('Auftrag nicht gefunden')
+      a.probenahmebericht_freigegeben = freigegeben
+      a.probenahmebericht_freigegeben_am = freigegeben ? new Date().toISOString() : undefined
+      return {
+        nummer: a.auftragsnummer,
+        freigegeben,
+        freigegeben_am: a.probenahmebericht_freigegeben_am,
+      }
+    }
+    const { data, error } = await supabase.rpc('td_probenahmebericht_freigeben', {
+      p_auftrag: auftragId, p_freigegeben: freigegeben,
+    })
+    if (error) throw error
+    return data as { nummer: string; freigegeben: boolean; freigegeben_am?: string }
   },
 
   async unterauftragStornieren(id: string, grund: Stornogrund): Promise<string> {

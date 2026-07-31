@@ -1,20 +1,40 @@
 # NOVAplan – Testschritte für diesen Ansatz
 
-## Aktuelles Update v3.14: Auftragsnummernblock und flexible GA-Freigabe
+## Bedienkorrekturen v3.14b
 
-Die Migration `0030_auftragsnummernblock_altbestand.sql` ist im Projekt
-`kaffeetrinker80` bereits ausgeführt.
+1. Eine gelbe Meldung auslösen, z. B. einen Untersuchungsanteil ergänzen.
+   Erwartung: Sie verschwindet nach fünf Sekunden selbstständig.
+2. Im Planungsfenster `09:00–11:00` auf `13:00` ändern.
+   Erwartung: Das Ende springt automatisch auf `15:00`.
+3. Auf einer langen Seite nach unten scrollen.
+   Erwartung: Rechts unten erscheint ein Pfeil zum Seitenanfang.
+4. Im Planungsfenster Legionellen aktivieren.
+   Erwartung: Das Probenfeld ist vollständig lesbar.
+5. Bei der Berichtserfassung den Befund **ohne Befund (= sauber)** wählen.
+   Erwartung: Der Abschluss wechselt automatisch auf **abgeschlossen**.
 
-Test Auftragsbuch:
+## Aktuelles Update v3.16: Auftragsnummer nach Untersuchungsjahr
 
-1. Auftragsbuch öffnen und das Jahr 2026 wählen.
-2. Erwartung: Der Nummernblock wird vom aktuellen Stand absteigend bis
-   `26-0001` angezeigt. Freie Nummern sind dezente leere Zeilen.
-3. Bei einer freien Nummer **Belegen** anklicken.
-4. Erwartung: Die Nacherfassung öffnet sich mit genau dieser Nummer. Erst beim
-   Speichern entsteht ein echter Auftrag.
-5. **Blockstand setzen** öffnen und testweise nur denselben aktuellen Stand
-   bestätigen. Der Zähler darf dabei nicht sinken.
+Die Migration `0032_auftragsnummer_nach_untersuchungsjahr.sql` ist im Projekt
+`kaffeetrinker80` bereits ausgeführt. Es muss kein SQL manuell gestartet werden.
+
+Test Planung und Auftragsbuch:
+
+1. Eine Untersuchung mit Datum im Jahr 2026 planen. Die Vorschau muss mit
+   `26-` beginnen.
+2. Das Datum im selben Fenster auf den 01.01.2027 oder später ändern.
+   Erwartung: Die Vorschau wechselt sofort auf `27-0001`, solange 2027 noch
+   keine Nummer vergeben wurde.
+3. Termin und Auftrag anlegen. Die gespeicherte Nummer muss zum Jahr des
+   Untersuchungsdatums passen.
+4. Auftragsbuch öffnen und ein Jahr wählen. **Freie Nummern des gewählten
+   Jahres anzeigen** darf weiterhin alle Lücken bis zum aktuellen Höchststand
+   einblenden.
+5. Eine freie niedrigere Nummer über **Belegen** nacherfassen. Eine freie höhere
+   Nummer kann über **manuell eingreifen** erfasst werden. Doppelnummern müssen
+   weiterhin abgewiesen werden.
+6. Erwartung: Es gibt keinen sichtbaren oder einstellbaren „Blockstand“ mehr.
+   Die nächste automatische Nummer wird intern je Jahr ermittelt.
 
 Test Überschreitungsphase:
 
@@ -163,3 +183,24 @@ Danach bauen wir die noch feineren praktischen Teile darauf auf:
 1. Bereiche noch flexibler zwischen Anlagen verschieben.
 2. Echte Dubletten bewusst von „als Anlagen übernehmen“ trennen.
 3. Überschreitungsdashboard optisch weiter an das Python-Dashboard angleichen.
+# v3.15 – Probenahmebericht-Freigabe im Auftragsbuch
+
+Die Migration `0031_probenahmebericht_freigabe.sql` ist im Supabase-Projekt
+**kaffeetrinker80 bereits ausgeführt**. Dafür muss kein SQL mehr manuell gestartet
+werden.
+
+Kurztest:
+
+1. Auftragsbuch öffnen.
+2. Bei einer Hauptauftragsnummer die Checkbox in der Spalte **PN-Bericht** setzen.
+3. Prüfen, dass dort **freigegeben** erscheint.
+4. Falls der Auftrag Unterberichte wie `-M` oder `-C` besitzt: Dort muss
+   **wie [Hauptnummer]** stehen; die Freigabe wird nicht doppelt gepflegt.
+5. Im Filter **PN-Bericht** den Eintrag **Freigabe fehlt** wählen. Es dürfen nur
+   Hauptaufträge ohne Freigabe mit ihren Unterberichten erscheinen.
+6. Checkbox wieder abwählen und prüfen, dass der Auftrag erneut unter
+   **Freigabe fehlt** erscheint.
+
+Beim Setzen speichert die Datenbank zusätzlich Zeitpunkt und angemeldeten
+Benutzer. Nico Schmid besitzt als aktiver Benutzer mit Rolle **Disposition**
+bereits die nötige Berechtigung.

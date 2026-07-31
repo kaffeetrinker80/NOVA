@@ -54,7 +54,10 @@ export default function PlanModal({ anlage, kunde, bereiche, startBereichId, onC
   const [artId, setArtId] = useState('1')
   const [pnIndex, setPnIndex] = useState(0)
 
-  useEffect(() => { db.nummerVorschau().then(setVorschau).catch(() => setVorschau('–')) }, [])
+  const nummernJahr = Number(datum.slice(0, 4))
+  useEffect(() => {
+    db.nummerVorschau(nummernJahr).then(setVorschau).catch(() => setVorschau('–'))
+  }, [nummernJahr])
 
   const toggleBereich = (id: string) =>
     setWahl(w => (id in w ? Object.fromEntries(Object.entries(w).filter(([k]) => k !== id)) : { ...w, [id]: artenStandard(eigene.find(b => b.id === id)) }))
@@ -90,6 +93,8 @@ export default function PlanModal({ anlage, kunde, bereiche, startBereichId, onC
           bereichId, terminId,
           payload.map(({ aktiv, ...rest }) => rest),
           erste && manuell ? manuellNr.trim() : undefined, // manueller Eingriff gilt für den ersten Bereich
+          undefined,
+          nummernJahr,
         )
         erg.push({ bereichName: eigene.find(b => b.id === bereichId)?.name ?? '?', nummer: nr })
         erste = false
@@ -119,6 +124,18 @@ export default function PlanModal({ anlage, kunde, bereiche, startBereichId, onC
   }, [ergebnisse, anlage, kunde])
 
   const [kopiert, setKopiert] = useState(false)
+  const uhrzeitInMinuten = (wert: string) => {
+    const [stunden, minuten] = wert.split(':').map(Number)
+    return stunden * 60 + minuten
+  }
+  const minutenInUhrzeit = (wert: number) =>
+    `${String(Math.floor(wert / 60)).padStart(2, '0')}:${String(wert % 60).padStart(2, '0')}`
+  const vonAendern = (neu: string) => {
+    const dauer = Math.max(0, uhrzeitInMinuten(bis) - uhrzeitInMinuten(von))
+    const neuesEnde = Math.min(23 * 60 + 59, uhrzeitInMinuten(neu) + dauer)
+    setVon(neu)
+    setBis(minutenInUhrzeit(neuesEnde))
+  }
   const titelKopieren = async () => {
     await navigator.clipboard.writeText(outlookTitel)
     setKopiert(true); setTimeout(() => setKopiert(false), 2000)
@@ -168,7 +185,7 @@ export default function PlanModal({ anlage, kunde, bereiche, startBereichId, onC
 
   return (
     <div className="modal-hintergrund" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="modal" role="dialog" aria-modal="true" aria-label={`Planung ${anlage.name}`}>
+      <div className="modal plan-modal" role="dialog" aria-modal="true" aria-label={`Planung ${anlage.name}`}>
         <div className="modal-kopf">
           <div>
             <strong>{anlage.name}</strong>
@@ -186,7 +203,7 @@ export default function PlanModal({ anlage, kunde, bereiche, startBereichId, onC
         {/* Gemeinsame Felder */}
         <div className="pm-gemeinsam">
           <label className="f">Datum<input type="date" value={datum} onChange={e => setDatum(e.target.value)} /></label>
-          <label className="f">Von<input type="time" step="300" value={von} onChange={e => setVon(e.target.value)} /></label>
+          <label className="f">Von<input type="time" step="300" value={von} onChange={e => vonAendern(e.target.value)} /></label>
           <label className="f">Bis<input type="time" step="300" value={bis} onChange={e => setBis(e.target.value)} /></label>
         </div>
 
@@ -223,7 +240,7 @@ export default function PlanModal({ anlage, kunde, bereiche, startBereichId, onC
                         )}
                         {a.aktiv && (
                           <input type="number" min={0} placeholder="Proben" title="Proben geplant"
-                            style={{ width: 70 }} value={a.proben_geplant ?? ''}
+                            className="pm-proben" value={a.proben_geplant ?? ''}
                             onClick={e => e.stopPropagation()}
                             onChange={e => setWahl(w => ({ ...w, [b.id]: w[b.id].map((x, j) => j === i ? { ...x, proben_geplant: e.target.value ? +e.target.value : undefined } : x) }))} />
                         )}
@@ -260,7 +277,8 @@ export default function PlanModal({ anlage, kunde, bereiche, startBereichId, onC
               <div className="notice" style={{ margin: '0 24px 12px' }}>
                 <i className="fas fa-triangle-exclamation" aria-hidden="true"></i>&nbsp;
                 Manuelle Nummern nur im Ausnahmefall: Format JJ-NNNN, Doppelvergabe wird geprüft,
-                der automatische Zähler zieht danach nach.
+                Die automatische Vergabe läuft danach hinter der höchsten Nummer dieses Jahres weiter;
+                freie niedrigere Nummern bleiben manuell belegbar.
               </div>
             )}
 

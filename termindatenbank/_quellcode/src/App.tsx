@@ -23,10 +23,17 @@ const NAV: [string, string, string][] = [
 
 export default function App() {
   const [route, setRoute] = useState(location.hash.replace('#/', '') || 'planung')
+  const [nachObenSichtbar, setNachObenSichtbar] = useState(false)
   useEffect(() => {
     const fn = () => setRoute(location.hash.replace('#/', '') || 'planung')
     window.addEventListener('hashchange', fn)
     return () => window.removeEventListener('hashchange', fn)
+  }, [])
+  useEffect(() => {
+    const pruefen = () => setNachObenSichtbar(window.scrollY > 450)
+    window.addEventListener('scroll', pruefen, { passive: true })
+    pruefen()
+    return () => window.removeEventListener('scroll', pruefen)
   }, [])
 
   const { session, rolle, anzeigename, ladend } = useAuth()
@@ -98,6 +105,11 @@ export default function App() {
       </nav>
 
       <main>{seite}</main>
+      {nachObenSichtbar && <button className="nach-oben no-print"
+        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        title="Nach oben" aria-label="Nach oben scrollen">
+        <i className="fas fa-arrow-up" aria-hidden="true"></i>
+      </button>}
     </>
   )
 }

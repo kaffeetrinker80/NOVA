@@ -67,6 +67,9 @@ export interface Auftrag {
   bereich_id: string; termin_id?: string
   fachliche_untersuchungsart?: FachlicheUntersuchungsart
   status: Auftragsstatus; notizen?: string
+  probenahmebericht_freigegeben?: boolean
+  probenahmebericht_freigegeben_am?: string
+  probenahmebericht_freigegeben_von?: string
   unterauftraege: Unterauftrag[]
 }
 export interface Untersuchungsbewertung {

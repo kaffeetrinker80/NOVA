@@ -181,7 +181,15 @@ export default function BerichtModal({ auftrag, kundeKurz, bereichName, bereichI
                 <label className="f">Berichtsstatus<select value={z.berichtStatus} onChange={e => setZeile(i, { berichtStatus: e.target.value as BerichtStatus })}><option value="ausstehend">ausstehend</option><option value="eingegangen">eingegangen</option><option value="geprueft">geprüft</option></select></label>
                 <label className="f">Abschluss<select value={z.status} onChange={e => setZeile(i, { status: e.target.value as Auftragsstatus })}>{ABSCHLUSS_STATUS.filter(v => v !== 'storniert').map(v => <option key={v} value={v}>{STATUS_LABEL[v]}</option>)}</select></label>
                 <label className="f">Proben Ist / geplant<div className="bericht-proben"><input type="number" min={0} value={z.ist ?? ''} onChange={e => setZeile(i, { ist: e.target.value ? +e.target.value : undefined })} /><span>/ {z.geplant ?? '–'}</span></div></label>
-                <label className="f">Befund<select value={z.befund} onChange={e => setZeile(i, { befund: e.target.value as Befund, neuePhase: false, zaehltSauber: false })}>{BEFUND_OPTIONEN.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
+                <label className="f">Befund<select value={z.befund} onChange={e => {
+                  const befund = e.target.value as Befund
+                  setZeile(i, {
+                    befund,
+                    status: befund === 'sauber' ? 'abgeschlossen' : z.status,
+                    neuePhase: false,
+                    zaehltSauber: false,
+                  })
+                }}>{BEFUND_OPTIONEN.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
               </div>
               <label className="f">Hinweis / Maßnahme<textarea rows={2} value={z.bemerkung} onChange={e => setZeile(i, { bemerkung: e.target.value })} placeholder={`Bemerkung nur zu ${z.nummer}`} /></label>
 

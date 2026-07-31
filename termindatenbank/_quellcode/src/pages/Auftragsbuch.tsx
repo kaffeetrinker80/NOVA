@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { db } from '../lib/data'
 import type { Anlage, Auftrag, Bereich, FachlicheUntersuchungsart, Kunde, Stornogrund, Termin, Untersuchungsart, Unterauftrag } from '../lib/types'
 import { ART_LABEL, ERGEBNIS_LABEL, FACHLICHE_ART_LABEL, STATUS_LABEL, STORNOGRUND_LABEL, fmtDatum, nummerVoll, kundeAnzeige } from '../lib/types'
-import { Abschnitt, ErgebnisBadge, Nr, StatusBadge } from '../components/ui'
+import { Abschnitt, ErgebnisBadge, Meldung, Nr, StatusBadge } from '../components/ui'
 import BerichtModal from '../components/BerichtModal'
 
 const ERGAENZBARE_ARTEN: Untersuchungsart[] = ['legionellen', 'mibi', 'chemie']
@@ -238,6 +238,7 @@ export default function Auftragsbuch() {
   const [fJahr, setFJahr] = useState(String(AKTUELLES_JAHR)); const [fKunde, setFKunde] = useState('')
   const [fArt, setFArt] = useState(''); const [fStatus, setFStatus] = useState('')
   const [fErgebnis, setFErgebnis] = useState('')
+  const [fFreigabe, setFFreigabe] = useState('')
   const [bearbeite, setBearbeite] = useState<string | null>(null)
 
   // ── Eigenständige Nummern-Vergabe ──
@@ -261,8 +262,7 @@ export default function Auftragsbuch() {
   const [verwalteUnterauftrag, setVerwalteUnterauftrag] = useState<{ auftrag: Auftrag; unterauftrag: Unterauftrag } | null>(null)
   const [nummernstaende, setNummernstaende] = useState<Array<{ jahr: number; letzter_wert: number }>>([])
   const [leereNummern, setLeereNummern] = useState(true)
-  const [blockBearbeiten, setBlockBearbeiten] = useState(false)
-  const [blockWert, setBlockWert] = useState('')
+  const [pnLaeuft, setPnLaeuft] = useState<string | null>(null)
 
   const laden = () => {
     db.auftraege().then(setAuftraege); db.kunden().then(setKunden)
@@ -303,7 +303,10 @@ export default function Auftragsbuch() {
     && (!fKunde || z.kunde?.id === fKunde)
     && (!fArt || z.u.art === fArt)
     && (!fStatus || z.u.status === fStatus)
-    && (!fErgebnis || z.u.ergebnis === fErgebnis),
+    && (!fErgebnis || z.u.ergebnis === fErgebnis)
+    && (!fFreigabe
+      || (fFreigabe === 'fehlt' && !z.a.probenahmebericht_freigegeben)
+      || (fFreigabe === 'freigegeben' && !!z.a.probenahmebericht_freigegeben)),
   )
 
   const jahre = [...new Set([
@@ -315,7 +318,7 @@ export default function Auftragsbuch() {
   const blockStand = nummernstaende.find(x => x.jahr === blockJahr)?.letzter_wert ?? 0
   const blockPrefix = String(blockJahr % 100).padStart(2, '0')
   const blockAnsicht = !!fJahr && leereNummern
-    && !suche.trim() && !fKunde && !fArt && !fStatus && !fErgebnis
+    && !suche.trim() && !fKunde && !fArt && !fStatus && !fErgebnis && !fFreigabe
   const buchZeilen = useMemo(() => {
     if (!blockAnsicht || blockStand < 1) {
       return gefiltert.map(z => ({ typ: 'belegt' as const, z }))
@@ -342,7 +345,11 @@ export default function Auftragsbuch() {
     return ergebnis
   }, [blockAnsicht, blockStand, blockPrefix, gefiltert])
 
-  useEffect(() => { if (nvOffen) db.nummerVorschau().then(setNvVorschau).catch(() => setNvVorschau('–')) }, [nvOffen, auftraege])
+  const nvTerminDatum = termine.find(t => t.id === nvTermin)?.datum
+  const nvNummernJahr = nvTerminDatum ? Number(nvTerminDatum.slice(0, 4)) : blockJahr
+  useEffect(() => {
+    if (nvOffen) db.nummerVorschau(nvNummernJahr).then(setNvVorschau).catch(() => setNvVorschau('–'))
+  }, [nvOffen, auftraege, nvNummernJahr])
 
   const nummerVergeben = async () => {
     if (!nvBereich) { setNvMeldung('Bitte Bereich wählen.'); return }
@@ -361,29 +368,11 @@ export default function Auftragsbuch() {
         proben_geplant: nvProben[art] ? Number(nvProben[art]) : undefined,
       }))
       const nr = await db.auftragAnlegen(nvBereich, nvTermin || undefined,
-        arten, nvManuell ? nvNummer.trim() : undefined, nvFachArt)
+        arten, nvManuell ? nvNummer.trim() : undefined, nvFachArt, nvNummernJahr)
       setNvMeldung(nvTermin ? `Auftragsnummer ${nr} wurde dem bestehenden Termin zugeordnet.` : `Auftragsnummer ${nr} nacherfasst (ohne Termin – im Auftragsbuch geführt).`)
       setNvNummer(''); setNvManuell(false); laden()
     } catch (e: any) {
       setNvMeldung('Fehler: ' + (e.message ?? e))
-    }
-  }
-
-  const blockstandSpeichern = async () => {
-    const wert = Number(blockWert)
-    if (!Number.isInteger(wert) || wert < 1 || wert > 9999) {
-      setNvMeldung('Bitte einen Nummernstand zwischen 0001 und 9999 eingeben.')
-      return
-    }
-    try {
-      const erg = await db.nummernblockSetzen(blockJahr, wert)
-      setNvMeldung(`Nummernblock ${erg.jahr} ist bis ${erg.nummer} vorbereitet. Freie Nummern wurden nicht als Aufträge angelegt.`)
-      setBlockWert('')
-      setBlockBearbeiten(false)
-      db.nummernstaende().then(setNummernstaende)
-      db.nummerVorschau().then(setNvVorschau)
-    } catch (e: any) {
-      setNvMeldung('Nummernblock konnte nicht gesetzt werden: ' + (e.message ?? e))
     }
   }
 
@@ -402,9 +391,24 @@ export default function Auftragsbuch() {
     laden()
   }
 
+  const pnFreigabeSetzen = async (auftrag: Auftrag, freigegeben: boolean) => {
+    setPnLaeuft(auftrag.id)
+    try {
+      const erg = await db.probenahmeberichtFreigeben(auftrag.id, freigegeben)
+      setNvMeldung(freigegeben
+        ? `${erg.nummer}: Probenahmebericht wurde für Nico als freigegeben markiert.`
+        : `${erg.nummer}: Freigabe des Probenahmeberichts wurde zurückgenommen.`)
+      laden()
+    } catch (e: any) {
+      setNvMeldung('PN-Bericht konnte nicht aktualisiert werden: ' + (e.message ?? e))
+    } finally {
+      setPnLaeuft(null)
+    }
+  }
+
   return (
     <>
-      {nvMeldung && <div className="notice">{nvMeldung}</div>}
+      <Meldung text={nvMeldung} onWeg={() => setNvMeldung('')} />
 
       <div id="auftrag-nacherfassen">
       <Abschnitt titel="Auftrag / Auftragsnummer nacherfassen"
@@ -483,7 +487,8 @@ export default function Auftragsbuch() {
               <p className="notice" style={{ marginTop: 12, marginBottom: 0 }}>
                 <i className="fas fa-triangle-exclamation" aria-hidden="true"></i>&nbsp;
                 Nur im Ausnahmefall: Format JJ-NNNN, Doppelvergabe wird abgewiesen, der automatische
-                Zähler zieht nach – die nächste automatische Nummer folgt hinter der manuellen.
+                Zähler läuft hinter der höchsten Nummer dieses Jahres weiter. Freie niedrigere Nummern
+                können weiterhin manuell nacherfasst werden.
               </p>
             )}
           </div>
@@ -496,29 +501,10 @@ export default function Auftragsbuch() {
           <i className="fas fa-print" aria-hidden="true"></i> Gefilterte Liste drucken
         </button>}>
       <div className="auftragsblock-leiste">
-        <div>
-          <strong>Nummernblock {blockJahr}</strong>
-          <span className="hint">{blockStand
-            ? ` ${blockPrefix}-0001 bis ${blockPrefix}-${String(blockStand).padStart(4, '0')}`
-            : ' noch nicht vorbereitet'}</span>
-        </div>
         <label className="auftragsblock-leer">
           <input type="checkbox" checked={leereNummern} onChange={e => setLeereNummern(e.target.checked)} />
-          freie Nummern anzeigen
+          freie Nummern des gewählten Jahres anzeigen
         </label>
-        {blockBearbeiten
-          ? <div className="auftragsblock-setzen">
-              <span>{blockPrefix}-</span>
-              <input inputMode="numeric" maxLength={4} value={blockWert}
-                onChange={e => setBlockWert(e.target.value.replace(/\D/g, ''))}
-                placeholder={String(blockStand || 1).padStart(4, '0')} autoFocus />
-              <button className="primary" onClick={blockstandSpeichern}>Block vorbereiten</button>
-              <button onClick={() => setBlockBearbeiten(false)}>Abbrechen</button>
-            </div>
-          : <button onClick={() => {
-              setBlockWert(blockStand ? String(blockStand).padStart(4, '0') : '')
-              setBlockBearbeiten(true)
-            }}><i className="fas fa-layer-group" aria-hidden="true"></i> Blockstand setzen</button>}
       </div>
       <div className="filters">
         <input placeholder="Suche: Auftragsnummer, Kunde, Anlage, Bereich …" value={suche} onChange={e => setSuche(e.target.value)} style={{ minWidth: 280 }} />
@@ -527,19 +513,24 @@ export default function Auftragsbuch() {
         <select value={fArt} onChange={e => setFArt(e.target.value)}><option value="">Art: alle</option>{Object.entries(ART_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
         <select value={fStatus} onChange={e => setFStatus(e.target.value)}><option value="">Status: alle</option>{Object.entries(STATUS_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
         <select value={fErgebnis} onChange={e => setFErgebnis(e.target.value)}><option value="">Ergebnis: alle</option>{Object.entries(ERGEBNIS_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
+        <select value={fFreigabe} onChange={e => setFFreigabe(e.target.value)}>
+          <option value="">PN-Bericht: alle</option>
+          <option value="fehlt">Freigabe fehlt</option>
+          <option value="freigegeben">freigegeben</option>
+        </select>
       </div>
 
       <div className="table-container">
       <table>
         <thead><tr>
           <th>Nr.</th><th>Kunde</th><th>Anlage</th><th>Bereich</th><th>Termin</th>
-          <th>Untersuchung</th><th>Laborart / Umfang</th><th>Proben (Soll/Ist)</th><th>Status</th><th>Ergebnis</th><th></th>
+          <th>Untersuchung</th><th>Laborart / Umfang</th><th>Proben (Soll/Ist)</th><th>Status</th><th>Ergebnis</th><th>PN-Bericht</th><th></th>
         </tr></thead>
         <tbody>
           {buchZeilen.map(eintrag => {
             if (eintrag.typ === 'frei') return <tr key={eintrag.nummer} className="auftragsnummer-frei">
               <td><Nr>{eintrag.nummer}</Nr></td>
-              <td colSpan={9}><span className="hint">freie Auftragsnummer</span></td>
+              <td colSpan={10}><span className="hint">freie Auftragsnummer</span></td>
               <td className="no-print auftrag-aktionen">
                 <button className="zeile-btn unterauftrag-plus" onClick={() => freieNummerBelegen(eintrag.nummer)}>
                   <i className="fas fa-plus" aria-hidden="true"></i> Belegen
@@ -566,6 +557,20 @@ export default function Auftragsbuch() {
               <td><StatusBadge s={z.u.status} />{z.u.storno_grund
                 ? <div className="hint">{STORNOGRUND_LABEL[z.u.storno_grund]}</div> : null}</td>
               <td><ErgebnisBadge s={z.u.ergebnis} /></td>
+              <td className="pn-freigabe">
+                {z.u.suffix === '' ||
+                (!z.a.unterauftraege.some(u => u.suffix === '') &&
+                  z.a.unterauftraege[0]?.id === z.u.id)
+                  ? <label title={z.a.probenahmebericht_freigegeben_am
+                      ? `Freigegeben ${new Date(z.a.probenahmebericht_freigegeben_am).toLocaleString('de-DE')}`
+                      : 'Probenahmebericht noch nicht freigegeben'}>
+                      <input type="checkbox" checked={!!z.a.probenahmebericht_freigegeben}
+                        disabled={pnLaeuft === z.a.id}
+                        onChange={e => pnFreigabeSetzen(z.a, e.target.checked)} />
+                      <span>{z.a.probenahmebericht_freigegeben ? 'freigegeben' : 'fehlt'}</span>
+                    </label>
+                  : <span className="hint">wie {z.a.auftragsnummer}</span>}
+              </td>
               <td className="no-print auftrag-aktionen">
                 <button className="zeile-btn" onClick={() => setBerichtAuftrag(z.a)} title="Prüfbericht erfassen">
                   <i className="fas fa-file-circle-check" aria-hidden="true"></i> Bericht
@@ -582,7 +587,7 @@ export default function Auftragsbuch() {
               </td>
             </tr>
           })}
-          {buchZeilen.length === 0 && <tr><td colSpan={11} className="hint">Keine Aufträge für die gewählten Filter.</td></tr>}
+          {buchZeilen.length === 0 && <tr><td colSpan={12} className="hint">Keine Aufträge für die gewählten Filter.</td></tr>}
         </tbody>
       </table>
       </div>
