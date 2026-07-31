@@ -1,5 +1,22 @@
 # NOVAplan – Testschritte für diesen Ansatz
 
+## Aktuelles Update v3.17: Direkte Auftragserfassung mit Schnellsuche
+
+Für dieses Update ist keine neue SQL-Migration erforderlich.
+
+1. Im Auftragsbuch **Direkte Erfassung öffnen** anklicken.
+2. In der Schnellsuche einen Kundennamen, eine Anlage, einen Bereich, eine
+   Straße, eine Hausnummer, eine PLZ oder einen Ort eingeben.
+3. Einen Treffer anklicken oder den ersten Treffer mit Enter übernehmen.
+4. Erwartung: Kunde und – soweit durch den Treffer eindeutig – Anlage und
+   Bereich werden gemeinsam ausgefüllt.
+5. Bei einer Anlage mit genau einem aktiven Bereich muss dieser automatisch
+   ausgewählt werden.
+6. Die Einzel-Dropdowns bleiben als alternative Auswahl erhalten.
+7. Erwartung: Die Bezeichnungen lauten jetzt eindeutig
+   **Auftrag unabhängig von der Planung anlegen**, **Zu vorhandenem Termin
+   anlegen** oder **Auftrag ohne Termin anlegen**.
+
 ## Bedienkorrekturen v3.14b
 
 1. Eine gelbe Meldung auslösen, z. B. einen Untersuchungsanteil ergänzen.

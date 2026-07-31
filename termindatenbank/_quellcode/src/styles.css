@@ -656,6 +656,33 @@ button.danger, .danger { color: #a62424; }
 .pn-freigabe label:has(input:checked) { color: #287047; font-weight: 650; }
 .pn-freigabe label:not(:has(input:checked)) { color: #9a6510; }
 
+/* ---------- Direkte Auftragserfassung ---------- */
+.direktauftrag-hinweis { margin: 0 0 10px; }
+.auftrag-schnellsuche { position: relative; margin-bottom: 14px; max-width: 920px; }
+.auftrag-schnellsuche .suchfeld { margin: 0; }
+.auftrag-suchtreffer {
+  position: absolute; z-index: 80; left: 0; right: 0; top: calc(100% + 4px);
+  display: flex; flex-direction: column; gap: 3px; max-height: 310px; overflow-y: auto;
+  padding: 6px; background: #fff; border: 1px solid #cbd9e6; border-radius: 9px;
+  box-shadow: 0 9px 24px rgba(38, 64, 84, .18);
+}
+.auftrag-suchtreffer > button {
+  width: 100%; display: grid; grid-template-columns: 20px minmax(0, 1fr) 14px;
+  gap: 8px; align-items: center; padding: 8px 9px; text-align: left;
+  color: var(--text-main); background: #fff; border: 1px solid transparent;
+}
+.auftrag-suchtreffer > button:hover {
+  color: var(--text-main); background: #edf6ff; border-color: #c8ddf0;
+}
+.auftrag-suchtreffer > button > span {
+  min-width: 0; display: flex; flex-direction: column; gap: 2px;
+}
+.auftrag-suchtreffer small {
+  color: var(--text-muted); font-size: .7rem; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+}
+.auftrag-suchtreffer > .hint { padding: 8px 10px; }
+
 /* ---------- Schneller Seitenanfang ---------- */
 .nach-oben {
   position: fixed; right: 22px; bottom: 22px; z-index: 9000;

@@ -12,6 +12,20 @@ const ART_SUFFIX: Record<Untersuchungsart, string> = {
 }
 const AKTUELLES_JAHR = new Date().getFullYear()
 
+type AuftragSchnelltreffer = {
+  art: 'kunde' | 'anlage' | 'bereich'
+  id: string
+  kundeId: string
+  anlageId?: string
+  bereichId?: string
+  titel: string
+  detail: string
+  score: number
+}
+
+const suchwert = (...werte: Array<string | undefined>) =>
+  werte.filter(Boolean).join(' ').toLocaleLowerCase('de')
+
 function UnterauftragErgaenzenModal({ auftrag, onClose, onSaved }: {
   auftrag: Auftrag
   onClose: () => void
@@ -256,6 +270,7 @@ export default function Auftragsbuch() {
   const [nvFachArt, setNvFachArt] = useState<FachlicheUntersuchungsart>('orientierend')
   const [nvManuell, setNvManuell] = useState(false)
   const [nvNummer, setNvNummer] = useState('')
+  const [nvSuche, setNvSuche] = useState('')
   const [nvMeldung, setNvMeldung] = useState('')
   const [berichtAuftrag, setBerichtAuftrag] = useState<Auftrag | null>(null)
   const [ergaenzeAuftrag, setErgaenzeAuftrag] = useState<Auftrag | null>(null)
@@ -293,6 +308,78 @@ export default function Auftragsbuch() {
     const termin = termine.find(t => t.id === a.termin_id)
     return a.unterauftraege.map(u => ({ a, u, bereich, anlage, kunde, termin, nummer: nummerVoll(a, u) }))
   }), [auftraege, bereiche, anlagen, kunden, termine])
+
+  const nvSuchtreffer = useMemo(() => {
+    const q = nvSuche.trim().toLocaleLowerCase('de')
+    if (q.length < 2) return []
+    const teile = q.split(/\s+/).filter(Boolean)
+    const passt = (text: string) => teile.every(teil => text.includes(teil))
+    const score = (direkt: string, gesamt: string, titel: string) => {
+      let wert = 0
+      if (passt(direkt)) wert += 20
+      if (titel.toLocaleLowerCase('de').startsWith(q)) wert += 10
+      if (gesamt.includes(q)) wert += 5
+      return wert
+    }
+    const treffer: AuftragSchnelltreffer[] = []
+
+    for (const k of kunden.filter(x => x.aktiv)) {
+      const kDirekt = suchwert(k.name_lang, k.name_kurz, k.strasse, k.plz, k.ort, k.telefon, k.email)
+      if (passt(kDirekt)) {
+        treffer.push({
+          art: 'kunde', id: `k-${k.id}`, kundeId: k.id,
+          titel: kundeAnzeige(k),
+          detail: ['Kunde', k.strasse, [k.plz, k.ort].filter(Boolean).join(' ')].filter(Boolean).join(' · '),
+          score: score(kDirekt, kDirekt, kundeAnzeige(k)),
+        })
+      }
+
+      for (const a of anlagen.filter(x => x.aktiv && x.kunde_id === k.id)) {
+        const aDirekt = suchwert(a.name, a.strasse, a.plz, a.ort, a.objekt_referenz, a.objekt_betreuer, a.info)
+        const aGesamt = `${aDirekt} ${kDirekt}`
+        if (passt(aGesamt)) {
+          treffer.push({
+            art: 'anlage', id: `a-${a.id}`, kundeId: k.id, anlageId: a.id,
+            titel: a.name,
+            detail: ['Anlage', kundeAnzeige(k), a.strasse, [a.plz, a.ort].filter(Boolean).join(' ')].filter(Boolean).join(' · '),
+            score: score(aDirekt, aGesamt, a.name),
+          })
+        }
+
+        for (const b of bereiche.filter(x => x.aktiv && x.anlage_id === a.id)) {
+          const bAdresse = [b.strasse, b.hausnummer].filter(Boolean).join(' ')
+          const bDirekt = suchwert(b.name, b.strasse, b.hausnummer, bAdresse, b.wwb_details, b.beschreibung)
+          const bGesamt = `${bDirekt} ${aDirekt} ${kDirekt}`
+          if (passt(bGesamt)) {
+            treffer.push({
+              art: 'bereich', id: `b-${b.id}`, kundeId: k.id, anlageId: a.id, bereichId: b.id,
+              titel: b.name,
+              detail: ['Bereich', a.name, kundeAnzeige(k), bAdresse, [a.plz, a.ort].filter(Boolean).join(' ')].filter(Boolean).join(' · '),
+              score: score(bDirekt, bGesamt, b.name),
+            })
+          }
+        }
+      }
+    }
+
+    return treffer
+      .sort((a, b) => b.score - a.score || a.titel.localeCompare(b.titel, 'de'))
+      .slice(0, 12)
+  }, [nvSuche, kunden, anlagen, bereiche])
+
+  const schnelltrefferWaehlen = (treffer: AuftragSchnelltreffer) => {
+    const passendeAnlagen = anlagen.filter(a => a.aktiv && a.kunde_id === treffer.kundeId)
+    const anlageId = treffer.anlageId ?? (passendeAnlagen.length === 1 ? passendeAnlagen[0].id : '')
+    const passendeBereiche = anlageId
+      ? bereiche.filter(b => b.aktiv && b.anlage_id === anlageId)
+      : []
+    const bereichId = treffer.bereichId ?? (passendeBereiche.length === 1 ? passendeBereiche[0].id : '')
+    setNvKunde(treffer.kundeId)
+    setNvAnlage(anlageId)
+    setNvBereich(bereichId)
+    setNvTermin('')
+    setNvSuche('')
+  }
 
   const gefiltert = zeilen.filter(z =>
     (!suche || z.nummer.toLowerCase().includes(suche.toLowerCase())
@@ -411,15 +498,42 @@ export default function Auftragsbuch() {
       <Meldung text={nvMeldung} onWeg={() => setNvMeldung('')} />
 
       <div id="auftrag-nacherfassen">
-      <Abschnitt titel="Auftrag / Auftragsnummer nacherfassen"
+      <Abschnitt titel="Auftrag unabhängig von der Planung anlegen"
         aktionen={<button onClick={() => setNvOffen(!nvOffen)}>
           <i className={`fas ${nvOffen ? 'fa-chevron-up' : 'fa-hashtag'}`} aria-hidden="true"></i>
-          {nvOffen ? 'Einklappen' : `Auftrag nacherfassen`}
+          {nvOffen ? 'Einklappen' : 'Direkte Erfassung öffnen'}
         </button>}>
         {nvOffen && (
           <div style={{ padding: '16px 20px' }}>
+            <p className="hint direktauftrag-hinweis">
+              Für Altbestand oder Aufträge, die nicht über Dashboard → Planen angelegt wurden.
+            </p>
+            <div className="auftrag-schnellsuche">
+              <div className="suchfeld">
+                <i className="fas fa-magnifying-glass" aria-hidden="true"></i>
+                <input value={nvSuche}
+                  placeholder="Kunde, Anlage, Bereich, Straße, PLZ oder Ort suchen …"
+                  onChange={e => setNvSuche(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Escape') setNvSuche('')
+                    if (e.key === 'Enter' && nvSuchtreffer[0]) schnelltrefferWaehlen(nvSuchtreffer[0])
+                  }}
+                  autoComplete="off" />
+                {nvSuche && <button className="suchfeld-x" onClick={() => setNvSuche('')}
+                  aria-label="Schnellsuche leeren">×</button>}
+              </div>
+              {nvSuche.trim().length >= 2 && <div className="auftrag-suchtreffer">
+                {nvSuchtreffer.map(t => <button key={t.id} onClick={() => schnelltrefferWaehlen(t)}>
+                  <i className={`fas ${t.art === 'kunde' ? 'fa-user-tie' : t.art === 'anlage' ? 'fa-building' : 'fa-diagram-project'}`}
+                    aria-hidden="true"></i>
+                  <span><strong>{t.titel}</strong><small>{t.detail}</small></span>
+                  <i className="fas fa-arrow-right" aria-hidden="true"></i>
+                </button>)}
+                {nvSuchtreffer.length === 0 && <span className="hint">Kein passender Stammdatensatz gefunden.</span>}
+              </div>}
+            </div>
             <div className="grid2">
-              <label className="f">Kunde
+              <label className="f">Kunde (alternativ einzeln wählen)
                 <select value={nvKunde} onChange={e => { setNvKunde(e.target.value); setNvAnlage(''); setNvBereich(''); setNvTermin('') }}>
                   <option value="">– wählen –</option>
                   {kunden.map(k => <option key={k.id} value={k.id}>{kundeAnzeige(k)}</option>)}
@@ -480,7 +594,8 @@ export default function Auftragsbuch() {
                 manuell eingreifen
               </label>
               <button className="primary" onClick={nummerVergeben} disabled={!nvBereich}>
-                <i className="fas fa-hashtag" aria-hidden="true"></i> {nvTermin ? 'Auftrag zum Termin nacherfassen' : 'Auftragsnummer nacherfassen'}
+                <i className="fas fa-hashtag" aria-hidden="true"></i>
+                {nvTermin ? 'Zu vorhandenem Termin anlegen' : 'Auftrag ohne Termin anlegen'}
               </button>
             </div>
             {nvManuell && (
