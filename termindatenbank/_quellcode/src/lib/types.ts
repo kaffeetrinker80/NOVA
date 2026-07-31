@@ -2,6 +2,7 @@ export type Kundentyp = 'hausverwaltung' | 'pflegetraeger' | 'wohnungsbau' | 'pr
 export type Terminstatus = 'geplant' | 'bestaetigt' | 'abgeschlossen' | 'abgesagt' | 'verschoben'
 export type Untersuchungsart = 'legionellen' | 'mibi' | 'chemie' | 'vorortparameter' | 'sonstiges'
 export type Auftragsstatus = 'offen' | 'beprobt' | 'im_labor' | 'abgeschlossen' | 'storniert'
+export type Stornogrund = 'dezentral' | 'nicht_moeglich' | 'absage'
 export type Ergebnisstatus = 'offen' | 'unauffaellig' | 'ueberschritten' | 'nachuntersuchung_erforderlich'
 export type Rolle = 'admin' | 'disposition' | 'probenehmer' | 'lesend'
 export type BerichtStatus = 'ausstehend' | 'eingegangen' | 'geprueft'
@@ -59,6 +60,7 @@ export interface Unterauftrag {
   art: Untersuchungsart; umfang?: string
   proben_geplant?: number; proben_ist?: number
   status: Auftragsstatus; ergebnis: Ergebnisstatus; notizen?: string
+  storno_grund?: Stornogrund; storniert_am?: string; storniert_von?: string
 }
 export interface Auftrag {
   id: string; auftragsnummer: string; jahr: number
@@ -93,6 +95,11 @@ export const ERGEBNIS_LABEL: Record<Ergebnisstatus, string> = {
 export const STATUS_LABEL: Record<Auftragsstatus, string> = {
   offen: 'offen', beprobt: 'beprobt', im_labor: 'im Labor',
   abgeschlossen: 'abgeschlossen', storniert: 'storniert',
+}
+export const STORNOGRUND_LABEL: Record<Stornogrund, string> = {
+  dezentral: 'dezentral',
+  nicht_moeglich: 'nicht möglich',
+  absage: 'Absage',
 }
 export const TERMIN_LABEL: Record<Terminstatus, string> = {
   geplant: 'geplant', bestaetigt: 'bestätigt', abgeschlossen: 'abgeschlossen',

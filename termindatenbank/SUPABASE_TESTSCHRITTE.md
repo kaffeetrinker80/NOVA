@@ -17,6 +17,23 @@ Danach:
 5. Erneut **Anteil** öffnen: Mibi wird nicht mehr angeboten und kann nicht doppelt
    angelegt werden. Chemie bleibt als `26-0087-C` ergänzbar.
 
+## Update v3.12: Mehrfachauswahl, Storno und Löschen
+
+Anschließend den vollständigen Inhalt von
+`supabase/migrations/0029_unterauftraege_storno_loeschen_und_altinfo.sql`
+im SQL-Editor ausführen.
+
+Test:
+
+1. Beim Nacherfassen Legionellen und Mibi gleichzeitig auswählen.
+2. Erwartung: eine neue Hauptnummer für Legionellen und derselbe Auftrag mit `-M`.
+3. Den Mibi-Unterbericht über das Zahnrad mit „dezentral“, „nicht möglich“ oder
+   „abgesagt“ stornieren.
+4. Erwartung: Der Unterbericht bleibt sichtbar, wird aber bei der Berichtserfassung
+   nicht mehr als offener Befund behandelt.
+5. Einen vollständig leeren `-M`- oder `-C`-Unterbericht über das Zahnrad löschen.
+   Sobald Proben oder Bewertungen vorhanden sind, muss die Datenbank das Löschen ablehnen.
+
 ## 1. Git aktualisieren
 
 1. Die ZIP-Datei entpacken.

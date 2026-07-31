@@ -478,6 +478,33 @@ table.tbl {
 }
 .unterauftrag-nummer { color: var(--color-primary); font-weight: 750; background: #f4f8fc; }
 .unterauftrag-hinweis { margin: 0; }
+.nacherfass-arten {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));
+  gap: 8px; margin: 14px 0 0; padding: 10px 12px 12px;
+  border: 1px solid var(--border); border-radius: 9px;
+}
+.nacherfass-arten legend { padding: 0 6px; color: var(--text-muted); font-size: .78rem; font-weight: 700; }
+.nacherfass-art {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  min-height: 38px; padding: 7px 9px; border: 1px solid var(--border);
+  border-radius: 8px; background: #f8fafc;
+}
+.nacherfass-art.aktiv { border-color: #9fc4df; background: #f1f8fd; }
+.nacherfass-art label { display: flex; align-items: center; gap: 5px; font-size: .8rem; }
+.nacherfass-art input[type="number"] { width: 70px; padding: 5px 6px; }
+.nacherfass-art select { max-width: 150px; padding: 5px 6px; font-size: .75rem; }
+.unterauftrag-verwalten { width: 29px; padding-left: 0; padding-right: 0; justify-content: center; background: #6c757d; border-color: #6c757d; }
+.unterauftrag-storno {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 8px;
+  padding: 12px; border: 1px solid #ead79b; border-radius: 9px; background: #fffdf4;
+}
+.unterauftrag-storno .f { width: min(100%, 330px); }
+.unterauftrag-loeschen {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding-top: 10px; border-top: 1px solid var(--border);
+}
+.unterauftrag-storniert { background: #f1f3f5 !important; color: var(--text-muted); }
+.unterauftrag-storniert .nr { color: #6c757d; text-decoration: line-through; }
 .ausblenden-aktion { background: #adb5bd; border-color: #adb5bd; }
 
 /* ---------- Assistent: neue Anlage vollständig erfassen ---------- */

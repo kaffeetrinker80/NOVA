@@ -27,10 +27,10 @@ export default function PlanModal({ anlage, kunde, bereiche, startBereichId, onC
 }) {
   const [tab, setTab] = useState<'termin' | 'outlook' | 'aushang'>('termin')
 
-  // ── Gemeinsame Felder (Vorgaben wie im alten Dashboard: heute + 25 Tage, 08–10 Uhr) ──
+  // ── Gemeinsame Felder (üblicher NOVA-Start: 09:00 Uhr) ──
   const [datum, setDatum] = useState(() => new Date(Date.now() + 25 * 864e5).toISOString().slice(0, 10))
-  const [von, setVon] = useState('08:00')
-  const [bis, setBis] = useState('10:00')
+  const [von, setVon] = useState('09:00')
+  const [bis, setBis] = useState('11:00')
 
   // ── Bereiche & Arten ──
   const eigene = bereiche.filter(b => b.anlage_id === anlage.id)
@@ -186,8 +186,8 @@ export default function PlanModal({ anlage, kunde, bereiche, startBereichId, onC
         {/* Gemeinsame Felder */}
         <div className="pm-gemeinsam">
           <label className="f">Datum<input type="date" value={datum} onChange={e => setDatum(e.target.value)} /></label>
-          <label className="f">Von<input type="time" value={von} onChange={e => setVon(e.target.value)} /></label>
-          <label className="f">Bis<input type="time" value={bis} onChange={e => setBis(e.target.value)} /></label>
+          <label className="f">Von<input type="time" step="300" value={von} onChange={e => setVon(e.target.value)} /></label>
+          <label className="f">Bis<input type="time" step="300" value={bis} onChange={e => setBis(e.target.value)} /></label>
         </div>
 
         {fehler && <div className="notice" style={{ margin: '0 24px 12px' }}>{fehler}</div>}
@@ -205,7 +205,8 @@ export default function PlanModal({ anlage, kunde, bereiche, startBereichId, onC
                 <label className="pm-bereich-kopf">
                   <input type="checkbox" checked={b.id in wahl} onChange={() => toggleBereich(b.id)} />
                   <strong>{b.name}</strong>
-                  {b.beschreibung && <span className="hint">{b.beschreibung}</span>}
+                  {b.beschreibung && b.beschreibung !== 'Aus Altbestand eindeutig übernommen'
+                    && <span className="hint">{b.beschreibung}</span>}
                 </label>
                 {b.id in wahl && (
                   <div className="pm-arten">

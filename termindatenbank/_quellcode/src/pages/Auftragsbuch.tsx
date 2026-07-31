@@ -1,11 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
 import { db } from '../lib/data'
-import type { Anlage, Auftrag, Bereich, FachlicheUntersuchungsart, Kunde, Termin, Untersuchungsart } from '../lib/types'
-import { ART_LABEL, ERGEBNIS_LABEL, FACHLICHE_ART_LABEL, STATUS_LABEL, fmtDatum, nummerVoll, kundeAnzeige } from '../lib/types'
+import type { Anlage, Auftrag, Bereich, FachlicheUntersuchungsart, Kunde, Stornogrund, Termin, Untersuchungsart, Unterauftrag } from '../lib/types'
+import { ART_LABEL, ERGEBNIS_LABEL, FACHLICHE_ART_LABEL, STATUS_LABEL, STORNOGRUND_LABEL, fmtDatum, nummerVoll, kundeAnzeige } from '../lib/types'
 import { Abschnitt, ErgebnisBadge, Nr, StatusBadge } from '../components/ui'
 import BerichtModal from '../components/BerichtModal'
 
 const ERGAENZBARE_ARTEN: Untersuchungsart[] = ['legionellen', 'mibi', 'chemie']
+const NACHERFASSBARE_ARTEN: Untersuchungsart[] = ['legionellen', 'mibi', 'chemie', 'vorortparameter']
+const ART_SUFFIX: Record<Untersuchungsart, string> = {
+  legionellen: '', mibi: 'M', chemie: 'C', vorortparameter: 'V', sonstiges: 'S',
+}
 
 function UnterauftragErgaenzenModal({ auftrag, onClose, onSaved }: {
   auftrag: Auftrag
@@ -114,6 +118,115 @@ function UnterauftragErgaenzenModal({ auftrag, onClose, onSaved }: {
   </div>
 }
 
+function UnterauftragVerwaltenModal({ auftrag, unterauftrag, onClose, onSaved }: {
+  auftrag: Auftrag
+  unterauftrag: Unterauftrag
+  onClose: () => void
+  onSaved: (meldung: string) => void
+}) {
+  const [grund, setGrund] = useState<Stornogrund>('dezentral')
+  const [umfang, setUmfang] = useState(unterauftrag.umfang ?? '')
+  const [probenGeplant, setProbenGeplant] = useState(unterauftrag.proben_geplant?.toString() ?? '')
+  const [laeuft, setLaeuft] = useState(false)
+  const [fehler, setFehler] = useState('')
+  const nummer = nummerVoll(auftrag, unterauftrag)
+  const leerUndLoeschbar = !!unterauftrag.suffix
+    && unterauftrag.ergebnis === 'offen'
+    && ['offen', 'storniert'].includes(unterauftrag.status)
+    && (unterauftrag.proben_ist ?? 0) === 0
+
+  const stammdatenSpeichern = async () => {
+    setLaeuft(true); setFehler('')
+    try {
+      await db.unterauftragAktualisieren(unterauftrag.id, {
+        umfang: umfang.trim() || null,
+        proben_geplant: probenGeplant ? Number(probenGeplant) : null,
+      })
+      onSaved(`${nummer}: Umfang und geplante Probenzahl wurden gespeichert.`)
+    } catch (e: any) {
+      setFehler(e.message ?? String(e)); setLaeuft(false)
+    }
+  }
+  const stornieren = async () => {
+    setLaeuft(true); setFehler('')
+    try {
+      onSaved(await db.unterauftragStornieren(unterauftrag.id, grund))
+    } catch (e: any) {
+      setFehler(e.message ?? String(e)); setLaeuft(false)
+    }
+  }
+  const loeschen = async () => {
+    if (!window.confirm(
+      `${nummer} wirklich löschen?\n\nDas geht nur, wenn noch keine Probe, Bewertung oder kein Befund gespeichert wurde.`,
+    )) return
+    setLaeuft(true); setFehler('')
+    try {
+      onSaved(await db.unterauftragLoeschen(unterauftrag.id))
+    } catch (e: any) {
+      setFehler(e.message ?? String(e)); setLaeuft(false)
+    }
+  }
+
+  return <div className="modal-hintergrund" onMouseDown={e => {
+    if (e.target === e.currentTarget) onClose()
+  }}>
+    <div className="modal unterauftrag-modal" role="dialog" aria-modal="true"
+      aria-label={`Unterbericht ${nummer} verwalten`}>
+      <div className="modal-kopf">
+        <div>
+          <strong>Unterbericht verwalten · <span className="nr">{nummer}</span></strong>
+          <div className="hint">{ART_LABEL[unterauftrag.art]}</div>
+        </div>
+        <button className="modal-schliessen" onClick={onClose} aria-label="Schließen">×</button>
+      </div>
+      <div className="unterauftrag-inhalt">
+        <div className="grid2">
+          <label className="f">Geplante Probenzahl
+            <input type="number" min="1" value={probenGeplant}
+              onChange={e => setProbenGeplant(e.target.value)} placeholder="nicht erfasst" />
+          </label>
+          <label className="f">Umfang / Variante
+            <input value={umfang} onChange={e => setUmfang(e.target.value)}
+              placeholder={unterauftrag.art === 'mibi' ? 'z. B. inklusive Enterokokken' : 'optional'} />
+          </label>
+        </div>
+        <button onClick={stammdatenSpeichern} disabled={laeuft || (!!probenGeplant && Number(probenGeplant) < 1)}>
+          <i className="fas fa-floppy-disk" aria-hidden="true"></i> Angaben speichern
+        </button>
+
+        <div className="unterauftrag-storno">
+          <strong>Untersuchungsanteil nicht durchgeführt</strong>
+          {unterauftrag.status === 'storniert'
+            ? <p className="notice unterauftrag-hinweis">
+                Bereits storniert: {unterauftrag.storno_grund
+                  ? STORNOGRUND_LABEL[unterauftrag.storno_grund] : 'Grund nicht erfasst'}
+              </p>
+            : <>
+                <label className="f">Grund
+                  <select value={grund} onChange={e => setGrund(e.target.value as Stornogrund)}>
+                    {Object.entries(STORNOGRUND_LABEL).map(([v, l]) =>
+                      <option key={v} value={v}>{l}</option>)}
+                  </select>
+                </label>
+                <button className="secondary" onClick={stornieren} disabled={laeuft || unterauftrag.ergebnis !== 'offen'}>
+                  <i className="fas fa-ban" aria-hidden="true"></i> Unterbericht stornieren
+                </button>
+              </>}
+        </div>
+
+        {leerUndLoeschbar && <div className="unterauftrag-loeschen">
+          <span className="hint">Nur leere Unterberichte mit Suffix können vollständig entfernt werden.</span>
+          <button className="danger" onClick={loeschen} disabled={laeuft}>
+            <i className="fas fa-trash" aria-hidden="true"></i> {nummer} löschen
+          </button>
+        </div>}
+        {fehler && <p className="notice">{fehler}</p>}
+      </div>
+      <div className="pm-fuss"><button onClick={onClose}>Schließen</button></div>
+    </div>
+  </div>
+}
+
 export default function Auftragsbuch() {
   const [auftraege, setAuftraege] = useState<Auftrag[]>([])
   const [kunden, setKunden] = useState<Kunde[]>([])
@@ -133,13 +246,18 @@ export default function Auftragsbuch() {
   const [nvAnlage, setNvAnlage] = useState('')
   const [nvBereich, setNvBereich] = useState('')
   const [nvTermin, setNvTermin] = useState('')
-  const [nvArt, setNvArt] = useState<Untersuchungsart>('legionellen')
+  const [nvArten, setNvArten] = useState<Partial<Record<Untersuchungsart, boolean>>>({
+    legionellen: true, mibi: false, chemie: false, vorortparameter: false,
+  })
+  const [nvProben, setNvProben] = useState<Partial<Record<Untersuchungsart, string>>>({})
+  const [nvMibiUmfang, setNvMibiUmfang] = useState('Standard')
   const [nvFachArt, setNvFachArt] = useState<FachlicheUntersuchungsart>('orientierend')
   const [nvManuell, setNvManuell] = useState(false)
   const [nvNummer, setNvNummer] = useState('')
   const [nvMeldung, setNvMeldung] = useState('')
   const [berichtAuftrag, setBerichtAuftrag] = useState<Auftrag | null>(null)
   const [ergaenzeAuftrag, setErgaenzeAuftrag] = useState<Auftrag | null>(null)
+  const [verwalteUnterauftrag, setVerwalteUnterauftrag] = useState<{ auftrag: Auftrag; unterauftrag: Unterauftrag } | null>(null)
 
   const laden = () => {
     db.auftraege().then(setAuftraege); db.kunden().then(setKunden)
@@ -193,9 +311,17 @@ export default function Auftragsbuch() {
     if (nvManuell && !/^\d{2}-\d{4}$/.test(nvNummer.trim())) {
       setNvMeldung('Manuelle Nummer im Format JJ-NNNN, z. B. 26-0899.'); return
     }
+    const aktiveArten = NACHERFASSBARE_ARTEN.filter(art => nvArten[art])
+    if (!aktiveArten.length) { setNvMeldung('Bitte mindestens eine Labor-/Leistungsart auswählen.'); return }
     try {
+      const arten = aktiveArten.map((art, index) => ({
+        art,
+        suffix: aktiveArten.length === 1 || index === 0 ? '' : ART_SUFFIX[art],
+        umfang: art === 'mibi' ? nvMibiUmfang : undefined,
+        proben_geplant: nvProben[art] ? Number(nvProben[art]) : undefined,
+      }))
       const nr = await db.auftragAnlegen(nvBereich, nvTermin || undefined,
-        [{ art: nvArt, suffix: '' }], nvManuell ? nvNummer.trim() : undefined, nvFachArt)
+        arten, nvManuell ? nvNummer.trim() : undefined, nvFachArt)
       setNvMeldung(nvTermin ? `Auftragsnummer ${nr} wurde dem bestehenden Termin zugeordnet.` : `Auftragsnummer ${nr} nacherfasst (ohne Termin – im Auftragsbuch geführt).`)
       setNvNummer(''); setNvManuell(false); laden()
     } catch (e: any) {
@@ -249,12 +375,25 @@ export default function Auftragsbuch() {
                   {Object.entries(FACHLICHE_ART_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                 </select>
               </label>
-              <label className="f">Labor-/Leistungsart
-                <select value={nvArt} onChange={e => setNvArt(e.target.value as Untersuchungsart)}>
-                  {Object.entries(ART_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                </select>
-              </label>
             </div>
+            <fieldset className="nacherfass-arten">
+              <legend>Labor-/Leistungsarten – Mehrfachauswahl möglich</legend>
+              {NACHERFASSBARE_ARTEN.map(art => <div className={`nacherfass-art ${nvArten[art] ? 'aktiv' : ''}`} key={art}>
+                <label>
+                  <input type="checkbox" checked={!!nvArten[art]}
+                    onChange={e => setNvArten(v => ({ ...v, [art]: e.target.checked }))} />
+                  <strong>{ART_LABEL[art]}</strong>
+                </label>
+                {nvArten[art] && <>
+                  <input type="number" min="1" value={nvProben[art] ?? ''}
+                    onChange={e => setNvProben(v => ({ ...v, [art]: e.target.value }))}
+                    placeholder="Proben" title={`Geplante Probenzahl für ${ART_LABEL[art]}`} />
+                  {art === 'mibi' && <select value={nvMibiUmfang} onChange={e => setNvMibiUmfang(e.target.value)}>
+                    <option>Standard</option><option>Komplett</option><option>inklusive Enterokokken</option>
+                  </select>}
+                </>}
+              </div>)}
+            </fieldset>
             <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 14, flexWrap: 'wrap' }}>
               <div>
                 <span className="hint">Nummer</span><br />
@@ -303,7 +442,7 @@ export default function Auftragsbuch() {
         </tr></thead>
         <tbody>
           {gefiltert.map(z => (
-            <tr key={z.u.id}>
+            <tr key={z.u.id} className={z.u.status === 'storniert' ? 'unterauftrag-storniert' : ''}>
               <td><Nr>{z.nummer}</Nr></td>
               <td>{kundeAnzeige(z.kunde)}</td>
               <td>{z.anlage?.name ?? '–'}</td>
@@ -312,11 +451,15 @@ export default function Auftragsbuch() {
               <td>{z.a.fachliche_untersuchungsart ? FACHLICHE_ART_LABEL[z.a.fachliche_untersuchungsart] : <span className="hint">nicht erfasst</span>}</td>
               <td>{ART_LABEL[z.u.art]}{z.u.umfang ? <div className="hint">{z.u.umfang}</div> : null}</td>
               <td>
-                {z.u.proben_geplant ?? '–'} / {bearbeite === z.u.id
+                {z.u.proben_geplant ?? '–'} / {bearbeite === z.u.id && z.u.status !== 'storniert'
                   ? <input type="number" style={{ width: 64 }} defaultValue={z.u.proben_ist ?? ''} onBlur={e => { speichern(z.u.id, 'proben_ist', e.target.value); setBearbeite(null) }} autoFocus />
-                  : <span onClick={() => setBearbeite(z.u.id)} style={{ cursor: 'pointer', textDecoration: 'underline dotted' }}>{z.u.proben_ist ?? '–'}</span>}
+                  : <span onClick={() => z.u.status !== 'storniert' && setBearbeite(z.u.id)}
+                      style={{ cursor: z.u.status === 'storniert' ? 'default' : 'pointer', textDecoration: z.u.status === 'storniert' ? 'none' : 'underline dotted' }}>
+                      {z.u.proben_ist ?? '–'}
+                    </span>}
               </td>
-              <td><StatusBadge s={z.u.status} /></td>
+              <td><StatusBadge s={z.u.status} />{z.u.storno_grund
+                ? <div className="hint">{STORNOGRUND_LABEL[z.u.storno_grund]}</div> : null}</td>
               <td><ErgebnisBadge s={z.u.ergebnis} /></td>
               <td className="no-print auftrag-aktionen">
                 <button className="zeile-btn" onClick={() => setBerichtAuftrag(z.a)} title="Prüfbericht erfassen">
@@ -325,6 +468,11 @@ export default function Auftragsbuch() {
                 <button className="zeile-btn unterauftrag-plus" onClick={() => setErgaenzeAuftrag(z.a)}
                   title="Mibi, Chemie oder Legionellen nachträglich ergänzen">
                   <i className="fas fa-plus" aria-hidden="true"></i> Anteil
+                </button>
+                <button className="zeile-btn unterauftrag-verwalten"
+                  onClick={() => setVerwalteUnterauftrag({ auftrag: z.a, unterauftrag: z.u })}
+                  title={`${z.nummer} bearbeiten, stornieren oder löschen`}>
+                  <i className="fas fa-gear" aria-hidden="true"></i>
                 </button>
               </td>
             </tr>
@@ -356,6 +504,18 @@ export default function Auftragsbuch() {
           onSaved={nummer => {
             setErgaenzeAuftrag(null)
             setNvMeldung(`${nummer} wurde nachträglich ergänzt. Die Hauptnummer bleibt unverändert.`)
+            laden()
+          }}
+        />
+      )}
+      {verwalteUnterauftrag && (
+        <UnterauftragVerwaltenModal
+          auftrag={verwalteUnterauftrag.auftrag}
+          unterauftrag={verwalteUnterauftrag.unterauftrag}
+          onClose={() => setVerwalteUnterauftrag(null)}
+          onSaved={meldung => {
+            setVerwalteUnterauftrag(null)
+            setNvMeldung(meldung)
             laden()
           }}
         />

@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
-import type { Anlage, Auftrag, Befund, Bereich, FachlicheUntersuchungsart, Kunde, Termin, Untersuchungsart, Untersuchungsbewertung, Ueberschreitungsphase } from './types'
+import type { Anlage, Auftrag, Befund, Bereich, FachlicheUntersuchungsart, Kunde, Stornogrund, Termin, Untersuchungsart, Untersuchungsbewertung, Ueberschreitungsphase } from './types'
 
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined
 const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
@@ -278,7 +278,10 @@ export const db = {
     return nr
   },
 
-  async unterauftragAktualisieren(id: string, patch: Partial<{ proben_ist: number; status: string; ergebnis: string; notizen: string }>): Promise<void> {
+  async unterauftragAktualisieren(id: string, patch: Partial<{
+    umfang: string | null; proben_geplant: number | null; proben_ist: number | null
+    status: string; ergebnis: string; notizen: string
+  }>): Promise<void> {
     if (!supabase) {
       for (const a of demo.auftraege) {
         const u = a.unterauftraege.find(x => x.id === id)
@@ -288,6 +291,50 @@ export const db = {
     }
     const { error } = await supabase.from('td_unterauftraege').update(patch).eq('id', id)
     if (error) throw error
+  },
+
+  async unterauftragStornieren(id: string, grund: Stornogrund): Promise<string> {
+    if (!supabase) {
+      for (const a of demo.auftraege) {
+        const u = a.unterauftraege.find(x => x.id === id)
+        if (!u) continue
+        if (u.ergebnis !== 'offen') throw new Error('Ein bereits bewerteter Unterauftrag kann nicht storniert werden')
+        u.status = 'storniert'
+        u.storno_grund = grund
+        u.storniert_am = new Date().toISOString()
+        return `${u.suffix ? `${a.auftragsnummer}-${u.suffix}` : a.auftragsnummer} wurde storniert`
+      }
+      throw new Error('Unterauftrag nicht gefunden')
+    }
+    const { data, error } = await supabase.rpc('td_unterauftrag_stornieren', {
+      p_unterauftrag: id,
+      p_grund: grund,
+    })
+    if (error) throw error
+    return data as string
+  },
+
+  async unterauftragLoeschen(id: string): Promise<string> {
+    if (!supabase) {
+      for (const a of demo.auftraege) {
+        const index = a.unterauftraege.findIndex(x => x.id === id)
+        if (index < 0) continue
+        const u = a.unterauftraege[index]
+        if (!u.suffix || u.ergebnis !== 'offen' || !['offen', 'storniert'].includes(u.status)
+          || (u.proben_ist ?? 0) !== 0) {
+          throw new Error('Nur ein leerer, unbewerteter Unterbericht kann gelöscht werden')
+        }
+        a.unterauftraege.splice(index, 1)
+        return `${a.auftragsnummer}-${u.suffix} wurde gelöscht`
+      }
+      throw new Error('Unterauftrag nicht gefunden')
+    }
+    const { data, error } = await supabase.rpc('td_unterauftrag_sicher_loeschen', {
+      p_unterauftrag: id,
+      p_bestaetigung: 'UNTERBERICHT LÖSCHEN',
+    })
+    if (error) throw error
+    return data as string
   },
 
   /** Ergänzt eine Labor-/Leistungsart zu einer bestehenden Hauptnummer.
@@ -443,7 +490,7 @@ export const db = {
         legacy_id: b.legacy_id,
         anlage_id: anlageId.get(b.anlage_legacy),
         name: b.name,
-        beschreibung: 'Aus Altbestand eindeutig übernommen',
+        beschreibung: null,
         turnus_monate: b.turnus_monate,
         naechste_untersuchung: b.naechste_untersuchung,
         proben_anzahl: b.proben_anzahl,

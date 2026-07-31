@@ -157,6 +157,12 @@ ohne eine neue laufende Auftragsnummer zu verbrauchen. Vor dem Einsatz der
 zugehörigen Schaltfläche **Anteil** muss diese Migration einmal im Supabase
 SQL-Editor ausgeführt werden.
 
+Migration
+`supabase/migrations/0029_unterauftraege_storno_loeschen_und_altinfo.sql`
+ergänzt nachvollziehbare Stornogründe, das geschützte Löschen noch leerer
+Unterberichte sowie die Bereinigung des rein technischen Hinweises
+„Aus Altbestand eindeutig übernommen“.
+
 Im Frontend ist damit folgender Ablauf vorbereitet:
 
 - Nach einem vergangenen Termin erscheint ein Auftrag automatisch unter

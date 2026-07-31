@@ -62,6 +62,7 @@ export default function BerichtModal({ auftrag, kundeKurz, bereichName, bereichI
     try {
       await db.auftragAktualisieren(auftrag.id, { fachliche_untersuchungsart: fachlicheArt })
       for (const z of zeilen) {
+        if (z.status === 'storniert') continue
         await db.unterauftragAktualisieren(z.id, { proben_ist: z.ist, status: z.status, ergebnis: ergebnisZuBefund(z.befund) })
         const bewertung = await db.bewertungSpeichern({
           unterauftrag_id: z.id, bericht_status: berichtStatus, pruefbericht_nummer: berichtNr || undefined,
@@ -104,12 +105,16 @@ export default function BerichtModal({ auftrag, kundeKurz, bereichName, bereichI
         <label className="f">Hinweis / Maßnahme<input value={bemerkung} onChange={e => setBemerkung(e.target.value)} placeholder="optional" /></label>
       </div>
       <div className="table-container" style={{ padding: '8px 12px' }}><table><thead><tr><th>Nr.</th><th>Art</th><th>Proben</th><th>Abschluss</th><th>Befund</th><th>Folge</th></tr></thead><tbody>
-        {zeilen.map((z, i) => <tr key={z.id} className={z.befund === 'ueberschreitung' ? 'amp-red' : z.befund === 'sauber' ? 'amp-green' : 'amp-yellow'}>
+        {zeilen.map((z, i) => <tr key={z.id} className={z.status === 'storniert' ? 'unterauftrag-storniert' : z.befund === 'ueberschreitung' ? 'amp-red' : z.befund === 'sauber' ? 'amp-green' : 'amp-yellow'}>
           <td><span className="nr">{z.nummer}</span></td><td>{ART_LABEL[z.art]}{z.umfang && <div className="hint">{z.umfang}</div>}</td>
-          <td><input type="number" min={0} style={{ width: 66 }} value={z.ist ?? ''} onChange={e => setZeile(i, { ist: e.target.value ? +e.target.value : undefined })} />{z.geplant != null && <span className="hint"> / {z.geplant}</span>}</td>
-          <td><select value={z.status} onChange={e => setZeile(i, { status: e.target.value as Auftragsstatus })}>{Object.entries(STATUS_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></td>
-          <td><select value={z.befund} onChange={e => setZeile(i, { befund: e.target.value as Befund, neuePhase: false, zaehltSauber: false })}>{BEFUND_OPTIONEN.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></td>
-          <td>{z.befund === 'sauber' && aktivePhasen.length > 0 && <><label className="hint"><input type="checkbox" checked={z.zaehltSauber} onChange={e => setZeile(i, { zaehltSauber: e.target.checked, phaseId: e.target.checked ? (z.phaseId ?? aktivePhasen[0].id) : undefined })} /> zählt als NU ohne Befund</label>{z.zaehltSauber && <select value={z.phaseId ?? ''} onChange={e => setZeile(i, { phaseId: e.target.value })} style={{ maxWidth: 150, marginTop: 4 }}>{aktivePhasen.map(p => <option key={p.id} value={p.id}>{p.eroeffnet_am} · {p.status}</option>)}</select>}</>}{z.befund === 'ueberschreitung' && <label className="hint"><input type="checkbox" checked={z.neuePhase} onChange={e => setZeile(i, { neuePhase: e.target.checked })} /> neue Phase eröffnen</label>}</td>
+          <td><input type="number" min={0} style={{ width: 66 }} value={z.ist ?? ''} disabled={z.status === 'storniert'} onChange={e => setZeile(i, { ist: e.target.value ? +e.target.value : undefined })} />{z.geplant != null && <span className="hint"> / {z.geplant}</span>}</td>
+          <td><select value={z.status} disabled={z.status === 'storniert'} onChange={e => setZeile(i, { status: e.target.value as Auftragsstatus })}>{Object.entries(STATUS_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></td>
+          <td>{z.status === 'storniert'
+            ? <span className="badge neutral">nicht durchgeführt</span>
+            : <select value={z.befund} onChange={e => setZeile(i, { befund: e.target.value as Befund, neuePhase: false, zaehltSauber: false })}>{BEFUND_OPTIONEN.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>}</td>
+          <td>{z.status === 'storniert'
+            ? <span className="hint">Kein Bericht/Befund erforderlich</span>
+            : <>{z.befund === 'sauber' && aktivePhasen.length > 0 && <><label className="hint"><input type="checkbox" checked={z.zaehltSauber} onChange={e => setZeile(i, { zaehltSauber: e.target.checked, phaseId: e.target.checked ? (z.phaseId ?? aktivePhasen[0].id) : undefined })} /> zählt als NU ohne Befund</label>{z.zaehltSauber && <select value={z.phaseId ?? ''} onChange={e => setZeile(i, { phaseId: e.target.value })} style={{ maxWidth: 150, marginTop: 4 }}>{aktivePhasen.map(p => <option key={p.id} value={p.id}>{p.eroeffnet_am} · {p.status}</option>)}</select>}</>}{z.befund === 'ueberschreitung' && <label className="hint"><input type="checkbox" checked={z.neuePhase} onChange={e => setZeile(i, { neuePhase: e.target.checked })} /> neue Phase eröffnen</label>}</>}</td>
         </tr>)}
       </tbody></table></div>
       {aktivePhasen.length > 0 && <p className="hint" style={{ padding: '0 24px' }}><i className="fas fa-triangle-exclamation" aria-hidden="true"></i> Aktive Phase(n): {aktivePhasen.map(p => `${p.eroeffnet_am} · ${p.status}`).join(' | ')}. Eine NU ohne Befund wird nur gezählt, wenn du sie ausdrücklich markierst.</p>}
