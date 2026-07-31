@@ -30,8 +30,11 @@ export function naechsteFachlicheArt(
 ): FachlicheUntersuchungsart {
   if (!bereich) return 'orientierend'
   const phase = offenePhaseFuerBereich(bereich.id, phasen)
-  if (phase?.status === 'nachuntersuchung' || istNachuntersuchungsTurnus(bereich)) return 'nachuntersuchung'
-  if (phase) return 'weitergehend'
+  // Eine offene Phase hat Vorrang vor einem eventuell noch vorhandenen
+  // 3-Monats-Turnus: Erst der dokumentierte Maßnahmenabschluss setzt die
+  // Phase auf „nachuntersuchung“. Bis dahin ist die WGU fällig.
+  if (phase) return phase.status === 'nachuntersuchung' ? 'nachuntersuchung' : 'weitergehend'
+  if (istNachuntersuchungsTurnus(bereich)) return 'nachuntersuchung'
   return 'orientierend'
 }
 

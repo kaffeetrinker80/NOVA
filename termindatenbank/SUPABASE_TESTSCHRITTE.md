@@ -1,5 +1,25 @@
 # NOVAplan – Testschritte für diesen Ansatz
 
+## Update v3.20: offene Phase hat Vorrang
+
+Für dieses Update ist keine neue SQL-Migration erforderlich.
+
+Die gemeinsame Ableitung für Dashboard- und Spontanplanung wurde für einen
+Grenzfall korrigiert: Steht eine Phase noch auf **aktiv**, wird immer zuerst
+eine **weitergehende Untersuchung** vorgeschlagen – auch wenn am Bereich aus
+dem Altbestand noch ein 3-Monats-Turnus gespeichert ist. Erst der dokumentierte
+Maßnahmenabschluss setzt die Phase auf **nachuntersuchung** und aktiviert damit
+die NU-Planung.
+
+1. Einen Bereich mit `Phase = aktiv` und `Turnus = 3 Monate` planen.
+   Erwartung: **weitergehende Untersuchung**.
+2. In derselben Phase den Maßnahmenabschluss setzen und erneut planen.
+   Erwartung: **Nachuntersuchung**.
+3. Einen 3-Monats-Bereich ohne offene Phase planen.
+   Erwartung: weiterhin **Nachuntersuchung**.
+4. Die Phase beenden und 1 oder 3 Jahre wählen.
+   Erwartung: **orientierende Untersuchung / Regelturnus**.
+
 ## Update v3.19: konsistente Turnus- und Phasenlogik
 
 Die Migration `0033_turnuslogik_konsistent.sql` ist im verbundenen Projekt
