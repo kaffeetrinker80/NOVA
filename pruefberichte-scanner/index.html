@@ -641,6 +641,10 @@ function baseFiltered(){
 function filteredReports(){const y=$('#fYear').value;return baseFiltered().filter(r=>!y||String(r.jahr)===y);}
 
 /* ================= STATISTIK ================= */
+/* Untersuchungsarten, die in der Auswertung nicht dargestellt werden.
+   Die Berichte bleiben im Bestand und im Tab "Prüfberichte" sichtbar. */
+const AUSWERTUNG_IGNORIERT=['Nachuntersuchung'];
+function stripIgnored(rows){return rows.filter(r=>!AUSWERTUNG_IGNORIERT.includes(r.untersuchungsart));}
 function reportKey(r){return r.id||`${r.labor||''}|${r.berichtsnummer||''}`;}
 function areaKey(r){return [r.hausverwaltung||'',r.objekt||'',r.bereich||r.objekt||''].join('|');}
 function legioNum(v){if(v==null||v==='')return null;const m=String(v).match(/[0-9]+(?:[.,][0-9]+)?/);return m?Number(m[0].replace(',','.')):null;}
@@ -686,7 +690,7 @@ function renderKpis(rows){
   const s=stats(rows);
   const y=currentYear();
   let prev=null;
-  if(y){const py=String(Number(y)-1);const pr=baseFiltered().filter(r=>String(r.jahr)===py);if(pr.length)prev=stats(pr);}
+  if(y){const py=String(Number(y)-1);const pr=stripIgnored(baseFiltered()).filter(r=>String(r.jahr)===py);if(pr.length)prev=stats(pr);}
   const cards=[
     ['info',de(s.reports),'Untersuchungen',prev?deltaHtml(s.reports,prev.reports,true):''],
     ['',de(s.areas),'Bereiche untersucht',prev?deltaHtml(s.areas,prev.areas,true):''],
@@ -732,26 +736,18 @@ function renderMonths(rows){
      <div class="mlabels">${MONTHS.map(m=>`<span>${m}</span>`).join('')}</div>
      ${unknown?`<div class="sub" style="padding:0 14px 12px">${unknown} Bericht${unknown===1?'':'e'} ohne Probenahmedatum</div>`:''}`;
 }
-/* Nachuntersuchung im selben Bereich nach der Überschreitung? */
-function followUp(r,all){
-  const t=timeValue(r.probenahmedatum);
-  return all.find(x=>x!==r&&areaKey(x)===areaKey(r)&&x.untersuchungsart==='Nachuntersuchung'&&timeValue(x.probenahmedatum)>=t)||null;
-}
 function renderExceedances(rows){
   const bad=rows.filter(r=>r.ueberschreitung).sort((a,b)=>timeValue(b.probenahmedatum)-timeValue(a.probenahmedatum));
   $('#hintExc').textContent=`${bad.length} Bericht${bad.length===1?'':'e'} mit Befund`;
   if(!bad.length){$('#excBody').innerHTML='<div class="empty">Keine Überschreitungen in der aktuellen Auswahl. </div>';return;}
-  const all=reports;
   $('#excBody').innerHTML=`<table><thead><tr>
     <th>Bericht-Nr.</th><th>Probenahme</th><th>Hausverwaltung</th><th>Objekt</th><th>Bereich</th>
-    <th>Untersuchungsart</th><th>Umfang</th><th class="num">Legio. max</th><th>Nachuntersuchung</th><th>Datei</th></tr></thead><tbody>
-    ${bad.map(r=>{const f=followUp(r,all);
-      return `<tr><td><b>${esc(r.berichtsnummer)}</b></td><td>${esc(dateDe(r.probenahmedatum))}</td>
+    <th>Untersuchungsart</th><th>Umfang</th><th class="num">Legio. max</th><th>Datei</th></tr></thead><tbody>
+    ${bad.map(r=>`<tr><td><b>${esc(r.berichtsnummer)}</b></td><td>${esc(dateDe(r.probenahmedatum))}</td>
       <td>${esc(r.hausverwaltung)}</td><td>${esc(r.objekt)}</td><td>${esc(r.bereich)}</td>
       <td>${esc(r.untersuchungsart)}</td><td title="${esc((r.parameter||[]).join(', '))}">${esc((r.umfang||[]).join(' + '))}</td>
-      <td class="num ${legioNum(r.legionellen_max)>=100?'':''}">${esc(r.legionellen_max??'')}</td>
-      <td>${f?`<span class="pill ok">${esc(dateDe(f.probenahmedatum))}${f.ueberschreitung?' · erneut ÜS':''}</span>`:'<span class="pill unk">offen</span>'}</td>
-      <td class="path"><button class="file-btn" data-open="${esc(r.id)}">${esc(r.pdf_dateiname||'PDF')}</button></td></tr>`;}).join('')}
+      <td class="num">${esc(r.legionellen_max??'')}</td>
+      <td class="path"><button class="file-btn" data-open="${esc(r.id)}">${esc(r.pdf_dateiname||'PDF')}</button></td></tr>`).join('')}
     </tbody></table>`;
   $$('#excBody [data-open]').forEach(b=>b.onclick=()=>openPdf(b.dataset.open));
 }
@@ -776,7 +772,7 @@ function categoryStats(rows){
     .map(x=>({...x,reportCount:x.reports.size,areaCount:x.areas.size,badCount:x.badAreas.size,ratio:x.areas.size?x.badAreas.size/x.areas.size*100:0}));
 }
 function renderStats(){
-  const rows=baseFiltered();
+  const rows=stripIgnored(baseFiltered());
   const st=categoryStats(rows),years=[...new Set(st.map(x=>x.year))];
   if(!st.length){$('#statsBody').innerHTML='<div class="empty">Keine Daten für die aktuelle Auswahl.</div>';return;}
   const cur=currentYear();
@@ -857,9 +853,10 @@ function renderAnlagen(rows){
 function render(){
   renderYearChips();
   const rows=filteredReports();
-  renderKpis(rows);renderTypeBars(rows);renderScopeBars(rows);renderMonths(rows);
-  renderExceedances(rows);renderHvCompare(rows);renderStats();
-  renderReports(rows);renderAnlagen(rows);
+  const ev=stripIgnored(rows);
+  renderKpis(ev);renderTypeBars(ev);renderScopeBars(ev);renderMonths(ev);
+  renderExceedances(ev);renderHvCompare(ev);renderStats();
+  renderReports(rows);renderAnlagen(ev);
   $('#headerSub').textContent=reports.length?`${de(reports.length)} Berichte im lokalen Bestand`:'Keine Daten geladen';
   $('#btnExport').disabled=!reports.length;$('#btnClear').disabled=!reports.length;
 }
@@ -943,15 +940,15 @@ function pExceedances(rows,hvMode){
   const bad=rows.filter(r=>r.ueberschreitung).sort((a,b)=>timeValue(a.probenahmedatum)-timeValue(b.probenahmedatum));
   if(!bad.length)return `<div class="p-sec"><h3>Überschreitungen</h3><div class="p-note">In der ausgewerteten Auswahl liegt keine Überschreitung vor.</div></div>`;
   const cols=hvMode
-    ? ['Probenahme','Objekt','Bereich','Untersuchungsart','Umfang','Legio. max','Nachuntersuchung']
-    : ['Bericht-Nr.','Probenahme','Hausverwaltung','Objekt','Bereich','Untersuchungsart','Umfang','Legio. max','Nachuntersuchung'];
+    ? ['Probenahme','Objekt','Bereich','Untersuchungsart','Umfang','Legio. max']
+    : ['Bericht-Nr.','Probenahme','Hausverwaltung','Objekt','Bereich','Untersuchungsart','Umfang','Legio. max'];
   return `<div class="p-sec"><h3>Überschreitungen im Detail (${bad.length})</h3>
     <table class="t-dense"><thead><tr>${cols.map(c=>`<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>
-    ${bad.map(r=>{const f=followUp(r,reports);
+    ${bad.map(r=>{
       const cells=hvMode
-        ? [dateDe(r.probenahmedatum),r.objekt,r.bereich,r.untersuchungsart,(r.umfang||[]).join(' + '),r.legionellen_max??'',f?dateDe(f.probenahmedatum)+(f.ueberschreitung?' (erneut ÜS)':' (ohne Befund)'):'offen']
-        : [r.berichtsnummer,dateDe(r.probenahmedatum),r.hausverwaltung,r.objekt,r.bereich,r.untersuchungsart,(r.umfang||[]).join(' + '),r.legionellen_max??'',f?dateDe(f.probenahmedatum)+(f.ueberschreitung?' (erneut ÜS)':' (ohne Befund)'):'offen'];
-      return `<tr>${cells.map((c,i)=>`<td class="${i===cells.length-2?'r-num r-bad':''}">${esc(c)}</td>`).join('')}</tr>`;}).join('')}
+        ? [dateDe(r.probenahmedatum),r.objekt,r.bereich,r.untersuchungsart,(r.umfang||[]).join(' + '),r.legionellen_max??'']
+        : [r.berichtsnummer,dateDe(r.probenahmedatum),r.hausverwaltung,r.objekt,r.bereich,r.untersuchungsart,(r.umfang||[]).join(' + '),r.legionellen_max??''];
+      return `<tr>${cells.map((c,i)=>`<td class="${i===cells.length-1?'r-num r-bad':''}">${esc(c)}</td>`).join('')}</tr>`;}).join('')}
     </tbody></table></div>`;
 }
 function pHvCompare(rows){
@@ -993,7 +990,8 @@ function setPageOrientation(landscape){
   st.textContent=`@media print{@page{size:A4 ${landscape?'landscape':'portrait'};margin:10mm}}`;
 }
 function buildReport(mode){
-  const rows=filteredReports();
+  const all=filteredReports();
+  const rows=mode==='liste'?all:stripIgnored(all);
   const y=currentYear();
   const s=stats(rows);
   const titleExtra=$('#optTitle').value.trim();
@@ -1060,7 +1058,7 @@ $('#btnFolder').onclick=chooseFolder;$('#btnFolder2').onclick=chooseFolder;
 $('#btnPrint').onclick=openPrintDialog;
 $('#btnClear').onclick=clearData;
 $('#btnReset').onclick=resetFilters;
-$('#chkOnlyBad').onchange=()=>renderAnlagen(filteredReports());
+$('#chkOnlyBad').onchange=()=>renderAnlagen(stripIgnored(filteredReports()));
 for(const s of ['#fType','#fScope','#fResult'])$(s).onchange=render;
 $('#fHv').onchange=()=>{refreshFilterOptions();render();};
 $('#fObj').onchange=()=>{refreshFilterOptions();render();};
