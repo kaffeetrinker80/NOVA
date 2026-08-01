@@ -848,7 +848,7 @@ function renderExceedances(rows){
       <td>${esc(r.hausverwaltung)}</td><td>${esc(r.objekt)}</td><td>${esc(r.bereich)}</td>
       <td>${esc(r.untersuchungsart)}</td><td title="${esc((r.parameter||[]).join(', '))}">${esc((r.umfang||[]).join(' + '))}</td>
       <td class="num">${esc(r.legionellen_max??'')}</td>
-      <td class="path"><button class="file-btn" data-open="${esc(r.id)}">${esc(r.pdf_dateiname||'PDF')}</button></td></tr>`).join('')}
+      <td class="path" title="${esc([r.pdf_dateiname,r.relativer_pfad||(r.quellpfade||[])[0]||''].filter(Boolean).join('\n'))}"><button class="file-btn" data-open="${esc(r.id)}">${esc(r.pdf_dateiname||(r.relativer_pfad||'').split('/').at(-1)||'PDF öffnen')}</button></td></tr>`).join('')}
     </tbody></table>`;
   $$('#excBody [data-open]').forEach(b=>b.onclick=()=>openPdf(b.dataset.open));
 }
@@ -912,7 +912,7 @@ function renderReports(rows){
       <td>${esc(r.untersuchungsart)}</td><td title="${esc((r.parameter||[]).join(', '))}">${esc((r.umfang||[]).join(' + '))}</td>
       <td class="num">${esc(r.legionellen_max??'')}</td><td><span class="pill ${pill}">${esc(r.befund)}</span></td>
       <td>${esc(r.auftragsnummer||'')}</td>
-      <td class="path" title="${esc(path)}"><button class="file-btn" data-open="${esc(r.id)}">${esc(r.pdf_dateiname||path.split('/').at(-1)||'PDF öffnen')}</button></td></tr>`;
+      <td class="path" title="${esc([r.pdf_dateiname,path].filter(Boolean).join('\n'))}"><button class="file-btn" data-open="${esc(r.id)}">${esc(r.pdf_dateiname||path.split('/').at(-1)||'PDF öffnen')}</button></td></tr>`;
   }).join('');
   tb.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>openPdf(b.dataset.open));
   $('#listHint').textContent=`${de(rows.length)} Bericht${rows.length===1?'':'e'}`;
