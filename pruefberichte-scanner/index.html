@@ -75,6 +75,18 @@ h1{font-size:17px;margin:0;font-weight:650;display:flex;align-items:center;gap:8
 .btn.small{padding:5px 9px;font-size:12px}
 .btn:disabled{opacity:.45;cursor:not-allowed}
 input[type=search]{min-width:240px;flex:1}
+.searchbox{position:relative;display:flex;align-items:center;flex:1 1 320px;min-width:280px}
+.searchbox input[type=search]{width:100%;min-width:0;padding:9px 36px 9px 38px;border:1.5px solid var(--teal);
+  background:var(--panel);border-radius:9px;box-shadow:0 0 0 3px var(--tealSoft)}
+.searchbox input[type=search]::placeholder{color:var(--muted)}
+.searchbox input[type=search]:focus{outline:none;box-shadow:0 0 0 4px var(--tealSoft);border-color:var(--teal)}
+.searchbox input[type=search]::-webkit-search-cancel-button{display:none}
+.s-ico{position:absolute;left:12px;color:var(--teal);font-size:15px;line-height:1;pointer-events:none}
+.s-clear{position:absolute;right:8px;border:0;background:none;color:var(--muted);font-size:14px;
+  padding:2px 5px;border-radius:6px;display:none}
+.s-clear:hover{color:var(--fg);background:var(--panel2)}
+.searchbox.filled .s-clear{display:block}
+.searchbox.filled input[type=search]{background:var(--tealSoft)}
 select{min-width:145px;max-width:230px}
 .folder-box{display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:7px 10px;color:var(--muted);min-width:300px;margin-bottom:11px}
 .folder-box strong{color:var(--fg);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:420px}
@@ -95,6 +107,7 @@ select{min-width:145px;max-width:230px}
 .chip:hover{border-color:var(--teal)}
 .chip.active{background:var(--teal);border-color:var(--teal);color:var(--tealFg)}
 .chip .cnt{opacity:.65;font-weight:500;font-size:12px;margin-left:6px}
+.chip-legend{color:var(--muted);font-size:11.5px;margin-left:6px;cursor:help;border-bottom:1px dotted var(--line2)}
 
 /* ============ KPI ============ */
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:10px;margin:0 0 14px}
@@ -104,6 +117,10 @@ select{min-width:145px;max-width:230px}
 .kpi b{display:block;font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.15}
 .kpi span{color:var(--muted);font-size:12px;display:block;margin-top:2px}
 .kpi .delta{font-size:11px;font-weight:700;margin-top:5px;display:inline-block}
+.kpi .def{display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;border-radius:50%;
+  border:1px solid var(--line2);color:var(--muted);font-size:9px;font-style:normal;font-weight:700;margin-left:5px;vertical-align:1px}
+.kpi:hover .def{border-color:var(--teal);color:var(--teal)}
+.kpi{cursor:help}
 .delta.up{color:var(--redFg)}.delta.down{color:var(--greenFg)}.delta.flat{color:var(--muted)}
 
 /* ============ PANELS ============ */
@@ -325,7 +342,11 @@ footer .heart{color:var(--red)}
     <select id="fType"><option value="">Alle Untersuchungsarten</option></select>
     <select id="fScope"><option value="">Alle Umfänge</option></select>
     <select id="fResult"><option value="">Alle Befunde</option></select>
-    <input type="search" id="fSearch" placeholder="Suche: Bericht, Auftrag, Objekt, Bereich, Parameter …">
+    <div class="searchbox">
+      <span class="s-ico">&#128269;</span>
+      <input type="search" id="fSearch" placeholder="Suchen: Bericht-Nr., Auftrag, Objekt, Bereich, Parameter …">
+      <button class="s-clear" id="fSearchClear" title="Suche leeren" aria-label="Suche leeren">&#10005;</button>
+    </div>
     <button class="btn" id="btnReset">Zurücksetzen</button>
     <select id="fYear" class="hidden"><option value="">Alle Jahrgänge</option></select>
   </div>
@@ -459,6 +480,7 @@ footer .heart{color:var(--red)}
         <label><input type="checkbox" id="optMonths" checked> Jahresverlauf</label>
         <label><input type="checkbox" id="optHv" checked> Hausverwaltungs-Vergleich</label>
         <label><input type="checkbox" id="optAreas"> Anlagenliste anhängen</label>
+        <label><input type="checkbox" id="optDefs" checked> Zählweise erklären</label>
         <label><input type="checkbox" id="optLandscape"> Querformat erzwingen</label>
       </div>
       <div class="sub" style="margin-top:6px">Ohne Haken bestimmst du die Ausrichtung wie gewohnt im Druckdialog des Browsers. Mit Haken wird Querformat fest vorgegeben und die Auswahl dort gesperrt.</div>
@@ -701,6 +723,19 @@ function filteredReports(){const y=$('#fYear').value;return baseFiltered().filte
 /* Untersuchungsarten, die in der Auswertung nicht dargestellt werden.
    Die Berichte bleiben im Bestand und im Tab "Prüfberichte" sichtbar. */
 const AUSWERTUNG_IGNORIERT=['Nachuntersuchung'];
+/* Erklärtexte für Kacheln und Kurzanleitung – zentral gepflegt */
+const DEFS={
+  reports:'Anzahl eindeutiger Berichtsnummern. Gibt das Labor für einen Bereich Legionellen und Mikrobiologie getrennt aus, sind das zwei Prüfberichte.',
+  areas:'Eindeutige Kombination aus Hausverwaltung, Objekt und Bereich. Mehrere Prüfberichte zum selben Bereich zählen im gewählten Jahr nur einmal.',
+  badAreas:'Bereiche, in denen mindestens ein Prüfbericht eine Überschreitung enthält.',
+  ratio:'Überschrittene Bereiche geteilt durch untersuchte Bereiche. Bewusst nicht über die Zahl der Prüfberichte gerechnet, sonst würden Bereiche mit vielen Einzelberichten das Ergebnis verzerren.',
+  objects:'Eindeutige Kombination aus Hausverwaltung und Objekt.',
+  hvs:'Anzahl unterschiedlicher Hausverwaltungen in der Auswahl.',
+  legio:'Höchster gemessener Legionellenwert in KBE/100 ml. Der technische Maßnahmenwert liegt bei 100.',
+  badReports:'Anzahl der Prüfberichte mit Überschreitung. Zum Vergleich: „Bereiche mit Überschreitung“ fasst mehrere Berichte desselben Bereichs zusammen.',
+  orders:'Anzahl unterschiedlicher NOVA-Auftragsnummern in den Prüfberichten – einschließlich Nachuntersuchungen. Diese Zahl lässt sich direkt mit den im Auftragsbuch vergebenen Nummern vergleichen.',
+  follow:'Nachuntersuchungen im Datenbestand. Sie sind in allen übrigen Kennzahlen dieser Auswertung nicht enthalten, damit ein Bereich nicht doppelt gezählt wird.'
+};
 function stripIgnored(rows){return rows.filter(r=>!AUSWERTUNG_IGNORIERT.includes(r.untersuchungsart));}
 function reportKey(r){return r.id||`${r.labor||''}|${r.berichtsnummer||''}`;}
 function areaKey(r){return [r.hausverwaltung||'',r.objekt||'',r.bereich||r.objekt||''].join('|');}
@@ -712,6 +747,7 @@ function stats(rows){
   return {
     rows,
     reports:new Set(rows.map(reportKey)).size,
+    orders:new Set(rows.map(r=>r.auftragsnummer).filter(Boolean)).size,
     badReports:new Set(rows.filter(r=>r.ueberschreitung).map(reportKey)).size,
     areas:areas.size, badAreas:bad.size,
     ratio:areas.size?bad.size/areas.size*100:0,
@@ -728,12 +764,16 @@ function currentYear(){return $('#fYear').value;}
 
 /* ================= RENDER: JAHRESAUSWERTUNG ================= */
 function renderYearChips(){
-  const base=baseFiltered();
+  /* Die Zahl auf dem Chip ist dieselbe Kennzahl wie die Kachel "Prüfberichte":
+     eindeutige Berichtsnummern, ohne Nachuntersuchungen. */
+  const base=stripIgnored(baseFiltered());
   const years=[...new Set(base.map(r=>r.jahr).filter(Boolean))].sort((a,b)=>b-a);
   const cur=currentYear();
-  const chips=[`<button class="chip ${cur?'':'active'}" data-year="">Alle Jahre<span class="cnt">${de(base.length)}</span></button>`]
-    .concat(years.map(y=>`<button class="chip ${String(y)===cur?'active':''}" data-year="${y}">${y}<span class="cnt">${de(base.filter(r=>r.jahr===y).length)}</span></button>`));
-  $('#yearChips').innerHTML=chips.join('');
+  const cnt=rows=>new Set(rows.map(reportKey)).size;
+  const tip=`Prüfberichte in der Auswertung – ${DEFS.reports} Nachuntersuchungen sind nicht enthalten.`;
+  const chips=[`<button class="chip ${cur?'':'active'}" data-year="" title="${esc(tip)}">Alle Jahre<span class="cnt">${de(cnt(base))}</span></button>`]
+    .concat(years.map(y=>`<button class="chip ${String(y)===cur?'active':''}" data-year="${y}" title="${esc(tip)}">${y}<span class="cnt">${de(cnt(base.filter(r=>r.jahr===y)))}</span></button>`));
+  $('#yearChips').innerHTML=chips.join('')+`<span class="chip-legend" title="${esc(tip)}">Prüfberichte je Jahrgang</span>`;
   $$('#yearChips .chip').forEach(c=>c.onclick=()=>{$('#fYear').value=c.dataset.year;render();});
 }
 function deltaHtml(now,prev,invert=false){
@@ -743,22 +783,26 @@ function deltaHtml(now,prev,invert=false){
   const worse=invert?d<0:d>0;
   return `<span class="delta ${worse?'up':'down'}">${d>0?'▲':'▼'} ${Math.abs(p).toFixed(0)} % zum Vorjahr</span>`;
 }
-function renderKpis(rows){
+function renderKpis(rows,allRows){
   const s=stats(rows);
+  const sAll=stats(allRows||rows);
+  const follow=(allRows||rows).filter(r=>AUSWERTUNG_IGNORIERT.includes(r.untersuchungsart));
   const y=currentYear();
   let prev=null;
   if(y){const py=String(Number(y)-1);const pr=stripIgnored(baseFiltered()).filter(r=>String(r.jahr)===py);if(pr.length)prev=stats(pr);}
   const cards=[
-    ['info',de(s.reports),'Untersuchungen',prev?deltaHtml(s.reports,prev.reports,true):''],
-    ['',de(s.areas),'Bereiche untersucht',prev?deltaHtml(s.areas,prev.areas,true):''],
-    [s.badAreas?'bad':'good',de(s.badAreas),'Bereiche mit Überschreitung',prev?deltaHtml(s.badAreas,prev.badAreas):''],
-    [s.ratio>10?'bad':s.ratio>0?'warn':'good',pct(s.ratio),'Überschreitungsquote',prev?deltaHtml(s.ratio,prev.ratio):''],
-    ['',de(s.objects),'Objekte',''],
-    ['',de(s.hvs),'Hausverwaltungen',''],
-    [s.legioMax>=100?'bad':'good',s.legioMax==null?'–':de(s.legioMax),'höchster Legionellenwert',s.legioMax==null?'':'<span class="delta flat">KBE/100 ml</span>'],
-    ['info',de(s.badReports),'Berichte mit Befund','']
+    ['info',de(s.reports),'Prüfberichte',prev?deltaHtml(s.reports,prev.reports,true):'',DEFS.reports],
+    ['',de(s.areas),'Bereiche untersucht',prev?deltaHtml(s.areas,prev.areas,true):'',DEFS.areas],
+    [s.badAreas?'bad':'good',de(s.badAreas),'Bereiche mit Überschreitung',prev?deltaHtml(s.badAreas,prev.badAreas):'',DEFS.badAreas],
+    [s.ratio>10?'bad':s.ratio>0?'warn':'good',pct(s.ratio),'Überschreitungsquote',prev?deltaHtml(s.ratio,prev.ratio):'',DEFS.ratio],
+    ['',de(s.objects),'Objekte','',DEFS.objects],
+    ['',de(s.hvs),'Hausverwaltungen','',DEFS.hvs],
+    [s.legioMax>=100?'bad':'good',s.legioMax==null?'–':de(s.legioMax),'höchster Legionellenwert',s.legioMax==null?'':'<span class="delta flat">KBE/100 ml</span>',DEFS.legio],
+    ['info',de(s.badReports),'Prüfberichte mit Überschreitung','',DEFS.badReports],
+    ['info',de(sAll.orders),'Aufträge','<span class="delta flat">inkl. Nachuntersuchungen</span>',DEFS.orders],
+    ['warn',de(new Set(follow.map(reportKey)).size),'Nachuntersuchungen','<span class="delta flat">nicht in den Kennzahlen</span>',DEFS.follow]
   ];
-  $('#kpis').innerHTML=cards.map(([cls,val,lbl,extra])=>`<div class="kpi ${cls}"><b>${esc(val)}</b><span>${esc(lbl)}</span>${extra}</div>`).join('');
+  $('#kpis').innerHTML=cards.map(([cls,val,lbl,extra,def])=>`<div class="kpi ${cls}" title="${esc(lbl)}: ${esc(def)}"><b>${esc(val)}</b><span>${esc(lbl)}<i class="def">?</i></span>${extra}</div>`).join('');
 }
 function barBlock(entries,total){
   if(!entries.length)return '<div class="empty">Keine Daten für die aktuelle Auswahl.</div>';
@@ -813,7 +857,7 @@ function renderHvCompare(rows){
   const list=[...g.entries()].map(([hv,rs])=>{const s=stats(rs);return {hv,...s};})
     .sort((a,b)=>b.badAreas-a.badAreas||b.areas-a.areas);
   if(!list.length){$('#hvBody').innerHTML='<div class="empty">Keine Daten.</div>';return;}
-  $('#hvBody').innerHTML=`<table><thead><tr><th>Hausverwaltung</th><th class="num">Objekte</th><th class="num">Untersuchungen</th>
+  $('#hvBody').innerHTML=`<table><thead><tr><th>Hausverwaltung</th><th class="num">Objekte</th><th class="num" title="${esc(DEFS.reports)}">Prüfberichte</th>
     <th class="num">Bereiche</th><th class="num">davon überschritten</th><th class="num">Quote</th></tr></thead><tbody>
     ${list.map(x=>`<tr><td>${esc(x.hv)}</td><td class="num">${de(x.objects)}</td><td class="num">${de(x.reports)}</td>
       <td class="num">${de(x.areas)}</td><td class="num">${x.badAreas?`<span class="pill bad">${de(x.badAreas)}</span>`:'0'}</td>
@@ -836,8 +880,8 @@ function renderStats(){
   $('#statsBody').innerHTML=years.map((year,i)=>{
     const ys=st.filter(x=>x.year===year),yr=rows.filter(r=>String(r.jahr)===String(year)),s=stats(yr);
     const open=cur?String(year)===cur:i===0;
-    return `<details class="year-block" ${open?'open':''}><summary class="group-title">${esc(year)}<span class="g-right">${de(s.reports)} Untersuchungen · ${de(s.areas)} Bereiche · ${de(s.badAreas)} überschritten</span></summary>
-      <div class="table-wrap tall"><table><thead><tr><th>Untersuchungsart</th><th class="num">Untersuchungen</th><th class="num">Bereiche untersucht</th><th class="num">Bereiche überschritten</th><th class="num">Quote</th></tr></thead><tbody>
+    return `<details class="year-block" ${open?'open':''}><summary class="group-title">${esc(year)}<span class="g-right">${de(s.reports)} Prüfberichte · ${de(s.areas)} Bereiche · ${de(s.badAreas)} überschritten</span></summary>
+      <div class="table-wrap tall"><table><thead><tr><th>Untersuchungsart</th><th class="num" title="${esc(DEFS.reports)}">Prüfberichte</th><th class="num" title="${esc(DEFS.areas)}">Bereiche untersucht</th><th class="num">Bereiche überschritten</th><th class="num">Quote</th></tr></thead><tbody>
       ${ys.map(x=>`<tr><td>${esc(x.category)}</td><td class="num">${de(x.reportCount)}</td><td class="num">${de(x.areaCount)}</td><td class="num">${de(x.badCount)}</td><td class="num">${pct(x.ratio)}</td></tr>`).join('')}
       <tr><td><b>Gesamt</b></td><td class="num"><b>${de(s.reports)}</b></td><td class="num"><b>${de(s.areas)}</b></td><td class="num"><b>${de(s.badAreas)}</b></td><td class="num"><b>${pct(s.ratio)}</b></td></tr>
       </tbody></table></div></details>`;}).join('');
@@ -894,7 +938,7 @@ function renderAnlagen(rows){
   if($('#chkOnlyBad').checked)list=list.filter(x=>x.bad>0);
   $('#anlagenHint').textContent=`${de(list.length)} Bereiche · ${de(new Set(list.map(x=>x.hv+'|'+x.obj)).size)} Objekte`;
   if(!list.length){$('#anlagenBody').innerHTML='<div class="empty">Keine Bereiche in der aktuellen Auswahl.</div>';return;}
-  let html='<table class="dense"><thead><tr><th>Objekt</th><th>Bereich</th><th class="num">Unters.</th><th>Untersuchungsart</th><th>Umfang</th><th class="num">Legio. max</th><th>letzte Probenahme</th><th>Befund</th></tr></thead><tbody>';
+  let html='<table class="dense"><thead><tr><th>Objekt</th><th>Bereich</th><th class="num" title="Anzahl Prüfberichte zu diesem Bereich">Prüfber.</th><th>Untersuchungsart</th><th>Umfang</th><th class="num">Legio. max</th><th>letzte Probenahme</th><th>Befund</th></tr></thead><tbody>';
   let curHv=null;
   for(const x of list){
     if(x.hv!==curHv){curHv=x.hv;html+=`<tr><td colspan="8" style="background:var(--panel3);font-weight:700;padding:5px 8px">${esc(curHv||'Ohne Zuordnung')}</td></tr>`;}
@@ -911,7 +955,7 @@ function render(){
   renderYearChips();
   const rows=filteredReports();
   const ev=stripIgnored(rows);
-  renderKpis(ev);renderTypeBars(ev);renderScopeBars(ev);renderMonths(ev);
+  renderKpis(ev,rows);renderTypeBars(ev);renderScopeBars(ev);renderMonths(ev);
   renderExceedances(ev);renderHvCompare(ev);renderStats();
   renderReports(rows);renderAnlagen(ev);
   $('#headerSub').textContent=reports.length?`${de(reports.length)} Berichte im lokalen Bestand`:'Keine Daten geladen';
@@ -939,7 +983,7 @@ async function clearData(){
   await dbDeleteAll(STORE_REPORTS);localStorage.removeItem(FALLBACK_KEY);reports=[];refreshAll();
   showBanner('Der lokale Viewer-Datenbestand wurde gelöscht.','ok');
 }
-function resetFilters(){for(const s of ['#fYear','#fHv','#fObj','#fArea','#fType','#fScope','#fResult','#fSearch'])$(s).value='';refreshFilterOptions();render();}
+function resetFilters(){for(const s of ['#fYear','#fHv','#fObj','#fArea','#fType','#fScope','#fResult','#fSearch'])$(s).value='';updateSearchBox();refreshFilterOptions();render();}
 
 /* ================= DRUCK / BERICHTE ================= */
 function activeFilterText(){
@@ -957,19 +1001,30 @@ function pHead(title,sub,withLogo){
     <div class="p-meta">NOVA Praxis-Hygiene GmbH<br>Depotstr. 5 1/2, 86153 Augsburg<br>Stand: ${new Date().toLocaleDateString('de-DE')}${y?`<br>Berichtsjahr ${esc(y)}`:'<br>alle Jahrgänge'}</div>
   </div>`;
 }
+function pZaehlweise(){
+  return `<div class="p-sec"><h3>Zur Zählweise</h3><div class="p-note">
+    <b>Prüfberichte:</b> ${esc(DEFS.reports)}<br>
+    <b>Bereiche untersucht:</b> ${esc(DEFS.areas)}<br>
+    <b>Überschreitungsquote:</b> ${esc(DEFS.ratio)}<br>
+    <b>Aufträge:</b> ${esc(DEFS.orders)}<br>
+    <b>Nachuntersuchungen:</b> ${esc(DEFS.follow)}
+  </div></div>`;
+}
 function pFoot(extra){
   return `<div class="p-foot"><span>NOVA Prüfberichte-Viewer V ${APP_VERSION}${extra?' · '+esc(extra):''}</span><span>Erstellt am ${new Date().toLocaleString('de-DE')}</span></div>`;
 }
-function pKpis(s,hvMode){
+function pKpis(s,hvMode,extra){
   const cards=[
-    ['',de(s.reports),'Untersuchungen'],
+    ['',de(s.reports),'Prüfberichte'],
     ['',de(s.areas),'Bereiche untersucht'],
     [s.badAreas?'bad':'',de(s.badAreas),'Bereiche mit Überschreitung'],
     [s.ratio>0?'bad':'',pct(s.ratio),'Überschreitungsquote'],
     ['',de(s.objects),'Objekte'],
     ['',de(s.hvs),'Hausverwaltungen'],
     ['',s.legioMax==null?'–':de(s.legioMax),'höchster Legionellenwert (KBE/100 ml)'],
-    ['',de(s.badReports),'Berichte mit Befund']
+    ['',de(s.badReports),'Prüfberichte mit Überschreitung'],
+    ['',de(extra?.orders??s.orders),'Aufträge (inkl. Nachunt.)'],
+    ['',de(extra?.follow??0),'Nachuntersuchungen (nicht gezählt)']
   ];
   const use=hvMode?cards.slice(0,4):cards;
   return `<div class="p-kpis">${use.map(([c,v,l])=>`<div class="p-kpi ${c}"><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join('')}</div>`;
@@ -1013,7 +1068,7 @@ function pHvCompare(rows){
   const list=[...g.entries()].map(([hv,rs])=>({hv,...stats(rs)})).sort((a,b)=>b.badAreas-a.badAreas||b.areas-a.areas);
   if(list.length<2)return '';
   return `<div class="p-sec"><h3>Hausverwaltungen im Vergleich</h3><table class="t-dense"><thead><tr>
-    <th>Hausverwaltung</th><th class="r-num">Objekte</th><th class="r-num">Untersuchungen</th><th class="r-num">Bereiche</th><th class="r-num">überschritten</th><th class="r-num">Quote</th></tr></thead><tbody>
+    <th>Hausverwaltung</th><th class="r-num">Objekte</th><th class="r-num">Prüfberichte</th><th class="r-num">Bereiche</th><th class="r-num">überschritten</th><th class="r-num">Quote</th></tr></thead><tbody>
     ${list.map(x=>`<tr><td>${esc(x.hv)}</td><td class="r-num">${de(x.objects)}</td><td class="r-num">${de(x.reports)}</td><td class="r-num">${de(x.areas)}</td>
       <td class="r-num ${x.badAreas?'r-bad':''}">${de(x.badAreas)}</td><td class="r-num">${pct(x.ratio)}</td></tr>`).join('')}
   </tbody></table></div>`;
@@ -1022,7 +1077,7 @@ function pAreas(rows,pageBreak){
   const list=areaRows(rows);
   if(!list.length)return '';
   let html=`<div class="p-sec ${pageBreak?'p-break':''}"><h3>Untersuchte Anlagen und Bereiche (${list.length})</h3>
-    <table class="t-dense"><thead><tr><th>Objekt</th><th>Bereich</th><th class="r-num">Unt.</th><th>Untersuchungsart</th><th>Umfang</th><th class="r-num">Legio. max</th><th>letzte Probenahme</th><th>Befund</th></tr></thead><tbody>`;
+    <table class="t-dense"><thead><tr><th>Objekt</th><th>Bereich</th><th class="r-num">Prüfber.</th><th>Untersuchungsart</th><th>Umfang</th><th class="r-num">Legio. max</th><th>letzte Probenahme</th><th>Befund</th></tr></thead><tbody>`;
   let cur=null;
   for(const x of list){
     if(x.hv!==cur){cur=x.hv;html+=`<tr class="p-group"><td colspan="8">${esc(cur||'Ohne Zuordnung')}</td></tr>`;}
@@ -1051,6 +1106,7 @@ function setPageOrientation(landscape){
 function buildReport(mode){
   const all=filteredReports();
   const rows=mode==='liste'?all:stripIgnored(all);
+  const extra={orders:stats(all).orders,follow:new Set(all.filter(r=>AUSWERTUNG_IGNORIERT.includes(r.untersuchungsart)).map(reportKey)).size};
   const y=currentYear();
   const s=stats(rows);
   const titleExtra=$('#optTitle').value.trim();
@@ -1063,7 +1119,7 @@ function buildReport(mode){
   if(mode==='year-intern'||mode==='year-hv'){
     const title=`Jahresauswertung Trinkwasseruntersuchungen${y?' '+y:''}`;
     html+=pHead(title,titleExtra||filterInfo||'Gesamtbestand',withLogo);
-    html+=pKpis(s,hvMode);
+    html+=pKpis(s,hvMode,extra);
     if(filterInfo&&titleExtra)html+=`<div class="p-note">Auswahl: ${esc(filterInfo)}</div>`;
 
     const typeEntries=[...groupBy(rows,r=>r.untersuchungsart||'Unbekannt').entries()]
@@ -1080,11 +1136,12 @@ function buildReport(mode){
     if($('#optHv').checked)html+=pHvCompare(rows);
     if($('#optExc').checked)html+=pExceedances(rows,hvMode);
     if($('#optAreas').checked)html+=pAreas(rows,true);
+    if($('#optDefs').checked)html+=pZaehlweise();
     html+=pFoot(hvMode?'Auswertung für die Hausverwaltung':'interne Auswertung');
   }
   else if(mode==='anlagen'){
     html+=pHead(`Untersuchte Anlagen und Bereiche${y?' '+y:''}`,titleExtra||filterInfo||'Gesamtbestand',withLogo);
-    html+=pKpis(s,true);
+    html+=pKpis(s,true,extra);
     html+=pAreas(rows,false);
     if($('#optExc').checked)html+=pExceedances(rows,true);
     html+=pFoot();
@@ -1123,7 +1180,9 @@ for(const s of ['#fType','#fScope','#fResult'])$(s).onchange=render;
 $('#fHv').onchange=()=>{refreshFilterOptions();render();};
 $('#fObj').onchange=()=>{refreshFilterOptions();render();};
 $('#fArea').onchange=render;
-$('#fSearch').oninput=render;
+function updateSearchBox(){document.querySelector('.searchbox').classList.toggle('filled',$('#fSearch').value.trim()!=='');}
+$('#fSearch').oninput=()=>{updateSearchBox();render();};
+$('#fSearchClear').onclick=()=>{$('#fSearch').value='';updateSearchBox();render();$('#fSearch').focus();};
 $$('#reportsTable th').forEach(th=>th.onclick=()=>{const k=th.dataset.key;if(sortKey===k)sortDir*=-1;else{sortKey=k;sortDir=1;}render();});
 $$('.tab').forEach(t=>t.onclick=()=>{
   $$('.tab').forEach(x=>x.classList.remove('active'));t.classList.add('active');
@@ -1176,11 +1235,16 @@ function helpHtml(){return `
 <div class="divider"></div>
 <div class="subhead" style="margin-top:0">Zur Zählweise</div>
 <div class="help-def">
-  <b>Untersuchungen</b><span>Eine eindeutige Berichtsnummer zählt einmal.</span>
-  <b>Bereiche untersucht</b><span>Ein Bereich zählt je Jahr und Untersuchungsart nur einmal, auch bei mehreren Berichten.</span>
-  <b>Überschreitungsquote</b><span>Überschrittene Bereiche geteilt durch untersuchte Bereiche – nicht die Zahl der Berichte.</span>
+  <b>Prüfberichte</b><span>${esc(DEFS.reports)}</span>
+  <b>Bereiche untersucht</b><span>${esc(DEFS.areas)}</span>
+  <b>Bereiche mit Überschreitung</b><span>${esc(DEFS.badAreas)}</span>
+  <b>Überschreitungsquote</b><span>${esc(DEFS.ratio)}</span>
+  <b>Objekte</b><span>${esc(DEFS.objects)}</span>
+  <b>Aufträge</b><span>${esc(DEFS.orders)}</span>
   <b>Nachuntersuchungen</b><span>Bleiben im Bestand und in der Berichtsliste, werden in den Auswertungen aber nicht mitgezählt.</span>
 </div>
+<div class="help-note tip">Beispiel: AWO Legau mit Altbau und Neubau, in jedem Bereich Legionellen und Mikrobiologie. Bereiche untersucht = 2. Prüfberichte = 2, wenn das Labor je Bereich einen kombinierten Bericht ausgibt, und 4, wenn es Legionellen und Mikrobiologie getrennt ausweist. Die Zahl der Termine oder Anfahrten wird bewusst nicht ausgewertet.</div>
+<div class="sub">Jede Kachel in der Jahresauswertung zeigt ihre Definition als Kurzinfo, wenn du mit der Maus darauf zeigst.</div>
 
 <div class="divider"></div>
 <div class="subhead" style="margin-top:0">Wo die Daten liegen</div>
@@ -1192,7 +1256,7 @@ $('#btnHelp').onclick=()=>showDialog('Kurzanleitung – NOVA Prüfberichte-Viewe
 /* ================= STARTANSICHT ================= */
 function goHome(){
   for(const sel of ['#fHv','#fObj','#fArea','#fType','#fScope','#fResult','#fSearch'])$(sel).value='';
-  $('#chkOnlyBad').checked=false;
+  $('#chkOnlyBad').checked=false;updateSearchBox();
   sortKey='probenahmedatum';sortDir=-1;
   $$('.tab').forEach(x=>x.classList.remove('active'));
   $$('.view').forEach(v=>v.classList.remove('active'));
