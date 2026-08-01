@@ -192,6 +192,20 @@ summary{cursor:pointer;color:var(--fg2)}
 .checkrow{display:flex;flex-wrap:wrap;gap:12px 20px;margin-top:10px;font-size:13px}
 .checkrow label{display:flex;align-items:center;gap:6px;cursor:pointer}
 
+/* ============ HILFE ============ */
+.help-steps{counter-reset:hs;margin:0;padding:0;list-style:none}
+.help-steps li{counter-increment:hs;position:relative;padding:0 0 12px 38px;margin:0}
+.help-steps li::before{content:counter(hs);position:absolute;left:0;top:0;width:26px;height:26px;border-radius:50%;
+  background:var(--teal);color:var(--tealFg);font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center}
+.help-steps b{display:block;margin-bottom:2px}
+.help-steps span{color:var(--muted);font-size:12.5px}
+.help-def{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-size:12.5px;align-items:start}
+.help-def b{white-space:nowrap}
+.help-def span{color:var(--muted)}
+.help-note{border-left:3px solid var(--amber);background:var(--amberSoft);border-radius:0 8px 8px 0;padding:9px 12px;font-size:12.5px;margin:10px 0}
+.help-note.tip{border-left-color:var(--teal);background:var(--tealSoft)}
+.help-path{display:block;margin-top:5px;font:12px/1.5 ui-monospace,Consolas,monospace;color:var(--fg2)}
+
 /* ============ STARTANSICHT ============ */
 #homeZone{display:flex;align-items:center;gap:12px;border:1px solid transparent;border-radius:10px;
   padding:4px 8px;margin:-4px -8px;cursor:pointer;background:none;color:inherit;text-align:left;transition:.15s}
@@ -282,6 +296,7 @@ footer .heart{color:var(--red)}
     </div>
     <span class="grow"></span>
     <span class="status-dot" id="folderDot"></span><span class="sub hide-mobile" id="folderMini">Kundenordner nicht gewählt</span>
+    <button class="icon-btn" id="btnHelp" title="Kurzanleitung öffnen">?</button>
     <button class="icon-btn" id="btnTheme" title="Hell / Dunkel umschalten">☾</button>
   </div>
 </header>
@@ -1118,6 +1133,61 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){['#dialogBackdrop','#importBackdrop','#printBackdrop'].forEach(s=>$(s).classList.remove('show'));}
   if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='p'){e.preventDefault();openPrintDialog();}
 });
+
+/* ================= HILFE ================= */
+function helpHtml(){return `
+<div class="subhead" style="margin-top:0">In drei Schritten einsatzbereit</div>
+<ol class="help-steps">
+  <li><b>Kundenordner einmalig festlegen</b>
+    <span>Oben auf „Kundenordner wählen“ und den lokalen OneDrive-Ordner <i>Kunden</i> auswählen. Diese Auswahl bleibt gespeichert, auch nach dem Schließen des Browsers.</span></li>
+  <li><b>Viewer-JSON importieren</b>
+    <span>„JSON importieren / mergen“ öffnet ein Fenster, in das du eine oder mehrere JSON-Dateien hineinziehen kannst. Du kannst den Inhalt auch direkt als Text einfügen. Mehrere Exporte werden zusammengeführt, doppelte Berichte übersprungen.</span></li>
+  <li><b>Auswerten, öffnen, drucken</b>
+    <span>Filtern, Jahr wählen, in der Berichtsliste auf den Dateinamen klicken – das PDF öffnet sich direkt aus OneDrive. Über „Bericht drucken …“ entstehen fertige Auswertungen.</span></li>
+</ol>
+
+<div class="divider"></div>
+<div class="subhead" style="margin-top:0">Warum der Kundenordner nötig ist</div>
+<div class="sub">Im JSON stehen bewusst keine Benutzerpfade, sondern nur der relative Pfad innerhalb des Kundenordners:</div>
+<code class="help-path">AWO / Klinik Legau / Altbau / Prüfbericht 25-110852.pdf</code>
+<div class="sub" style="margin-top:8px">Sobald du deinen Kundenordner einmal gewählt hast, setzt der Viewer beides zusammen und weiß, wo er suchen muss. Dadurch funktioniert dieselbe HTML und derselbe Datenbestand auf jedem Rechner – egal ob der Ordner unter <i>C:\Users\Marco\OneDrive\Kunden</i> oder <i>D:\OneDrive\Kunden</i> liegt.</div>
+<div class="help-note tip">Der grüne Punkt oben rechts zeigt, dass ein Kundenordner aktiv ist. Beim ersten PDF-Aufruf nach einem Browserstart fragt Windows einmal nach der Leseberechtigung – das ist normal und muss bestätigt werden.</div>
+<div class="help-note">Der Viewer liest nur. Es wird nichts in den Kundenordner geschrieben, verschoben oder gelöscht.</div>
+
+<div class="divider"></div>
+<div class="subhead" style="margin-top:0">Die drei Ansichten</div>
+<div class="help-def">
+  <b>Jahresauswertung</b><span>Kennzahlen, Vorjahresvergleich, Verteilung nach Untersuchungsart und Umfang, Jahresverlauf, alle Überschreitungen im Detail. Das Jahr wählst du über die Chips oben.</span>
+  <b>Prüfberichte</b><span>Vollständige Liste aller Berichte. Spaltenüberschrift anklicken sortiert, nochmal klicken dreht die Richtung. Klick auf den Dateinamen öffnet das PDF.</span>
+  <b>Untersuchte Anlagen</b><span>Kompakte Aufstellung, eine Zeile je Bereich – gedacht für Übersichten an Hausverwaltungen.</span>
+</div>
+
+<div class="divider"></div>
+<div class="subhead" style="margin-top:0">Bedienelemente im Kopf</div>
+<div class="help-def">
+  <b>Logo und Titel</b><span>Klick setzt alles auf die Startansicht zurück: Filter leer, neuester Jahrgang, Jahresauswertung.</span>
+  <b>?</b><span>Diese Kurzanleitung.</span>
+  <b>☾ / ☀</b><span>Hell- und Dunkelmodus, die Wahl bleibt gespeichert.</span>
+  <b>Gesamtbestand exportieren</b><span>Schreibt den zusammengeführten Bestand als JSON heraus – die Sicherung und zugleich die Datei für Kolleginnen und Kollegen.</span>
+  <b>Bericht drucken …</b><span>Vier Berichtsarten, wahlweise mit Logo, Jahresverlauf, Überschreitungen und Anlagenliste. Alle aktiven Filter erscheinen als Auswahl im Kopf des Berichts. Strg+P öffnet den Dialog ebenfalls.</span>
+  <b>Datenbestand löschen</b><span>Leert nur den lokalen Speicher des Viewers. Die PDF-Dateien bleiben unangetastet.</span>
+</div>
+
+<div class="divider"></div>
+<div class="subhead" style="margin-top:0">Zur Zählweise</div>
+<div class="help-def">
+  <b>Untersuchungen</b><span>Eine eindeutige Berichtsnummer zählt einmal.</span>
+  <b>Bereiche untersucht</b><span>Ein Bereich zählt je Jahr und Untersuchungsart nur einmal, auch bei mehreren Berichten.</span>
+  <b>Überschreitungsquote</b><span>Überschrittene Bereiche geteilt durch untersuchte Bereiche – nicht die Zahl der Berichte.</span>
+  <b>Nachuntersuchungen</b><span>Bleiben im Bestand und in der Berichtsliste, werden in den Auswertungen aber nicht mitgezählt.</span>
+</div>
+
+<div class="divider"></div>
+<div class="subhead" style="margin-top:0">Wo die Daten liegen</div>
+<div class="sub">Der Bestand liegt lokal im Browser dieses Rechners, nicht auf einem Server. Wird der Viewer als Datei direkt geöffnet, bindet der Browser den Speicher an genau diesen Dateinamen und Speicherort. Über GitHub Pages oder einen lokalen Webserver ist das stabiler.</div>
+<div class="help-note">Nach größeren Zusammenführungen den Gesamtbestand exportieren. Das ist die einzige Sicherung.</div>
+`;}
+$('#btnHelp').onclick=()=>showDialog('Kurzanleitung – NOVA Prüfberichte-Viewer',helpHtml());
 
 /* ================= STARTANSICHT ================= */
 function goHome(){
