@@ -110,7 +110,7 @@
 
     /* ── Info strip ── */
     .info-strip {
-      display: grid; grid-template-columns: 1fr; gap: 16px; margin-bottom: 28px;
+      display: grid; grid-template-columns: 1fr; gap: 16px; margin-bottom: 32px;
     }
     .info-box {
       padding: 18px 20px;
@@ -122,8 +122,19 @@
     }
     .info-box strong { display: block; color: #fff; margin-bottom: 3px; font-size: 0.9rem; }
 
+    /* ── Section Titles ── */
+    .section-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--text);
+      margin: 0 0 20px 0;
+      padding-left: 12px;
+      border-left: 4px solid var(--nova);
+      letter-spacing: 0.02em;
+    }
+
     /* ── Tool Grid ── */
-    .grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
+    .grid { display: grid; grid-template-columns: 1fr; gap: 20px; margin-bottom: 40px; }
 
     .card {
       background: var(--surface); border: 1px solid var(--border);
@@ -175,7 +186,7 @@
 
     /* ── Dev Area (Test Tool) ── */
     .dev-area {
-      margin-top: 40px;
+      margin-top: 20px;
       display: flex;
       justify-content: center;
     }
@@ -230,17 +241,20 @@
       <div class="hero-byline">Experten für Trinkwasserhygiene · Interne Plattform</div>
     </section>
 
+    <!-- Info-Boxen aktualisiert für das hybride System -->
     <div class="info-strip animate-in delay-2">
       <div class="info-box">
-        <strong>🔐 Login erforderlich</strong>
-        Jedes Tool ist mit Supabase Auth gesichert. Nur autorisierte Mitarbeiter haben Zugang.
+        <strong>🔐 Sichere Plattform</strong>
+        Datenbank-Tools erfordern einen Supabase-Login. Lokale Tools verarbeiten Daten rein im Browser.
       </div>
       <div class="info-box">
-        <strong>☁️ Datenbank-gestützt</strong>
-        Alle Daten werden zentral in Supabase gespeichert – kein lokaler Export nötig.
+        <strong>☁️ Cloud & Lokal</strong>
+        Hybrides System: Zentrale Datenspeicherung in Supabase kombiniert mit lokalen JSON-Auswertungen.
       </div>
     </div>
 
+    <!-- SEKTION 1: Tools mit Login -->
+    <h2 class="section-title animate-in delay-3">Datenbank & Cloud Tools (Login erforderlich)</h2>
     <section class="grid animate-in delay-3">
 
       <!-- Termindatenbank Sonderobjekte -->
@@ -296,7 +310,7 @@
         </a>
       </article>
 
-      <!-- NEU: Spülprotokoll Auswertung -->
+      <!-- Spülprotokoll Auswertung -->
       <article class="card">
         <span class="card-tag">Aktiv · Login required</span>
         <div class="icon">
@@ -320,6 +334,41 @@
             <line x1="15" y1="12" x2="3" y2="12"/>
           </svg>
           Öffnen & Einloggen
+        </a>
+      </article>
+
+    </section>
+
+    <!-- SEKTION 2: Lokale Tools ohne Login -->
+    <h2 class="section-title animate-in delay-3">Lokale Auswertungen (Kein Login)</h2>
+    <section class="grid animate-in delay-3">
+
+      <!-- NEU: Prüfberichte-Viewer -->
+      <article class="card">
+        <span class="card-tag">Aktiv · Lokale Daten</span>
+        <div class="icon">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+            <circle cx="10" cy="9" r="1"></circle>
+          </svg>
+        </div>
+        <h3>Prüfberichte-Viewer</h3>
+        <p>Zentrale Auswertung und Verwaltung gescannter Trinkwasser-Prüfberichte. Importiert und analysiert JSON-Datenbestände.</p>
+        <ul class="list">
+          <li>Import & Merge ohne Doppelungen</li>
+          <li>Auswertung nach Jahr, Bereich & Befund</li>
+          <li>Direkter Zugriff auf lokale PDFs</li>
+        </ul>
+        <a class="btn-card btn-nova-card" href="https://kaffeetrinker80.github.io/NOVA/pruefberichte-scanner/">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <line x1="10" y1="14" x2="21" y2="3"></line>
+          </svg>
+          Tool öffnen
         </a>
       </article>
 
