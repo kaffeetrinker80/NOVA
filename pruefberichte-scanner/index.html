@@ -1,20 +1,18 @@
 <!DOCTYPE html>
 <html lang="de" data-theme="dark">
 <head>
-<!-- Icons + Manifest -->
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
-
-<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
-<link rel="icon" href="favicon.ico">
-
-<link rel="manifest" href="site.webmanifest">
-
-<meta name="theme-color" content="#172f4d">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>NOVA Prüfberichte-Viewer</title>
-<link rel="icon" href="nova_logo_web.png">
+
+<!-- Icons + Manifest -->
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="site.webmanifest">
+<meta name="theme-color" content="#172f4d" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
 <style>
 /* ============ THEME ============ */
 :root{
@@ -53,7 +51,8 @@ code{font:12px/1.4 ui-monospace,Consolas,monospace}
 /* ============ HEADER ============ */
 header{position:sticky;top:0;z-index:50;background:var(--panel);border-bottom:1px solid var(--line);box-shadow:0 4px 18px rgba(0,0,0,.14)}
 .header-inner{max-width:1900px;margin:auto;padding:11px 18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.logo-mark{height:34px;width:auto;display:block}
+.logo-mark{height:36px;width:auto;display:block}
+html[data-theme="dark"] .logo-mark{filter:brightness(1.9) saturate(1.15)}
 .title-block{display:flex;flex-direction:column;line-height:1.2}
 h1{font-size:17px;margin:0;font-weight:650;display:flex;align-items:center;gap:8px}
 .badge{background:var(--teal);color:var(--tealFg);border-radius:999px;padding:2px 9px;font-size:11px;font-weight:800;letter-spacing:.2px}
@@ -555,13 +554,21 @@ function renderPending(){
   $('#importState').textContent=pendingFiles.length?`${pendingFiles.length} Datei${pendingFiles.length===1?'':'en'} vorgemerkt.`:'';
 }
 function addFiles(list){
-  for(const f of list){if(/\.json$/i.test(f.name)||f.type==='application/json')pendingFiles.push(f);}
+  const seen=new Set(pendingFiles.map(f=>`${f.name}|${f.size}|${f.lastModified}`));
+  let dup=0;
+  for(const f of list){
+    if(!(/\.json$/i.test(f.name)||f.type==='application/json'))continue;
+    const key=`${f.name}|${f.size}|${f.lastModified}`;
+    if(seen.has(key)){dup++;continue;}
+    seen.add(key);pendingFiles.push(f);
+  }
   renderPending();
+  if(dup)$('#importState').textContent=`${pendingFiles.length} Datei${pendingFiles.length===1?'':'en'} vorgemerkt · ${dup} bereits vorhanden und übersprungen.`;
 }
 const dz=$('#dropzone');
 ['dragenter','dragover'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.add('over');}));
 ['dragleave','drop'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.remove('over');}));
-dz.addEventListener('drop',e=>addFiles(e.dataTransfer.files));
+dz.addEventListener('drop',e=>{e.stopPropagation();dragDepth=0;$('#globalDrop').classList.remove('show');addFiles(e.dataTransfer.files);});
 $('#btnPick').onclick=()=>$('#fileInput').click();
 $('#fileInput').onchange=e=>{addFiles(e.target.files);e.target.value='';};
 $('#importCancel').onclick=closeImportDialog;
