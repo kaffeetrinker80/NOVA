@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NOVA Prüfberichte-Viewer</title>
+<style>
+:root{
+  --bg:#0e1620;--panel:#16212c;--panel2:#1b2834;--line:#293946;
+  --fg:#e8eef3;--muted:#91a4b4;--teal:#14b8a6;--teal2:#0f766e;
+  --red:#ef4444;--green:#22c55e;--amber:#f59e0b;--blue:#60a5fa;
+  --shadow:0 10px 28px rgba(0,0,0,.22)
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--fg);font:14px/1.45 "Segoe UI",system-ui,sans-serif}
+button,input,select{font:inherit}
+button{cursor:pointer}
+header{position:sticky;top:0;z-index:50;background:rgba(22,33,44,.97);border-bottom:1px solid var(--line);box-shadow:0 4px 18px rgba(0,0,0,.16)}
+.header-inner{max-width:1900px;margin:auto;padding:13px 18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+h1{font-size:18px;margin:0;font-weight:650}.badge{background:var(--teal);color:#04211d;border-radius:999px;padding:2px 10px;font-size:11px;font-weight:800}
+.sub{color:var(--muted);font-size:12px}.grow{flex:1}.status-dot{width:9px;height:9px;border-radius:50%;background:#64748b;display:inline-block}.status-dot.ok{background:var(--green)}
+.wrap{max-width:1900px;margin:auto;padding:17px 18px 55px}
+.toolbar,.filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.btn,select,input[type=search]{border:1px solid var(--line);background:var(--panel);color:var(--fg);border-radius:8px;padding:8px 12px}
+.btn:hover,select:hover,input[type=search]:hover{border-color:var(--teal)}
+.btn.primary{background:var(--teal);border-color:var(--teal);color:#04211d;font-weight:700}.btn.primary:hover{background:#0fa294}
+.btn.danger{color:#fca5a5}.btn.small{padding:5px 9px;font-size:12px}.btn:disabled{opacity:.45;cursor:not-allowed}
+input[type=search]{min-width:260px;flex:1}select{min-width:150px}
+.folder-box{display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:7px 10px;color:var(--muted);min-width:300px}
+.folder-box strong{color:var(--fg);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:420px}
+.banner{display:none;margin:0 0 12px;padding:10px 13px;border-radius:9px;border:1px solid var(--line);background:var(--panel)}
+.banner.show{display:block}.banner.ok{border-color:rgba(34,197,94,.45)}.banner.warn{border-color:rgba(245,158,11,.55)}.banner.bad{border-color:rgba(239,68,68,.55)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:9px;margin:12px 0}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 13px;box-shadow:var(--shadow)}.kpi b{display:block;font-size:21px}.kpi span{color:var(--muted);font-size:12px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:11px;box-shadow:var(--shadow);margin:12px 0;overflow:hidden}
+.panel-head{display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--panel2);border-bottom:1px solid var(--line)}.panel-head h2{font-size:15px;margin:0}.panel-head .hint{margin-left:auto;color:var(--muted);font-size:11px}
+.table-wrap{overflow:auto;max-height:56vh}
+table{width:100%;border-collapse:collapse}th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;font-size:13px}
+th{position:sticky;top:0;z-index:4;background:#1c2a36;color:#cbd5df;white-space:nowrap;cursor:pointer;user-select:none}th:hover{color:var(--teal)}
+tr:hover td{background:#192733}.num{text-align:right;font-variant-numeric:tabular-nums}.muted{color:var(--muted)}
+.pill{display:inline-flex;align-items:center;border-radius:999px;padding:2px 8px;font-size:11px;font-weight:650;white-space:nowrap}.pill.ok{background:rgba(34,197,94,.14);color:#86efac}.pill.bad{background:rgba(239,68,68,.16);color:#fca5a5}.pill.unk{background:rgba(245,158,11,.14);color:#fcd34d}.pill.info{background:rgba(96,165,250,.14);color:#bfdbfe}
+.file-btn{border:0;background:none;color:var(--teal);padding:0;text-align:left}.file-btn:hover{text-decoration:underline}.path{max-width:360px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.empty{padding:38px 16px;text-align:center;color:var(--muted)}
+summary{cursor:pointer;color:#cbd5df}.year-block{border-bottom:1px solid var(--line)}.year-title{padding:9px 13px;background:#192733;font-weight:700}
+.dialog-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.62);z-index:100;display:none;align-items:center;justify-content:center;padding:20px}.dialog-backdrop.show{display:flex}.dialog{width:min(760px,100%);max-height:85vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:0 22px 70px rgba(0,0,0,.5)}.dialog h3{margin:0;padding:14px 16px;border-bottom:1px solid var(--line)}.dialog-body{padding:15px 16px}.dialog-actions{display:flex;justify-content:flex-end;gap:8px;padding:12px 16px;border-top:1px solid var(--line)}
+.import-grid{display:grid;grid-template-columns:1fr auto;gap:7px 14px}.import-grid b{text-align:right}.conflict{padding:9px;border:1px solid var(--line);border-radius:8px;margin:7px 0}.hidden{display:none!important}
+@media(max-width:900px){.hide-mobile{display:none}.folder-box{min-width:100%}.header-inner{align-items:flex-start}.table-wrap{max-height:none}}
+@media print{header,.toolbar,.filters,.noprint{display:none!important}.wrap{padding:0}.panel,.kpi{box-shadow:none;background:#fff;color:#000;border-color:#aaa}body{background:#fff;color:#000}th{position:static;background:#eee;color:#000}td,th{border-color:#ccc}.muted{color:#555}}
+</style>
+</head>
+<body>
+<header>
+  <div class="header-inner">
+    <h1>NOVA Prüfberichte-Viewer</h1><span class="badge">V 1.0.2</span>
+    <span class="sub" id="headerSub">Keine Daten geladen</span>
+    <span class="grow"></span>
+    <span class="status-dot" id="folderDot"></span><span class="sub" id="folderMini">Kundenordner nicht gewählt</span>
+  </div>
+</header>
+<div class="wrap">
+  <div class="toolbar noprint">
+    <button class="btn primary" id="btnImport">JSON importieren / mergen</button>
+    <button class="btn" id="btnExport" disabled>Gesamtbestand exportieren</button>
+    <button class="btn" id="btnFolder">Kundenordner wählen</button>
+    <button class="btn" id="btnPrint">Drucken</button>
+    <span class="grow"></span>
+    <button class="btn danger" id="btnClear" disabled>Datenbestand löschen</button>
+  </div>
+  <div class="folder-box noprint">
+    <span>Lokaler Kundenordner:</span><strong id="folderName">nicht eingestellt</strong>
+    <span class="grow"></span><button class="btn small" id="btnFolder2">Ändern</button>
+  </div>
+  <div class="banner" id="banner"></div>
+
+  <div class="filters noprint">
+    <select id="fYear"><option value="">Alle Jahrgänge</option></select>
+    <select id="fHv"><option value="">Alle Hausverwaltungen</option></select>
+    <select id="fObj"><option value="">Alle Objekte</option></select>
+    <select id="fArea"><option value="">Alle Bereiche</option></select>
+    <select id="fType"><option value="">Alle Untersuchungsarten</option></select>
+    <select id="fScope"><option value="">Alle Umfänge</option></select>
+    <select id="fResult"><option value="">Alle Befunde</option></select>
+    <input type="search" id="fSearch" placeholder="Suche: Bericht, Auftrag, Objekt, Bereich, Parameter …">
+    <button class="btn" id="btnReset">Zurücksetzen</button>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <section class="panel">
+    <div class="panel-head"><h2>Anlagen/Bereiche nach Jahr und Untersuchungsart</h2><span class="hint">Ein Bereich zählt je Jahr und Kategorie einmal.</span></div>
+    <div id="statsBody"></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><h2>Gefundene Prüfberichte</h2><span class="hint" id="listHint"></span></div>
+    <div class="table-wrap">
+      <table id="reportsTable">
+        <thead><tr>
+          <th data-key="berichtsnummer">Bericht-Nr.</th>
+          <th data-key="probenahmedatum">Probenahme</th>
+          <th data-key="hausverwaltung">Hausverwaltung</th>
+          <th data-key="objekt">Objekt</th>
+          <th data-key="bereich">Bereich</th>
+          <th data-key="untersuchungsart">Untersuchungsart</th>
+          <th data-key="umfang">Umfang</th>
+          <th data-key="legionellen_max" class="num">Legio. max</th>
+          <th data-key="befund">Befund</th>
+          <th data-key="auftragsnummer">Auftrag</th>
+          <th data-key="pdf_dateiname">Datei</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+      <div class="empty" id="emptyState">Noch keine Viewer-JSON importiert.</div>
+    </div>
+  </section>
+</div>
+<input type="file" id="fileInput" accept="application/json,.json" multiple class="hidden">
+
+<div class="dialog-backdrop" id="dialogBackdrop">
+  <div class="dialog">
+    <h3 id="dialogTitle">Import</h3>
+    <div class="dialog-body" id="dialogBody"></div>
+    <div class="dialog-actions"><button class="btn primary" id="dialogClose">Schließen</button></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+const APP_DB='nova-pruefberichte-viewer';
+const DB_VERSION=2;
+const STORE_REPORTS='reports', STORE_SETTINGS='settings';
+const FALLBACK_KEY='nova-pruefberichte-viewer-backup-v1';
+let reports=[];
+let directoryHandle=null;
+let sortKey='probenahmedatum', sortDir=-1;
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function openDb(){return new Promise((resolve,reject)=>{const req=indexedDB.open(APP_DB,DB_VERSION);req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains(STORE_REPORTS))db.createObjectStore(STORE_REPORTS,{keyPath:'id'});if(!db.objectStoreNames.contains(STORE_SETTINGS))db.createObjectStore(STORE_SETTINGS);};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);});}
+async function dbGetAll(store){const db=await openDb();return new Promise((resolve,reject)=>{const tx=db.transaction(store,'readonly');const r=tx.objectStore(store).getAll();r.onsuccess=()=>resolve(r.result||[]);r.onerror=()=>reject(r.error);});}
+async function dbGet(store,key){const db=await openDb();return new Promise((resolve,reject)=>{const r=db.transaction(store,'readonly').objectStore(store).get(key);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});}
+async function dbPut(store,value,key){const db=await openDb();return new Promise((resolve,reject)=>{const os=db.transaction(store,'readwrite').objectStore(store);const r=key===undefined?os.put(value):os.put(value,key);r.onsuccess=()=>resolve();r.onerror=()=>reject(r.error);});}
+async function dbDeleteAll(store){const db=await openDb();return new Promise((resolve,reject)=>{const tx=db.transaction(store,'readwrite');tx.objectStore(store).clear();tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||new Error('Speichervorgang abgebrochen.'));});}
+async function dbReplaceReports(items){const db=await openDb();return new Promise((resolve,reject)=>{const tx=db.transaction(STORE_REPORTS,'readwrite');const os=tx.objectStore(STORE_REPORTS);os.clear();for(const item of items)os.put(item);tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||new Error('Speichervorgang abgebrochen.'));});}
+function saveFallback(items){try{const raw=JSON.stringify(items);if(raw.length<=4500000)localStorage.setItem(FALLBACK_KEY,raw);else localStorage.removeItem(FALLBACK_KEY);}catch(_){}}
+function loadFallback(){try{const raw=localStorage.getItem(FALLBACK_KEY);return raw?JSON.parse(raw):[];}catch(_){return [];}}
+async function requestPersistentStorage(){try{if(navigator.storage?.persist)await navigator.storage.persist();}catch(_){}}
+
+function showBanner(text,type='ok'){const b=$('#banner');b.className='banner show '+type;b.innerHTML=text;clearTimeout(showBanner.t);showBanner.t=setTimeout(()=>b.classList.remove('show'),8000);}
+function showDialog(title,html){$('#dialogTitle').textContent=title;$('#dialogBody').innerHTML=html;$('#dialogBackdrop').classList.add('show');}
+$('#dialogClose').onclick=()=>$('#dialogBackdrop').classList.remove('show');
+$('#dialogBackdrop').onclick=e=>{if(e.target===$('#dialogBackdrop'))$('#dialogBackdrop').classList.remove('show');};
+
+function normalizeReport(r){
+  const out={...r};
+  out.id=String(out.id||'').trim();
+  out.berichtsnummer=String(out.berichtsnummer||'').trim();
+  if(out.untersuchungsart==='Orientierende Untersuchung')out.untersuchungsart='Systemische Untersuchung';
+  if(out.art==='Orientierende Untersuchung')out.art='Systemische Untersuchung';
+  out.jahr=Number(out.jahr)||Number((out.berichtsnummer.match(/^([0-9]{2,4})-/)||[])[1])||0;
+  if(out.jahr>0&&out.jahr<100)out.jahr+=2000;
+  out.umfang=Array.isArray(out.umfang)?out.umfang:(out.umfang?String(out.umfang).split('+').map(x=>x.trim()).filter(Boolean):[]);
+  out.parameter=Array.isArray(out.parameter)?out.parameter:[];
+  out.quellpfade=Array.isArray(out.quellpfade)&&out.quellpfade.length?out.quellpfade:[out.relativer_pfad].filter(Boolean);
+  out.datei_hashes=Array.isArray(out.datei_hashes)?out.datei_hashes:[out.datei_hash].filter(Boolean);
+  out.ueberschreitung=out.ueberschreitung===true||out.befund==='Überschreitung';
+  out.berichtsversion=Number(out.berichtsversion)||0;
+  return out;
+}
+function hashSet(r){return new Set([...(r.datei_hashes||[]),r.datei_hash].filter(Boolean));}
+function mergeArrays(a,b){return [...new Set([...(a||[]),...(b||[])].filter(Boolean))];}
+function timeValue(v){const t=Date.parse(v||'');return Number.isFinite(t)?t:0;}
+function chooseNewer(oldR,newR){
+  if((newR.berichtsversion||0)!==(oldR.berichtsversion||0))return (newR.berichtsversion||0)>(oldR.berichtsversion||0)?newR:oldR;
+  return timeValue(newR.datei_geaendert)>=timeValue(oldR.datei_geaendert)?newR:oldR;
+}
+function mergePair(oldR,newR){
+  const oldHashes=hashSet(oldR),newHashes=hashSet(newR);
+  const sameHash=[...newHashes].some(h=>oldHashes.has(h));
+  if(sameHash){
+    return {action:'skip',report:{...oldR,quellpfade:mergeArrays(oldR.quellpfade,newR.quellpfade),datei_hashes:mergeArrays([...oldHashes],[...newHashes]),fundstellen:new Set(mergeArrays(oldR.quellpfade,newR.quellpfade)).size}};
+  }
+  const winner=chooseNewer(oldR,newR),loser=winner===newR?oldR:newR;
+  const merged={...winner,quellpfade:mergeArrays(oldR.quellpfade,newR.quellpfade),datei_hashes:mergeArrays([...oldHashes],[...newHashes]),hat_dateivarianten:true};
+  merged.fundstellen=new Set(merged.quellpfade).size;
+  merged.import_historie=mergeArrays(oldR.import_historie,newR.import_historie);
+  merged.import_historie.push({replaced_hash:loser.datei_hash||null,replaced_version:loser.berichtsversion||0,replaced_at:new Date().toISOString()});
+  return {action:'update',report:merged,conflict:{id:merged.id,number:merged.berichtsnummer,oldVersion:oldR.berichtsversion||0,newVersion:newR.berichtsversion||0}};
+}
+
+async function importFiles(fileList){
+  const summary={files:0,newCount:0,updated:0,skipped:0,invalid:0,conflicts:[]};
+  const map=new Map(reports.map(r=>[r.id,r]));
+  for(const file of fileList){
+    summary.files++;
+    try{
+      const payload=JSON.parse(await file.text());
+      if(!payload||!Array.isArray(payload.reports)){summary.invalid++;continue;}
+      for(const raw of payload.reports){
+        const r=normalizeReport(raw);
+        if(!r.id){summary.invalid++;continue;}
+        if(!map.has(r.id)){map.set(r.id,r);summary.newCount++;}
+        else{
+          const m=mergePair(map.get(r.id),r);map.set(r.id,m.report);
+          if(m.action==='skip')summary.skipped++;else{summary.updated++;if(m.conflict)summary.conflicts.push(m.conflict);}
+        }
+      }
+    }catch(err){summary.invalid++;}
+  }
+  reports=[...map.values()];
+  await requestPersistentStorage();
+  await dbReplaceReports(reports);
+  saveFallback(reports);
+  const stored=await dbGetAll(STORE_REPORTS);
+  if(stored.length!==reports.length)throw new Error(`Speicherprüfung fehlgeschlagen: ${stored.length} von ${reports.length} Berichten gespeichert.`);
+  refreshAll(true);
+  const conflictHtml=summary.conflicts.length?`<details><summary>${summary.conflicts.length} geänderte Berichte anzeigen</summary>${summary.conflicts.slice(0,50).map(c=>`<div class="conflict"><b>${esc(c.number||c.id)}</b><br><span class="muted">Version ${c.oldVersion} → ${c.newVersion}; neuer Dateiinhalt wurde übernommen beziehungsweise zusammengeführt.</span></div>`).join('')}</details>`:'';
+  showDialog('Import abgeschlossen',`<div class="import-grid"><span>JSON-Dateien</span><b>${summary.files}</b><span>Neu hinzugefügt</span><b>${summary.newCount}</b><span>Aktualisiert / neue Dateivariante</span><b>${summary.updated}</b><span>Identisch übersprungen</span><b>${summary.skipped}</b><span>Ungültige Einträge/Dateien</span><b>${summary.invalid}</b></div>${conflictHtml}`);
+}
+
+async function chooseFolder(){
+  if(!('showDirectoryPicker' in window)){showBanner('Dieser Browser unterstützt die Ordnerauswahl nicht. Bitte den Viewer in aktuellem Edge oder Chrome über GitHub Pages beziehungsweise localhost öffnen.','warn');return;}
+  try{
+    const h=await window.showDirectoryPicker({mode:'read'});
+    directoryHandle=h;await dbPut(STORE_SETTINGS,h,'directoryHandle');updateFolderUi();showBanner(`Kundenordner „${esc(h.name)}“ wurde gespeichert.`,'ok');
+  }catch(err){if(err.name!=='AbortError')showBanner('Der Kundenordner konnte nicht gespeichert werden: '+esc(err.message),'bad');}
+}
+async function ensureFolderPermission(){
+  if(!directoryHandle)return false;
+  const opts={mode:'read'};
+  if(await directoryHandle.queryPermission(opts)==='granted')return true;
+  return await directoryHandle.requestPermission(opts)==='granted';
+}
+async function fileFromRelativePath(path){
+  const parts=String(path||'').replace(/\\/g,'/').split('/').filter(Boolean);
+  if(!parts.length)throw new Error('Kein relativer Pfad vorhanden.');
+  let dir=directoryHandle;
+  for(let i=0;i<parts.length-1;i++)dir=await dir.getDirectoryHandle(parts[i]);
+  const fh=await dir.getFileHandle(parts.at(-1));
+  return fh.getFile();
+}
+async function openPdf(id){
+  const r=reports.find(x=>x.id===id);if(!r)return;
+  if(!directoryHandle){showBanner('Bitte zuerst einmal den lokalen Kundenordner wählen.','warn');return;}
+  if(!await ensureFolderPermission()){showBanner('Für den Kundenordner wurde kein Lesezugriff erteilt.','warn');return;}
+  const paths=mergeArrays([r.relativer_pfad],r.quellpfade);
+  for(const p of paths){
+    try{const file=await fileFromRelativePath(p);const url=URL.createObjectURL(file);window.open(url,'_blank','noopener');setTimeout(()=>URL.revokeObjectURL(url),120000);return;}catch(e){}
+  }
+  showBanner(`PDF nicht gefunden. Erwartet wurde einer der relativen Pfade:<br><code>${paths.map(esc).join('</code><br><code>')}</code>`,'bad');
+}
+function updateFolderUi(){const name=directoryHandle?.name||'nicht eingestellt';$('#folderName').textContent=name;$('#folderMini').textContent=directoryHandle?`Kundenordner: ${name}`:'Kundenordner nicht gewählt';$('#folderDot').classList.toggle('ok',!!directoryHandle);}
+
+function unique(attr,source=reports){return [...new Set(source.flatMap(r=>{const v=r[attr];return Array.isArray(v)?v:[v];}).filter(v=>v!==''&&v!==null&&v!==undefined))].sort((a,b)=>String(a).localeCompare(String(b),'de',{numeric:true}));}
+function fillSelect(el,values,label,keep=true){const cur=keep?el.value:'';el.innerHTML=`<option value="">${esc(label)}</option>`;for(const v of values){const o=document.createElement('option');o.value=String(v);o.textContent=String(v);el.appendChild(o);}if([...el.options].some(o=>o.value===cur))el.value=cur;}
+function refreshFilterOptions(){
+  fillSelect($('#fYear'),unique('jahr').sort((a,b)=>b-a),'Alle Jahrgänge');
+  fillSelect($('#fHv'),unique('hausverwaltung'),'Alle Hausverwaltungen');
+  const hv=$('#fHv').value;const byHv=reports.filter(r=>!hv||r.hausverwaltung===hv);
+  fillSelect($('#fObj'),unique('objekt',byHv),'Alle Objekte');
+  const obj=$('#fObj').value;const byObj=byHv.filter(r=>!obj||r.objekt===obj);
+  fillSelect($('#fArea'),unique('bereich',byObj),'Alle Bereiche');
+  fillSelect($('#fType'),unique('untersuchungsart'),'Alle Untersuchungsarten');
+  fillSelect($('#fScope'),unique('umfang'),'Alle Umfänge');
+  fillSelect($('#fResult'),unique('befund'),'Alle Befunde');
+}
+function filteredReports(){
+  const y=$('#fYear').value,hv=$('#fHv').value,obj=$('#fObj').value,area=$('#fArea').value,type=$('#fType').value,scope=$('#fScope').value,result=$('#fResult').value,q=$('#fSearch').value.trim().toLowerCase();
+  return reports.filter(r=>(!y||String(r.jahr)===y)&&(!hv||r.hausverwaltung===hv)&&(!obj||r.objekt===obj)&&(!area||r.bereich===area)&&(!type||r.untersuchungsart===type)&&(!scope||(r.umfang||[]).includes(scope))&&(!result||r.befund===result)&&(!q||[r.berichtsnummer,r.auftragsnummer,r.hausverwaltung,r.objekt,r.bereich,r.untersuchungsart,r.befund,r.pdf_dateiname,...(r.parameter||[])].join(' ').toLowerCase().includes(q)));
+}
+function reportKey(r){return r.id||`${r.labor||''}|${r.berichtsnummer||''}`;}
+function areaKey(r){return [r.hausverwaltung||'',r.objekt||'',r.bereich||r.objekt||''].join('|');}
+function comparator(key){
+  return (a,b)=>{
+    let av=a[key],bv=b[key];
+    const emptyA=av===null||av===undefined||av==='',emptyB=bv===null||bv===undefined||bv==='';if(emptyA!==emptyB)return emptyA?1:-1;
+    if(key==='probenahmedatum'||key==='datei_geaendert')return (timeValue(av)-timeValue(bv))*sortDir;
+    if(key==='jahr'||key==='berichtsversion')return ((Number(av)||0)-(Number(bv)||0))*sortDir;
+    if(key==='legionellen_max'){const n=v=>{if(v==null||v==='')return Number.POSITIVE_INFINITY;const m=String(v).match(/[0-9]+(?:[.,][0-9]+)?/);return m?Number(m[0].replace(',','.')):Number.POSITIVE_INFINITY;};return (n(av)-n(bv))*sortDir;}
+    if(key==='berichtsnummer'){const nums=v=>String(v||'').match(/\d+/g)?.map(Number)||[];const aa=nums(av),bb=nums(bv),len=Math.max(aa.length,bb.length);for(let i=0;i<len;i++){const d=(aa[i]??-1)-(bb[i]??-1);if(d)return d*sortDir;}}
+    if(Array.isArray(av))av=av.join(' + ');if(Array.isArray(bv))bv=bv.join(' + ');
+    return String(av??'').localeCompare(String(bv??''),'de',{numeric:true,sensitivity:'base'})*sortDir;
+  };
+}
+function dateDe(v){if(!v)return '';const d=new Date(v+'T00:00:00');return Number.isNaN(d.getTime())?String(v):d.toLocaleDateString('de-DE');}
+function renderKpis(rows){const areas=new Set(rows.map(areaKey));const badAreas=new Set(rows.filter(r=>r.ueberschreitung).map(areaKey));const years=new Set(rows.map(r=>r.jahr).filter(Boolean));const vals=[['Berichte',new Set(rows.map(reportKey)).size],['Bereiche untersucht',areas.size],['Bereiche überschritten',badAreas.size],['Überschreitungsquote',areas.size?`${(badAreas.size/areas.size*100).toFixed(1).replace('.',',')} %`:'0 %'],['Jahrgänge',years.size],['PDF-Fundstellen',rows.reduce((s,r)=>s+(Number(r.fundstellen)||1),0)]];$('#kpis').innerHTML=vals.map(([l,v])=>`<div class="kpi"><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join('');}
+function categoryStats(rows){
+  const map=new Map();
+  for(const r of rows){const y=r.jahr||'Ohne Jahr',cat=r.untersuchungsart||'Unbekannt',k=`${y}|${cat}`;if(!map.has(k))map.set(k,{year:y,category:cat,reports:new Set(),areas:new Set(),badAreas:new Set()});const x=map.get(k);x.reports.add(reportKey(r));x.areas.add(areaKey(r));if(r.ueberschreitung)x.badAreas.add(areaKey(r));}
+  return [...map.values()].sort((a,b)=>Number(b.year)-Number(a.year)||a.category.localeCompare(b.category,'de')).map(x=>({...x,reportCount:x.reports.size,areaCount:x.areas.size,badCount:x.badAreas.size,ratio:x.areas.size?x.badAreas.size/x.areas.size*100:0}));
+}
+function renderStats(rows){
+  const stats=categoryStats(rows),years=[...new Set(stats.map(x=>x.year))];if(!stats.length){$('#statsBody').innerHTML='<div class="empty">Keine Daten für die aktuelle Auswahl.</div>';return;}
+  $('#statsBody').innerHTML=years.map((year,idx)=>{const ys=stats.filter(x=>x.year===year);const totalReports=new Set(rows.filter(r=>String(r.jahr)===String(year)).map(reportKey)).size,totalAreas=new Set(rows.filter(r=>String(r.jahr)===String(year)).map(areaKey)).size,totalBad=new Set(rows.filter(r=>String(r.jahr)===String(year)&&r.ueberschreitung).map(areaKey)).size;return `<details class="year-block" ${idx===0?'open':''}><summary class="year-title">${esc(year)} · ${totalReports} Berichte · ${totalAreas} Bereiche</summary><div class="table-wrap" style="max-height:none"><table><thead><tr><th>Untersuchungsart</th><th class="num">Untersuchungen</th><th class="num">Bereiche untersucht</th><th class="num">Bereiche überschritten</th><th class="num">Quote</th></tr></thead><tbody>${ys.map(x=>`<tr><td>${esc(x.category)}</td><td class="num">${x.reportCount}</td><td class="num">${x.areaCount}</td><td class="num">${x.badCount}</td><td class="num">${x.ratio.toFixed(1).replace('.',',')} %</td></tr>`).join('')}<tr><td><b>Gesamt</b></td><td class="num"><b>${totalReports}</b></td><td class="num"><b>${totalAreas}</b></td><td class="num"><b>${totalBad}</b></td><td class="num"><b>${(totalAreas?totalBad/totalAreas*100:0).toFixed(1).replace('.',',')} %</b></td></tr></tbody></table></div></details>`;}).join('');
+}
+function renderReports(rows){
+  rows=[...rows].sort(comparator(sortKey));const tb=$('#reportsTable tbody');$('#emptyState').classList.toggle('hidden',rows.length>0);tb.innerHTML=rows.map(r=>{const pill=r.ueberschreitung?'bad':r.befund==='Ohne Befund'?'ok':'unk';const scope=(r.umfang||[]).join(' + ');const path=(r.relativer_pfad||(r.quellpfade||[])[0]||'');return `<tr><td>${esc(r.berichtsnummer)}${(r.fundstellen||1)>1?` <span class="pill info">${r.fundstellen}×</span>`:''}</td><td>${esc(dateDe(r.probenahmedatum))}</td><td>${esc(r.hausverwaltung)}</td><td>${esc(r.objekt)}</td><td>${esc(r.bereich)}</td><td>${esc(r.untersuchungsart)}</td><td title="${esc((r.parameter||[]).join(', '))}">${esc(scope)}</td><td class="num">${esc(r.legionellen_max||'')}</td><td><span class="pill ${pill}">${esc(r.befund)}</span></td><td>${esc(r.auftragsnummer||'')}</td><td class="path" title="${esc(path)}"><button class="file-btn" data-open="${esc(r.id)}">${esc(r.pdf_dateiname||path.split('/').at(-1)||'PDF öffnen')}</button></td></tr>`;}).join('');
+  tb.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>openPdf(b.dataset.open));$('#listHint').textContent=`${rows.length} Bericht${rows.length===1?'':'e'}`;
+  document.querySelectorAll('#reportsTable th').forEach(th=>{th.textContent=th.textContent.replace(/[ ▲▼]$/,'')+(th.dataset.key===sortKey?(sortDir>0?' ▲':' ▼'):'');});
+}
+function render(){const rows=filteredReports();renderKpis(rows);renderStats(rows);renderReports(rows);$('#headerSub').textContent=reports.length?`${reports.length} Berichte im lokalen Bestand`:'Keine Daten geladen';$('#btnExport').disabled=!reports.length;$('#btnClear').disabled=!reports.length;}
+function refreshAll(selectNewest=false){refreshFilterOptions();if(selectNewest&&reports.length){const years=unique('jahr').sort((a,b)=>b-a);if(years.length)$('#fYear').value=String(years[0]);}render();}
+
+function exportPayload(){const years=unique('jahr').sort((a,b)=>a-b);return {schema_version:'1.0',exported_at:new Date().toISOString(),source:{application:'NOVA Prüfberichte-Viewer',version:'1.0.2',root_name:directoryHandle?.name||null},scan:{selected_years:years,found_files:reports.reduce((s,r)=>s+(Number(r.fundstellen)||1),0),unique_reports:reports.length,duplicate_id_groups:reports.filter(r=>(r.fundstellen||1)>1).length,file_variant_groups:reports.filter(r=>r.hat_dateivarianten).length},merge_contract:{primary_key:'id',same_id_same_hash:'skip',same_id_new_hash_or_higher_version:'update_or_compare',unknown_report_number:'hash_fallback_id'},reports:reports.sort((a,b)=>String(a.id).localeCompare(String(b.id)))};}
+function downloadJson(){const blob=new Blob([JSON.stringify(exportPayload(),null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`Pruefberichte_Gesamtbestand_${new Date().toISOString().slice(0,10)}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
+async function clearData(){if(!confirm('Den gesamten lokal im Viewer gespeicherten Prüfberichtbestand löschen? Die Original-PDFs bleiben selbstverständlich erhalten.'))return;await dbDeleteAll(STORE_REPORTS);localStorage.removeItem(FALLBACK_KEY);reports=[];refreshAll();showBanner('Der lokale Viewer-Datenbestand wurde gelöscht.','ok');}
+function resetFilters(){for(const s of ['#fYear','#fHv','#fObj','#fArea','#fType','#fScope','#fResult','#fSearch'])$(s).value='';refreshFilterOptions();render();}
+
+$('#btnImport').onclick=()=>$('#fileInput').click();$('#fileInput').onchange=async e=>{if(e.target.files.length)await importFiles(e.target.files);e.target.value='';};
+$('#btnExport').onclick=downloadJson;$('#btnFolder').onclick=chooseFolder;$('#btnFolder2').onclick=chooseFolder;$('#btnPrint').onclick=()=>window.print();$('#btnClear').onclick=clearData;$('#btnReset').onclick=resetFilters;
+for(const s of ['#fYear','#fType','#fScope','#fResult'])$(s).onchange=render;
+$('#fHv').onchange=()=>{refreshFilterOptions();render();};$('#fObj').onchange=()=>{refreshFilterOptions();render();};$('#fArea').onchange=render;$('#fSearch').oninput=render;
+document.querySelectorAll('#reportsTable th').forEach(th=>th.onclick=()=>{const k=th.dataset.key;if(sortKey===k)sortDir*=-1;else{sortKey=k;sortDir=1;}render();});
+
+(async function init(){
+  try{
+    await requestPersistentStorage();
+    reports=(await dbGetAll(STORE_REPORTS)).map(normalizeReport);
+    if(!reports.length){
+      const fallback=loadFallback();
+      if(Array.isArray(fallback)&&fallback.length){reports=fallback.map(normalizeReport);await dbReplaceReports(reports);showBanner(`${reports.length} Berichte wurden aus der lokalen Sicherung wiederhergestellt.`,'ok');}
+    }
+    directoryHandle=await dbGet(STORE_SETTINGS,'directoryHandle');updateFolderUi();refreshAll(false);
+    if(location.protocol==='file:'&&!reports.length)showBanner('Hinweis: Bei direkt geöffneten lokalen HTML-Dateien kann der Browser den Speicher an genau diese Datei binden. Für dauerhaft denselben Bestand den Viewer über GitHub Pages oder localhost öffnen – oder nach jedem Merge den Gesamtbestand exportieren.','warn');
+  }
+  catch(err){showBanner('Der lokale Speicher konnte nicht geöffnet werden: '+esc(err.message),'bad');}
+})();
+</script>
+</body>
+</html>
