@@ -1,79 +1,279 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="de" data-theme="dark">
 <head>
+<!-- Icons + Manifest -->
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+<link rel="icon" href="favicon.ico">
+
+<link rel="manifest" href="site.webmanifest">
+
+<meta name="theme-color" content="#172f4d">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>NOVA Prüfberichte-Viewer</title>
+<link rel="icon" href="nova_logo_web.png">
 <style>
+/* ============ THEME ============ */
 :root{
-  --bg:#0e1620;--panel:#16212c;--panel2:#1b2834;--line:#293946;
-  --fg:#e8eef3;--muted:#91a4b4;--teal:#14b8a6;--teal2:#0f766e;
-  --red:#ef4444;--green:#22c55e;--amber:#f59e0b;--blue:#60a5fa;
-  --shadow:0 10px 28px rgba(0,0,0,.22)
+  --bg:#0e1620;--bg2:#0a1119;--panel:#16212c;--panel2:#1b2834;--panel3:#1c2a36;
+  --line:#293946;--line2:#334657;
+  --fg:#e8eef3;--fg2:#cbd5df;--muted:#91a4b4;
+  --teal:#14b8a6;--tealFg:#04211d;--tealSoft:rgba(20,184,166,.14);
+  --nova:#2b7fbf;
+  --red:#ef4444;--redFg:#fca5a5;--redSoft:rgba(239,68,68,.16);
+  --green:#22c55e;--greenFg:#86efac;--greenSoft:rgba(34,197,94,.14);
+  --amber:#f59e0b;--amberFg:#fcd34d;--amberSoft:rgba(245,158,11,.14);
+  --blue:#60a5fa;--blueFg:#bfdbfe;--blueSoft:rgba(96,165,250,.14);
+  --shadow:0 10px 28px rgba(0,0,0,.22);
+  --rowHover:#192733;
+}
+html[data-theme="light"]{
+  --bg:#eef2f6;--bg2:#e3e9ef;--panel:#ffffff;--panel2:#f4f7fa;--panel3:#eaf0f5;
+  --line:#d5dee6;--line2:#c2ced9;
+  --fg:#14202b;--fg2:#33475a;--muted:#61788c;
+  --teal:#0e9384;--tealFg:#ffffff;--tealSoft:rgba(14,147,132,.12);
+  --nova:#16588f;
+  --red:#dc2626;--redFg:#b91c1c;--redSoft:rgba(220,38,38,.10);
+  --green:#16a34a;--greenFg:#15803d;--greenSoft:rgba(22,163,74,.12);
+  --amber:#d97706;--amberFg:#b45309;--amberSoft:rgba(217,119,6,.13);
+  --blue:#2563eb;--blueFg:#1d4ed8;--blueSoft:rgba(37,99,235,.10);
+  --shadow:0 8px 22px rgba(19,42,64,.10);
+  --rowHover:#f2f7fb;
 }
 *{box-sizing:border-box}
 html,body{margin:0;min-height:100%;background:var(--bg);color:var(--fg);font:14px/1.45 "Segoe UI",system-ui,sans-serif}
-button,input,select{font:inherit}
+body{transition:background .18s,color .18s}
+button,input,select,textarea{font:inherit}
 button{cursor:pointer}
-header{position:sticky;top:0;z-index:50;background:rgba(22,33,44,.97);border-bottom:1px solid var(--line);box-shadow:0 4px 18px rgba(0,0,0,.16)}
-.header-inner{max-width:1900px;margin:auto;padding:13px 18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-h1{font-size:18px;margin:0;font-weight:650}.badge{background:var(--teal);color:#04211d;border-radius:999px;padding:2px 10px;font-size:11px;font-weight:800}
-.sub{color:var(--muted);font-size:12px}.grow{flex:1}.status-dot{width:9px;height:9px;border-radius:50%;background:#64748b;display:inline-block}.status-dot.ok{background:var(--green)}
-.wrap{max-width:1900px;margin:auto;padding:17px 18px 55px}
-.toolbar,.filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
-.btn,select,input[type=search]{border:1px solid var(--line);background:var(--panel);color:var(--fg);border-radius:8px;padding:8px 12px}
-.btn:hover,select:hover,input[type=search]:hover{border-color:var(--teal)}
-.btn.primary{background:var(--teal);border-color:var(--teal);color:#04211d;font-weight:700}.btn.primary:hover{background:#0fa294}
-.btn.danger{color:#fca5a5}.btn.small{padding:5px 9px;font-size:12px}.btn:disabled{opacity:.45;cursor:not-allowed}
-input[type=search]{min-width:260px;flex:1}select{min-width:150px}
-.folder-box{display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:7px 10px;color:var(--muted);min-width:300px}
+code{font:12px/1.4 ui-monospace,Consolas,monospace}
+
+/* ============ HEADER ============ */
+header{position:sticky;top:0;z-index:50;background:var(--panel);border-bottom:1px solid var(--line);box-shadow:0 4px 18px rgba(0,0,0,.14)}
+.header-inner{max-width:1900px;margin:auto;padding:11px 18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.logo-mark{height:34px;width:auto;display:block}
+.title-block{display:flex;flex-direction:column;line-height:1.2}
+h1{font-size:17px;margin:0;font-weight:650;display:flex;align-items:center;gap:8px}
+.badge{background:var(--teal);color:var(--tealFg);border-radius:999px;padding:2px 9px;font-size:11px;font-weight:800;letter-spacing:.2px}
+.sub{color:var(--muted);font-size:12px}
+.grow{flex:1}
+.status-dot{width:9px;height:9px;border-radius:50%;background:#64748b;display:inline-block;flex:none}
+.status-dot.ok{background:var(--green)}
+.icon-btn{border:1px solid var(--line);background:var(--panel2);color:var(--fg);border-radius:9px;width:36px;height:34px;display:inline-flex;align-items:center;justify-content:center;font-size:16px}
+.icon-btn:hover{border-color:var(--teal);color:var(--teal)}
+
+.wrap{max-width:1900px;margin:auto;padding:16px 18px 60px}
+
+/* ============ CONTROLS ============ */
+.toolbar,.filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:11px}
+.btn,select,input[type=search],input[type=text],textarea{border:1px solid var(--line);background:var(--panel);color:var(--fg);border-radius:8px;padding:8px 12px}
+.btn:hover,select:hover,input:hover{border-color:var(--teal)}
+.btn.primary{background:var(--teal);border-color:var(--teal);color:var(--tealFg);font-weight:700}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.danger{color:var(--redFg)}
+.btn.small{padding:5px 9px;font-size:12px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+input[type=search]{min-width:240px;flex:1}
+select{min-width:145px;max-width:230px}
+.folder-box{display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:7px 10px;color:var(--muted);min-width:300px;margin-bottom:11px}
 .folder-box strong{color:var(--fg);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:420px}
 .banner{display:none;margin:0 0 12px;padding:10px 13px;border-radius:9px;border:1px solid var(--line);background:var(--panel)}
-.banner.show{display:block}.banner.ok{border-color:rgba(34,197,94,.45)}.banner.warn{border-color:rgba(245,158,11,.55)}.banner.bad{border-color:rgba(239,68,68,.55)}
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:9px;margin:12px 0}
-.kpi{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 13px;box-shadow:var(--shadow)}.kpi b{display:block;font-size:21px}.kpi span{color:var(--muted);font-size:12px}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:11px;box-shadow:var(--shadow);margin:12px 0;overflow:hidden}
-.panel-head{display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--panel2);border-bottom:1px solid var(--line)}.panel-head h2{font-size:15px;margin:0}.panel-head .hint{margin-left:auto;color:var(--muted);font-size:11px}
-.table-wrap{overflow:auto;max-height:56vh}
-table{width:100%;border-collapse:collapse}th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;font-size:13px}
-th{position:sticky;top:0;z-index:4;background:#1c2a36;color:#cbd5df;white-space:nowrap;cursor:pointer;user-select:none}th:hover{color:var(--teal)}
-tr:hover td{background:#192733}.num{text-align:right;font-variant-numeric:tabular-nums}.muted{color:var(--muted)}
-.pill{display:inline-flex;align-items:center;border-radius:999px;padding:2px 8px;font-size:11px;font-weight:650;white-space:nowrap}.pill.ok{background:rgba(34,197,94,.14);color:#86efac}.pill.bad{background:rgba(239,68,68,.16);color:#fca5a5}.pill.unk{background:rgba(245,158,11,.14);color:#fcd34d}.pill.info{background:rgba(96,165,250,.14);color:#bfdbfe}
-.file-btn{border:0;background:none;color:var(--teal);padding:0;text-align:left}.file-btn:hover{text-decoration:underline}.path{max-width:360px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.banner.show{display:block}
+.banner.ok{border-color:var(--green)}.banner.warn{border-color:var(--amber)}.banner.bad{border-color:var(--red)}
+
+/* ============ TABS ============ */
+.tabs{display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--line);margin-bottom:14px}
+.tab{border:1px solid transparent;border-bottom:0;background:none;color:var(--muted);padding:9px 16px;border-radius:9px 9px 0 0;font-weight:600;margin-bottom:-1px}
+.tab:hover{color:var(--fg)}
+.tab.active{background:var(--panel);border-color:var(--line);color:var(--fg);box-shadow:inset 0 3px 0 var(--teal)}
+.view{display:none}.view.active{display:block}
+
+/* ============ YEAR CHIPS ============ */
+.chiprow{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.chip{border:1px solid var(--line);background:var(--panel);color:var(--fg2);border-radius:999px;padding:7px 16px;font-weight:650;font-size:14px}
+.chip:hover{border-color:var(--teal)}
+.chip.active{background:var(--teal);border-color:var(--teal);color:var(--tealFg)}
+.chip .cnt{opacity:.65;font-weight:500;font-size:12px;margin-left:6px}
+
+/* ============ KPI ============ */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:10px;margin:0 0 14px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.kpi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--teal)}
+.kpi.bad::before{background:var(--red)}.kpi.good::before{background:var(--green)}.kpi.info::before{background:var(--blue)}.kpi.warn::before{background:var(--amber)}
+.kpi b{display:block;font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.15}
+.kpi span{color:var(--muted);font-size:12px;display:block;margin-top:2px}
+.kpi .delta{font-size:11px;font-weight:700;margin-top:5px;display:inline-block}
+.delta.up{color:var(--redFg)}.delta.down{color:var(--greenFg)}.delta.flat{color:var(--muted)}
+
+/* ============ PANELS ============ */
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);margin:0 0 14px;overflow:hidden}
+.panel-head{display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--panel2);border-bottom:1px solid var(--line)}
+.panel-head h2{font-size:14px;margin:0;font-weight:650}
+.panel-head .hint{margin-left:auto;color:var(--muted);font-size:11px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:14px}
+
+/* ============ TABLES ============ */
+.table-wrap{overflow:auto;max-height:58vh}
+.table-wrap.tall{max-height:none}
+table{width:100%;border-collapse:collapse}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;font-size:13px}
+th{position:sticky;top:0;z-index:4;background:var(--panel3);color:var(--fg2);white-space:nowrap;user-select:none}
+#reportsTable th{cursor:pointer}#reportsTable th:hover{color:var(--teal)}
+tr:hover td{background:var(--rowHover)}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.dense th,.dense td{padding:3px 8px;font-size:11.5px;line-height:1.3}
+.pill{display:inline-flex;align-items:center;border-radius:999px;padding:2px 8px;font-size:11px;font-weight:650;white-space:nowrap}
+.pill.ok{background:var(--greenSoft);color:var(--greenFg)}
+.pill.bad{background:var(--redSoft);color:var(--redFg)}
+.pill.unk{background:var(--amberSoft);color:var(--amberFg)}
+.pill.info{background:var(--blueSoft);color:var(--blueFg)}
+.file-btn{border:0;background:none;color:var(--teal);padding:0;text-align:left}
+.file-btn:hover{text-decoration:underline}
+.path{max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .empty{padding:38px 16px;text-align:center;color:var(--muted)}
-summary{cursor:pointer;color:#cbd5df}.year-block{border-bottom:1px solid var(--line)}.year-title{padding:9px 13px;background:#192733;font-weight:700}
-.dialog-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.62);z-index:100;display:none;align-items:center;justify-content:center;padding:20px}.dialog-backdrop.show{display:flex}.dialog{width:min(760px,100%);max-height:85vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:0 22px 70px rgba(0,0,0,.5)}.dialog h3{margin:0;padding:14px 16px;border-bottom:1px solid var(--line)}.dialog-body{padding:15px 16px}.dialog-actions{display:flex;justify-content:flex-end;gap:8px;padding:12px 16px;border-top:1px solid var(--line)}
-.import-grid{display:grid;grid-template-columns:1fr auto;gap:7px 14px}.import-grid b{text-align:right}.conflict{padding:9px;border:1px solid var(--line);border-radius:8px;margin:7px 0}.hidden{display:none!important}
-@media(max-width:900px){.hide-mobile{display:none}.folder-box{min-width:100%}.header-inner{align-items:flex-start}.table-wrap{max-height:none}}
-@media print{header,.toolbar,.filters,.noprint{display:none!important}.wrap{padding:0}.panel,.kpi{box-shadow:none;background:#fff;color:#000;border-color:#aaa}body{background:#fff;color:#000}th{position:static;background:#eee;color:#000}td,th{border-color:#ccc}.muted{color:#555}}
+summary{cursor:pointer;color:var(--fg2)}
+.group-title{padding:8px 12px;background:var(--panel3);font-weight:700;border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:center}
+.group-title .g-right{margin-left:auto;font-weight:500;color:var(--muted);font-size:12px}
+
+/* ============ BARS ============ */
+.barlist{padding:10px 14px 14px}
+.barrow{display:grid;grid-template-columns:1fr 62px 62px;gap:8px;align-items:center;margin:8px 0;font-size:12.5px}
+.barrow .lbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bartrack{grid-column:1/-1;height:8px;border-radius:5px;background:var(--panel3);overflow:hidden;display:flex;margin-top:-3px}
+.barfill{height:100%;background:var(--teal)}
+.barfill.bad{background:var(--red)}
+.barval{text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)}
+.barval.strong{color:var(--fg)}
+.months{display:flex;align-items:flex-end;gap:5px;height:130px;padding:16px 14px 4px}
+.mcol{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;gap:3px}
+.mbar{width:100%;border-radius:4px 4px 0 0;background:var(--teal);min-height:2px;position:relative;display:flex;flex-direction:column;justify-content:flex-end}
+.mbar .mbad{width:100%;background:var(--red);border-radius:0 0 0 0}
+.mnum{font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums}
+.mlabels{display:flex;gap:5px;padding:0 14px 12px}
+.mlabels span{flex:1;text-align:center;font-size:10.5px;color:var(--muted)}
+
+/* ============ DIALOG ============ */
+.dialog-backdrop{position:fixed;inset:0;background:rgba(2,8,15,.66);z-index:100;display:none;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(2px)}
+.dialog-backdrop.show{display:flex}
+.dialog{width:min(780px,100%);max-height:88vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:0 22px 70px rgba(0,0,0,.5)}
+.dialog h3{margin:0;padding:14px 16px;border-bottom:1px solid var(--line);font-size:15px}
+.dialog-body{padding:15px 16px}
+.dialog-actions{display:flex;justify-content:flex-end;gap:8px;padding:12px 16px;border-top:1px solid var(--line)}
+.import-grid{display:grid;grid-template-columns:1fr auto;gap:7px 14px}
+.import-grid b{text-align:right;font-variant-numeric:tabular-nums}
+.conflict{padding:9px;border:1px solid var(--line);border-radius:8px;margin:7px 0}
+.hidden{display:none!important}
+
+/* ============ DROPZONE ============ */
+.dropzone{border:2px dashed var(--line2);border-radius:12px;padding:30px 20px;text-align:center;background:var(--panel2);transition:.15s}
+.dropzone.over{border-color:var(--teal);background:var(--tealSoft)}
+.dropzone .dz-icon{font-size:34px;line-height:1;margin-bottom:8px}
+.dropzone .dz-main{font-weight:650;font-size:15px}
+.dropzone .dz-sub{color:var(--muted);font-size:12px;margin-top:4px}
+.dz-files{margin-top:12px;text-align:left;font-size:12px}
+.dz-files div{padding:4px 8px;border:1px solid var(--line);border-radius:6px;margin:4px 0;display:flex;gap:8px}
+.dz-files div .fsize{margin-left:auto;color:var(--muted)}
+.paste-area{width:100%;min-height:110px;resize:vertical;font:12px/1.4 ui-monospace,Consolas,monospace;margin-top:8px}
+.subhead{font-weight:650;margin:16px 0 4px;font-size:13px}
+.divider{height:1px;background:var(--line);margin:16px 0}
+#globalDrop{position:fixed;inset:0;z-index:200;display:none;align-items:center;justify-content:center;background:rgba(2,8,15,.75);pointer-events:none}
+#globalDrop.show{display:flex}
+#globalDrop .gd-box{border:3px dashed var(--teal);border-radius:18px;padding:44px 60px;background:var(--panel);text-align:center;font-size:18px;font-weight:650}
+
+/* ============ RADIO CARDS ============ */
+.optcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:9px}
+.optcard{border:1px solid var(--line);border-radius:10px;padding:11px 12px;cursor:pointer;background:var(--panel2)}
+.optcard:hover{border-color:var(--teal)}
+.optcard.sel{border-color:var(--teal);background:var(--tealSoft)}
+.optcard b{display:block;font-size:13px}
+.optcard span{color:var(--muted);font-size:11.5px;display:block;margin-top:3px}
+.checkrow{display:flex;flex-wrap:wrap;gap:12px 20px;margin-top:10px;font-size:13px}
+.checkrow label{display:flex;align-items:center;gap:6px;cursor:pointer}
+
+@media(max-width:900px){
+  .hide-mobile{display:none}
+  .folder-box{min-width:100%}
+  .table-wrap{max-height:none}
+  select{max-width:none;flex:1}
+}
+
+/* ============ PRINT ============ */
+#printRoot{display:none}
+@media print{
+  @page{size:A4 portrait;margin:12mm 10mm 14mm}
+  html,body{background:#fff!important;color:#000!important}
+  body>*{display:none!important}
+  #printRoot{display:block!important}
+  #printRoot *{color:#000}
+  .p-head{display:flex;align-items:flex-start;gap:14px;border-bottom:2px solid #16588f;padding-bottom:8px;margin-bottom:14px}
+  .p-head img{height:42px}
+  .p-head .p-title{font-size:17px;font-weight:700;color:#16588f!important}
+  .p-head .p-sub{font-size:11px;color:#444!important}
+  .p-head .p-meta{margin-left:auto;text-align:right;font-size:10px;color:#444!important}
+  .p-sec{margin:0 0 14px;break-inside:avoid}
+  .p-sec h3{font-size:12.5px;margin:0 0 6px;padding-bottom:3px;border-bottom:1px solid #16588f;color:#16588f!important}
+  .p-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:14px}
+  .p-kpi{border:1px solid #b9c6d1;border-left:3px solid #16588f;border-radius:4px;padding:6px 9px}
+  .p-kpi b{display:block;font-size:18px;line-height:1.2}
+  .p-kpi span{font-size:9.5px;color:#444!important}
+  .p-kpi.bad{border-left-color:#c02525}
+  #printRoot table{width:100%;border-collapse:collapse;margin-bottom:4px}
+  #printRoot th{background:#e8eef4!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;
+    border:1px solid #b9c6d1;padding:3px 5px;font-size:9.5px;text-align:left;position:static}
+  #printRoot td{border:1px solid #cdd7e0;padding:3px 5px;font-size:9.5px;vertical-align:top}
+  #printRoot tr{break-inside:avoid}
+  #printRoot thead{display:table-header-group}
+  #printRoot .t-dense th,#printRoot .t-dense td{font-size:8.5px;padding:2px 4px}
+  #printRoot .r-num{text-align:right;font-variant-numeric:tabular-nums}
+  #printRoot .r-bad{color:#c02525!important;font-weight:700}
+  #printRoot .r-ok{color:#1a7a3c!important}
+  #printRoot .p-group{font-weight:700;background:#f1f5f8!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  #printRoot .p-note{font-size:9.5px;color:#444!important;margin:4px 0 10px}
+  #printRoot .p-foot{margin-top:16px;padding-top:6px;border-top:1px solid #b9c6d1;font-size:8.5px;color:#555!important;display:flex}
+  #printRoot .p-foot span:last-child{margin-left:auto}
+  #printRoot .p-break{break-before:page}
+  #printRoot .p-bar{height:7px;background:#e8eef4;-webkit-print-color-adjust:exact;print-color-adjust:exact;border-radius:3px;overflow:hidden;display:flex}
+  #printRoot .p-bar i{display:block;height:100%;background:#16588f;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  #printRoot .p-bar i.bad{background:#c02525}
+}
 </style>
 </head>
 <body>
+
 <header>
   <div class="header-inner">
-    <h1>NOVA Prüfberichte-Viewer</h1><span class="badge">V 1.0.2</span>
-    <span class="sub" id="headerSub">Keine Daten geladen</span>
+    <img src="nova_logo_web.png" class="logo-mark" alt="NOVA" onerror="this.style.display='none'">
+    <div class="title-block">
+      <h1>Prüfberichte-Viewer <span class="badge">V 1.1.0</span></h1>
+      <span class="sub" id="headerSub">Keine Daten geladen</span>
+    </div>
     <span class="grow"></span>
-    <span class="status-dot" id="folderDot"></span><span class="sub" id="folderMini">Kundenordner nicht gewählt</span>
+    <span class="status-dot" id="folderDot"></span><span class="sub hide-mobile" id="folderMini">Kundenordner nicht gewählt</span>
+    <button class="icon-btn" id="btnTheme" title="Hell / Dunkel umschalten">☾</button>
   </div>
 </header>
+
 <div class="wrap">
   <div class="toolbar noprint">
     <button class="btn primary" id="btnImport">JSON importieren / mergen</button>
     <button class="btn" id="btnExport" disabled>Gesamtbestand exportieren</button>
     <button class="btn" id="btnFolder">Kundenordner wählen</button>
-    <button class="btn" id="btnPrint">Drucken</button>
+    <button class="btn" id="btnPrint">Bericht drucken …</button>
     <span class="grow"></span>
     <button class="btn danger" id="btnClear" disabled>Datenbestand löschen</button>
   </div>
+
   <div class="folder-box noprint">
     <span>Lokaler Kundenordner:</span><strong id="folderName">nicht eingestellt</strong>
     <span class="grow"></span><button class="btn small" id="btnFolder2">Ändern</button>
   </div>
+
   <div class="banner" id="banner"></div>
 
   <div class="filters noprint">
-    <select id="fYear"><option value="">Alle Jahrgänge</option></select>
     <select id="fHv"><option value="">Alle Hausverwaltungen</option></select>
     <select id="fObj"><option value="">Alle Objekte</option></select>
     <select id="fArea"><option value="">Alle Bereiche</option></select>
@@ -82,40 +282,90 @@ summary{cursor:pointer;color:#cbd5df}.year-block{border-bottom:1px solid var(--l
     <select id="fResult"><option value="">Alle Befunde</option></select>
     <input type="search" id="fSearch" placeholder="Suche: Bericht, Auftrag, Objekt, Bereich, Parameter …">
     <button class="btn" id="btnReset">Zurücksetzen</button>
+    <select id="fYear" class="hidden"><option value="">Alle Jahrgänge</option></select>
   </div>
 
-  <div class="kpis" id="kpis"></div>
+  <div class="tabs noprint">
+    <button class="tab active" data-view="jahr">Jahresauswertung</button>
+    <button class="tab" data-view="berichte">Prüfberichte</button>
+    <button class="tab" data-view="anlagen">Untersuchte Anlagen</button>
+  </div>
 
-  <section class="panel">
-    <div class="panel-head"><h2>Anlagen/Bereiche nach Jahr und Untersuchungsart</h2><span class="hint">Ein Bereich zählt je Jahr und Kategorie einmal.</span></div>
-    <div id="statsBody"></div>
+  <!-- ===================== JAHRESAUSWERTUNG ===================== -->
+  <section class="view active" id="view-jahr">
+    <div class="chiprow noprint" id="yearChips"></div>
+    <div class="kpis" id="kpis"></div>
+    <div class="grid2">
+      <section class="panel">
+        <div class="panel-head"><h2>Untersuchungsarten</h2><span class="hint">Bereiche untersucht / davon überschritten</span></div>
+        <div id="barTypes"></div>
+      </section>
+      <section class="panel">
+        <div class="panel-head"><h2>Untersuchungsumfang</h2><span class="hint">Berichte je Umfang</span></div>
+        <div id="barScopes"></div>
+      </section>
+    </div>
+    <section class="panel">
+      <div class="panel-head"><h2>Probenahmen im Jahresverlauf</h2><span class="hint">rot = Berichte mit Überschreitung</span></div>
+      <div id="monthChart"></div>
+    </section>
+    <section class="panel">
+      <div class="panel-head"><h2>Überschreitungen im Detail</h2><span class="hint" id="hintExc"></span></div>
+      <div class="table-wrap tall" id="excBody"></div>
+    </section>
+    <section class="panel">
+      <div class="panel-head"><h2>Hausverwaltungen im Vergleich</h2><span class="hint">sortiert nach Überschreitungen</span></div>
+      <div class="table-wrap tall" id="hvBody"></div>
+    </section>
+    <section class="panel">
+      <div class="panel-head"><h2>Alle Jahrgänge im Bestand</h2><span class="hint">Ein Bereich zählt je Jahr und Kategorie einmal.</span></div>
+      <div id="statsBody"></div>
+    </section>
   </section>
 
-  <section class="panel">
-    <div class="panel-head"><h2>Gefundene Prüfberichte</h2><span class="hint" id="listHint"></span></div>
-    <div class="table-wrap">
-      <table id="reportsTable">
-        <thead><tr>
-          <th data-key="berichtsnummer">Bericht-Nr.</th>
-          <th data-key="probenahmedatum">Probenahme</th>
-          <th data-key="hausverwaltung">Hausverwaltung</th>
-          <th data-key="objekt">Objekt</th>
-          <th data-key="bereich">Bereich</th>
-          <th data-key="untersuchungsart">Untersuchungsart</th>
-          <th data-key="umfang">Umfang</th>
-          <th data-key="legionellen_max" class="num">Legio. max</th>
-          <th data-key="befund">Befund</th>
-          <th data-key="auftragsnummer">Auftrag</th>
-          <th data-key="pdf_dateiname">Datei</th>
-        </tr></thead>
-        <tbody></tbody>
-      </table>
-      <div class="empty" id="emptyState">Noch keine Viewer-JSON importiert.</div>
+  <!-- ===================== BERICHTE ===================== -->
+  <section class="view" id="view-berichte">
+    <section class="panel">
+      <div class="panel-head"><h2>Gefundene Prüfberichte</h2><span class="hint" id="listHint"></span></div>
+      <div class="table-wrap">
+        <table id="reportsTable">
+          <thead><tr>
+            <th data-key="berichtsnummer">Bericht-Nr.</th>
+            <th data-key="probenahmedatum">Probenahme</th>
+            <th data-key="hausverwaltung">Hausverwaltung</th>
+            <th data-key="objekt">Objekt</th>
+            <th data-key="bereich">Bereich</th>
+            <th data-key="untersuchungsart">Untersuchungsart</th>
+            <th data-key="umfang">Umfang</th>
+            <th data-key="legionellen_max" class="num">Legio. max</th>
+            <th data-key="befund">Befund</th>
+            <th data-key="auftragsnummer">Auftrag</th>
+            <th data-key="pdf_dateiname">Datei</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+        <div class="empty" id="emptyState">Noch keine Viewer-JSON importiert.</div>
+      </div>
+    </section>
+  </section>
+
+  <!-- ===================== ANLAGEN ===================== -->
+  <section class="view" id="view-anlagen">
+    <div class="toolbar noprint">
+      <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="chkOnlyBad"> nur Bereiche mit Überschreitung</label>
+      <span class="grow"></span>
+      <span class="sub" id="anlagenHint"></span>
     </div>
+    <section class="panel">
+      <div class="panel-head"><h2>Untersuchte Anlagen und Bereiche</h2><span class="hint">kompakte Aufstellung, eine Zeile je Bereich</span></div>
+      <div class="table-wrap tall" id="anlagenBody"></div>
+    </section>
   </section>
 </div>
+
 <input type="file" id="fileInput" accept="application/json,.json" multiple class="hidden">
 
+<!-- ===================== DIALOGE ===================== -->
 <div class="dialog-backdrop" id="dialogBackdrop">
   <div class="dialog">
     <h3 id="dialogTitle">Import</h3>
@@ -124,33 +374,110 @@ summary{cursor:pointer;color:#cbd5df}.year-block{border-bottom:1px solid var(--l
   </div>
 </div>
 
+<div class="dialog-backdrop" id="importBackdrop">
+  <div class="dialog">
+    <h3>Viewer-JSON importieren und zusammenführen</h3>
+    <div class="dialog-body">
+      <div class="dropzone" id="dropzone">
+        <div class="dz-icon">⤓</div>
+        <div class="dz-main">JSON-Dateien hier hineinziehen</div>
+        <div class="dz-sub">mehrere Dateien gleichzeitig möglich – oder <button class="btn small" id="btnPick" style="margin:0 2px">Dateien wählen</button></div>
+        <div class="dz-files" id="dzFiles"></div>
+      </div>
+      <div class="subhead">Oder JSON-Inhalt direkt einfügen</div>
+      <div class="sub">Kompletter Export oder nur die <code>reports</code>-Liste – beides wird erkannt.</div>
+      <textarea class="paste-area" id="pasteArea" placeholder='{ "schema_version": "1.0", "reports": [ … ] }'></textarea>
+      <div class="sub" id="importState" style="margin-top:8px"></div>
+    </div>
+    <div class="dialog-actions">
+      <button class="btn" id="importCancel">Abbrechen</button>
+      <button class="btn primary" id="importRun">Importieren</button>
+    </div>
+  </div>
+</div>
+
+<div class="dialog-backdrop" id="printBackdrop">
+  <div class="dialog">
+    <h3>Bericht drucken</h3>
+    <div class="dialog-body">
+      <div class="subhead" style="margin-top:0">Berichtsart</div>
+      <div class="optcards" id="printModes">
+        <div class="optcard sel" data-mode="year-intern"><b>Jahresauswertung intern</b><span>Alle Kennzahlen, Verteilungen, Überschreitungen mit Details</span></div>
+        <div class="optcard" data-mode="year-hv"><b>Jahresauswertung Hausverwaltung</b><span>Reduziert: Kennzahlen, Bereiche, Überschreitungen</span></div>
+        <div class="optcard" data-mode="anlagen"><b>Anlagenaufstellung</b><span>Kompakte Liste aller untersuchten Bereiche</span></div>
+        <div class="optcard" data-mode="liste"><b>Berichtsliste</b><span>Tabelle aller gefilterten Prüfberichte, quer</span></div>
+      </div>
+      <div class="subhead">Optionen</div>
+      <div class="checkrow">
+        <label><input type="checkbox" id="optLogo" checked> Logo im Kopf</label>
+        <label><input type="checkbox" id="optExc" checked> Überschreitungen auflisten</label>
+        <label><input type="checkbox" id="optMonths" checked> Jahresverlauf</label>
+        <label><input type="checkbox" id="optHv" checked> Hausverwaltungs-Vergleich</label>
+        <label><input type="checkbox" id="optAreas"> Anlagenliste anhängen</label>
+      </div>
+      <div class="subhead">Empfänger / Titelzusatz</div>
+      <input type="text" id="optTitle" placeholder="z. B. Hausverwaltung Musterstadt" style="width:100%">
+      <div class="divider"></div>
+      <div class="sub" id="printPreviewInfo"></div>
+    </div>
+    <div class="dialog-actions">
+      <button class="btn" id="printCancel">Abbrechen</button>
+      <button class="btn primary" id="printRun">Druckansicht öffnen</button>
+    </div>
+  </div>
+</div>
+
+<div id="globalDrop"><div class="gd-box">JSON hier ablegen<br><span class="sub">Import wird automatisch geöffnet</span></div></div>
+
+<div id="printRoot"></div>
+
 <script>
 'use strict';
+/* ================= KONSTANTEN & STATE ================= */
+const APP_VERSION='1.1.0';
 const APP_DB='nova-pruefberichte-viewer';
 const DB_VERSION=2;
 const STORE_REPORTS='reports', STORE_SETTINGS='settings';
 const FALLBACK_KEY='nova-pruefberichte-viewer-backup-v1';
+const THEME_KEY='nova-pruefberichte-viewer-theme';
+const MONTHS=['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
+
 let reports=[];
 let directoryHandle=null;
 let sortKey='probenahmedatum', sortDir=-1;
-const $=s=>document.querySelector(s);
-const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let pendingFiles=[];
+let printMode='year-intern';
 
+const $=s=>document.querySelector(s);
+const $$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const de=n=>Number(n||0).toLocaleString('de-DE');
+const pct=n=>`${Number(n||0).toFixed(1).replace('.',',')} %`;
+
+/* ================= THEME ================= */
+function applyTheme(t){document.documentElement.dataset.theme=t;$('#btnTheme').textContent=t==='dark'?'☾':'☀';$('#btnTheme').title=t==='dark'?'Auf helles Design umschalten':'Auf dunkles Design umschalten';try{localStorage.setItem(THEME_KEY,t);}catch(_){}}
+(function initTheme(){let t=null;try{t=localStorage.getItem(THEME_KEY);}catch(_){}
+  if(!t)t=window.matchMedia&&window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';
+  document.documentElement.dataset.theme=t;})();
+
+/* ================= INDEXEDDB ================= */
 function openDb(){return new Promise((resolve,reject)=>{const req=indexedDB.open(APP_DB,DB_VERSION);req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains(STORE_REPORTS))db.createObjectStore(STORE_REPORTS,{keyPath:'id'});if(!db.objectStoreNames.contains(STORE_SETTINGS))db.createObjectStore(STORE_SETTINGS);};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);});}
-async function dbGetAll(store){const db=await openDb();return new Promise((resolve,reject)=>{const tx=db.transaction(store,'readonly');const r=tx.objectStore(store).getAll();r.onsuccess=()=>resolve(r.result||[]);r.onerror=()=>reject(r.error);});}
-async function dbGet(store,key){const db=await openDb();return new Promise((resolve,reject)=>{const r=db.transaction(store,'readonly').objectStore(store).get(key);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});}
-async function dbPut(store,value,key){const db=await openDb();return new Promise((resolve,reject)=>{const os=db.transaction(store,'readwrite').objectStore(store);const r=key===undefined?os.put(value):os.put(value,key);r.onsuccess=()=>resolve();r.onerror=()=>reject(r.error);});}
-async function dbDeleteAll(store){const db=await openDb();return new Promise((resolve,reject)=>{const tx=db.transaction(store,'readwrite');tx.objectStore(store).clear();tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||new Error('Speichervorgang abgebrochen.'));});}
-async function dbReplaceReports(items){const db=await openDb();return new Promise((resolve,reject)=>{const tx=db.transaction(STORE_REPORTS,'readwrite');const os=tx.objectStore(STORE_REPORTS);os.clear();for(const item of items)os.put(item);tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||new Error('Speichervorgang abgebrochen.'));});}
+async function dbGetAll(store){const db=await openDb();return new Promise((res,rej)=>{const r=db.transaction(store,'readonly').objectStore(store).getAll();r.onsuccess=()=>res(r.result||[]);r.onerror=()=>rej(r.error);});}
+async function dbGet(store,key){const db=await openDb();return new Promise((res,rej)=>{const r=db.transaction(store,'readonly').objectStore(store).get(key);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}
+async function dbPut(store,value,key){const db=await openDb();return new Promise((res,rej)=>{const os=db.transaction(store,'readwrite').objectStore(store);const r=key===undefined?os.put(value):os.put(value,key);r.onsuccess=()=>res();r.onerror=()=>rej(r.error);});}
+async function dbDeleteAll(store){const db=await openDb();return new Promise((res,rej)=>{const tx=db.transaction(store,'readwrite');tx.objectStore(store).clear();tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error);});}
+async function dbReplaceReports(items){const db=await openDb();return new Promise((res,rej)=>{const tx=db.transaction(STORE_REPORTS,'readwrite');const os=tx.objectStore(STORE_REPORTS);os.clear();for(const i of items)os.put(i);tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error);tx.onabort=()=>rej(tx.error||new Error('Speichervorgang abgebrochen.'));});}
 function saveFallback(items){try{const raw=JSON.stringify(items);if(raw.length<=4500000)localStorage.setItem(FALLBACK_KEY,raw);else localStorage.removeItem(FALLBACK_KEY);}catch(_){}}
 function loadFallback(){try{const raw=localStorage.getItem(FALLBACK_KEY);return raw?JSON.parse(raw):[];}catch(_){return [];}}
 async function requestPersistentStorage(){try{if(navigator.storage?.persist)await navigator.storage.persist();}catch(_){}}
 
-function showBanner(text,type='ok'){const b=$('#banner');b.className='banner show '+type;b.innerHTML=text;clearTimeout(showBanner.t);showBanner.t=setTimeout(()=>b.classList.remove('show'),8000);}
+/* ================= UI-HELFER ================= */
+function showBanner(text,type='ok'){const b=$('#banner');b.className='banner show '+type;b.innerHTML=text;clearTimeout(showBanner.t);showBanner.t=setTimeout(()=>b.classList.remove('show'),9000);}
 function showDialog(title,html){$('#dialogTitle').textContent=title;$('#dialogBody').innerHTML=html;$('#dialogBackdrop').classList.add('show');}
 $('#dialogClose').onclick=()=>$('#dialogBackdrop').classList.remove('show');
 $('#dialogBackdrop').onclick=e=>{if(e.target===$('#dialogBackdrop'))$('#dialogBackdrop').classList.remove('show');};
 
+/* ================= NORMALISIERUNG & MERGE ================= */
 function normalizeReport(r){
   const out={...r};
   out.id=String(out.id||'').trim();
@@ -170,160 +497,592 @@ function normalizeReport(r){
 function hashSet(r){return new Set([...(r.datei_hashes||[]),r.datei_hash].filter(Boolean));}
 function mergeArrays(a,b){return [...new Set([...(a||[]),...(b||[])].filter(Boolean))];}
 function timeValue(v){const t=Date.parse(v||'');return Number.isFinite(t)?t:0;}
-function chooseNewer(oldR,newR){
-  if((newR.berichtsversion||0)!==(oldR.berichtsversion||0))return (newR.berichtsversion||0)>(oldR.berichtsversion||0)?newR:oldR;
-  return timeValue(newR.datei_geaendert)>=timeValue(oldR.datei_geaendert)?newR:oldR;
-}
+function chooseNewer(o,n){if((n.berichtsversion||0)!==(o.berichtsversion||0))return (n.berichtsversion||0)>(o.berichtsversion||0)?n:o;return timeValue(n.datei_geaendert)>=timeValue(o.datei_geaendert)?n:o;}
 function mergePair(oldR,newR){
-  const oldHashes=hashSet(oldR),newHashes=hashSet(newR);
-  const sameHash=[...newHashes].some(h=>oldHashes.has(h));
-  if(sameHash){
-    return {action:'skip',report:{...oldR,quellpfade:mergeArrays(oldR.quellpfade,newR.quellpfade),datei_hashes:mergeArrays([...oldHashes],[...newHashes]),fundstellen:new Set(mergeArrays(oldR.quellpfade,newR.quellpfade)).size}};
+  const oldH=hashSet(oldR),newH=hashSet(newR);
+  if([...newH].some(h=>oldH.has(h))){
+    const paths=mergeArrays(oldR.quellpfade,newR.quellpfade);
+    return {action:'skip',report:{...oldR,quellpfade:paths,datei_hashes:mergeArrays([...oldH],[...newH]),fundstellen:paths.length}};
   }
   const winner=chooseNewer(oldR,newR),loser=winner===newR?oldR:newR;
-  const merged={...winner,quellpfade:mergeArrays(oldR.quellpfade,newR.quellpfade),datei_hashes:mergeArrays([...oldHashes],[...newHashes]),hat_dateivarianten:true};
-  merged.fundstellen=new Set(merged.quellpfade).size;
+  const merged={...winner,quellpfade:mergeArrays(oldR.quellpfade,newR.quellpfade),datei_hashes:mergeArrays([...oldH],[...newH]),hat_dateivarianten:true};
+  merged.fundstellen=merged.quellpfade.length;
   merged.import_historie=mergeArrays(oldR.import_historie,newR.import_historie);
   merged.import_historie.push({replaced_hash:loser.datei_hash||null,replaced_version:loser.berichtsversion||0,replaced_at:new Date().toISOString()});
   return {action:'update',report:merged,conflict:{id:merged.id,number:merged.berichtsnummer,oldVersion:oldR.berichtsversion||0,newVersion:newR.berichtsversion||0}};
 }
 
-async function importFiles(fileList){
+/* ================= IMPORT ================= */
+function extractReports(payload){
+  if(Array.isArray(payload))return payload;
+  if(payload&&Array.isArray(payload.reports))return payload.reports;
+  return null;
+}
+async function importPayloads(sources){
   const summary={files:0,newCount:0,updated:0,skipped:0,invalid:0,conflicts:[]};
   const map=new Map(reports.map(r=>[r.id,r]));
-  for(const file of fileList){
+  for(const src of sources){
     summary.files++;
     try{
-      const payload=JSON.parse(await file.text());
-      if(!payload||!Array.isArray(payload.reports)){summary.invalid++;continue;}
-      for(const raw of payload.reports){
+      const list=extractReports(JSON.parse(src.text));
+      if(!list){summary.invalid++;continue;}
+      for(const raw of list){
         const r=normalizeReport(raw);
         if(!r.id){summary.invalid++;continue;}
         if(!map.has(r.id)){map.set(r.id,r);summary.newCount++;}
-        else{
-          const m=mergePair(map.get(r.id),r);map.set(r.id,m.report);
-          if(m.action==='skip')summary.skipped++;else{summary.updated++;if(m.conflict)summary.conflicts.push(m.conflict);}
-        }
+        else{const m=mergePair(map.get(r.id),r);map.set(r.id,m.report);
+          if(m.action==='skip')summary.skipped++;else{summary.updated++;if(m.conflict)summary.conflicts.push(m.conflict);}}
       }
-    }catch(err){summary.invalid++;}
+    }catch(_){summary.invalid++;}
   }
   reports=[...map.values()];
   await requestPersistentStorage();
   await dbReplaceReports(reports);
   saveFallback(reports);
   const stored=await dbGetAll(STORE_REPORTS);
-  if(stored.length!==reports.length)throw new Error(`Speicherprüfung fehlgeschlagen: ${stored.length} von ${reports.length} Berichten gespeichert.`);
+  if(stored.length!==reports.length)showBanner(`Achtung: Speicherprüfung – ${stored.length} von ${reports.length} Berichten gespeichert.`,'warn');
   refreshAll(true);
-  const conflictHtml=summary.conflicts.length?`<details><summary>${summary.conflicts.length} geänderte Berichte anzeigen</summary>${summary.conflicts.slice(0,50).map(c=>`<div class="conflict"><b>${esc(c.number||c.id)}</b><br><span class="muted">Version ${c.oldVersion} → ${c.newVersion}; neuer Dateiinhalt wurde übernommen beziehungsweise zusammengeführt.</span></div>`).join('')}</details>`:'';
-  showDialog('Import abgeschlossen',`<div class="import-grid"><span>JSON-Dateien</span><b>${summary.files}</b><span>Neu hinzugefügt</span><b>${summary.newCount}</b><span>Aktualisiert / neue Dateivariante</span><b>${summary.updated}</b><span>Identisch übersprungen</span><b>${summary.skipped}</b><span>Ungültige Einträge/Dateien</span><b>${summary.invalid}</b></div>${conflictHtml}`);
+  const cHtml=summary.conflicts.length?`<details style="margin-top:10px"><summary>${summary.conflicts.length} geänderte Berichte anzeigen</summary>${summary.conflicts.slice(0,80).map(c=>`<div class="conflict"><b>${esc(c.number||c.id)}</b><br><span class="muted">Version ${c.oldVersion} → ${c.newVersion}; neuer Dateiinhalt wurde übernommen beziehungsweise zusammengeführt.</span></div>`).join('')}</details>`:'';
+  showDialog('Import abgeschlossen',`<div class="import-grid"><span>Quellen</span><b>${summary.files}</b><span>Neu hinzugefügt</span><b>${summary.newCount}</b><span>Aktualisiert / neue Dateivariante</span><b>${summary.updated}</b><span>Identisch übersprungen</span><b>${summary.skipped}</b><span>Ungültige Einträge/Quellen</span><b>${summary.invalid}</b></div>${cHtml}`);
 }
 
+/* ---- Import-Fenster mit Drag & Drop ---- */
+function openImportDialog(){pendingFiles=[];$('#pasteArea').value='';renderPending();$('#importBackdrop').classList.add('show');}
+function closeImportDialog(){$('#importBackdrop').classList.remove('show');}
+function renderPending(){
+  $('#dzFiles').innerHTML=pendingFiles.map((f,i)=>`<div><span>${esc(f.name)}</span><span class="fsize">${(f.size/1024).toFixed(0)} KB</span><button class="btn small" data-rm="${i}" style="padding:0 6px">✕</button></div>`).join('');
+  $$('#dzFiles [data-rm]').forEach(b=>b.onclick=()=>{pendingFiles.splice(Number(b.dataset.rm),1);renderPending();});
+  $('#importState').textContent=pendingFiles.length?`${pendingFiles.length} Datei${pendingFiles.length===1?'':'en'} vorgemerkt.`:'';
+}
+function addFiles(list){
+  for(const f of list){if(/\.json$/i.test(f.name)||f.type==='application/json')pendingFiles.push(f);}
+  renderPending();
+}
+const dz=$('#dropzone');
+['dragenter','dragover'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.add('over');}));
+['dragleave','drop'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.remove('over');}));
+dz.addEventListener('drop',e=>addFiles(e.dataTransfer.files));
+$('#btnPick').onclick=()=>$('#fileInput').click();
+$('#fileInput').onchange=e=>{addFiles(e.target.files);e.target.value='';};
+$('#importCancel').onclick=closeImportDialog;
+$('#importBackdrop').onclick=e=>{if(e.target===$('#importBackdrop'))closeImportDialog();};
+$('#importRun').onclick=async()=>{
+  const sources=[];
+  for(const f of pendingFiles)sources.push({name:f.name,text:await f.text()});
+  const paste=$('#pasteArea').value.trim();
+  if(paste)sources.push({name:'Eingefügter Text',text:paste});
+  if(!sources.length){$('#importState').textContent='Bitte Dateien hineinziehen oder JSON einfügen.';return;}
+  closeImportDialog();
+  await importPayloads(sources);
+};
+/* Globales Drag & Drop über das ganze Fenster */
+let dragDepth=0;
+window.addEventListener('dragenter',e=>{if([...e.dataTransfer.types].includes('Files')){dragDepth++;$('#globalDrop').classList.add('show');}});
+window.addEventListener('dragover',e=>e.preventDefault());
+window.addEventListener('dragleave',()=>{if(--dragDepth<=0){dragDepth=0;$('#globalDrop').classList.remove('show');}});
+window.addEventListener('drop',e=>{
+  e.preventDefault();dragDepth=0;$('#globalDrop').classList.remove('show');
+  if(!e.dataTransfer.files.length)return;
+  if(!$('#importBackdrop').classList.contains('show'))openImportDialog();
+  addFiles(e.dataTransfer.files);
+});
+
+/* ================= KUNDENORDNER & PDF ================= */
 async function chooseFolder(){
   if(!('showDirectoryPicker' in window)){showBanner('Dieser Browser unterstützt die Ordnerauswahl nicht. Bitte den Viewer in aktuellem Edge oder Chrome über GitHub Pages beziehungsweise localhost öffnen.','warn');return;}
-  try{
-    const h=await window.showDirectoryPicker({mode:'read'});
-    directoryHandle=h;await dbPut(STORE_SETTINGS,h,'directoryHandle');updateFolderUi();showBanner(`Kundenordner „${esc(h.name)}“ wurde gespeichert.`,'ok');
-  }catch(err){if(err.name!=='AbortError')showBanner('Der Kundenordner konnte nicht gespeichert werden: '+esc(err.message),'bad');}
+  try{const h=await window.showDirectoryPicker({mode:'read'});directoryHandle=h;await dbPut(STORE_SETTINGS,h,'directoryHandle');updateFolderUi();showBanner(`Kundenordner „${esc(h.name)}“ wurde gespeichert.`,'ok');}
+  catch(err){if(err.name!=='AbortError')showBanner('Der Kundenordner konnte nicht gespeichert werden: '+esc(err.message),'bad');}
 }
-async function ensureFolderPermission(){
-  if(!directoryHandle)return false;
-  const opts={mode:'read'};
-  if(await directoryHandle.queryPermission(opts)==='granted')return true;
-  return await directoryHandle.requestPermission(opts)==='granted';
-}
+async function ensureFolderPermission(){if(!directoryHandle)return false;const o={mode:'read'};if(await directoryHandle.queryPermission(o)==='granted')return true;return await directoryHandle.requestPermission(o)==='granted';}
 async function fileFromRelativePath(path){
   const parts=String(path||'').replace(/\\/g,'/').split('/').filter(Boolean);
   if(!parts.length)throw new Error('Kein relativer Pfad vorhanden.');
   let dir=directoryHandle;
   for(let i=0;i<parts.length-1;i++)dir=await dir.getDirectoryHandle(parts[i]);
-  const fh=await dir.getFileHandle(parts.at(-1));
-  return fh.getFile();
+  return (await dir.getFileHandle(parts.at(-1))).getFile();
 }
 async function openPdf(id){
   const r=reports.find(x=>x.id===id);if(!r)return;
   if(!directoryHandle){showBanner('Bitte zuerst einmal den lokalen Kundenordner wählen.','warn');return;}
   if(!await ensureFolderPermission()){showBanner('Für den Kundenordner wurde kein Lesezugriff erteilt.','warn');return;}
   const paths=mergeArrays([r.relativer_pfad],r.quellpfade);
-  for(const p of paths){
-    try{const file=await fileFromRelativePath(p);const url=URL.createObjectURL(file);window.open(url,'_blank','noopener');setTimeout(()=>URL.revokeObjectURL(url),120000);return;}catch(e){}
-  }
+  for(const p of paths){try{const f=await fileFromRelativePath(p);const url=URL.createObjectURL(f);window.open(url,'_blank','noopener');setTimeout(()=>URL.revokeObjectURL(url),120000);return;}catch(_){}}
   showBanner(`PDF nicht gefunden. Erwartet wurde einer der relativen Pfade:<br><code>${paths.map(esc).join('</code><br><code>')}</code>`,'bad');
 }
-function updateFolderUi(){const name=directoryHandle?.name||'nicht eingestellt';$('#folderName').textContent=name;$('#folderMini').textContent=directoryHandle?`Kundenordner: ${name}`:'Kundenordner nicht gewählt';$('#folderDot').classList.toggle('ok',!!directoryHandle);}
+function updateFolderUi(){const n=directoryHandle?.name||'nicht eingestellt';$('#folderName').textContent=n;$('#folderMini').textContent=directoryHandle?`Kundenordner: ${n}`:'Kundenordner nicht gewählt';$('#folderDot').classList.toggle('ok',!!directoryHandle);}
 
+/* ================= FILTER ================= */
 function unique(attr,source=reports){return [...new Set(source.flatMap(r=>{const v=r[attr];return Array.isArray(v)?v:[v];}).filter(v=>v!==''&&v!==null&&v!==undefined))].sort((a,b)=>String(a).localeCompare(String(b),'de',{numeric:true}));}
-function fillSelect(el,values,label,keep=true){const cur=keep?el.value:'';el.innerHTML=`<option value="">${esc(label)}</option>`;for(const v of values){const o=document.createElement('option');o.value=String(v);o.textContent=String(v);el.appendChild(o);}if([...el.options].some(o=>o.value===cur))el.value=cur;}
+function fillSelect(el,values,label){const cur=el.value;el.innerHTML=`<option value="">${esc(label)}</option>`;for(const v of values){const o=document.createElement('option');o.value=String(v);o.textContent=String(v);el.appendChild(o);}if([...el.options].some(o=>o.value===cur))el.value=cur;}
 function refreshFilterOptions(){
   fillSelect($('#fYear'),unique('jahr').sort((a,b)=>b-a),'Alle Jahrgänge');
   fillSelect($('#fHv'),unique('hausverwaltung'),'Alle Hausverwaltungen');
-  const hv=$('#fHv').value;const byHv=reports.filter(r=>!hv||r.hausverwaltung===hv);
+  const hv=$('#fHv').value,byHv=reports.filter(r=>!hv||r.hausverwaltung===hv);
   fillSelect($('#fObj'),unique('objekt',byHv),'Alle Objekte');
-  const obj=$('#fObj').value;const byObj=byHv.filter(r=>!obj||r.objekt===obj);
+  const obj=$('#fObj').value,byObj=byHv.filter(r=>!obj||r.objekt===obj);
   fillSelect($('#fArea'),unique('bereich',byObj),'Alle Bereiche');
   fillSelect($('#fType'),unique('untersuchungsart'),'Alle Untersuchungsarten');
   fillSelect($('#fScope'),unique('umfang'),'Alle Umfänge');
   fillSelect($('#fResult'),unique('befund'),'Alle Befunde');
 }
-function filteredReports(){
-  const y=$('#fYear').value,hv=$('#fHv').value,obj=$('#fObj').value,area=$('#fArea').value,type=$('#fType').value,scope=$('#fScope').value,result=$('#fResult').value,q=$('#fSearch').value.trim().toLowerCase();
-  return reports.filter(r=>(!y||String(r.jahr)===y)&&(!hv||r.hausverwaltung===hv)&&(!obj||r.objekt===obj)&&(!area||r.bereich===area)&&(!type||r.untersuchungsart===type)&&(!scope||(r.umfang||[]).includes(scope))&&(!result||r.befund===result)&&(!q||[r.berichtsnummer,r.auftragsnummer,r.hausverwaltung,r.objekt,r.bereich,r.untersuchungsart,r.befund,r.pdf_dateiname,...(r.parameter||[])].join(' ').toLowerCase().includes(q)));
+/* Filter ohne Jahr – Basis für Jahresvergleiche */
+function baseFiltered(){
+  const hv=$('#fHv').value,obj=$('#fObj').value,area=$('#fArea').value,type=$('#fType').value,scope=$('#fScope').value,result=$('#fResult').value,q=$('#fSearch').value.trim().toLowerCase();
+  return reports.filter(r=>(!hv||r.hausverwaltung===hv)&&(!obj||r.objekt===obj)&&(!area||r.bereich===area)&&(!type||r.untersuchungsart===type)&&(!scope||(r.umfang||[]).includes(scope))&&(!result||r.befund===result)&&
+    (!q||[r.berichtsnummer,r.auftragsnummer,r.hausverwaltung,r.objekt,r.bereich,r.untersuchungsart,r.befund,r.pdf_dateiname,...(r.parameter||[])].join(' ').toLowerCase().includes(q)));
 }
+function filteredReports(){const y=$('#fYear').value;return baseFiltered().filter(r=>!y||String(r.jahr)===y);}
+
+/* ================= STATISTIK ================= */
 function reportKey(r){return r.id||`${r.labor||''}|${r.berichtsnummer||''}`;}
 function areaKey(r){return [r.hausverwaltung||'',r.objekt||'',r.bereich||r.objekt||''].join('|');}
+function legioNum(v){if(v==null||v==='')return null;const m=String(v).match(/[0-9]+(?:[.,][0-9]+)?/);return m?Number(m[0].replace(',','.')):null;}
+function stats(rows){
+  const areas=new Set(rows.map(areaKey));
+  const bad=new Set(rows.filter(r=>r.ueberschreitung).map(areaKey));
+  const legio=rows.map(r=>legioNum(r.legionellen_max)).filter(v=>v!=null);
+  return {
+    rows,
+    reports:new Set(rows.map(reportKey)).size,
+    badReports:new Set(rows.filter(r=>r.ueberschreitung).map(reportKey)).size,
+    areas:areas.size, badAreas:bad.size,
+    ratio:areas.size?bad.size/areas.size*100:0,
+    objects:new Set(rows.map(r=>`${r.hausverwaltung}|${r.objekt}`)).size,
+    hvs:new Set(rows.map(r=>r.hausverwaltung).filter(Boolean)).size,
+    legioMax:legio.length?Math.max(...legio):null,
+    files:rows.reduce((s,r)=>s+(Number(r.fundstellen)||1),0)
+  };
+}
+function dateDe(v){if(!v)return '';const d=new Date(String(v).slice(0,10)+'T00:00:00');return Number.isNaN(d.getTime())?String(v):d.toLocaleDateString('de-DE');}
+function monthOf(r){const m=String(r.probenahmedatum||'').match(/^(\d{4})-(\d{2})/);return m?Number(m[2])-1:null;}
+function groupBy(rows,fn){const m=new Map();for(const r of rows){const k=fn(r);if(k==null)continue;if(!m.has(k))m.set(k,[]);m.get(k).push(r);}return m;}
+function currentYear(){return $('#fYear').value;}
+
+/* ================= RENDER: JAHRESAUSWERTUNG ================= */
+function renderYearChips(){
+  const base=baseFiltered();
+  const years=[...new Set(base.map(r=>r.jahr).filter(Boolean))].sort((a,b)=>b-a);
+  const cur=currentYear();
+  const chips=[`<button class="chip ${cur?'':'active'}" data-year="">Alle Jahre<span class="cnt">${de(base.length)}</span></button>`]
+    .concat(years.map(y=>`<button class="chip ${String(y)===cur?'active':''}" data-year="${y}">${y}<span class="cnt">${de(base.filter(r=>r.jahr===y).length)}</span></button>`));
+  $('#yearChips').innerHTML=chips.join('');
+  $$('#yearChips .chip').forEach(c=>c.onclick=()=>{$('#fYear').value=c.dataset.year;render();});
+}
+function deltaHtml(now,prev,invert=false){
+  if(prev==null||prev===0)return '';
+  const d=now-prev, p=(d/prev*100);
+  if(Math.abs(p)<0.05)return `<span class="delta flat">unverändert zum Vorjahr</span>`;
+  const worse=invert?d<0:d>0;
+  return `<span class="delta ${worse?'up':'down'}">${d>0?'▲':'▼'} ${Math.abs(p).toFixed(0)} % zum Vorjahr</span>`;
+}
+function renderKpis(rows){
+  const s=stats(rows);
+  const y=currentYear();
+  let prev=null;
+  if(y){const py=String(Number(y)-1);const pr=baseFiltered().filter(r=>String(r.jahr)===py);if(pr.length)prev=stats(pr);}
+  const cards=[
+    ['info',de(s.reports),'Untersuchungen',prev?deltaHtml(s.reports,prev.reports,true):''],
+    ['',de(s.areas),'Bereiche untersucht',prev?deltaHtml(s.areas,prev.areas,true):''],
+    [s.badAreas?'bad':'good',de(s.badAreas),'Bereiche mit Überschreitung',prev?deltaHtml(s.badAreas,prev.badAreas):''],
+    [s.ratio>10?'bad':s.ratio>0?'warn':'good',pct(s.ratio),'Überschreitungsquote',prev?deltaHtml(s.ratio,prev.ratio):''],
+    ['',de(s.objects),'Objekte',''],
+    ['',de(s.hvs),'Hausverwaltungen',''],
+    [s.legioMax>=100?'bad':'good',s.legioMax==null?'–':de(s.legioMax),'höchster Legionellenwert',s.legioMax==null?'':'<span class="delta flat">KBE/100 ml</span>'],
+    ['info',de(s.badReports),'Berichte mit Befund','']
+  ];
+  $('#kpis').innerHTML=cards.map(([cls,val,lbl,extra])=>`<div class="kpi ${cls}"><b>${esc(val)}</b><span>${esc(lbl)}</span>${extra}</div>`).join('');
+}
+function barBlock(entries,total){
+  if(!entries.length)return '<div class="empty">Keine Daten für die aktuelle Auswahl.</div>';
+  const max=Math.max(...entries.map(e=>e.value),1);
+  return '<div class="barlist">'+entries.map(e=>{
+    const w=e.value/max*100, bw=e.bad?e.bad/max*100:0;
+    return `<div class="barrow"><span class="lbl" title="${esc(e.label)}">${esc(e.label)}</span>
+      <span class="barval strong">${de(e.value)}</span>
+      <span class="barval">${e.bad!=null?de(e.bad)+' ÜS':total?pct(e.value/total*100):''}</span>
+      <span class="bartrack"><i class="barfill bad" style="width:${bw}%"></i><i class="barfill" style="width:${Math.max(0,w-bw)}%"></i></span></div>`;
+  }).join('')+'</div>';
+}
+function renderTypeBars(rows){
+  const g=groupBy(rows,r=>r.untersuchungsart||'Unbekannt');
+  const entries=[...g.entries()].map(([label,rs])=>({label,value:new Set(rs.map(areaKey)).size,bad:new Set(rs.filter(r=>r.ueberschreitung).map(areaKey)).size}))
+    .sort((a,b)=>b.value-a.value);
+  $('#barTypes').innerHTML=barBlock(entries,null);
+}
+function renderScopeBars(rows){
+  const m=new Map();
+  for(const r of rows){const key=(r.umfang||[]).join(' + ')||'Unbekannt';if(!m.has(key))m.set(key,{n:0,bad:0});const x=m.get(key);x.n++;if(r.ueberschreitung)x.bad++;}
+  const entries=[...m.entries()].map(([label,x])=>({label,value:x.n,bad:x.bad})).sort((a,b)=>b.value-a.value);
+  $('#barScopes').innerHTML=barBlock(entries,rows.length);
+}
+function renderMonths(rows){
+  const counts=Array(12).fill(0),bad=Array(12).fill(0);
+  let unknown=0;
+  for(const r of rows){const m=monthOf(r);if(m==null){unknown++;continue;}counts[m]++;if(r.ueberschreitung)bad[m]++;}
+  const max=Math.max(...counts,1);
+  $('#monthChart').innerHTML=
+    `<div class="months">${counts.map((c,i)=>`<div class="mcol"><span class="mnum">${c||''}</span><div class="mbar" style="height:${c/max*100}%" title="${MONTHS[i]}: ${c} Berichte, ${bad[i]} mit Überschreitung"><div class="mbad" style="height:${c?bad[i]/c*100:0}%"></div></div></div>`).join('')}</div>
+     <div class="mlabels">${MONTHS.map(m=>`<span>${m}</span>`).join('')}</div>
+     ${unknown?`<div class="sub" style="padding:0 14px 12px">${unknown} Bericht${unknown===1?'':'e'} ohne Probenahmedatum</div>`:''}`;
+}
+/* Nachuntersuchung im selben Bereich nach der Überschreitung? */
+function followUp(r,all){
+  const t=timeValue(r.probenahmedatum);
+  return all.find(x=>x!==r&&areaKey(x)===areaKey(r)&&x.untersuchungsart==='Nachuntersuchung'&&timeValue(x.probenahmedatum)>=t)||null;
+}
+function renderExceedances(rows){
+  const bad=rows.filter(r=>r.ueberschreitung).sort((a,b)=>timeValue(b.probenahmedatum)-timeValue(a.probenahmedatum));
+  $('#hintExc').textContent=`${bad.length} Bericht${bad.length===1?'':'e'} mit Befund`;
+  if(!bad.length){$('#excBody').innerHTML='<div class="empty">Keine Überschreitungen in der aktuellen Auswahl. </div>';return;}
+  const all=reports;
+  $('#excBody').innerHTML=`<table><thead><tr>
+    <th>Bericht-Nr.</th><th>Probenahme</th><th>Hausverwaltung</th><th>Objekt</th><th>Bereich</th>
+    <th>Untersuchungsart</th><th>Umfang</th><th class="num">Legio. max</th><th>Nachuntersuchung</th><th>Datei</th></tr></thead><tbody>
+    ${bad.map(r=>{const f=followUp(r,all);
+      return `<tr><td><b>${esc(r.berichtsnummer)}</b></td><td>${esc(dateDe(r.probenahmedatum))}</td>
+      <td>${esc(r.hausverwaltung)}</td><td>${esc(r.objekt)}</td><td>${esc(r.bereich)}</td>
+      <td>${esc(r.untersuchungsart)}</td><td title="${esc((r.parameter||[]).join(', '))}">${esc((r.umfang||[]).join(' + '))}</td>
+      <td class="num ${legioNum(r.legionellen_max)>=100?'':''}">${esc(r.legionellen_max??'')}</td>
+      <td>${f?`<span class="pill ok">${esc(dateDe(f.probenahmedatum))}${f.ueberschreitung?' · erneut ÜS':''}</span>`:'<span class="pill unk">offen</span>'}</td>
+      <td class="path"><button class="file-btn" data-open="${esc(r.id)}">${esc(r.pdf_dateiname||'PDF')}</button></td></tr>`;}).join('')}
+    </tbody></table>`;
+  $$('#excBody [data-open]').forEach(b=>b.onclick=()=>openPdf(b.dataset.open));
+}
+function renderHvCompare(rows){
+  const g=groupBy(rows,r=>r.hausverwaltung||'Ohne Zuordnung');
+  const list=[...g.entries()].map(([hv,rs])=>{const s=stats(rs);return {hv,...s};})
+    .sort((a,b)=>b.badAreas-a.badAreas||b.areas-a.areas);
+  if(!list.length){$('#hvBody').innerHTML='<div class="empty">Keine Daten.</div>';return;}
+  $('#hvBody').innerHTML=`<table><thead><tr><th>Hausverwaltung</th><th class="num">Objekte</th><th class="num">Untersuchungen</th>
+    <th class="num">Bereiche</th><th class="num">davon überschritten</th><th class="num">Quote</th></tr></thead><tbody>
+    ${list.map(x=>`<tr><td>${esc(x.hv)}</td><td class="num">${de(x.objects)}</td><td class="num">${de(x.reports)}</td>
+      <td class="num">${de(x.areas)}</td><td class="num">${x.badAreas?`<span class="pill bad">${de(x.badAreas)}</span>`:'0'}</td>
+      <td class="num">${pct(x.ratio)}</td></tr>`).join('')}
+    </tbody></table>`;
+}
+function categoryStats(rows){
+  const map=new Map();
+  for(const r of rows){const y=r.jahr||'Ohne Jahr',cat=r.untersuchungsart||'Unbekannt',k=`${y}|${cat}`;
+    if(!map.has(k))map.set(k,{year:y,category:cat,reports:new Set(),areas:new Set(),badAreas:new Set()});
+    const x=map.get(k);x.reports.add(reportKey(r));x.areas.add(areaKey(r));if(r.ueberschreitung)x.badAreas.add(areaKey(r));}
+  return [...map.values()].sort((a,b)=>Number(b.year)-Number(a.year)||a.category.localeCompare(b.category,'de'))
+    .map(x=>({...x,reportCount:x.reports.size,areaCount:x.areas.size,badCount:x.badAreas.size,ratio:x.areas.size?x.badAreas.size/x.areas.size*100:0}));
+}
+function renderStats(){
+  const rows=baseFiltered();
+  const st=categoryStats(rows),years=[...new Set(st.map(x=>x.year))];
+  if(!st.length){$('#statsBody').innerHTML='<div class="empty">Keine Daten für die aktuelle Auswahl.</div>';return;}
+  const cur=currentYear();
+  $('#statsBody').innerHTML=years.map((year,i)=>{
+    const ys=st.filter(x=>x.year===year),yr=rows.filter(r=>String(r.jahr)===String(year)),s=stats(yr);
+    const open=cur?String(year)===cur:i===0;
+    return `<details class="year-block" ${open?'open':''}><summary class="group-title">${esc(year)}<span class="g-right">${de(s.reports)} Untersuchungen · ${de(s.areas)} Bereiche · ${de(s.badAreas)} überschritten</span></summary>
+      <div class="table-wrap tall"><table><thead><tr><th>Untersuchungsart</th><th class="num">Untersuchungen</th><th class="num">Bereiche untersucht</th><th class="num">Bereiche überschritten</th><th class="num">Quote</th></tr></thead><tbody>
+      ${ys.map(x=>`<tr><td>${esc(x.category)}</td><td class="num">${de(x.reportCount)}</td><td class="num">${de(x.areaCount)}</td><td class="num">${de(x.badCount)}</td><td class="num">${pct(x.ratio)}</td></tr>`).join('')}
+      <tr><td><b>Gesamt</b></td><td class="num"><b>${de(s.reports)}</b></td><td class="num"><b>${de(s.areas)}</b></td><td class="num"><b>${de(s.badAreas)}</b></td><td class="num"><b>${pct(s.ratio)}</b></td></tr>
+      </tbody></table></div></details>`;}).join('');
+}
+
+/* ================= RENDER: BERICHTE ================= */
 function comparator(key){
   return (a,b)=>{
     let av=a[key],bv=b[key];
-    const emptyA=av===null||av===undefined||av==='',emptyB=bv===null||bv===undefined||bv==='';if(emptyA!==emptyB)return emptyA?1:-1;
+    const ea=av==null||av==='',eb=bv==null||bv==='';if(ea!==eb)return ea?1:-1;
     if(key==='probenahmedatum'||key==='datei_geaendert')return (timeValue(av)-timeValue(bv))*sortDir;
     if(key==='jahr'||key==='berichtsversion')return ((Number(av)||0)-(Number(bv)||0))*sortDir;
-    if(key==='legionellen_max'){const n=v=>{if(v==null||v==='')return Number.POSITIVE_INFINITY;const m=String(v).match(/[0-9]+(?:[.,][0-9]+)?/);return m?Number(m[0].replace(',','.')):Number.POSITIVE_INFINITY;};return (n(av)-n(bv))*sortDir;}
+    if(key==='legionellen_max'){const n=v=>legioNum(v)??Number.POSITIVE_INFINITY;return (n(av)-n(bv))*sortDir;}
     if(key==='berichtsnummer'){const nums=v=>String(v||'').match(/\d+/g)?.map(Number)||[];const aa=nums(av),bb=nums(bv),len=Math.max(aa.length,bb.length);for(let i=0;i<len;i++){const d=(aa[i]??-1)-(bb[i]??-1);if(d)return d*sortDir;}}
     if(Array.isArray(av))av=av.join(' + ');if(Array.isArray(bv))bv=bv.join(' + ');
     return String(av??'').localeCompare(String(bv??''),'de',{numeric:true,sensitivity:'base'})*sortDir;
   };
 }
-function dateDe(v){if(!v)return '';const d=new Date(v+'T00:00:00');return Number.isNaN(d.getTime())?String(v):d.toLocaleDateString('de-DE');}
-function renderKpis(rows){const areas=new Set(rows.map(areaKey));const badAreas=new Set(rows.filter(r=>r.ueberschreitung).map(areaKey));const years=new Set(rows.map(r=>r.jahr).filter(Boolean));const vals=[['Berichte',new Set(rows.map(reportKey)).size],['Bereiche untersucht',areas.size],['Bereiche überschritten',badAreas.size],['Überschreitungsquote',areas.size?`${(badAreas.size/areas.size*100).toFixed(1).replace('.',',')} %`:'0 %'],['Jahrgänge',years.size],['PDF-Fundstellen',rows.reduce((s,r)=>s+(Number(r.fundstellen)||1),0)]];$('#kpis').innerHTML=vals.map(([l,v])=>`<div class="kpi"><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join('');}
-function categoryStats(rows){
-  const map=new Map();
-  for(const r of rows){const y=r.jahr||'Ohne Jahr',cat=r.untersuchungsart||'Unbekannt',k=`${y}|${cat}`;if(!map.has(k))map.set(k,{year:y,category:cat,reports:new Set(),areas:new Set(),badAreas:new Set()});const x=map.get(k);x.reports.add(reportKey(r));x.areas.add(areaKey(r));if(r.ueberschreitung)x.badAreas.add(areaKey(r));}
-  return [...map.values()].sort((a,b)=>Number(b.year)-Number(a.year)||a.category.localeCompare(b.category,'de')).map(x=>({...x,reportCount:x.reports.size,areaCount:x.areas.size,badCount:x.badAreas.size,ratio:x.areas.size?x.badAreas.size/x.areas.size*100:0}));
-}
-function renderStats(rows){
-  const stats=categoryStats(rows),years=[...new Set(stats.map(x=>x.year))];if(!stats.length){$('#statsBody').innerHTML='<div class="empty">Keine Daten für die aktuelle Auswahl.</div>';return;}
-  $('#statsBody').innerHTML=years.map((year,idx)=>{const ys=stats.filter(x=>x.year===year);const totalReports=new Set(rows.filter(r=>String(r.jahr)===String(year)).map(reportKey)).size,totalAreas=new Set(rows.filter(r=>String(r.jahr)===String(year)).map(areaKey)).size,totalBad=new Set(rows.filter(r=>String(r.jahr)===String(year)&&r.ueberschreitung).map(areaKey)).size;return `<details class="year-block" ${idx===0?'open':''}><summary class="year-title">${esc(year)} · ${totalReports} Berichte · ${totalAreas} Bereiche</summary><div class="table-wrap" style="max-height:none"><table><thead><tr><th>Untersuchungsart</th><th class="num">Untersuchungen</th><th class="num">Bereiche untersucht</th><th class="num">Bereiche überschritten</th><th class="num">Quote</th></tr></thead><tbody>${ys.map(x=>`<tr><td>${esc(x.category)}</td><td class="num">${x.reportCount}</td><td class="num">${x.areaCount}</td><td class="num">${x.badCount}</td><td class="num">${x.ratio.toFixed(1).replace('.',',')} %</td></tr>`).join('')}<tr><td><b>Gesamt</b></td><td class="num"><b>${totalReports}</b></td><td class="num"><b>${totalAreas}</b></td><td class="num"><b>${totalBad}</b></td><td class="num"><b>${(totalAreas?totalBad/totalAreas*100:0).toFixed(1).replace('.',',')} %</b></td></tr></tbody></table></div></details>`;}).join('');
-}
 function renderReports(rows){
-  rows=[...rows].sort(comparator(sortKey));const tb=$('#reportsTable tbody');$('#emptyState').classList.toggle('hidden',rows.length>0);tb.innerHTML=rows.map(r=>{const pill=r.ueberschreitung?'bad':r.befund==='Ohne Befund'?'ok':'unk';const scope=(r.umfang||[]).join(' + ');const path=(r.relativer_pfad||(r.quellpfade||[])[0]||'');return `<tr><td>${esc(r.berichtsnummer)}${(r.fundstellen||1)>1?` <span class="pill info">${r.fundstellen}×</span>`:''}</td><td>${esc(dateDe(r.probenahmedatum))}</td><td>${esc(r.hausverwaltung)}</td><td>${esc(r.objekt)}</td><td>${esc(r.bereich)}</td><td>${esc(r.untersuchungsart)}</td><td title="${esc((r.parameter||[]).join(', '))}">${esc(scope)}</td><td class="num">${esc(r.legionellen_max||'')}</td><td><span class="pill ${pill}">${esc(r.befund)}</span></td><td>${esc(r.auftragsnummer||'')}</td><td class="path" title="${esc(path)}"><button class="file-btn" data-open="${esc(r.id)}">${esc(r.pdf_dateiname||path.split('/').at(-1)||'PDF öffnen')}</button></td></tr>`;}).join('');
-  tb.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>openPdf(b.dataset.open));$('#listHint').textContent=`${rows.length} Bericht${rows.length===1?'':'e'}`;
-  document.querySelectorAll('#reportsTable th').forEach(th=>{th.textContent=th.textContent.replace(/[ ▲▼]$/,'')+(th.dataset.key===sortKey?(sortDir>0?' ▲':' ▼'):'');});
+  rows=[...rows].sort(comparator(sortKey));
+  const tb=$('#reportsTable tbody');
+  $('#emptyState').classList.toggle('hidden',rows.length>0);
+  tb.innerHTML=rows.map(r=>{
+    const pill=r.ueberschreitung?'bad':r.befund==='Ohne Befund'?'ok':'unk';
+    const path=r.relativer_pfad||(r.quellpfade||[])[0]||'';
+    return `<tr><td>${esc(r.berichtsnummer)}${(r.fundstellen||1)>1?` <span class="pill info">${r.fundstellen}×</span>`:''}</td>
+      <td>${esc(dateDe(r.probenahmedatum))}</td><td>${esc(r.hausverwaltung)}</td><td>${esc(r.objekt)}</td><td>${esc(r.bereich)}</td>
+      <td>${esc(r.untersuchungsart)}</td><td title="${esc((r.parameter||[]).join(', '))}">${esc((r.umfang||[]).join(' + '))}</td>
+      <td class="num">${esc(r.legionellen_max??'')}</td><td><span class="pill ${pill}">${esc(r.befund)}</span></td>
+      <td>${esc(r.auftragsnummer||'')}</td>
+      <td class="path" title="${esc(path)}"><button class="file-btn" data-open="${esc(r.id)}">${esc(r.pdf_dateiname||path.split('/').at(-1)||'PDF öffnen')}</button></td></tr>`;
+  }).join('');
+  tb.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>openPdf(b.dataset.open));
+  $('#listHint').textContent=`${de(rows.length)} Bericht${rows.length===1?'':'e'}`;
+  $$('#reportsTable th').forEach(th=>{th.textContent=th.textContent.replace(/[ ▲▼]$/,'')+(th.dataset.key===sortKey?(sortDir>0?' ▲':' ▼'):'');});
 }
-function render(){const rows=filteredReports();renderKpis(rows);renderStats(rows);renderReports(rows);$('#headerSub').textContent=reports.length?`${reports.length} Berichte im lokalen Bestand`:'Keine Daten geladen';$('#btnExport').disabled=!reports.length;$('#btnClear').disabled=!reports.length;}
-function refreshAll(selectNewest=false){refreshFilterOptions();if(selectNewest&&reports.length){const years=unique('jahr').sort((a,b)=>b-a);if(years.length)$('#fYear').value=String(years[0]);}render();}
 
-function exportPayload(){const years=unique('jahr').sort((a,b)=>a-b);return {schema_version:'1.0',exported_at:new Date().toISOString(),source:{application:'NOVA Prüfberichte-Viewer',version:'1.0.2',root_name:directoryHandle?.name||null},scan:{selected_years:years,found_files:reports.reduce((s,r)=>s+(Number(r.fundstellen)||1),0),unique_reports:reports.length,duplicate_id_groups:reports.filter(r=>(r.fundstellen||1)>1).length,file_variant_groups:reports.filter(r=>r.hat_dateivarianten).length},merge_contract:{primary_key:'id',same_id_same_hash:'skip',same_id_new_hash_or_higher_version:'update_or_compare',unknown_report_number:'hash_fallback_id'},reports:reports.sort((a,b)=>String(a.id).localeCompare(String(b.id)))};}
+/* ================= RENDER: ANLAGEN ================= */
+function areaRows(rows){
+  const m=new Map();
+  for(const r of rows){
+    const k=areaKey(r);
+    if(!m.has(k))m.set(k,{hv:r.hausverwaltung||'',obj:r.objekt||'',area:r.bereich||r.objekt||'',n:0,bad:0,types:new Set(),scopes:new Set(),last:'',legio:null});
+    const x=m.get(k);x.n++;if(r.ueberschreitung)x.bad++;
+    if(r.untersuchungsart)x.types.add(r.untersuchungsart);
+    (r.umfang||[]).forEach(u=>x.scopes.add(u));
+    if(timeValue(r.probenahmedatum)>timeValue(x.last))x.last=r.probenahmedatum||'';
+    const l=legioNum(r.legionellen_max);if(l!=null&&(x.legio==null||l>x.legio))x.legio=l;
+  }
+  return [...m.values()].sort((a,b)=>a.hv.localeCompare(b.hv,'de')||a.obj.localeCompare(b.obj,'de')||a.area.localeCompare(b.area,'de'));
+}
+function renderAnlagen(rows){
+  let list=areaRows(rows);
+  if($('#chkOnlyBad').checked)list=list.filter(x=>x.bad>0);
+  $('#anlagenHint').textContent=`${de(list.length)} Bereiche · ${de(new Set(list.map(x=>x.hv+'|'+x.obj)).size)} Objekte`;
+  if(!list.length){$('#anlagenBody').innerHTML='<div class="empty">Keine Bereiche in der aktuellen Auswahl.</div>';return;}
+  let html='<table class="dense"><thead><tr><th>Objekt</th><th>Bereich</th><th class="num">Unters.</th><th>Untersuchungsart</th><th>Umfang</th><th class="num">Legio. max</th><th>letzte Probenahme</th><th>Befund</th></tr></thead><tbody>';
+  let curHv=null;
+  for(const x of list){
+    if(x.hv!==curHv){curHv=x.hv;html+=`<tr><td colspan="8" style="background:var(--panel3);font-weight:700;padding:5px 8px">${esc(curHv||'Ohne Zuordnung')}</td></tr>`;}
+    html+=`<tr><td>${esc(x.obj)}</td><td>${esc(x.area)}</td><td class="num">${x.n}</td>
+      <td>${esc([...x.types].join(', '))}</td><td>${esc([...x.scopes].join(' + '))}</td>
+      <td class="num">${x.legio==null?'':de(x.legio)}</td><td>${esc(dateDe(x.last))}</td>
+      <td>${x.bad?`<span class="pill bad">${x.bad}× Überschreitung</span>`:'<span class="pill ok">ohne Befund</span>'}</td></tr>`;
+  }
+  $('#anlagenBody').innerHTML=html+'</tbody></table>';
+}
+
+/* ================= HAUPT-RENDER ================= */
+function render(){
+  renderYearChips();
+  const rows=filteredReports();
+  renderKpis(rows);renderTypeBars(rows);renderScopeBars(rows);renderMonths(rows);
+  renderExceedances(rows);renderHvCompare(rows);renderStats();
+  renderReports(rows);renderAnlagen(rows);
+  $('#headerSub').textContent=reports.length?`${de(reports.length)} Berichte im lokalen Bestand`:'Keine Daten geladen';
+  $('#btnExport').disabled=!reports.length;$('#btnClear').disabled=!reports.length;
+}
+function refreshAll(selectNewest=false){
+  refreshFilterOptions();
+  if(selectNewest&&reports.length){const y=unique('jahr').sort((a,b)=>b-a);if(y.length)$('#fYear').value=String(y[0]);}
+  render();
+}
+
+/* ================= EXPORT ================= */
+function exportPayload(){
+  const years=unique('jahr').sort((a,b)=>a-b);
+  return {schema_version:'1.0',exported_at:new Date().toISOString(),
+    source:{application:'NOVA Prüfberichte-Viewer',version:APP_VERSION,root_name:directoryHandle?.name||null},
+    scan:{selected_years:years,found_files:reports.reduce((s,r)=>s+(Number(r.fundstellen)||1),0),unique_reports:reports.length,
+      duplicate_id_groups:reports.filter(r=>(r.fundstellen||1)>1).length,file_variant_groups:reports.filter(r=>r.hat_dateivarianten).length},
+    merge_contract:{primary_key:'id',same_id_same_hash:'skip',same_id_new_hash_or_higher_version:'update_or_compare',unknown_report_number:'hash_fallback_id'},
+    reports:[...reports].sort((a,b)=>String(a.id).localeCompare(String(b.id)))};
+}
 function downloadJson(){const blob=new Blob([JSON.stringify(exportPayload(),null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`Pruefberichte_Gesamtbestand_${new Date().toISOString().slice(0,10)}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
-async function clearData(){if(!confirm('Den gesamten lokal im Viewer gespeicherten Prüfberichtbestand löschen? Die Original-PDFs bleiben selbstverständlich erhalten.'))return;await dbDeleteAll(STORE_REPORTS);localStorage.removeItem(FALLBACK_KEY);reports=[];refreshAll();showBanner('Der lokale Viewer-Datenbestand wurde gelöscht.','ok');}
+async function clearData(){
+  if(!confirm('Den gesamten lokal im Viewer gespeicherten Prüfberichtbestand löschen? Die Original-PDFs bleiben selbstverständlich erhalten.'))return;
+  await dbDeleteAll(STORE_REPORTS);localStorage.removeItem(FALLBACK_KEY);reports=[];refreshAll();
+  showBanner('Der lokale Viewer-Datenbestand wurde gelöscht.','ok');
+}
 function resetFilters(){for(const s of ['#fYear','#fHv','#fObj','#fArea','#fType','#fScope','#fResult','#fSearch'])$(s).value='';refreshFilterOptions();render();}
 
-$('#btnImport').onclick=()=>$('#fileInput').click();$('#fileInput').onchange=async e=>{if(e.target.files.length)await importFiles(e.target.files);e.target.value='';};
-$('#btnExport').onclick=downloadJson;$('#btnFolder').onclick=chooseFolder;$('#btnFolder2').onclick=chooseFolder;$('#btnPrint').onclick=()=>window.print();$('#btnClear').onclick=clearData;$('#btnReset').onclick=resetFilters;
-for(const s of ['#fYear','#fType','#fScope','#fResult'])$(s).onchange=render;
-$('#fHv').onchange=()=>{refreshFilterOptions();render();};$('#fObj').onchange=()=>{refreshFilterOptions();render();};$('#fArea').onchange=render;$('#fSearch').oninput=render;
-document.querySelectorAll('#reportsTable th').forEach(th=>th.onclick=()=>{const k=th.dataset.key;if(sortKey===k)sortDir*=-1;else{sortKey=k;sortDir=1;}render();});
+/* ================= DRUCK / BERICHTE ================= */
+function activeFilterText(){
+  const parts=[];
+  const map={'#fHv':'Hausverwaltung','#fObj':'Objekt','#fArea':'Bereich','#fType':'Untersuchungsart','#fScope':'Umfang','#fResult':'Befund'};
+  for(const [sel,label] of Object.entries(map)){const v=$(sel).value;if(v)parts.push(`${label}: ${v}`);}
+  const q=$('#fSearch').value.trim();if(q)parts.push(`Suche: ${q}`);
+  return parts.join(' · ');
+}
+function pHead(title,sub,withLogo){
+  const y=currentYear();
+  return `<div class="p-head">
+    ${withLogo?'<img src="nova_logo.png" alt="NOVA Praxis-Hygiene GmbH" onerror="this.style.display=\'none\'">':''}
+    <div><div class="p-title">${esc(title)}</div><div class="p-sub">${esc(sub||'')}</div></div>
+    <div class="p-meta">NOVA Praxis-Hygiene GmbH<br>Depotstr. 5 1/2, 86153 Augsburg<br>Stand: ${new Date().toLocaleDateString('de-DE')}${y?`<br>Berichtsjahr ${esc(y)}`:'<br>alle Jahrgänge'}</div>
+  </div>`;
+}
+function pFoot(extra){
+  return `<div class="p-foot"><span>NOVA Prüfberichte-Viewer V ${APP_VERSION}${extra?' · '+esc(extra):''}</span><span>Erstellt am ${new Date().toLocaleString('de-DE')}</span></div>`;
+}
+function pKpis(s,hvMode){
+  const cards=[
+    ['',de(s.reports),'Untersuchungen'],
+    ['',de(s.areas),'Bereiche untersucht'],
+    [s.badAreas?'bad':'',de(s.badAreas),'Bereiche mit Überschreitung'],
+    [s.ratio>0?'bad':'',pct(s.ratio),'Überschreitungsquote'],
+    ['',de(s.objects),'Objekte'],
+    ['',de(s.hvs),'Hausverwaltungen'],
+    ['',s.legioMax==null?'–':de(s.legioMax),'höchster Legionellenwert (KBE/100 ml)'],
+    ['',de(s.badReports),'Berichte mit Befund']
+  ];
+  const use=hvMode?cards.slice(0,4):cards;
+  return `<div class="p-kpis">${use.map(([c,v,l])=>`<div class="p-kpi ${c}"><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join('')}</div>`;
+}
+function pBarTable(title,entries,unit){
+  if(!entries.length)return '';
+  const max=Math.max(...entries.map(e=>e.value),1);
+  return `<div class="p-sec"><h3>${esc(title)}</h3><table><thead><tr><th style="width:34%">${esc(unit)}</th><th class="r-num" style="width:12%">Anzahl</th><th class="r-num" style="width:12%">Überschreitungen</th><th>Verteilung</th></tr></thead><tbody>
+    ${entries.map(e=>`<tr><td>${esc(e.label)}</td><td class="r-num">${de(e.value)}</td><td class="r-num ${e.bad?'r-bad':''}">${de(e.bad||0)}</td>
+      <td><span class="p-bar"><i class="bad" style="width:${(e.bad||0)/max*100}%"></i><i style="width:${(e.value-(e.bad||0))/max*100}%"></i></span></td></tr>`).join('')}
+  </tbody></table></div>`;
+}
+function pMonths(rows){
+  const c=Array(12).fill(0),b=Array(12).fill(0);
+  for(const r of rows){const m=monthOf(r);if(m==null)continue;c[m]++;if(r.ueberschreitung)b[m]++;}
+  if(!c.some(Boolean))return '';
+  const max=Math.max(...c,1);
+  return `<div class="p-sec"><h3>Probenahmen im Jahresverlauf</h3><table><thead><tr>${MONTHS.map(m=>`<th class="r-num">${m}</th>`).join('')}</tr></thead><tbody>
+    <tr>${c.map(v=>`<td class="r-num">${v||'–'}</td>`).join('')}</tr>
+    <tr>${b.map(v=>`<td class="r-num ${v?'r-bad':''}">${v?v+' ÜS':''}</td>`).join('')}</tr>
+    <tr>${c.map(v=>`<td><span class="p-bar" style="height:22px;align-items:flex-end"><i style="width:100%;height:${v/max*100}%;align-self:flex-end"></i></span></td>`).join('')}</tr>
+  </tbody></table><div class="p-note">Obere Zeile: Anzahl Prüfberichte. Mittlere Zeile: davon mit Überschreitung.</div></div>`;
+}
+function pExceedances(rows,hvMode){
+  const bad=rows.filter(r=>r.ueberschreitung).sort((a,b)=>timeValue(a.probenahmedatum)-timeValue(b.probenahmedatum));
+  if(!bad.length)return `<div class="p-sec"><h3>Überschreitungen</h3><div class="p-note">In der ausgewerteten Auswahl liegt keine Überschreitung vor.</div></div>`;
+  const cols=hvMode
+    ? ['Probenahme','Objekt','Bereich','Untersuchungsart','Umfang','Legio. max','Nachuntersuchung']
+    : ['Bericht-Nr.','Probenahme','Hausverwaltung','Objekt','Bereich','Untersuchungsart','Umfang','Legio. max','Nachuntersuchung'];
+  return `<div class="p-sec"><h3>Überschreitungen im Detail (${bad.length})</h3>
+    <table class="t-dense"><thead><tr>${cols.map(c=>`<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>
+    ${bad.map(r=>{const f=followUp(r,reports);
+      const cells=hvMode
+        ? [dateDe(r.probenahmedatum),r.objekt,r.bereich,r.untersuchungsart,(r.umfang||[]).join(' + '),r.legionellen_max??'',f?dateDe(f.probenahmedatum)+(f.ueberschreitung?' (erneut ÜS)':' (ohne Befund)'):'offen']
+        : [r.berichtsnummer,dateDe(r.probenahmedatum),r.hausverwaltung,r.objekt,r.bereich,r.untersuchungsart,(r.umfang||[]).join(' + '),r.legionellen_max??'',f?dateDe(f.probenahmedatum)+(f.ueberschreitung?' (erneut ÜS)':' (ohne Befund)'):'offen'];
+      return `<tr>${cells.map((c,i)=>`<td class="${i===cells.length-2?'r-num r-bad':''}">${esc(c)}</td>`).join('')}</tr>`;}).join('')}
+    </tbody></table></div>`;
+}
+function pHvCompare(rows){
+  const g=groupBy(rows,r=>r.hausverwaltung||'Ohne Zuordnung');
+  const list=[...g.entries()].map(([hv,rs])=>({hv,...stats(rs)})).sort((a,b)=>b.badAreas-a.badAreas||b.areas-a.areas);
+  if(list.length<2)return '';
+  return `<div class="p-sec"><h3>Hausverwaltungen im Vergleich</h3><table class="t-dense"><thead><tr>
+    <th>Hausverwaltung</th><th class="r-num">Objekte</th><th class="r-num">Untersuchungen</th><th class="r-num">Bereiche</th><th class="r-num">überschritten</th><th class="r-num">Quote</th></tr></thead><tbody>
+    ${list.map(x=>`<tr><td>${esc(x.hv)}</td><td class="r-num">${de(x.objects)}</td><td class="r-num">${de(x.reports)}</td><td class="r-num">${de(x.areas)}</td>
+      <td class="r-num ${x.badAreas?'r-bad':''}">${de(x.badAreas)}</td><td class="r-num">${pct(x.ratio)}</td></tr>`).join('')}
+  </tbody></table></div>`;
+}
+function pAreas(rows,pageBreak){
+  const list=areaRows(rows);
+  if(!list.length)return '';
+  let html=`<div class="p-sec ${pageBreak?'p-break':''}"><h3>Untersuchte Anlagen und Bereiche (${list.length})</h3>
+    <table class="t-dense"><thead><tr><th>Objekt</th><th>Bereich</th><th class="r-num">Unt.</th><th>Untersuchungsart</th><th>Umfang</th><th class="r-num">Legio. max</th><th>letzte Probenahme</th><th>Befund</th></tr></thead><tbody>`;
+  let cur=null;
+  for(const x of list){
+    if(x.hv!==cur){cur=x.hv;html+=`<tr class="p-group"><td colspan="8">${esc(cur||'Ohne Zuordnung')}</td></tr>`;}
+    html+=`<tr><td>${esc(x.obj)}</td><td>${esc(x.area)}</td><td class="r-num">${x.n}</td><td>${esc([...x.types].join(', '))}</td>
+      <td>${esc([...x.scopes].join(' + '))}</td><td class="r-num">${x.legio==null?'':de(x.legio)}</td><td>${esc(dateDe(x.last))}</td>
+      <td class="${x.bad?'r-bad':'r-ok'}">${x.bad?x.bad+'× Überschreitung':'ohne Befund'}</td></tr>`;
+  }
+  return html+'</tbody></table></div>';
+}
+function pList(rows){
+  const sorted=[...rows].sort(comparator(sortKey));
+  return `<div class="p-sec"><h3>Prüfberichte (${sorted.length})</h3><table class="t-dense"><thead><tr>
+    <th>Bericht-Nr.</th><th>Probenahme</th><th>Hausverwaltung</th><th>Objekt</th><th>Bereich</th><th>Untersuchungsart</th><th>Umfang</th><th class="r-num">Legio.</th><th>Befund</th><th>Auftrag</th></tr></thead><tbody>
+    ${sorted.map(r=>`<tr><td>${esc(r.berichtsnummer)}</td><td>${esc(dateDe(r.probenahmedatum))}</td><td>${esc(r.hausverwaltung)}</td>
+      <td>${esc(r.objekt)}</td><td>${esc(r.bereich)}</td><td>${esc(r.untersuchungsart)}</td><td>${esc((r.umfang||[]).join(' + '))}</td>
+      <td class="r-num">${esc(r.legionellen_max??'')}</td><td class="${r.ueberschreitung?'r-bad':'r-ok'}">${esc(r.befund)}</td><td>${esc(r.auftragsnummer||'')}</td></tr>`).join('')}
+  </tbody></table></div>`;
+}
+function setPageOrientation(landscape){
+  let st=document.getElementById('pageStyle');
+  if(!st){st=document.createElement('style');st.id='pageStyle';document.head.appendChild(st);}
+  st.textContent=`@media print{@page{size:A4 ${landscape?'landscape':'portrait'};margin:10mm}}`;
+}
+function buildReport(mode){
+  const rows=filteredReports();
+  const y=currentYear();
+  const s=stats(rows);
+  const titleExtra=$('#optTitle').value.trim();
+  const withLogo=$('#optLogo').checked;
+  const filterInfo=activeFilterText();
+  const hvMode=mode==='year-hv';
+  let html='';
+  setPageOrientation(mode==='liste');
 
+  if(mode==='year-intern'||mode==='year-hv'){
+    const title=`Jahresauswertung Trinkwasseruntersuchungen${y?' '+y:''}`;
+    html+=pHead(title,titleExtra||filterInfo||'Gesamtbestand',withLogo);
+    html+=pKpis(s,hvMode);
+    if(filterInfo&&titleExtra)html+=`<div class="p-note">Auswahl: ${esc(filterInfo)}</div>`;
+
+    const typeEntries=[...groupBy(rows,r=>r.untersuchungsart||'Unbekannt').entries()]
+      .map(([label,rs])=>({label,value:new Set(rs.map(areaKey)).size,bad:new Set(rs.filter(r=>r.ueberschreitung).map(areaKey)).size}))
+      .sort((a,b)=>b.value-a.value);
+    html+=pBarTable('Untersuchte Bereiche nach Untersuchungsart',typeEntries,'Untersuchungsart');
+
+    if(!hvMode){
+      const sm=new Map();
+      for(const r of rows){const k=(r.umfang||[]).join(' + ')||'Unbekannt';if(!sm.has(k))sm.set(k,{n:0,bad:0});const x=sm.get(k);x.n++;if(r.ueberschreitung)x.bad++;}
+      html+=pBarTable('Prüfberichte nach Untersuchungsumfang',[...sm.entries()].map(([label,x])=>({label,value:x.n,bad:x.bad})).sort((a,b)=>b.value-a.value),'Umfang');
+    }
+    if($('#optMonths').checked)html+=pMonths(rows);
+    if($('#optHv').checked)html+=pHvCompare(rows);
+    if($('#optExc').checked)html+=pExceedances(rows,hvMode);
+    if($('#optAreas').checked)html+=pAreas(rows,true);
+    html+=pFoot(hvMode?'Auswertung für die Hausverwaltung':'interne Auswertung');
+  }
+  else if(mode==='anlagen'){
+    html+=pHead(`Untersuchte Anlagen und Bereiche${y?' '+y:''}`,titleExtra||filterInfo||'Gesamtbestand',withLogo);
+    html+=pKpis(s,true);
+    html+=pAreas(rows,false);
+    if($('#optExc').checked)html+=pExceedances(rows,true);
+    html+=pFoot();
+  }
+  else{
+    html+=pHead(`Prüfberichte${y?' '+y:''}`,titleExtra||filterInfo||'Gesamtbestand',withLogo);
+    html+=pList(rows);
+    html+=pFoot();
+  }
+  $('#printRoot').innerHTML=html;
+}
+function openPrintDialog(){
+  const rows=filteredReports();
+  $('#printPreviewInfo').textContent=`Aktuelle Auswahl: ${de(rows.length)} Berichte${currentYear()?', Jahr '+currentYear():', alle Jahrgänge'}${activeFilterText()?' · '+activeFilterText():''}`;
+  $('#printBackdrop').classList.add('show');
+}
+$$('#printModes .optcard').forEach(c=>c.onclick=()=>{
+  $$('#printModes .optcard').forEach(x=>x.classList.remove('sel'));
+  c.classList.add('sel');printMode=c.dataset.mode;
+});
+$('#printCancel').onclick=()=>$('#printBackdrop').classList.remove('show');
+$('#printBackdrop').onclick=e=>{if(e.target===$('#printBackdrop'))$('#printBackdrop').classList.remove('show');};
+$('#printRun').onclick=()=>{$('#printBackdrop').classList.remove('show');buildReport(printMode);setTimeout(()=>window.print(),120);};
+
+/* ================= EVENTS ================= */
+$('#btnTheme').onclick=()=>applyTheme(document.documentElement.dataset.theme==='dark'?'light':'dark');
+$('#btnImport').onclick=openImportDialog;
+$('#btnExport').onclick=downloadJson;
+$('#btnFolder').onclick=chooseFolder;$('#btnFolder2').onclick=chooseFolder;
+$('#btnPrint').onclick=openPrintDialog;
+$('#btnClear').onclick=clearData;
+$('#btnReset').onclick=resetFilters;
+$('#chkOnlyBad').onchange=()=>renderAnlagen(filteredReports());
+for(const s of ['#fType','#fScope','#fResult'])$(s).onchange=render;
+$('#fHv').onchange=()=>{refreshFilterOptions();render();};
+$('#fObj').onchange=()=>{refreshFilterOptions();render();};
+$('#fArea').onchange=render;
+$('#fSearch').oninput=render;
+$$('#reportsTable th').forEach(th=>th.onclick=()=>{const k=th.dataset.key;if(sortKey===k)sortDir*=-1;else{sortKey=k;sortDir=1;}render();});
+$$('.tab').forEach(t=>t.onclick=()=>{
+  $$('.tab').forEach(x=>x.classList.remove('active'));t.classList.add('active');
+  $$('.view').forEach(v=>v.classList.remove('active'));$('#view-'+t.dataset.view).classList.add('active');
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){['#dialogBackdrop','#importBackdrop','#printBackdrop'].forEach(s=>$(s).classList.remove('show'));}
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='p'){e.preventDefault();openPrintDialog();}
+});
+
+/* ================= INIT ================= */
 (async function init(){
+  applyTheme(document.documentElement.dataset.theme);
   try{
     await requestPersistentStorage();
     reports=(await dbGetAll(STORE_REPORTS)).map(normalizeReport);
     if(!reports.length){
-      const fallback=loadFallback();
-      if(Array.isArray(fallback)&&fallback.length){reports=fallback.map(normalizeReport);await dbReplaceReports(reports);showBanner(`${reports.length} Berichte wurden aus der lokalen Sicherung wiederhergestellt.`,'ok');}
+      const fb=loadFallback();
+      if(Array.isArray(fb)&&fb.length){reports=fb.map(normalizeReport);await dbReplaceReports(reports);showBanner(`${reports.length} Berichte wurden aus der lokalen Sicherung wiederhergestellt.`,'ok');}
     }
-    directoryHandle=await dbGet(STORE_SETTINGS,'directoryHandle');updateFolderUi();refreshAll(false);
+    directoryHandle=await dbGet(STORE_SETTINGS,'directoryHandle');
+    updateFolderUi();refreshAll(true);
     if(location.protocol==='file:'&&!reports.length)showBanner('Hinweis: Bei direkt geöffneten lokalen HTML-Dateien kann der Browser den Speicher an genau diese Datei binden. Für dauerhaft denselben Bestand den Viewer über GitHub Pages oder localhost öffnen – oder nach jedem Merge den Gesamtbestand exportieren.','warn');
-  }
-  catch(err){showBanner('Der lokale Speicher konnte nicht geöffnet werden: '+esc(err.message),'bad');}
+  }catch(err){showBanner('Der lokale Speicher konnte nicht geöffnet werden: '+esc(err.message),'bad');}
 })();
 </script>
 </body>
