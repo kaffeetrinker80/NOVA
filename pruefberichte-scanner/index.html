@@ -192,29 +192,57 @@ summary{cursor:pointer;color:var(--fg2)}
 .checkrow{display:flex;flex-wrap:wrap;gap:12px 20px;margin-top:10px;font-size:13px}
 .checkrow label{display:flex;align-items:center;gap:6px;cursor:pointer}
 
+/* ============ STARTANSICHT ============ */
+#homeZone{display:flex;align-items:center;gap:12px;border:1px solid transparent;border-radius:10px;
+  padding:4px 8px;margin:-4px -8px;cursor:pointer;background:none;color:inherit;text-align:left;transition:.15s}
+#homeZone:hover{border-color:var(--teal);background:var(--tealSoft)}
+#homeZone:hover h1{color:var(--teal)}
+#homeZone .home-hint{font-size:10.5px;color:var(--muted);opacity:0;transition:opacity .15s}
+#homeZone:hover .home-hint{opacity:1}
+
+/* ============ FOOTER ============ */
+footer{max-width:1900px;margin:26px auto 0;padding:16px 18px 30px;border-top:1px solid var(--line);
+  display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;color:var(--muted);font-size:12px}
+footer a{color:var(--teal);text-decoration:none}
+footer a:hover{text-decoration:underline}
+footer .heart{color:var(--red)}
+
+/* ============ SCROLL TO TOP ============ */
+#toTop{position:fixed;right:22px;bottom:22px;z-index:80;width:46px;height:46px;border-radius:50%;
+  border:1px solid var(--line);background:var(--panel);color:var(--fg);box-shadow:var(--shadow);
+  display:flex;align-items:center;justify-content:center;font-size:20px;line-height:1;
+  opacity:0;transform:translateY(14px);pointer-events:none;transition:opacity .18s,transform .18s,border-color .15s,background .15s}
+#toTop.show{opacity:.85;transform:none;pointer-events:auto}
+#toTop:hover{opacity:1;background:var(--teal);border-color:var(--teal);color:var(--tealFg)}
+
 @media(max-width:900px){
   .hide-mobile{display:none}
   .folder-box{min-width:100%}
   .table-wrap{max-height:none}
   select{max-width:none;flex:1}
+  #toTop{right:14px;bottom:14px;width:42px;height:42px}
 }
 
 /* ============ PRINT ============ */
 #printRoot{display:none}
 @media print{
-  @page{size:A4 portrait;margin:12mm 10mm 14mm}
+  @page{margin:12mm 10mm 14mm}
   html,body{background:#fff!important;color:#000!important}
   body>*{display:none!important}
   #printRoot{display:block!important}
   #printRoot *{color:#000}
-  .p-head{display:flex;align-items:flex-start;gap:14px;border-bottom:2px solid #16588f;padding-bottom:8px;margin-bottom:14px}
+  .p-head{display:flex;align-items:flex-start;gap:14px;border-bottom:2px solid #16588f;padding-bottom:8px;margin-bottom:14px;
+    break-inside:avoid;break-after:avoid;page-break-after:avoid}
   .p-head img{height:42px}
   .p-head .p-title{font-size:17px;font-weight:700;color:#16588f!important}
   .p-head .p-sub{font-size:11px;color:#444!important}
   .p-head .p-meta{margin-left:auto;text-align:right;font-size:10px;color:#444!important}
-  .p-sec{margin:0 0 14px;break-inside:avoid}
-  .p-sec h3{font-size:12.5px;margin:0 0 6px;padding-bottom:3px;border-bottom:1px solid #16588f;color:#16588f!important}
-  .p-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:14px}
+  .p-sec{margin:0 0 14px}
+  .p-sec h3{font-size:12.5px;margin:0 0 6px;padding-bottom:3px;border-bottom:1px solid #16588f;color:#16588f!important;
+    break-after:avoid;page-break-after:avoid}
+  #printRoot table{break-inside:auto;page-break-inside:auto}
+  #printRoot tbody{break-inside:auto}
+  .p-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:14px;break-inside:avoid;page-break-inside:avoid}
   .p-kpi{border:1px solid #b9c6d1;border-left:3px solid #16588f;border-radius:4px;padding:6px 9px}
   .p-kpi b{display:block;font-size:18px;line-height:1.2}
   .p-kpi span{font-size:9.5px;color:#444!important}
@@ -244,10 +272,13 @@ summary{cursor:pointer;color:var(--fg2)}
 
 <header>
   <div class="header-inner">
-    <img src="nova_logo_web.png" class="logo-mark" alt="NOVA" onerror="this.style.display='none'">
-    <div class="title-block">
-      <h1>Prüfberichte-Viewer <span class="badge">V 1.1.0</span></h1>
-      <span class="sub" id="headerSub">Keine Daten geladen</span>
+    <div id="homeZone" role="button" tabindex="0" title="Startansicht wiederherstellen: alle Filter zurücksetzen, Jahresauswertung, neuester Jahrgang">
+      <img src="nova_logo_web.png" class="logo-mark" alt="NOVA" onerror="this.style.display='none'">
+      <span class="title-block">
+        <h1>Prüfberichte-Viewer <span class="badge">V 1.2.0</span></h1>
+        <span class="sub" id="headerSub">Keine Daten geladen</span>
+        <span class="home-hint">Klicken für Startansicht</span>
+      </span>
     </div>
     <span class="grow"></span>
     <span class="status-dot" id="folderDot"></span><span class="sub hide-mobile" id="folderMini">Kundenordner nicht gewählt</span>
@@ -413,7 +444,9 @@ summary{cursor:pointer;color:var(--fg2)}
         <label><input type="checkbox" id="optMonths" checked> Jahresverlauf</label>
         <label><input type="checkbox" id="optHv" checked> Hausverwaltungs-Vergleich</label>
         <label><input type="checkbox" id="optAreas"> Anlagenliste anhängen</label>
+        <label><input type="checkbox" id="optLandscape"> Querformat erzwingen</label>
       </div>
+      <div class="sub" style="margin-top:6px">Ohne Haken bestimmst du die Ausrichtung wie gewohnt im Druckdialog des Browsers. Mit Haken wird Querformat fest vorgegeben und die Auswahl dort gesperrt.</div>
       <div class="subhead">Empfänger / Titelzusatz</div>
       <input type="text" id="optTitle" placeholder="z. B. Hausverwaltung Musterstadt" style="width:100%">
       <div class="divider"></div>
@@ -428,12 +461,21 @@ summary{cursor:pointer;color:var(--fg2)}
 
 <div id="globalDrop"><div class="gd-box">JSON hier ablegen<br><span class="sub">Import wird automatisch geöffnet</span></div></div>
 
+<footer class="noprint">
+  <span>Made with Love <span class="heart">&#10084;</span> &copy; &ndash; NOVA Prüfberichte-Viewer V 1.2.0</span>
+  <span class="grow"></span>
+  <span>NOVA Praxis-Hygiene GmbH &middot; Depotstr. 5 1/2 &middot; 86153 Augsburg</span>
+  <a href="mailto:cryptopower@outlook.de?subject=Feedback%20NOVA%20Pr%C3%BCfberichte-Viewer%20V%201.2.0">Feedback senden</a>
+</footer>
+
+<button id="toTop" class="noprint" title="Nach oben" aria-label="Nach oben">&#9650;</button>
+
 <div id="printRoot"></div>
 
 <script>
 'use strict';
 /* ================= KONSTANTEN & STATE ================= */
-const APP_VERSION='1.1.0';
+const APP_VERSION='1.2.0';
 const APP_DB='nova-pruefberichte-viewer';
 const DB_VERSION=2;
 const STORE_REPORTS='reports', STORE_SETTINGS='settings';
@@ -987,7 +1029,9 @@ function pList(rows){
 function setPageOrientation(landscape){
   let st=document.getElementById('pageStyle');
   if(!st){st=document.createElement('style');st.id='pageStyle';document.head.appendChild(st);}
-  st.textContent=`@media print{@page{size:A4 ${landscape?'landscape':'portrait'};margin:10mm}}`;
+  /* Nur wenn ausdrücklich gewünscht eine feste Ausrichtung setzen.
+     Sobald @page ein size enthält, sperrt Chrome die Ausrichtungsauswahl im Druckdialog. */
+  st.textContent=landscape?'@media print{@page{size:A4 landscape;margin:10mm}}':'';
 }
 function buildReport(mode){
   const all=filteredReports();
@@ -999,7 +1043,7 @@ function buildReport(mode){
   const filterInfo=activeFilterText();
   const hvMode=mode==='year-hv';
   let html='';
-  setPageOrientation(mode==='liste');
+  setPageOrientation($('#optLandscape').checked);
 
   if(mode==='year-intern'||mode==='year-hv'){
     const title=`Jahresauswertung Trinkwasseruntersuchungen${y?' '+y:''}`;
@@ -1045,6 +1089,7 @@ function openPrintDialog(){
 $$('#printModes .optcard').forEach(c=>c.onclick=()=>{
   $$('#printModes .optcard').forEach(x=>x.classList.remove('sel'));
   c.classList.add('sel');printMode=c.dataset.mode;
+  $('#optLandscape').checked=(printMode==='liste');
 });
 $('#printCancel').onclick=()=>$('#printBackdrop').classList.remove('show');
 $('#printBackdrop').onclick=e=>{if(e.target===$('#printBackdrop'))$('#printBackdrop').classList.remove('show');};
@@ -1073,6 +1118,27 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){['#dialogBackdrop','#importBackdrop','#printBackdrop'].forEach(s=>$(s).classList.remove('show'));}
   if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='p'){e.preventDefault();openPrintDialog();}
 });
+
+/* ================= STARTANSICHT ================= */
+function goHome(){
+  for(const sel of ['#fHv','#fObj','#fArea','#fType','#fScope','#fResult','#fSearch'])$(sel).value='';
+  $('#chkOnlyBad').checked=false;
+  sortKey='probenahmedatum';sortDir=-1;
+  $$('.tab').forEach(x=>x.classList.remove('active'));
+  $$('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelector('.tab[data-view="jahr"]').classList.add('active');
+  $('#view-jahr').classList.add('active');
+  ['#dialogBackdrop','#importBackdrop','#printBackdrop'].forEach(s=>$(s).classList.remove('show'));
+  refreshAll(true);
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+$('#homeZone').onclick=goHome;
+$('#homeZone').onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();goHome();}};
+
+/* ================= NACH OBEN ================= */
+const toTop=$('#toTop');
+toTop.onclick=()=>window.scrollTo({top:0,behavior:'smooth'});
+window.addEventListener('scroll',()=>{toTop.classList.toggle('show',window.scrollY>320);},{passive:true});
 
 /* ================= INIT ================= */
 (async function init(){
