@@ -169,6 +169,7 @@ export interface Pruefbericht {
   anlage_laut_bericht?: string
   auftraggeber?: string
   auftragsnummer?: string
+  auftragsnummer_quelle?: string
   probenahmedatum?: string | null
   untersuchungsart?: string
   untersuchungsart_quelle?: string
@@ -177,7 +178,8 @@ export interface Pruefbericht {
   befund?: string
   ueberschreitung: boolean
   befund_grund?: string
-  legionellen_max?: number | null
+  legionellen_max?: string | null
+  legionellen_max_num?: number | null
   pdf_dateiname?: string
   relativer_pfad?: string
   datei_hash?: string

@@ -922,3 +922,21 @@ button.danger, .danger { color: #a62424; }
 .pb-modal input { width: 100%; padding: 9px 12px; border: 1.5px solid #0e9384; border-radius: 9px; font: inherit; margin: 6px 0 14px; }
 .pb-modal-aktionen { display: flex; justify-content: flex-end; gap: 8px; }
 .pb-modal-aktionen .primary { background: #0e9384; color: #fff; border-color: #0e9384; font-weight: 700; }
+
+/* Prüfberichte-Auswertung: Balkenlisten wie im Viewer */
+.pb-chips { display: flex; gap: 7px; flex-wrap: wrap; }
+.pb-chip {
+  border: 1px solid var(--border); background: #fff; color: var(--text-muted);
+  border-radius: 999px; padding: 6px 14px; font-weight: 600; cursor: pointer; font-size: .82rem;
+}
+.pb-chip:hover { border-color: #0e9384; color: #0e9384; }
+.pb-chip.active { background: #0e9384; border-color: #0e9384; color: #fff; }
+.pb-barlist { padding: 12px 20px 16px; display: flex; flex-direction: column; gap: 7px; }
+.pb-barrow { display: grid; grid-template-columns: minmax(140px, 300px) 1fr 84px; align-items: center; gap: 10px; }
+.pb-barlabel { font-size: .82rem; color: var(--text-main); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pb-bartrack { position: relative; background: var(--surface-muted); border: 1px solid var(--border); border-radius: 7px; height: 18px; overflow: hidden; }
+.pb-barfill { position: absolute; inset: 0 auto 0 0; background: #0e9384; opacity: .85; border-radius: 6px 0 0 6px; }
+.pb-barfill.bad { background: #dc2626; opacity: .9; }
+.pb-barval { font-size: .82rem; font-weight: 700; color: var(--color-primary-dark); text-align: right; }
+.pb-barval-bad { color: #99342e; font-weight: 800; }
+.pb-auswertung-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 0 16px; }

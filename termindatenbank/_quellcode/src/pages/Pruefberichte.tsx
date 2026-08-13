@@ -9,12 +9,26 @@ import {
 import {
   dateiZugriffVerfuegbar, gespeicherterOrdner, ordnerWaehlen, ordnerVergessen, pdfOeffnen,
 } from '../lib/kundenordner'
+import Phasen from './Auswertungen'
 
 /* ---------- Hilfen ---------- */
 
 const NUMMER_RE = /^\d{2}-\d{4}$/
 
-type Unter = 'berichte' | 'abgleich' | 'import'
+/** Schreibweise vereinheitlichen: 2026-0859 und 26-859 → 26-0859 (Suffix bleibt erhalten). */
+function normAuftragsnummer(v?: string): string {
+  if (!v) return ''
+  const m = String(v).trim().match(/^(\d{2,4})-(\d{1,4})(.*)$/)
+  if (!m) return String(v).trim()
+  return m[1].slice(-2) + '-' + m[2].padStart(4, '0') + (m[3] ?? '')
+}
+/** Basisnummer JJ-NNNN für den Abgleich mit dem Auftragsbuch (ohne Suffix). */
+function basisNummer(v?: string): string {
+  const m = normAuftragsnummer(v).match(/^\d{2}-\d{4}/)
+  return m ? m[0] : ''
+}
+
+type Unter = 'berichte' | 'auswertung' | 'abgleich' | 'phasen' | 'import'
 
 interface AuftragKontext {
   auftrag: Auftrag
@@ -48,7 +62,8 @@ function ausJson(r: any): Partial<Pruefbericht> {
     bereich: r.bereich ?? undefined,
     anlage_laut_bericht: r.anlage_laut_bericht ?? undefined,
     auftraggeber: r.auftraggeber ?? undefined,
-    auftragsnummer: r.auftragsnummer ?? undefined,
+    auftragsnummer: r.auftragsnummer ? normAuftragsnummer(r.auftragsnummer) : undefined,
+    auftragsnummer_quelle: r.auftragsnummer_quelle ?? undefined,
     probenahmedatum: r.probenahmedatum || null,
     untersuchungsart: r.untersuchungsart ?? undefined,
     untersuchungsart_quelle: r.untersuchungsart_quelle ?? undefined,
@@ -57,7 +72,8 @@ function ausJson(r: any): Partial<Pruefbericht> {
     befund: r.befund ?? undefined,
     ueberschreitung: !!r.ueberschreitung,
     befund_grund: r.befund_grund ?? undefined,
-    legionellen_max: r.legionellen_max ?? null,
+    legionellen_max: r.legionellen_max == null ? null : String(r.legionellen_max),
+    legionellen_max_num: legMaxNum(r.legionellen_max),
     pdf_dateiname: r.pdf_dateiname ?? undefined,
     relativer_pfad: r.relativer_pfad ?? undefined,
     datei_hash: r.datei_hash ?? undefined,
@@ -72,6 +88,15 @@ function ausJson(r: any): Partial<Pruefbericht> {
 }
 
 const vereinigen = (a: string[] = [], b: string[] = []) => Array.from(new Set([...a, ...b]))
+
+/** "<2" → 0 (unter Bestimmungsgrenze), "1300" → 1300, sonst null. */
+function legMaxNum(v: unknown): number | null {
+  if (v == null) return null
+  const s = String(v).trim()
+  if (/^</.test(s)) return 0
+  const n = parseFloat(s.replace(',', '.'))
+  return Number.isFinite(n) ? n : null
+}
 
 /* ---------- Seite ---------- */
 
@@ -160,7 +185,7 @@ export default function Pruefberichte() {
 
   /** Berichte mit Auftragsnummer, die im Auftragsbuch nicht existiert. */
   const ohneTreffer = useMemo(() =>
-    berichte.filter(b => !b.auftrag_id && b.auftragsnummer && !auftragNachNummer.has(b.auftragsnummer)),
+    berichte.filter(b => !b.auftrag_id && b.auftragsnummer && !auftragNachNummer.has(basisNummer(b.auftragsnummer))),
   [berichte, auftragNachNummer])
 
   /** Berichte ganz ohne Auftragsnummer (Fremdberichte, Altbestand …). */
@@ -259,8 +284,8 @@ export default function Pruefberichte() {
         let auftragId: string | null = alt?.auftrag_id ?? null
         let zuordnung = alt?.zuordnung_art ?? 'keine'
         if (zuordnung !== 'manuell') {
-          const nr = j.auftragsnummer ?? ''
-          const treffer = NUMMER_RE.test(nr) ? auftragNachNummer.get(nr) : undefined
+          const nr = basisNummer(j.auftragsnummer)
+          const treffer = nr ? auftragNachNummer.get(nr) : undefined
           if (treffer) { auftragId = treffer.id; zuordnung = 'auto'; if (!alt?.auftrag_id) autoZu++ }
         }
 
@@ -310,8 +335,8 @@ export default function Pruefberichte() {
     const updates: Partial<Pruefbericht>[] = []
     for (const b of berichte) {
       if (b.auftrag_id || b.zuordnung_art === 'manuell') continue
-      const nr = b.auftragsnummer ?? ''
-      const treffer = NUMMER_RE.test(nr) ? auftragNachNummer.get(nr) : undefined
+      const nr = basisNummer(b.auftragsnummer)
+      const treffer = nr ? auftragNachNummer.get(nr) : undefined
       if (treffer) updates.push({ id: b.id, auftrag_id: treffer.id, zuordnung_art: 'auto' })
     }
     if (!updates.length) { setMeldung('Keine neuen Treffer – alles ist bereits abgeglichen.'); return }
@@ -360,11 +385,15 @@ export default function Pruefberichte() {
         <div className="pb-untertabs">
           <button className={`pb-untertab ${unter === 'berichte' ? 'active' : ''}`} onClick={() => setUnter('berichte')}>
             <i className="fas fa-file-shield" /> Berichte</button>
+          <button className={`pb-untertab ${unter === 'auswertung' ? 'active' : ''}`} onClick={() => setUnter('auswertung')}>
+            <i className="fas fa-chart-simple" /> Auswertung</button>
           <button className={`pb-untertab ${unter === 'abgleich' ? 'active' : ''}`} onClick={() => setUnter('abgleich')}>
             <i className="fas fa-code-compare" /> Abgleich
             {(fehlendeBerichte.length + ohneTreffer.length + unstimmig.length) > 0 &&
               <span className="pb-zaehler">{fehlendeBerichte.length + ohneTreffer.length + unstimmig.length}</span>}
           </button>
+          <button className={`pb-untertab ${unter === 'phasen' ? 'active' : ''}`} onClick={() => setUnter('phasen')}>
+            <i className="fas fa-diagram-project" /> Phasen</button>
           {darfSchreiben && (
             <button className={`pb-untertab ${unter === 'import' ? 'active' : ''}`} onClick={() => setUnter('import')}>
               <i className="fas fa-file-import" /> Import</button>
@@ -437,7 +466,7 @@ export default function Pruefberichte() {
                     <tr key={b.id} className={b.ueberschreitung ? 'pb-zeile-rot' : ''}>
                       <td><Nr>{b.berichtsnummer || '–'}</Nr>{(b.berichtsversion ?? 1) > 1 && <span className="pb-version">v{b.berichtsversion}</span>}</td>
                       <td>
-                        {ktx ? <><Nr>{ktx.auftrag.auftragsnummer}</Nr>
+                        {ktx ? <><span title={b.auftragsnummer_quelle ? `Quelle: ${b.auftragsnummer_quelle}` : undefined}><Nr>{ktx.auftrag.auftragsnummer}</Nr></span>
                           {b.zuordnung_art === 'manuell' && <i className="fas fa-hand pb-manuell" title="manuell zugeordnet" />}
                           {darfSchreiben && <button className="pb-btn-klein" title="Zuordnung lösen" onClick={() => zuordnungLoesen(b)}><i className="fas fa-link-slash" /></button>}
                         </> : b.auftragsnummer
@@ -579,6 +608,10 @@ export default function Pruefberichte() {
         </>
       )}
 
+      {unter === 'phasen' && <Phasen />}
+
+      {unter === 'auswertung' && <PbAuswertung berichte={berichte} />}
+
       {unter === 'import' && darfSchreiben && (
         <Abschnitt titel="Scanner-JSON importieren">
           <div className="pb-import">
@@ -620,6 +653,94 @@ export default function Pruefberichte() {
           </div>
         </div>
       )}
+    </>
+  )
+}
+
+/* ==========================================================
+   Auswertung in Viewer-Optik: Balkenlisten aus den Berichtsdaten
+   ========================================================== */
+function BalkenListe({ titel, zeilen, maxZeilen = 20 }: {
+  titel: string
+  zeilen: Array<{ label: string; wert: number; nebenwert?: number; nebenTitel?: string }>
+  maxZeilen?: number
+}) {
+  const sortiert = [...zeilen].sort((a, b) => b.wert - a.wert).slice(0, maxZeilen)
+  const max = Math.max(...sortiert.map(z => z.wert), 1)
+  return (
+    <Abschnitt titel={titel}>
+      <div className="pb-barlist">
+        {sortiert.map(z => (
+          <div key={z.label} className="pb-barrow">
+            <div className="pb-barlabel" title={z.label}>{z.label}</div>
+            <div className="pb-bartrack">
+              <div className="pb-barfill" style={{ width: `${(z.wert / max) * 100}%` }} />
+              {z.nebenwert ? <div className="pb-barfill bad" style={{ width: `${(z.nebenwert / max) * 100}%` }}
+                title={`${z.nebenTitel ?? 'davon'}: ${z.nebenwert}`} /> : null}
+            </div>
+            <div className="pb-barval">{z.wert}{z.nebenwert ? <span className="pb-barval-bad"> / {z.nebenwert}</span> : null}</div>
+          </div>
+        ))}
+        {!sortiert.length && <p className="hint">Noch keine Daten – zuerst Berichte importieren.</p>}
+      </div>
+    </Abschnitt>
+  )
+}
+
+function PbAuswertung({ berichte }: { berichte: Pruefbericht[] }) {
+  const jahre = useMemo(
+    () => Array.from(new Set(berichte.map(b => b.jahr).filter(Boolean))).sort() as number[],
+    [berichte])
+  const [jahr, setJahr] = useState('')
+  const menge = useMemo(
+    () => jahr ? berichte.filter(b => String(b.jahr) === jahr) : berichte,
+    [berichte, jahr])
+
+  const proHV = useMemo(() => {
+    const m = new Map<string, { wert: number; ueber: number }>()
+    for (const b of menge) {
+      const k = b.hausverwaltung || '(ohne Hausverwaltung)'
+      const e = m.get(k) ?? { wert: 0, ueber: 0 }
+      e.wert++; if (b.ueberschreitung) e.ueber++
+      m.set(k, e)
+    }
+    return [...m.entries()].map(([label, e]) => ({ label, wert: e.wert, nebenwert: e.ueber || undefined, nebenTitel: 'Überschreitungen' }))
+  }, [menge])
+
+  const zaehle = (fn: (b: Pruefbericht) => string | undefined, leer: string) => {
+    const m = new Map<string, number>()
+    for (const b of menge) { const k = fn(b) || leer; m.set(k, (m.get(k) ?? 0) + 1) }
+    return [...m.entries()].map(([label, wert]) => ({ label, wert }))
+  }
+
+  const ueber = menge.filter(b => b.ueberschreitung).length
+  const quote = menge.length ? ((ueber / menge.length) * 100).toFixed(1) : '0'
+
+  return (
+    <>
+      <div className="filters no-print">
+        <div className="pb-chips">
+          <button className={`pb-chip ${!jahr ? 'active' : ''}`} onClick={() => setJahr('')}>Alle Jahre</button>
+          {jahre.map(j => (
+            <button key={j} className={`pb-chip ${jahr === String(j) ? 'active' : ''}`}
+              onClick={() => setJahr(String(j))}>{j}</button>
+          ))}
+        </div>
+      </div>
+      <div className="cards">
+        <div className="card"><div className="label">Berichte{jahr ? ` ${jahr}` : ''}</div><div className="value">{menge.length}</div></div>
+        <div className="card pb-kpi-bad"><div className="label">Überschreitungen</div><div className="value">{ueber}</div></div>
+        <div className="card"><div className="label">Quote</div><div className="value">{quote}&nbsp;%</div></div>
+        <div className="card"><div className="label">Hausverwaltungen</div><div className="value">{proHV.length}</div></div>
+      </div>
+      <BalkenListe titel="Berichte je Hausverwaltung (rot = davon Überschreitungen)" zeilen={proHV} maxZeilen={25} />
+      <div className="pb-auswertung-grid">
+        <BalkenListe titel="Nach Untersuchungsart" zeilen={zaehle(b => b.untersuchungsart, 'Unbekannt')} />
+        <BalkenListe titel="Nach Umfang" zeilen={zaehle(b => umfangKurz(b.umfang), '–')} />
+        <BalkenListe titel="Nach Befund" zeilen={zaehle(b => b.ueberschreitung ? 'Überschreitung' : b.befund, 'unklar')} />
+        <BalkenListe titel="Auftragsnummer gefunden in … (Scanner v1.9.0)"
+          zeilen={zaehle(b => b.auftragsnummer ? (b.auftragsnummer_quelle || '(Quelle unbekannt, alter Scan)') : 'keine Nummer erkannt', '–')} />
+      </div>
     </>
   )
 }

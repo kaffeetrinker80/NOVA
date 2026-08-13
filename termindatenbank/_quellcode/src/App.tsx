@@ -6,7 +6,6 @@ import Planung from './pages/Planung'
 import Auftragsbuch from './pages/Auftragsbuch'
 import Pruefberichte from './pages/Pruefberichte'
 import Stammdaten from './pages/Stammdaten'
-import Auswertungen from './pages/Auswertungen'
 import System from './pages/System'
 import OnlineNutzer from './components/OnlineNutzer'
 
@@ -20,7 +19,6 @@ const NAV: [string, string, string][] = [
   ['auftragsbuch', 'Auftragsbuch', 'fa-book'],
   ['pruefberichte', 'Prüfberichte', 'fa-file-shield'],
   ['stammdaten', 'Stammdaten', 'fa-building-user'],
-  ['auswertungen', 'Auswertungen', 'fa-chart-column'],
   ['system', 'System', 'fa-gear'],
 ]
 
@@ -60,7 +58,7 @@ export default function App() {
 
   const seite = {
     planung: <Planung />, auftragsbuch: <Auftragsbuch />, pruefberichte: <Pruefberichte />,
-    stammdaten: <Stammdaten />, auswertungen: <Auswertungen />, system: <System />,
+    stammdaten: <Stammdaten />, system: <System />,
   }[route] ?? <Planung />
 
   const stand = new Date().toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' })
