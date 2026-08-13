@@ -121,6 +121,7 @@ select{min-width:145px;max-width:230px}
   border:1px solid var(--line2);color:var(--muted);font-size:9px;font-style:normal;font-weight:700;margin-left:5px;vertical-align:1px}
 .kpi:hover .def{border-color:var(--teal);color:var(--teal)}
 .kpi{cursor:help}
+.src-dot{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--teal);opacity:.5;margin-left:5px;vertical-align:middle}
 .delta.up{color:var(--redFg)}.delta.down{color:var(--greenFg)}.delta.flat{color:var(--muted)}
 
 /* ============ PANELS ============ */
@@ -911,7 +912,7 @@ function renderReports(rows){
       <td>${esc(dateDe(r.probenahmedatum))}</td><td>${esc(r.hausverwaltung)}</td><td>${esc(r.objekt)}</td><td>${esc(r.bereich)}</td>
       <td>${esc(r.untersuchungsart)}</td><td title="${esc((r.parameter||[]).join(', '))}">${esc((r.umfang||[]).join(' + '))}</td>
       <td class="num">${esc(r.legionellen_max??'')}</td><td><span class="pill ${pill}">${esc(r.befund)}</span></td>
-      <td>${esc(r.auftragsnummer||'')}</td>
+      <td${r.auftragsnummer_quelle?` title="Auftragsnummer erkannt im Feld: ${esc(r.auftragsnummer_quelle)}"`:''}>${esc(r.auftragsnummer||'')}${r.auftragsnummer_quelle?'<i class="src-dot"></i>':''}</td>
       <td class="path" title="${esc([r.pdf_dateiname,path].filter(Boolean).join('\n'))}"><button class="file-btn" data-open="${esc(r.id)}">${esc(r.pdf_dateiname||path.split('/').at(-1)||'PDF öffnen')}</button></td></tr>`;
   }).join('');
   tb.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>openPdf(b.dataset.open));
