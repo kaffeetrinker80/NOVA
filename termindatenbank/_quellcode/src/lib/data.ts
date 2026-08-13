@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
-import type { Anlage, Auftrag, Befund, Bereich, FachlicheUntersuchungsart, Kunde, Stornogrund, Termin, Untersuchungsart, Untersuchungsbewertung, Ueberschreitungsphase } from './types'
+import type { Anlage, Auftrag, Befund, Bereich, FachlicheUntersuchungsart, Kunde, PbZuordnung, Pruefbericht, Stornogrund, Termin, Untersuchungsart, Untersuchungsbewertung, Ueberschreitungsphase } from './types'
 
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined
 const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
@@ -697,5 +697,34 @@ export const db = {
     )
     if (error) throw error
     return zeilen.length
+  },
+
+  // ---------------- Prüfberichte ----------------
+  async pruefberichte(): Promise<Pruefbericht[]> {
+    if (!supabase) return []
+    return alleZeilen<Pruefbericht>('td_pruefberichte', '*', 'berichtsnummer')
+  },
+  /** Berichte in 500er-Paketen einfügen/aktualisieren (Primärschlüssel = Scanner-ID). */
+  async pruefberichteUpsert(zeilen: Partial<Pruefbericht>[]): Promise<void> {
+    if (!supabase) return
+    for (let von = 0; von < zeilen.length; von += 500) {
+      const paket = zeilen.slice(von, von + 500)
+        .map(z => ({ ...z, aktualisiert_am: new Date().toISOString() }))
+      const { error } = await supabase.from('td_pruefberichte').upsert(paket, { onConflict: 'id' })
+      if (error) throw error
+    }
+  },
+  /** Zuordnung Bericht ↔ Auftrag setzen oder lösen. */
+  async pruefberichtZuordnen(id: string, auftragId: string | null, art: PbZuordnung): Promise<void> {
+    if (!supabase) return
+    const { error } = await supabase.from('td_pruefberichte')
+      .update({ auftrag_id: auftragId, zuordnung_art: art, aktualisiert_am: new Date().toISOString() })
+      .eq('id', id)
+    if (error) throw error
+  },
+  async pruefberichtLoeschen(id: string): Promise<void> {
+    if (!supabase) return
+    const { error } = await supabase.from('td_pruefberichte').delete().eq('id', id)
+    if (error) throw error
   },
 }

@@ -4,6 +4,7 @@ import { useAuth } from './lib/auth'
 import Login from './pages/Login'
 import Planung from './pages/Planung'
 import Auftragsbuch from './pages/Auftragsbuch'
+import Pruefberichte from './pages/Pruefberichte'
 import Stammdaten from './pages/Stammdaten'
 import Auswertungen from './pages/Auswertungen'
 import System from './pages/System'
@@ -17,6 +18,7 @@ const ROLLE_LABEL: Record<string, string> = {
 const NAV: [string, string, string][] = [
   ['planung', 'Planung', 'fa-calendar-day'],
   ['auftragsbuch', 'Auftragsbuch', 'fa-book'],
+  ['pruefberichte', 'Prüfberichte', 'fa-file-shield'],
   ['stammdaten', 'Stammdaten', 'fa-building-user'],
   ['auswertungen', 'Auswertungen', 'fa-chart-column'],
   ['system', 'System', 'fa-gear'],
@@ -57,7 +59,7 @@ export default function App() {
   }
 
   const seite = {
-    planung: <Planung />, auftragsbuch: <Auftragsbuch />,
+    planung: <Planung />, auftragsbuch: <Auftragsbuch />, pruefberichte: <Pruefberichte />,
     stammdaten: <Stammdaten />, auswertungen: <Auswertungen />, system: <System />,
   }[route] ?? <Planung />
 

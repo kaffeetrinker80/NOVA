@@ -844,3 +844,81 @@ button.danger, .danger { color: #a62424; }
   color: var(--text-muted); border: none; background: none; padding: 0 0 2px; cursor: pointer;
 }
 .kpi-select:focus-visible { outline: 2px solid var(--color-primary); }
+
+/* ==========================================================
+   Prüfberichte-Modul (Optik angelehnt an den Prüfberichte-Viewer)
+   ========================================================== */
+.pb-kopf { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+.pb-untertabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.pb-untertab {
+  border: 1px solid var(--border); background: #fff; color: var(--text-muted);
+  border-radius: 9px; padding: 8px 15px; font-weight: 600; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 7px; font-size: .87rem;
+}
+.pb-untertab:hover { border-color: #14b8a6; color: #0e9384; }
+.pb-untertab.active { background: #0e9384; border-color: #0e9384; color: #fff; }
+.pb-zaehler {
+  background: #fff2d7; color: #8a5a00; border-radius: 999px; padding: 1px 8px;
+  font-size: .72rem; font-weight: 800;
+}
+.pb-untertab.active .pb-zaehler { background: rgba(255,255,255,.25); color: #fff; }
+
+.pb-ordner { display: flex; align-items: center; gap: 7px; font-size: .85rem; }
+.pb-ordner-ok { color: #236443; background: #e7f4ed; border: 1px solid #bfe3cd; border-radius: 8px; padding: 6px 11px; }
+.pb-btn-ordner {
+  border: 1.5px solid #0e9384; background: rgba(14,147,132,.08); color: #0e9384;
+  border-radius: 9px; padding: 8px 14px; font-weight: 700; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.pb-btn-ordner:hover { background: #0e9384; color: #fff; }
+.pb-btn-klein {
+  border: 1px solid var(--border); background: #fff; color: var(--text-muted);
+  border-radius: 7px; padding: 2px 7px; font-size: .74rem; cursor: pointer; margin-left: 5px;
+}
+.pb-btn-klein:hover { border-color: #0e9384; color: #0e9384; }
+
+.pb-suche { position: relative; display: flex; align-items: center; flex: 1 1 320px; min-width: 260px; }
+.pb-suche > i { position: absolute; left: 12px; color: #0e9384; font-size: .9rem; pointer-events: none; }
+.pb-suche input[type=search] {
+  width: 100%; padding: 9px 34px 9px 36px; border: 1.5px solid #0e9384; border-radius: 9px;
+  background: #fff; box-shadow: 0 0 0 3px rgba(14,147,132,.10); font: inherit;
+}
+.pb-suche input[type=search]:focus { outline: none; box-shadow: 0 0 0 4px rgba(14,147,132,.16); }
+.pb-suche-leeren {
+  position: absolute; right: 8px; border: 0; background: none; color: var(--text-muted);
+  font-size: 1rem; cursor: pointer; padding: 2px 6px; border-radius: 6px;
+}
+.pb-suche-leeren:hover { color: var(--text-main); background: var(--surface-muted); }
+
+.pb-datei {
+  border: 1px solid var(--border); background: #fff; color: #1f668e; border-radius: 8px;
+  padding: 4px 9px; cursor: pointer; font-size: .78rem; display: inline-flex; align-items: center; gap: 6px;
+  max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.pb-datei:hover { border-color: #0e9384; color: #0e9384; background: rgba(14,147,132,.06); }
+.pb-datei i { color: #c0392b; }
+
+.pb-zeile-rot td { background: var(--amp-red); }
+.pb-version { margin-left: 5px; font-size: .68rem; font-weight: 800; color: #8a5a00; background: #fff2d7; border-radius: 6px; padding: 1px 5px; }
+.pb-manuell { margin-left: 5px; color: #75428a; font-size: .75rem; }
+.pb-info { margin-left: 6px; color: var(--text-muted); cursor: help; }
+.pb-kpi-warn .value { color: #8a5a00; }
+.pb-kpi-bad .value { color: #99342e; }
+
+.pb-import { padding: 16px 20px; font-size: .88rem; }
+.pb-import ul { margin: 8px 0 14px; padding-left: 20px; }
+.pb-import li { margin-bottom: 4px; }
+.pb-dropzone {
+  border: 2px dashed #0e9384; border-radius: 12px; padding: 34px 16px; text-align: center;
+  color: var(--text-muted); cursor: pointer; background: rgba(14,147,132,.04);
+}
+.pb-dropzone:hover { background: rgba(14,147,132,.09); }
+.pb-dropzone i { font-size: 1.7rem; color: #0e9384; margin-bottom: 8px; display: block; }
+.pb-import-ok { color: #236443; background: #e7f4ed; border-radius: 8px; padding: 9px 13px; }
+.pb-import-fehler { color: #99342e; background: #fde9e7; border-radius: 8px; padding: 9px 13px; }
+
+.pb-modal { max-width: 420px; }
+.pb-modal h3 { margin: 0 0 8px; display: flex; align-items: center; gap: 8px; }
+.pb-modal input { width: 100%; padding: 9px 12px; border: 1.5px solid #0e9384; border-radius: 9px; font: inherit; margin: 6px 0 14px; }
+.pb-modal-aktionen { display: flex; justify-content: flex-end; gap: 8px; }
+.pb-modal-aktionen .primary { background: #0e9384; color: #fff; border-color: #0e9384; font-weight: 700; }

@@ -152,3 +152,57 @@ export function kundeAnzeige(k?: { name_lang?: string; name_kurz?: string }): st
 export function kundeOutlook(k?: { name_lang?: string; name_kurz?: string }): string {
   return (k?.name_kurz && k.name_kurz.trim()) ? k.name_kurz : (k?.name_lang || '')
 }
+
+/* ==========================================================
+   Prüfberichte (Import aus dem NOVA Prüfberichte-Scanner)
+   ========================================================== */
+export type PbZuordnung = 'auto' | 'manuell' | 'keine'
+export interface Pruefbericht {
+  id: string
+  labor?: string
+  berichtsnummer?: string
+  berichtsversion?: number
+  jahr?: number
+  hausverwaltung?: string
+  objekt?: string
+  bereich?: string
+  anlage_laut_bericht?: string
+  auftraggeber?: string
+  auftragsnummer?: string
+  probenahmedatum?: string | null
+  untersuchungsart?: string
+  untersuchungsart_quelle?: string
+  umfang: string[]
+  parameter: string[]
+  befund?: string
+  ueberschreitung: boolean
+  befund_grund?: string
+  legionellen_max?: number | null
+  pdf_dateiname?: string
+  relativer_pfad?: string
+  datei_hash?: string
+  dateigroesse?: number
+  datei_geaendert?: string
+  text_lesbar?: boolean
+  quellpfade: string[]
+  fundstellen?: number
+  datei_hashes: string[]
+  hat_dateivarianten: boolean
+  auftrag_id?: string | null
+  zuordnung_art: PbZuordnung
+  importiert_am?: string
+  aktualisiert_am?: string
+}
+/** Umfang-Kürzel für Anzeige, z.B. "Legio + Mibi" */
+export function umfangKurz(umfang: string[]): string {
+  const map: Record<string, string> = { Legionellen: 'Legio', Mikrobiologie: 'Mibi', Chemie: 'Chemie' }
+  const teile = (umfang || []).map(u => map[u] ?? u)
+  return teile.length ? teile.join(' + ') : '–'
+}
+/** Umfang → Untersuchungsarten des Auftragsbuchs */
+export function umfangZuArten(umfang: string[]): Untersuchungsart[] {
+  const map: Record<string, Untersuchungsart> = {
+    Legionellen: 'legionellen', Mikrobiologie: 'mibi', Chemie: 'chemie',
+  }
+  return (umfang || []).map(u => map[u]).filter(Boolean) as Untersuchungsart[]
+}
