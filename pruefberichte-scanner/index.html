@@ -319,7 +319,7 @@ footer .heart{color:var(--red)}
     <div id="homeZone" role="button" tabindex="0" title="Startansicht wiederherstellen: alle Filter zurücksetzen, Jahresauswertung, neuester Jahrgang">
       <img src="nova_logo_web.png" class="logo-mark" alt="NOVA" onerror="this.style.display='none'">
       <span class="title-block">
-        <h1>Prüfberichte-Viewer <span class="badge">V 1.2.2</span></h1>
+        <h1>Prüfberichte-Viewer <span class="badge">V 1.2.3</span></h1>
         <span class="sub" id="headerSub">Keine Daten geladen</span>
         <span class="home-hint">Klicken für Startansicht</span>
       </span>
@@ -524,7 +524,7 @@ footer .heart{color:var(--red)}
 <div id="globalDrop"><div class="gd-box">JSON hier ablegen<br><span class="sub">Import wird automatisch geöffnet</span></div></div>
 
 <footer class="noprint">
-  <span>Made with Love <span class="heart">&#10084;</span> &copy; &ndash; NOVA Prüfberichte-Viewer V 1.2.2</span>
+  <span>Made with Love <span class="heart">&#10084;</span> &copy; &ndash; NOVA Prüfberichte-Viewer V 1.2.3</span>
   <span class="grow"></span>
   <span>NOVA Praxis-Hygiene GmbH &middot; Depotstr. 5 1/2 &middot; 86153 Augsburg</span>
   <a href="mailto:cryptopower@outlook.de?subject=Feedback%20NOVA%20Pr%C3%BCfberichte-Viewer%20V%201.2.0">Feedback senden</a>
@@ -537,7 +537,7 @@ footer .heart{color:var(--red)}
 <script>
 'use strict';
 /* ================= KONSTANTEN & STATE ================= */
-const APP_VERSION='1.2.2';
+const APP_VERSION='1.2.3';
 const APP_DB='nova-pruefberichte-viewer';
 const DB_VERSION=2;
 const STORE_REPORTS='reports', STORE_SETTINGS='settings';
@@ -582,6 +582,14 @@ $('#dialogClose').onclick=()=>$('#dialogBackdrop').classList.remove('show');
 $('#dialogBackdrop').onclick=e=>{if(e.target===$('#dialogBackdrop'))$('#dialogBackdrop').classList.remove('show');};
 
 /* ================= NORMALISIERUNG & MERGE ================= */
+function canonicalSourcePath(path,hv){
+  let p=String(path||'').replace(/\\/g,'/').replace(/^\/+/, '').trim();
+  const h=String(hv||'').replace(/\\/g,'/').replace(/^\/+|\/+$/g,'').trim();
+  if(!p||!h)return p;
+  const first=p.split('/')[0];
+  if(first.localeCompare(h,'de',{sensitivity:'base'})===0)return p;
+  return `${h}/${p}`;
+}
 function normalizeReport(r){
   const out={...r};
   out.id=String(out.id||'').trim();
@@ -592,7 +600,17 @@ function normalizeReport(r){
   if(out.jahr>0&&out.jahr<100)out.jahr+=2000;
   out.umfang=Array.isArray(out.umfang)?out.umfang:(out.umfang?String(out.umfang).split('+').map(x=>x.trim()).filter(Boolean):[]);
   out.parameter=Array.isArray(out.parameter)?out.parameter:[];
-  out.quellpfade=Array.isArray(out.quellpfade)&&out.quellpfade.length?out.quellpfade:[out.relativer_pfad].filter(Boolean);
+
+  // Teilscan und Gesamtscan müssen denselben relativen Pfad ergeben. Ältere
+  // Teilscan-Exporte begannen teilweise erst beim Objektordner. Diese Pfade
+  // werden beim Laden anhand der Hausverwaltung auf die gemeinsame Basis des
+  // Kunden-Hauptordners gehoben und anschließend dedupliziert.
+  out.relativer_pfad=canonicalSourcePath(out.relativer_pfad,out.hausverwaltung);
+  const rawPaths=Array.isArray(out.quellpfade)&&out.quellpfade.length?out.quellpfade:[out.relativer_pfad].filter(Boolean);
+  out.quellpfade=[...new Set(rawPaths.map(p=>canonicalSourcePath(p,out.hausverwaltung)).filter(Boolean))];
+  if(!out.relativer_pfad&&out.quellpfade.length)out.relativer_pfad=out.quellpfade[0];
+  out.fundstellen=out.quellpfade.length||1;
+
   out.datei_hashes=Array.isArray(out.datei_hashes)?out.datei_hashes:[out.datei_hash].filter(Boolean);
   out.ueberschreitung=out.ueberschreitung===true||out.befund==='Überschreitung';
   out.berichtsversion=Number(out.berichtsversion)||0;
