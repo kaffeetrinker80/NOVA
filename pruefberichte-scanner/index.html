@@ -307,7 +307,7 @@ footer .heart{color:var(--red)}
     <div id="homeZone" role="button" tabindex="0" title="Startansicht wiederherstellen: alle Filter zurücksetzen, Jahresauswertung, neuester Jahrgang">
       <img src="nova_logo_web.png" class="logo-mark" alt="NOVA" onerror="this.style.display='none'">
       <span class="title-block">
-        <h1>Prüfberichte-Viewer <span class="badge">V 1.2.0</span></h1>
+        <h1>Prüfberichte-Viewer <span class="badge">V 1.2.1</span></h1>
         <span class="sub" id="headerSub">Keine Daten geladen</span>
         <span class="home-hint">Klicken für Startansicht</span>
       </span>
@@ -343,6 +343,14 @@ footer .heart{color:var(--red)}
     <select id="fType"><option value="">Alle Untersuchungsarten</option></select>
     <select id="fScope"><option value="">Alle Umfänge</option></select>
     <select id="fResult"><option value="">Alle Befunde</option></select>
+    <select id="fAblage">
+      <option value="">Alle Ablagen</option>
+      <option value="__auffaellig__">Nur Ablage auffällig</option>
+      <option value="OK">Ablage OK</option>
+      <option value="Prüfen">Ablage prüfen</option>
+      <option value="Abweichung">Fehlablage / Abweichung</option>
+      <option value="Nicht prüfbar">Ablage nicht prüfbar</option>
+    </select>
     <div class="searchbox">
       <span class="s-ico">&#128269;</span>
       <input type="search" id="fSearch" placeholder="Suchen: Bericht-Nr., Auftrag, Objekt, Bereich, Parameter …">
@@ -407,6 +415,7 @@ footer .heart{color:var(--red)}
             <th data-key="legionellen_max" class="num">Legio. max</th>
             <th data-key="befund">Befund</th>
             <th data-key="auftragsnummer">Auftrag</th>
+            <th data-key="ablage_status">Ablage</th>
             <th data-key="pdf_dateiname">Datei</th>
           </tr></thead>
           <tbody></tbody>
@@ -500,7 +509,7 @@ footer .heart{color:var(--red)}
 <div id="globalDrop"><div class="gd-box">JSON hier ablegen<br><span class="sub">Import wird automatisch geöffnet</span></div></div>
 
 <footer class="noprint">
-  <span>Made with Love <span class="heart">&#10084;</span> &copy; &ndash; NOVA Prüfberichte-Viewer V 1.2.0</span>
+  <span>Made with Love <span class="heart">&#10084;</span> &copy; &ndash; NOVA Prüfberichte-Viewer V 1.2.1</span>
   <span class="grow"></span>
   <span>NOVA Praxis-Hygiene GmbH &middot; Depotstr. 5 1/2 &middot; 86153 Augsburg</span>
   <a href="mailto:cryptopower@outlook.de?subject=Feedback%20NOVA%20Pr%C3%BCfberichte-Viewer%20V%201.2.0">Feedback senden</a>
@@ -513,7 +522,7 @@ footer .heart{color:var(--red)}
 <script>
 'use strict';
 /* ================= KONSTANTEN & STATE ================= */
-const APP_VERSION='1.2.0';
+const APP_VERSION='1.2.1';
 const APP_DB='nova-pruefberichte-viewer';
 const DB_VERSION=2;
 const STORE_REPORTS='reports', STORE_SETTINGS='settings';
@@ -526,6 +535,7 @@ let directoryHandle=null;
 let sortKey='probenahmedatum', sortDir=-1;
 let pendingFiles=[];
 let printMode='year-intern';
+let scanMeta=null;
 
 const $=s=>document.querySelector(s);
 const $$=s=>[...document.querySelectorAll(s)];
@@ -571,6 +581,8 @@ function normalizeReport(r){
   out.datei_hashes=Array.isArray(out.datei_hashes)?out.datei_hashes:[out.datei_hash].filter(Boolean);
   out.ueberschreitung=out.ueberschreitung===true||out.befund==='Überschreitung';
   out.berichtsversion=Number(out.berichtsversion)||0;
+  out.ablage_status=String(out.ablage_status||'Nicht prüfbar');
+  out.ablage_grund=String(out.ablage_grund||'');
   return out;
 }
 function hashSet(r){return new Set([...(r.datei_hashes||[]),r.datei_hash].filter(Boolean));}
@@ -597,14 +609,26 @@ function extractReports(payload){
   if(payload&&Array.isArray(payload.reports))return payload.reports;
   return null;
 }
+function extractScanMeta(payload){
+  if(!payload||Array.isArray(payload)||typeof payload!=='object')return null;
+  const selection=payload.selection||null, scan=payload.scan||null, source=payload.source||null;
+  if(!selection&&!scan&&!source)return null;
+  return {selection,scan,source,imported_at:new Date().toISOString()};
+}
+function scanRuleText(meta=scanMeta){
+  return meta?.selection?.summary_de||'';
+}
 async function importPayloads(sources){
-  const summary={files:0,newCount:0,updated:0,skipped:0,invalid:0,conflicts:[]};
+  const summary={files:0,newCount:0,updated:0,skipped:0,invalid:0,conflicts:[],scanMeta:null};
   const map=new Map(reports.map(r=>[r.id,r]));
   for(const src of sources){
     summary.files++;
     try{
-      const list=extractReports(JSON.parse(src.text));
+      const payload=JSON.parse(src.text);
+      const list=extractReports(payload);
       if(!list){summary.invalid++;continue;}
+      const meta=extractScanMeta(payload);
+      if(meta&&meta.selection){scanMeta=meta;summary.scanMeta=meta;}
       for(const raw of list){
         const r=normalizeReport(raw);
         if(!r.id){summary.invalid++;continue;}
@@ -618,11 +642,14 @@ async function importPayloads(sources){
   await requestPersistentStorage();
   await dbReplaceReports(reports);
   saveFallback(reports);
+  if(scanMeta)await dbPut(STORE_SETTINGS,scanMeta,'scanMeta');
   const stored=await dbGetAll(STORE_REPORTS);
   if(stored.length!==reports.length)showBanner(`Achtung: Speicherprüfung – ${stored.length} von ${reports.length} Berichten gespeichert.`,'warn');
   refreshAll(true);
   const cHtml=summary.conflicts.length?`<details style="margin-top:10px"><summary>${summary.conflicts.length} geänderte Berichte anzeigen</summary>${summary.conflicts.slice(0,80).map(c=>`<div class="conflict"><b>${esc(c.number||c.id)}</b><br><span class="muted">Version ${c.oldVersion} → ${c.newVersion}; neuer Dateiinhalt wurde übernommen beziehungsweise zusammengeführt.</span></div>`).join('')}</details>`:'';
-  showDialog('Import abgeschlossen',`<div class="import-grid"><span>Quellen</span><b>${summary.files}</b><span>Neu hinzugefügt</span><b>${summary.newCount}</b><span>Aktualisiert / neue Dateivariante</span><b>${summary.updated}</b><span>Identisch übersprungen</span><b>${summary.skipped}</b><span>Ungültige Einträge/Quellen</span><b>${summary.invalid}</b></div>${cHtml}`);
+  const m=summary.scanMeta||scanMeta;
+  const mHtml=m?.selection?`<div class="divider"></div><div class="subhead" style="margin-top:0">Scanner / Erfassungsregel</div><div class="help-def"><b>Quelle</b><span>${esc(m.source?.application||'Scanner')} ${m.source?.version?'V '+esc(m.source.version):''}</span><b>Jahrgänge</b><span>${esc((m.scan?.selected_years||[]).join(', ')||'nicht angegeben')}</span><b>Regel</b><span>${esc(scanRuleText(m)||'keine Regelmetadaten')}</span></div>`:'';
+  showDialog('Import abgeschlossen',`<div class="import-grid"><span>Quellen</span><b>${summary.files}</b><span>Neu hinzugefügt</span><b>${summary.newCount}</b><span>Aktualisiert / neue Dateivariante</span><b>${summary.updated}</b><span>Identisch übersprungen</span><b>${summary.skipped}</b><span>Ungültige Einträge/Quellen</span><b>${summary.invalid}</b></div>${mHtml}${cHtml}`);
 }
 
 /* ---- Import-Fenster mit Drag & Drop ---- */
@@ -714,9 +741,10 @@ function refreshFilterOptions(){
 }
 /* Filter ohne Jahr – Basis für Jahresvergleiche */
 function baseFiltered(){
-  const hv=$('#fHv').value,obj=$('#fObj').value,area=$('#fArea').value,type=$('#fType').value,scope=$('#fScope').value,result=$('#fResult').value,q=$('#fSearch').value.trim().toLowerCase();
+  const hv=$('#fHv').value,obj=$('#fObj').value,area=$('#fArea').value,type=$('#fType').value,scope=$('#fScope').value,result=$('#fResult').value,ablage=$('#fAblage').value,q=$('#fSearch').value.trim().toLowerCase();
   return reports.filter(r=>(!hv||r.hausverwaltung===hv)&&(!obj||r.objekt===obj)&&(!area||r.bereich===area)&&(!type||r.untersuchungsart===type)&&(!scope||(r.umfang||[]).includes(scope))&&(!result||r.befund===result)&&
-    (!q||[r.berichtsnummer,r.auftragsnummer,r.hausverwaltung,r.objekt,r.bereich,r.untersuchungsart,r.befund,r.pdf_dateiname,...(r.parameter||[])].join(' ').toLowerCase().includes(q)));
+    (!ablage||(ablage==='__auffaellig__'?r.ablage_status!=='OK':r.ablage_status===ablage))&&
+    (!q||[r.berichtsnummer,r.auftragsnummer,r.hausverwaltung,r.objekt,r.bereich,r.anlage_laut_bericht,r.untersuchungsart,r.befund,r.ablage_status,r.ablage_grund,r.pdf_dateiname,...(r.parameter||[])].join(' ').toLowerCase().includes(q)));
 }
 function filteredReports(){const y=$('#fYear').value;return baseFiltered().filter(r=>!y||String(r.jahr)===y);}
 
@@ -913,6 +941,7 @@ function renderReports(rows){
       <td>${esc(r.untersuchungsart)}</td><td title="${esc((r.parameter||[]).join(', '))}">${esc((r.umfang||[]).join(' + '))}</td>
       <td class="num">${esc(r.legionellen_max??'')}</td><td><span class="pill ${pill}">${esc(r.befund)}</span></td>
       <td${r.auftragsnummer_quelle?` title="Auftragsnummer erkannt im Feld: ${esc(r.auftragsnummer_quelle)}"`:''}>${esc(r.auftragsnummer||'')}${r.auftragsnummer_quelle?'<i class="src-dot"></i>':''}</td>
+      <td title="${esc(r.ablage_grund||'')}"><span class="pill ${r.ablage_status==='OK'?'ok':r.ablage_status==='Abweichung'?'bad':'unk'}">${esc(r.ablage_status)}</span></td>
       <td class="path" title="${esc([r.pdf_dateiname,path].filter(Boolean).join('\n'))}"><button class="file-btn" data-open="${esc(r.id)}">${esc(r.pdf_dateiname||path.split('/').at(-1)||'PDF öffnen')}</button></td></tr>`;
   }).join('');
   tb.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>openPdf(b.dataset.open));
@@ -959,7 +988,8 @@ function render(){
   renderKpis(ev,rows);renderTypeBars(ev);renderScopeBars(ev);renderMonths(ev);
   renderExceedances(ev);renderHvCompare(ev);renderStats();
   renderReports(rows);renderAnlagen(ev);
-  $('#headerSub').textContent=reports.length?`${de(reports.length)} Berichte im lokalen Bestand`:'Keine Daten geladen';
+  $('#headerSub').textContent=reports.length?`${de(reports.length)} geprüfte Prüfberichte${scanRuleText()?' · Erfassungsregel ✓':''}`:'Keine Daten geladen';
+  $('#headerSub').title=scanRuleText()||'';
   $('#btnExport').disabled=!reports.length;$('#btnClear').disabled=!reports.length;
 }
 function refreshAll(selectNewest=false){
@@ -973,6 +1003,7 @@ function exportPayload(){
   const years=unique('jahr').sort((a,b)=>a-b);
   return {schema_version:'1.0',exported_at:new Date().toISOString(),
     source:{application:'NOVA Prüfberichte-Viewer',version:APP_VERSION,root_name:directoryHandle?.name||null},
+    selection:scanMeta?.selection||null,
     scan:{selected_years:years,found_files:reports.reduce((s,r)=>s+(Number(r.fundstellen)||1),0),unique_reports:reports.length,
       duplicate_id_groups:reports.filter(r=>(r.fundstellen||1)>1).length,file_variant_groups:reports.filter(r=>r.hat_dateivarianten).length},
     merge_contract:{primary_key:'id',same_id_same_hash:'skip',same_id_new_hash_or_higher_version:'update_or_compare',unknown_report_number:'hash_fallback_id'},
@@ -981,15 +1012,15 @@ function exportPayload(){
 function downloadJson(){const blob=new Blob([JSON.stringify(exportPayload(),null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`Pruefberichte_Gesamtbestand_${new Date().toISOString().slice(0,10)}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
 async function clearData(){
   if(!confirm('Den gesamten lokal im Viewer gespeicherten Prüfberichtbestand löschen? Die Original-PDFs bleiben selbstverständlich erhalten.'))return;
-  await dbDeleteAll(STORE_REPORTS);localStorage.removeItem(FALLBACK_KEY);reports=[];refreshAll();
+  await dbDeleteAll(STORE_REPORTS);localStorage.removeItem(FALLBACK_KEY);reports=[];scanMeta=null;await dbPut(STORE_SETTINGS,null,'scanMeta');refreshAll();
   showBanner('Der lokale Viewer-Datenbestand wurde gelöscht.','ok');
 }
-function resetFilters(){for(const s of ['#fYear','#fHv','#fObj','#fArea','#fType','#fScope','#fResult','#fSearch'])$(s).value='';updateSearchBox();refreshFilterOptions();render();}
+function resetFilters(){for(const s of ['#fYear','#fHv','#fObj','#fArea','#fType','#fScope','#fResult','#fAblage','#fSearch'])$(s).value='';updateSearchBox();refreshFilterOptions();render();}
 
 /* ================= DRUCK / BERICHTE ================= */
 function activeFilterText(){
   const parts=[];
-  const map={'#fHv':'Hausverwaltung','#fObj':'Objekt','#fArea':'Bereich','#fType':'Untersuchungsart','#fScope':'Umfang','#fResult':'Befund'};
+  const map={'#fHv':'Hausverwaltung','#fObj':'Objekt','#fArea':'Bereich','#fType':'Untersuchungsart','#fScope':'Umfang','#fResult':'Befund','#fAblage':'Ablage'};
   for(const [sel,label] of Object.entries(map)){const v=$(sel).value;if(v)parts.push(`${label}: ${v}`);}
   const q=$('#fSearch').value.trim();if(q)parts.push(`Suche: ${q}`);
   return parts.join(' · ');
@@ -1091,10 +1122,10 @@ function pAreas(rows,pageBreak){
 function pList(rows){
   const sorted=[...rows].sort(comparator(sortKey));
   return `<div class="p-sec"><h3>Prüfberichte (${sorted.length})</h3><table class="t-dense"><thead><tr>
-    <th>Bericht-Nr.</th><th>Probenahme</th><th>Hausverwaltung</th><th>Objekt</th><th>Bereich</th><th>Untersuchungsart</th><th>Umfang</th><th class="r-num">Legio.</th><th>Befund</th><th>Auftrag</th></tr></thead><tbody>
+    <th>Bericht-Nr.</th><th>Probenahme</th><th>Hausverwaltung</th><th>Objekt</th><th>Bereich</th><th>Untersuchungsart</th><th>Umfang</th><th class="r-num">Legio.</th><th>Befund</th><th>Auftrag</th><th>Ablage</th></tr></thead><tbody>
     ${sorted.map(r=>`<tr><td>${esc(r.berichtsnummer)}</td><td>${esc(dateDe(r.probenahmedatum))}</td><td>${esc(r.hausverwaltung)}</td>
       <td>${esc(r.objekt)}</td><td>${esc(r.bereich)}</td><td>${esc(r.untersuchungsart)}</td><td>${esc((r.umfang||[]).join(' + '))}</td>
-      <td class="r-num">${esc(r.legionellen_max??'')}</td><td class="${r.ueberschreitung?'r-bad':'r-ok'}">${esc(r.befund)}</td><td>${esc(r.auftragsnummer||'')}</td></tr>`).join('')}
+      <td class="r-num">${esc(r.legionellen_max??'')}</td><td class="${r.ueberschreitung?'r-bad':'r-ok'}">${esc(r.befund)}</td><td>${esc(r.auftragsnummer||'')}</td><td class="${r.ablage_status==='Abweichung'?'r-bad':r.ablage_status==='OK'?'r-ok':''}">${esc(r.ablage_status||'')}</td></tr>`).join('')}
   </tbody></table></div>`;
 }
 function setPageOrientation(landscape){
@@ -1177,7 +1208,7 @@ $('#btnPrint').onclick=openPrintDialog;
 $('#btnClear').onclick=clearData;
 $('#btnReset').onclick=resetFilters;
 $('#chkOnlyBad').onchange=()=>renderAnlagen(stripIgnored(filteredReports()));
-for(const s of ['#fType','#fScope','#fResult'])$(s).onchange=render;
+for(const s of ['#fType','#fScope','#fResult','#fAblage'])$(s).onchange=render;
 $('#fHv').onchange=()=>{refreshFilterOptions();render();};
 $('#fObj').onchange=()=>{refreshFilterOptions();render();};
 $('#fArea').onchange=render;
@@ -1234,6 +1265,16 @@ function helpHtml(){return `
 </div>
 
 <div class="divider"></div>
+<div class="subhead" style="margin-top:0">Welche Dateien werden berücksichtigt?</div>
+<div class="help-def">
+  <b>Dateiname</b><span>Nur PDFs, deren Dateiname deutlich nach „Prüfbericht“ bzw. „Pruefbericht“ aussieht, werden als Kandidaten geöffnet. Kleine Tippfehler wie „Prübericht“ werden toleriert.</span>
+  <b>PDF-Inhalt</b><span>Der Inhalt muss den Dokumenttyp ausdrücklich als Prüfbericht bestätigen. Zertifikate, Aushänge und andere PDFs werden dadurch nicht als Prüfberichte übernommen.</span>
+  <b>Wasser BW</b><span>Für NOVA-Berichte muss die Kunden-Nr./Kunden-ID nach Normalisierung 1715 sein; führende Nullen werden ignoriert.</span>
+  <b>Ablagekontrolle</b><span>Ordnerbezeichnung und Objekt/Anlage aus dem Bericht werden zusätzlich verglichen. Auffällige oder falsch abgelegte Berichte können im Filter „Ablage“ gezielt angezeigt werden.</span>
+</div>
+<div class="help-note tip">${scanRuleText()?esc(scanRuleText()):'Erfassungsregel wird beim nächsten Import eines aktuellen Scanner-JSON automatisch angezeigt.'}</div>
+
+<div class="divider"></div>
 <div class="subhead" style="margin-top:0">Zur Zählweise</div>
 <div class="help-def">
   <b>Prüfberichte</b><span>${esc(DEFS.reports)}</span>
@@ -1256,7 +1297,7 @@ $('#btnHelp').onclick=()=>showDialog('Kurzanleitung – NOVA Prüfberichte-Viewe
 
 /* ================= STARTANSICHT ================= */
 function goHome(){
-  for(const sel of ['#fHv','#fObj','#fArea','#fType','#fScope','#fResult','#fSearch'])$(sel).value='';
+  for(const sel of ['#fHv','#fObj','#fArea','#fType','#fScope','#fResult','#fAblage','#fSearch'])$(sel).value='';
   $('#chkOnlyBad').checked=false;updateSearchBox();
   sortKey='probenahmedatum';sortDir=-1;
   $$('.tab').forEach(x=>x.classList.remove('active'));
@@ -1286,6 +1327,7 @@ window.addEventListener('scroll',()=>{toTop.classList.toggle('show',window.scrol
       if(Array.isArray(fb)&&fb.length){reports=fb.map(normalizeReport);await dbReplaceReports(reports);showBanner(`${reports.length} Berichte wurden aus der lokalen Sicherung wiederhergestellt.`,'ok');}
     }
     directoryHandle=await dbGet(STORE_SETTINGS,'directoryHandle');
+    scanMeta=await dbGet(STORE_SETTINGS,'scanMeta')||null;
     updateFolderUi();refreshAll(true);
     if(location.protocol==='file:'&&!reports.length)showBanner('Hinweis: Bei direkt geöffneten lokalen HTML-Dateien kann der Browser den Speicher an genau diese Datei binden. Für dauerhaft denselben Bestand den Viewer über GitHub Pages oder localhost öffnen – oder nach jedem Merge den Gesamtbestand exportieren.','warn');
   }catch(err){showBanner('Der lokale Speicher konnte nicht geöffnet werden: '+esc(err.message),'bad');}
