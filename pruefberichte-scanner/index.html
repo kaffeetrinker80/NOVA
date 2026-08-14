@@ -93,6 +93,18 @@ select{min-width:145px;max-width:230px}
 .banner{display:none;margin:0 0 12px;padding:10px 13px;border-radius:9px;border:1px solid var(--line);background:var(--panel)}
 .banner.show{display:block}
 .banner.ok{border-color:var(--green)}.banner.warn{border-color:var(--amber)}.banner.bad{border-color:var(--red)}
+.ablage-alert{display:none;margin:0 0 12px;padding:11px 13px;border:1px solid var(--red);border-radius:10px;background:var(--redSoft);align-items:center;gap:12px;flex-wrap:wrap}
+.ablage-alert.show{display:flex}
+.ablage-alert .ablage-icon{font-size:20px;line-height:1}
+.ablage-alert .ablage-text{min-width:240px;flex:1}
+.ablage-alert .ablage-text b{display:block;color:var(--redFg);font-size:13px}
+.ablage-alert .ablage-text span{display:block;color:var(--fg2);font-size:11.5px;margin-top:2px}
+.ablage-alert .btn{background:var(--panel);white-space:nowrap}
+tr.ablage-bad td{background:var(--redSoft)}
+tr.ablage-bad:hover td{background:var(--redSoft)}
+tr.ablage-check td{background:var(--amberSoft)}
+tr.ablage-check:hover td{background:var(--amberSoft)}
+.ablage-detail{display:block;margin-top:3px;font-size:10.5px;color:var(--muted);max-width:280px;white-space:normal}
 
 /* ============ TABS ============ */
 .tabs{display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--line);margin-bottom:14px}
@@ -307,7 +319,7 @@ footer .heart{color:var(--red)}
     <div id="homeZone" role="button" tabindex="0" title="Startansicht wiederherstellen: alle Filter zurücksetzen, Jahresauswertung, neuester Jahrgang">
       <img src="nova_logo_web.png" class="logo-mark" alt="NOVA" onerror="this.style.display='none'">
       <span class="title-block">
-        <h1>Prüfberichte-Viewer <span class="badge">V 1.2.1</span></h1>
+        <h1>Prüfberichte-Viewer <span class="badge">V 1.2.2</span></h1>
         <span class="sub" id="headerSub">Keine Daten geladen</span>
         <span class="home-hint">Klicken für Startansicht</span>
       </span>
@@ -336,6 +348,12 @@ footer .heart{color:var(--red)}
 
   <div class="banner" id="banner"></div>
 
+  <div class="ablage-alert noprint" id="ablageAlert">
+    <span class="ablage-icon">⚠</span>
+    <div class="ablage-text"><b id="ablageAlertTitle"></b><span id="ablageAlertSub"></span></div>
+    <button class="btn small" id="btnShowAblage">Auffällige Ablagen anzeigen</button>
+  </div>
+
   <div class="filters noprint">
     <select id="fHv"><option value="">Alle Hausverwaltungen</option></select>
     <select id="fObj"><option value="">Alle Objekte</option></select>
@@ -343,13 +361,10 @@ footer .heart{color:var(--red)}
     <select id="fType"><option value="">Alle Untersuchungsarten</option></select>
     <select id="fScope"><option value="">Alle Umfänge</option></select>
     <select id="fResult"><option value="">Alle Befunde</option></select>
-    <select id="fAblage">
+    <select id="fAblage" title="Ablageprüfung – auffällige Fälle werden zusätzlich automatisch oben angezeigt">
       <option value="">Alle Ablagen</option>
-      <option value="__auffaellig__">Nur Ablage auffällig</option>
-      <option value="OK">Ablage OK</option>
-      <option value="Prüfen">Ablage prüfen</option>
-      <option value="Abweichung">Fehlablage / Abweichung</option>
-      <option value="Nicht prüfbar">Ablage nicht prüfbar</option>
+      <option value="__auffaellig__">⚠ Nur auffällige Ablagen</option>
+      <option value="OK">✓ Nur unauffällige Ablagen</option>
     </select>
     <div class="searchbox">
       <span class="s-ico">&#128269;</span>
@@ -509,7 +524,7 @@ footer .heart{color:var(--red)}
 <div id="globalDrop"><div class="gd-box">JSON hier ablegen<br><span class="sub">Import wird automatisch geöffnet</span></div></div>
 
 <footer class="noprint">
-  <span>Made with Love <span class="heart">&#10084;</span> &copy; &ndash; NOVA Prüfberichte-Viewer V 1.2.1</span>
+  <span>Made with Love <span class="heart">&#10084;</span> &copy; &ndash; NOVA Prüfberichte-Viewer V 1.2.2</span>
   <span class="grow"></span>
   <span>NOVA Praxis-Hygiene GmbH &middot; Depotstr. 5 1/2 &middot; 86153 Augsburg</span>
   <a href="mailto:cryptopower@outlook.de?subject=Feedback%20NOVA%20Pr%C3%BCfberichte-Viewer%20V%201.2.0">Feedback senden</a>
@@ -522,7 +537,7 @@ footer .heart{color:var(--red)}
 <script>
 'use strict';
 /* ================= KONSTANTEN & STATE ================= */
-const APP_VERSION='1.2.1';
+const APP_VERSION='1.2.2';
 const APP_DB='nova-pruefberichte-viewer';
 const DB_VERSION=2;
 const STORE_REPORTS='reports', STORE_SETTINGS='settings';
@@ -743,10 +758,43 @@ function refreshFilterOptions(){
 function baseFiltered(){
   const hv=$('#fHv').value,obj=$('#fObj').value,area=$('#fArea').value,type=$('#fType').value,scope=$('#fScope').value,result=$('#fResult').value,ablage=$('#fAblage').value,q=$('#fSearch').value.trim().toLowerCase();
   return reports.filter(r=>(!hv||r.hausverwaltung===hv)&&(!obj||r.objekt===obj)&&(!area||r.bereich===area)&&(!type||r.untersuchungsart===type)&&(!scope||(r.umfang||[]).includes(scope))&&(!result||r.befund===result)&&
-    (!ablage||(ablage==='__auffaellig__'?r.ablage_status!=='OK':r.ablage_status===ablage))&&
+    (!ablage||(ablage==='__auffaellig__'?['Abweichung','Prüfen'].includes(r.ablage_status):r.ablage_status===ablage))&&
     (!q||[r.berichtsnummer,r.auftragsnummer,r.hausverwaltung,r.objekt,r.bereich,r.anlage_laut_bericht,r.untersuchungsart,r.befund,r.ablage_status,r.ablage_grund,r.pdf_dateiname,...(r.parameter||[])].join(' ').toLowerCase().includes(q)));
 }
 function filteredReports(){const y=$('#fYear').value;return baseFiltered().filter(r=>!y||String(r.jahr)===y);}
+
+function ablageProblems(){
+  return reports.filter(r=>['Abweichung','Prüfen'].includes(r.ablage_status));
+}
+function renderAblageAlert(){
+  const box=$('#ablageAlert');
+  const bad=reports.filter(r=>r.ablage_status==='Abweichung');
+  const check=reports.filter(r=>r.ablage_status==='Prüfen');
+  const total=bad.length+check.length;
+  box.classList.toggle('show',total>0);
+  if(!total)return;
+  $('#ablageAlertTitle').textContent=bad.length
+    ? `${de(bad.length)} mögliche Fehlablage${bad.length===1?'':'n'} gefunden`
+    : `${de(check.length)} Ablage${check.length===1?'':'n'} sollte${check.length===1?'':'n'} geprüft werden`;
+  const parts=[];
+  if(bad.length)parts.push(`${de(bad.length)} klare Abweichung${bad.length===1?'':'en'}`);
+  if(check.length)parts.push(`${de(check.length)} Prüffall${check.length===1?'':'fälle'}`);
+  $('#ablageAlertSub').textContent=`${parts.join(' · ')} · Klick zeigt nur diese Berichte – unabhängig von den aktuell gesetzten Filtern.`;
+}
+function showAblageProblems(){
+  for(const sel of ['#fHv','#fObj','#fArea','#fType','#fScope','#fResult','#fSearch'])$(sel).value='';
+  $('#fYear').value='';
+  $('#fAblage').value='__auffaellig__';
+  $('#chkOnlyBad').checked=false;
+  updateSearchBox();
+  refreshFilterOptions();
+  $$('.tab').forEach(x=>x.classList.remove('active'));
+  $$('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelector('.tab[data-view="berichte"]').classList.add('active');
+  $('#view-berichte').classList.add('active');
+  render();
+  $('#view-berichte').scrollIntoView({behavior:'smooth',block:'start'});
+}
 
 /* ================= STATISTIK ================= */
 /* Untersuchungsarten, die in der Auswertung nicht dargestellt werden.
@@ -936,12 +984,15 @@ function renderReports(rows){
   tb.innerHTML=rows.map(r=>{
     const pill=r.ueberschreitung?'bad':r.befund==='Ohne Befund'?'ok':'unk';
     const path=r.relativer_pfad||(r.quellpfade||[])[0]||'';
-    return `<tr><td>${esc(r.berichtsnummer)}${(r.fundstellen||1)>1?` <span class="pill info">${r.fundstellen}×</span>`:''}</td>
+    const rowClass=r.ablage_status==='Abweichung'?'ablage-bad':r.ablage_status==='Prüfen'?'ablage-check':'';
+    const ablageVergleich=(r.ablage_status==='Abweichung'||r.ablage_status==='Prüfen')
+      ? `<span class="ablage-detail">Ordner: ${esc([r.objekt,r.bereich].filter(Boolean).join(' › '))}<br>PDF: ${esc(r.anlage_laut_bericht||'keine Anlage lesbar')}</span>`:'';
+    return `<tr class="${rowClass}"><td>${esc(r.berichtsnummer)}${(r.fundstellen||1)>1?` <span class="pill info">${r.fundstellen}×</span>`:''}</td>
       <td>${esc(dateDe(r.probenahmedatum))}</td><td>${esc(r.hausverwaltung)}</td><td>${esc(r.objekt)}</td><td>${esc(r.bereich)}</td>
       <td>${esc(r.untersuchungsart)}</td><td title="${esc((r.parameter||[]).join(', '))}">${esc((r.umfang||[]).join(' + '))}</td>
       <td class="num">${esc(r.legionellen_max??'')}</td><td><span class="pill ${pill}">${esc(r.befund)}</span></td>
       <td${r.auftragsnummer_quelle?` title="Auftragsnummer erkannt im Feld: ${esc(r.auftragsnummer_quelle)}"`:''}>${esc(r.auftragsnummer||'')}${r.auftragsnummer_quelle?'<i class="src-dot"></i>':''}</td>
-      <td title="${esc(r.ablage_grund||'')}"><span class="pill ${r.ablage_status==='OK'?'ok':r.ablage_status==='Abweichung'?'bad':'unk'}">${esc(r.ablage_status)}</span></td>
+      <td title="${esc(r.ablage_grund||'')}"><span class="pill ${r.ablage_status==='OK'?'ok':r.ablage_status==='Abweichung'?'bad':'unk'}">${esc(r.ablage_status)}</span>${ablageVergleich}</td>
       <td class="path" title="${esc([r.pdf_dateiname,path].filter(Boolean).join('\n'))}"><button class="file-btn" data-open="${esc(r.id)}">${esc(r.pdf_dateiname||path.split('/').at(-1)||'PDF öffnen')}</button></td></tr>`;
   }).join('');
   tb.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>openPdf(b.dataset.open));
@@ -982,6 +1033,7 @@ function renderAnlagen(rows){
 
 /* ================= HAUPT-RENDER ================= */
 function render(){
+  renderAblageAlert();
   renderYearChips();
   const rows=filteredReports();
   const ev=stripIgnored(rows);
@@ -1207,6 +1259,7 @@ $('#btnFolder').onclick=chooseFolder;$('#btnFolder2').onclick=chooseFolder;
 $('#btnPrint').onclick=openPrintDialog;
 $('#btnClear').onclick=clearData;
 $('#btnReset').onclick=resetFilters;
+$('#btnShowAblage').onclick=showAblageProblems;
 $('#chkOnlyBad').onchange=()=>renderAnlagen(stripIgnored(filteredReports()));
 for(const s of ['#fType','#fScope','#fResult','#fAblage'])$(s).onchange=render;
 $('#fHv').onchange=()=>{refreshFilterOptions();render();};
@@ -1270,7 +1323,7 @@ function helpHtml(){return `
   <b>Dateiname</b><span>Nur PDFs, deren Dateiname deutlich nach „Prüfbericht“ bzw. „Pruefbericht“ aussieht, werden als Kandidaten geöffnet. Kleine Tippfehler wie „Prübericht“ werden toleriert.</span>
   <b>PDF-Inhalt</b><span>Der Inhalt muss den Dokumenttyp ausdrücklich als Prüfbericht bestätigen. Zertifikate, Aushänge und andere PDFs werden dadurch nicht als Prüfberichte übernommen.</span>
   <b>Wasser BW</b><span>Für NOVA-Berichte muss die Kunden-Nr./Kunden-ID nach Normalisierung 1715 sein; führende Nullen werden ignoriert.</span>
-  <b>Ablagekontrolle</b><span>Ordnerbezeichnung und Objekt/Anlage aus dem Bericht werden zusätzlich verglichen. Auffällige oder falsch abgelegte Berichte können im Filter „Ablage“ gezielt angezeigt werden.</span>
+  <b>Ablagekontrolle</b><span>Ordnerbezeichnung und Objekt/Anlage aus dem Bericht werden verglichen. Sobald eine Abweichung oder ein Prüffall vorhanden ist, erscheint oben automatisch eine Warnung. Ein Klick darauf setzt die übrigen Filter zurück und zeigt unmittelbar nur die auffälligen Berichte.</span>
 </div>
 <div class="help-note tip">${scanRuleText()?esc(scanRuleText()):'Erfassungsregel wird beim nächsten Import eines aktuellen Scanner-JSON automatisch angezeigt.'}</div>
 
