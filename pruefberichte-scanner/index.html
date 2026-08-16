@@ -132,6 +132,13 @@ tr.ablage-check:hover td{background:var(--amberSoft)}
 .kpi .def{display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;border-radius:50%;
   border:1px solid var(--line2);color:var(--muted);font-size:9px;font-style:normal;font-weight:700;margin-left:5px;vertical-align:1px}
 .kpi:hover .def{border-color:var(--teal);color:var(--teal)}
+
+.param-insight{display:none;align-items:center;gap:9px;margin:-3px 0 14px;padding:8px 11px;border:1px solid var(--line);border-radius:9px;background:var(--panel2);color:var(--fg2);font-size:12px}
+.param-insight.show{display:flex}
+.param-insight b{color:var(--fg);font-weight:650}
+.param-insight .pi-icon{color:var(--amber);font-size:15px;line-height:1}
+.param-insight .pi-action{margin-left:auto;border:0;background:none;color:var(--teal);padding:2px 4px;font-weight:650}
+.param-insight .pi-action:hover{text-decoration:underline}
 .kpi{cursor:help}
 .src-dot{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--teal);opacity:.5;margin-left:5px;vertical-align:middle}
 .delta.up{color:var(--redFg)}.delta.down{color:var(--greenFg)}.delta.flat{color:var(--muted)}
@@ -319,7 +326,7 @@ footer .heart{color:var(--red)}
     <div id="homeZone" role="button" tabindex="0" title="Startansicht wiederherstellen: alle Filter zurücksetzen, Jahresauswertung, alle Jahrgänge">
       <img src="nova_logo_web.png" class="logo-mark" alt="NOVA" onerror="this.style.display='none'">
       <span class="title-block">
-        <h1>Prüfberichte-Viewer <span class="badge">V 1.2.4</span></h1>
+        <h1>Prüfberichte-Viewer <span class="badge">V 1.2.6</span></h1>
         <span class="sub" id="headerSub">Keine Daten geladen</span>
         <span class="home-hint">Klicken für Startansicht</span>
       </span>
@@ -361,6 +368,7 @@ footer .heart{color:var(--red)}
     <select id="fType"><option value="">Alle Untersuchungsarten</option></select>
     <select id="fScope"><option value="">Alle Umfänge</option></select>
     <select id="fResult"><option value="">Alle Befunde</option></select>
+    <select id="fParam" title="Nur Prüfberichte mit einer Überschreitung dieses Parameters anzeigen"><option value="">Alle überschrittenen Parameter</option></select>
     <select id="fAblage" title="Ablageprüfung – auffällige Fälle werden zusätzlich automatisch oben angezeigt">
       <option value="">Alle Ablagen</option>
       <option value="__auffaellig__">⚠ Nur auffällige Ablagen</option>
@@ -386,6 +394,7 @@ footer .heart{color:var(--red)}
   <!-- ===================== JAHRESAUSWERTUNG ===================== -->
   <section class="view active" id="view-jahr">
     <div class="kpis" id="kpis"></div>
+    <div class="param-insight noprint" id="paramInsight"><span class="pi-icon">⚠</span><span id="paramInsightText"></span><button class="pi-action" id="paramInsightAction">anzeigen</button></div>
     <div class="grid2">
       <section class="panel">
         <div class="panel-head"><h2>Untersuchungsarten</h2><span class="hint">Bereiche untersucht / davon überschritten</span></div>
@@ -428,7 +437,7 @@ footer .heart{color:var(--red)}
             <th data-key="bereich">Bereich</th>
             <th data-key="untersuchungsart">Untersuchungsart</th>
             <th data-key="umfang">Umfang</th>
-            <th data-key="legionellen_max" class="num">Legio. max</th>
+            <th data-key="hoechste_ueberschreitung" class="num" title="Höchster Messwert einer tatsächlichen Überschreitung. Tooltip zeigt Parameter, Einheit und Grenzwert.">Höchste Überschreitung</th>
             <th data-key="befund">Befund</th>
             <th data-key="auftragsnummer">Auftrag</th>
             <th data-key="ablage_status">Ablage</th>
@@ -525,7 +534,7 @@ footer .heart{color:var(--red)}
 <div id="globalDrop"><div class="gd-box">JSON hier ablegen<br><span class="sub">Import wird automatisch geöffnet</span></div></div>
 
 <footer class="noprint">
-  <span>Made with Love <span class="heart">&#10084;</span> &copy; &ndash; NOVA Prüfberichte-Viewer V 1.2.4</span>
+  <span>Made with Love <span class="heart">&#10084;</span> &copy; &ndash; NOVA Prüfberichte-Viewer V 1.2.6</span>
   <span class="grow"></span>
   <span>NOVA Praxis-Hygiene GmbH &middot; Depotstr. 5 1/2 &middot; 86153 Augsburg</span>
   <a href="mailto:cryptopower@outlook.de?subject=Feedback%20NOVA%20Pr%C3%BCfberichte-Viewer%20V%201.2.0">Feedback senden</a>
@@ -538,7 +547,7 @@ footer .heart{color:var(--red)}
 <script>
 'use strict';
 /* ================= KONSTANTEN & STATE ================= */
-const APP_VERSION='1.2.4';
+const APP_VERSION='1.2.6';
 const APP_DB='nova-pruefberichte-viewer';
 const DB_VERSION=2;
 const STORE_REPORTS='reports', STORE_SETTINGS='settings';
@@ -617,6 +626,17 @@ function normalizeReport(r){
   out.berichtsversion=Number(out.berichtsversion)||0;
   out.ablage_status=String(out.ablage_status||'Nicht prüfbar');
   out.ablage_grund=String(out.ablage_grund||'');
+  out.ueberschreitungen=Array.isArray(out.ueberschreitungen)?out.ueberschreitungen.filter(Boolean):[];
+  /* Rückwärtskompatibilität für alte JSONs: Legionellen-Überschreitungen
+     können aus dem bisherigen Feld rekonstruiert werden. */
+  if(!out.ueberschreitungen.length&&out.ueberschreitung&&out.legionellen_max!=null){
+    const m=String(out.legionellen_max).match(/[0-9]+(?:[.,][0-9]+)?/);
+    const v=m?Number(m[0].replace(',','.')):null;
+    if(v!=null&&v>=100)out.ueberschreitungen=[{parameter:'Legionellen',gruppe:'Legionellen',wert:v,anzeigewert:String(out.legionellen_max),grenzwert:100,einheit:'KBE/100 ml'}];
+  }
+  const xs=out.ueberschreitungen.filter(x=>x&&x.wert!=null&&Number.isFinite(Number(x.wert)));
+  const top=xs.length?xs.reduce((a,b)=>Number(b.wert)>Number(a.wert)?b:a):null;
+  out.hoechste_ueberschreitung=top?Number(top.wert):null;
   return out;
 }
 function hashSet(r){return new Set([...(r.datei_hashes||[]),r.datei_hash].filter(Boolean));}
@@ -772,11 +792,14 @@ function refreshFilterOptions(){
   fillSelect($('#fType'),unique('untersuchungsart'),'Alle Untersuchungsarten');
   fillSelect($('#fScope'),unique('umfang'),'Alle Umfänge');
   fillSelect($('#fResult'),unique('befund'),'Alle Befunde');
+  const params=[...new Set(reports.flatMap(r=>(r.ueberschreitungen||[]).map(x=>x&&x.parameter).filter(Boolean)))].sort((a,b)=>String(a).localeCompare(String(b),'de',{numeric:true}));
+  fillSelect($('#fParam'),params,'Alle überschrittenen Parameter');
 }
 /* Filter ohne Jahr – Basis für Jahresvergleiche */
 function baseFiltered(){
-  const hv=$('#fHv').value,obj=$('#fObj').value,area=$('#fArea').value,type=$('#fType').value,scope=$('#fScope').value,result=$('#fResult').value,ablage=$('#fAblage').value,q=$('#fSearch').value.trim().toLowerCase();
+  const hv=$('#fHv').value,obj=$('#fObj').value,area=$('#fArea').value,type=$('#fType').value,scope=$('#fScope').value,result=$('#fResult').value,param=$('#fParam').value,ablage=$('#fAblage').value,q=$('#fSearch').value.trim().toLowerCase();
   return reports.filter(r=>(!hv||r.hausverwaltung===hv)&&(!obj||r.objekt===obj)&&(!area||r.bereich===area)&&(!type||r.untersuchungsart===type)&&(!scope||(r.umfang||[]).includes(scope))&&(!result||r.befund===result)&&
+    (!param||(r.ueberschreitungen||[]).some(x=>x&&x.parameter===param))&&
     (!ablage||(ablage==='__auffaellig__'?['Abweichung','Prüfen'].includes(r.ablage_status):r.ablage_status===ablage))&&
     (!q||[r.berichtsnummer,r.auftragsnummer,r.hausverwaltung,r.objekt,r.bereich,r.anlage_laut_bericht,r.untersuchungsart,r.befund,r.ablage_status,r.ablage_grund,r.pdf_dateiname,...(r.parameter||[])].join(' ').toLowerCase().includes(q)));
 }
@@ -801,7 +824,7 @@ function renderAblageAlert(){
   $('#ablageAlertSub').textContent=`${parts.join(' · ')} · Klick zeigt nur diese Berichte – unabhängig von den aktuell gesetzten Filtern.`;
 }
 function showAblageProblems(){
-  for(const sel of ['#fHv','#fObj','#fArea','#fType','#fScope','#fResult','#fSearch'])$(sel).value='';
+  for(const sel of ['#fHv','#fObj','#fArea','#fType','#fScope','#fResult','#fParam','#fSearch'])$(sel).value='';
   $('#fYear').value='';
   $('#fAblage').value='__auffaellig__';
   $('#chkOnlyBad').checked=false;
@@ -813,6 +836,38 @@ function showAblageProblems(){
   $('#view-berichte').classList.add('active');
   render();
   $('#view-berichte').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function parameterBaseFiltered(){
+  const cur=$('#fParam').value;
+  $('#fParam').value='';
+  const rows=filteredReports();
+  $('#fParam').value=cur;
+  return rows;
+}
+function renderParamInsight(){
+  const box=$('#paramInsight');
+  const counts=new Map();
+  for(const r of parameterBaseFiltered()){
+    const seen=new Set();
+    for(const x of (r.ueberschreitungen||[])){
+      const p=x&&x.parameter;if(!p||seen.has(p))continue;seen.add(p);counts.set(p,(counts.get(p)||0)+1);
+    }
+  }
+  const list=[...counts.entries()].sort((a,b)=>b[1]-a[1]||String(a[0]).localeCompare(String(b[0]),'de'));
+  box.classList.toggle('show',!!list.length);
+  if(!list.length)return;
+  const [name,count]=list[0],selected=$('#fParam').value;
+  if(selected){
+    const selectedCount=counts.get(selected)||0;
+    $('#paramInsightText').innerHTML=`Parameterfilter: <b>${esc(selected)}</b> · ${de(selectedCount)} Bericht${selectedCount===1?'':'e'} mit Überschreitung`;
+    $('#paramInsightAction').textContent='Filter lösen';
+    $('#paramInsightAction').onclick=()=>{$('#fParam').value='';render();};
+  }else{
+    $('#paramInsightText').innerHTML=`Häufigste Überschreitung in der Auswahl: <b>${esc(name)}</b> · ${de(count)}×`;
+    $('#paramInsightAction').textContent='anzeigen';
+    $('#paramInsightAction').onclick=()=>{$('#fParam').value=name;render();};
+  }
 }
 
 /* ================= STATISTIK ================= */
@@ -836,6 +891,9 @@ function stripIgnored(rows){return rows.filter(r=>!AUSWERTUNG_IGNORIERT.includes
 function reportKey(r){return r.id||`${r.labor||''}|${r.berichtsnummer||''}`;}
 function areaKey(r){return [r.hausverwaltung||'',r.objekt||'',r.bereich||r.objekt||''].join('|');}
 function legioNum(v){if(v==null||v==='')return null;const m=String(v).match(/[0-9]+(?:[.,][0-9]+)?/);return m?Number(m[0].replace(',','.')):null;}
+function exceedanceTop(r){const xs=(r.ueberschreitungen||[]).filter(x=>x&&x.wert!=null&&Number.isFinite(Number(x.wert)));return xs.length?xs.reduce((a,b)=>Number(b.wert)>Number(a.wert)?b:a):null;}
+function exceedanceText(r){const x=exceedanceTop(r);return x?(x.anzeigewert??String(x.wert)):'';}
+function exceedanceTooltip(r){const xs=(r.ueberschreitungen||[]);if(!xs.length)return r.ueberschreitung?'Überschreitung erkannt – Parameter nicht sicher zugeordnet':'';return xs.map(x=>{const val=x.anzeigewert??x.wert??'';const gw=x.grenzwert!=null?` · Grenzwert ${String(x.grenzwert).replace('.',',')}`:'';return `${x.parameter||'Parameter'} · ${val}${x.einheit?' '+x.einheit:''}${gw}`;}).join('\n');}
 function stats(rows){
   const areas=new Set(rows.map(areaKey));
   const bad=new Set(rows.filter(r=>r.ueberschreitung).map(areaKey));
@@ -939,11 +997,11 @@ function renderExceedances(rows){
   if(!bad.length){$('#excBody').innerHTML='<div class="empty">Keine Überschreitungen in der aktuellen Auswahl. </div>';return;}
   $('#excBody').innerHTML=`<table><thead><tr>
     <th>Bericht-Nr.</th><th>Probenahme</th><th>Hausverwaltung</th><th>Objekt</th><th>Bereich</th>
-    <th>Untersuchungsart</th><th>Umfang</th><th class="num">Legio. max</th><th>Datei</th></tr></thead><tbody>
+    <th>Untersuchungsart</th><th>Umfang</th><th class="num">Höchste Überschreitung</th><th>Datei</th></tr></thead><tbody>
     ${bad.map(r=>`<tr><td><b>${esc(r.berichtsnummer)}</b></td><td>${esc(dateDe(r.probenahmedatum))}</td>
       <td>${esc(r.hausverwaltung)}</td><td>${esc(r.objekt)}</td><td>${esc(r.bereich)}</td>
       <td>${esc(r.untersuchungsart)}</td><td title="${esc((r.parameter||[]).join(', '))}">${esc((r.umfang||[]).join(' + '))}</td>
-      <td class="num">${esc(r.legionellen_max??'')}</td>
+      <td class="num" title="${esc(exceedanceTooltip(r))}">${esc(exceedanceText(r))}</td>
       <td class="path" title="${esc([r.pdf_dateiname,r.relativer_pfad||(r.quellpfade||[])[0]||''].filter(Boolean).join('\n'))}"><button class="file-btn" data-open="${esc(r.id)}">${esc(r.pdf_dateiname||(r.relativer_pfad||'').split('/').at(-1)||'PDF öffnen')}</button></td></tr>`).join('')}
     </tbody></table>`;
   $$('#excBody [data-open]').forEach(b=>b.onclick=()=>openPdf(b.dataset.open));
@@ -990,7 +1048,7 @@ function comparator(key){
     const ea=av==null||av==='',eb=bv==null||bv==='';if(ea!==eb)return ea?1:-1;
     if(key==='probenahmedatum'||key==='datei_geaendert')return (timeValue(av)-timeValue(bv))*sortDir;
     if(key==='jahr'||key==='berichtsversion')return ((Number(av)||0)-(Number(bv)||0))*sortDir;
-    if(key==='legionellen_max'){const n=v=>legioNum(v)??Number.POSITIVE_INFINITY;return (n(av)-n(bv))*sortDir;}
+    if(key==='hoechste_ueberschreitung'){const n=v=>v==null?Number.POSITIVE_INFINITY:Number(v);return (n(av)-n(bv))*sortDir;}
     if(key==='berichtsnummer'){const nums=v=>String(v||'').match(/\d+/g)?.map(Number)||[];const aa=nums(av),bb=nums(bv),len=Math.max(aa.length,bb.length);for(let i=0;i<len;i++){const d=(aa[i]??-1)-(bb[i]??-1);if(d)return d*sortDir;}}
     if(Array.isArray(av))av=av.join(' + ');if(Array.isArray(bv))bv=bv.join(' + ');
     return String(av??'').localeCompare(String(bv??''),'de',{numeric:true,sensitivity:'base'})*sortDir;
@@ -1009,7 +1067,7 @@ function renderReports(rows){
     return `<tr class="${rowClass}"><td>${esc(r.berichtsnummer)}${(r.fundstellen||1)>1?` <span class="pill info">${r.fundstellen}×</span>`:''}</td>
       <td>${esc(dateDe(r.probenahmedatum))}</td><td>${esc(r.hausverwaltung)}</td><td>${esc(r.objekt)}</td><td>${esc(r.bereich)}</td>
       <td>${esc(r.untersuchungsart)}</td><td title="${esc((r.parameter||[]).join(', '))}">${esc((r.umfang||[]).join(' + '))}</td>
-      <td class="num">${esc(r.legionellen_max??'')}</td><td><span class="pill ${pill}">${esc(r.befund)}</span></td>
+      <td class="num" title="${esc(exceedanceTooltip(r))}">${esc(exceedanceText(r))}</td><td><span class="pill ${pill}">${esc(r.befund)}</span></td>
       <td${r.auftragsnummer_quelle?` title="Auftragsnummer erkannt im Feld: ${esc(r.auftragsnummer_quelle)}"`:''}>${esc(r.auftragsnummer||'')}${r.auftragsnummer_quelle?'<i class="src-dot"></i>':''}</td>
       <td title="${esc(r.ablage_grund||'')}"><span class="pill ${r.ablage_status==='OK'?'ok':r.ablage_status==='Abweichung'?'bad':'unk'}">${esc(r.ablage_status)}</span>${ablageVergleich}</td>
       <td class="path" title="${esc([r.pdf_dateiname,path].filter(Boolean).join('\n'))}"><button class="file-btn" data-open="${esc(r.id)}">${esc(r.pdf_dateiname||path.split('/').at(-1)||'PDF öffnen')}</button></td></tr>`;
@@ -1024,12 +1082,12 @@ function areaRows(rows){
   const m=new Map();
   for(const r of rows){
     const k=areaKey(r);
-    if(!m.has(k))m.set(k,{hv:r.hausverwaltung||'',obj:r.objekt||'',area:r.bereich||r.objekt||'',n:0,bad:0,types:new Set(),scopes:new Set(),last:'',legio:null});
+    if(!m.has(k))m.set(k,{hv:r.hausverwaltung||'',obj:r.objekt||'',area:r.bereich||r.objekt||'',n:0,bad:0,types:new Set(),scopes:new Set(),last:'',legio:null,exc:null,excReport:null});
     const x=m.get(k);x.n++;if(r.ueberschreitung)x.bad++;
     if(r.untersuchungsart)x.types.add(r.untersuchungsart);
     (r.umfang||[]).forEach(u=>x.scopes.add(u));
     if(timeValue(r.probenahmedatum)>timeValue(x.last))x.last=r.probenahmedatum||'';
-    const l=legioNum(r.legionellen_max);if(l!=null&&(x.legio==null||l>x.legio))x.legio=l;
+    const l=legioNum(r.legionellen_max);if(l!=null&&(x.legio==null||l>x.legio))x.legio=l; const ex=exceedanceTop(r);if(ex&&(x.exc==null||Number(ex.wert)>Number(x.exc.wert))){x.exc=ex;x.excReport=r;}
   }
   return [...m.values()].sort((a,b)=>a.hv.localeCompare(b.hv,'de')||a.obj.localeCompare(b.obj,'de')||a.area.localeCompare(b.area,'de'));
 }
@@ -1038,13 +1096,13 @@ function renderAnlagen(rows){
   if($('#chkOnlyBad').checked)list=list.filter(x=>x.bad>0);
   $('#anlagenHint').textContent=`${de(list.length)} Bereiche · ${de(new Set(list.map(x=>x.hv+'|'+x.obj)).size)} Objekte`;
   if(!list.length){$('#anlagenBody').innerHTML='<div class="empty">Keine Bereiche in der aktuellen Auswahl.</div>';return;}
-  let html='<table class="dense"><thead><tr><th>Objekt</th><th>Bereich</th><th class="num" title="Anzahl Prüfberichte zu diesem Bereich">Prüfber.</th><th>Untersuchungsart</th><th>Umfang</th><th class="num">Legio. max</th><th>letzte Probenahme</th><th>Befund</th></tr></thead><tbody>';
+  let html='<table class="dense"><thead><tr><th>Objekt</th><th>Bereich</th><th class="num" title="Anzahl Prüfberichte zu diesem Bereich">Prüfber.</th><th>Untersuchungsart</th><th>Umfang</th><th class="num">Höchste Überschreitung</th><th>letzte Probenahme</th><th>Befund</th></tr></thead><tbody>';
   let curHv=null;
   for(const x of list){
     if(x.hv!==curHv){curHv=x.hv;html+=`<tr><td colspan="8" style="background:var(--panel3);font-weight:700;padding:5px 8px">${esc(curHv||'Ohne Zuordnung')}</td></tr>`;}
     html+=`<tr><td>${esc(x.obj)}</td><td>${esc(x.area)}</td><td class="num">${x.n}</td>
       <td>${esc([...x.types].join(', '))}</td><td>${esc([...x.scopes].join(' + '))}</td>
-      <td class="num">${x.legio==null?'':de(x.legio)}</td><td>${esc(dateDe(x.last))}</td>
+      <td class="num" title="${esc(x.excReport?exceedanceTooltip(x.excReport):'')}">${x.exc?esc(x.exc.anzeigewert??x.exc.wert):''}</td><td>${esc(dateDe(x.last))}</td>
       <td>${x.bad?`<span class="pill bad">${x.bad}× Überschreitung</span>`:'<span class="pill ok">ohne Befund</span>'}</td></tr>`;
   }
   $('#anlagenBody').innerHTML=html+'</tbody></table>';
@@ -1056,7 +1114,7 @@ function render(){
   renderYearChips();
   const rows=filteredReports();
   const ev=stripIgnored(rows);
-  renderKpis(ev,rows);renderTypeBars(ev);renderScopeBars(ev);renderMonths(ev);
+  renderKpis(ev,rows);renderParamInsight();renderTypeBars(ev);renderScopeBars(ev);renderMonths(ev);
   renderExceedances(ev);renderHvCompare(ev);renderStats();
   renderReports(rows);renderAnlagen(ev);
   $('#headerSub').textContent=reports.length?`${de(reports.length)} geprüfte Prüfberichte${scanRuleText()?' · Erfassungsregel ✓':''}`:'Keine Daten geladen';
@@ -1086,12 +1144,12 @@ async function clearData(){
   await dbDeleteAll(STORE_REPORTS);localStorage.removeItem(FALLBACK_KEY);reports=[];scanMeta=null;await dbPut(STORE_SETTINGS,null,'scanMeta');refreshAll();
   showBanner('Der lokale Viewer-Datenbestand wurde gelöscht.','ok');
 }
-function resetFilters(){for(const s of ['#fYear','#fHv','#fObj','#fArea','#fType','#fScope','#fResult','#fAblage','#fSearch'])$(s).value='';updateSearchBox();refreshFilterOptions();render();}
+function resetFilters(){for(const s of ['#fYear','#fHv','#fObj','#fArea','#fType','#fScope','#fResult','#fParam','#fAblage','#fSearch'])$(s).value='';updateSearchBox();refreshFilterOptions();render();}
 
 /* ================= DRUCK / BERICHTE ================= */
 function activeFilterText(){
   const parts=[];
-  const map={'#fHv':'Hausverwaltung','#fObj':'Objekt','#fArea':'Bereich','#fType':'Untersuchungsart','#fScope':'Umfang','#fResult':'Befund','#fAblage':'Ablage'};
+  const map={'#fHv':'Hausverwaltung','#fObj':'Objekt','#fArea':'Bereich','#fType':'Untersuchungsart','#fScope':'Umfang','#fResult':'Befund','#fParam':'Überschrittener Parameter','#fAblage':'Ablage'};
   for(const [sel,label] of Object.entries(map)){const v=$(sel).value;if(v)parts.push(`${label}: ${v}`);}
   const q=$('#fSearch').value.trim();if(q)parts.push(`Suche: ${q}`);
   return parts.join(' · ');
@@ -1155,14 +1213,14 @@ function pExceedances(rows,hvMode){
   const bad=rows.filter(r=>r.ueberschreitung).sort((a,b)=>timeValue(a.probenahmedatum)-timeValue(b.probenahmedatum));
   if(!bad.length)return `<div class="p-sec"><h3>Überschreitungen</h3><div class="p-note">In der ausgewerteten Auswahl liegt keine Überschreitung vor.</div></div>`;
   const cols=hvMode
-    ? ['Probenahme','Objekt','Bereich','Untersuchungsart','Umfang','Legio. max']
-    : ['Bericht-Nr.','Probenahme','Hausverwaltung','Objekt','Bereich','Untersuchungsart','Umfang','Legio. max'];
+    ? ['Probenahme','Objekt','Bereich','Untersuchungsart','Umfang','Höchste Überschreitung']
+    : ['Bericht-Nr.','Probenahme','Hausverwaltung','Objekt','Bereich','Untersuchungsart','Umfang','Höchste Überschreitung'];
   return `<div class="p-sec"><h3>Überschreitungen im Detail (${bad.length})</h3>
     <table class="t-dense"><thead><tr>${cols.map(c=>`<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>
     ${bad.map(r=>{
       const cells=hvMode
-        ? [dateDe(r.probenahmedatum),r.objekt,r.bereich,r.untersuchungsart,(r.umfang||[]).join(' + '),r.legionellen_max??'']
-        : [r.berichtsnummer,dateDe(r.probenahmedatum),r.hausverwaltung,r.objekt,r.bereich,r.untersuchungsart,(r.umfang||[]).join(' + '),r.legionellen_max??''];
+        ? [dateDe(r.probenahmedatum),r.objekt,r.bereich,r.untersuchungsart,(r.umfang||[]).join(' + '),exceedanceText(r)]
+        : [r.berichtsnummer,dateDe(r.probenahmedatum),r.hausverwaltung,r.objekt,r.bereich,r.untersuchungsart,(r.umfang||[]).join(' + '),exceedanceText(r)];
       return `<tr>${cells.map((c,i)=>`<td class="${i===cells.length-1?'r-num r-bad':''}">${esc(c)}</td>`).join('')}</tr>`;}).join('')}
     </tbody></table></div>`;
 }
@@ -1180,12 +1238,12 @@ function pAreas(rows,pageBreak){
   const list=areaRows(rows);
   if(!list.length)return '';
   let html=`<div class="p-sec ${pageBreak?'p-break':''}"><h3>Untersuchte Anlagen und Bereiche (${list.length})</h3>
-    <table class="t-dense"><thead><tr><th>Objekt</th><th>Bereich</th><th class="r-num">Prüfber.</th><th>Untersuchungsart</th><th>Umfang</th><th class="r-num">Legio. max</th><th>letzte Probenahme</th><th>Befund</th></tr></thead><tbody>`;
+    <table class="t-dense"><thead><tr><th>Objekt</th><th>Bereich</th><th class="r-num">Prüfber.</th><th>Untersuchungsart</th><th>Umfang</th><th class="r-num">Höchste Überschreitung</th><th>letzte Probenahme</th><th>Befund</th></tr></thead><tbody>`;
   let cur=null;
   for(const x of list){
     if(x.hv!==cur){cur=x.hv;html+=`<tr class="p-group"><td colspan="8">${esc(cur||'Ohne Zuordnung')}</td></tr>`;}
     html+=`<tr><td>${esc(x.obj)}</td><td>${esc(x.area)}</td><td class="r-num">${x.n}</td><td>${esc([...x.types].join(', '))}</td>
-      <td>${esc([...x.scopes].join(' + '))}</td><td class="r-num">${x.legio==null?'':de(x.legio)}</td><td>${esc(dateDe(x.last))}</td>
+      <td>${esc([...x.scopes].join(' + '))}</td><td class="r-num">${x.exc?esc(x.exc.anzeigewert??x.exc.wert):''}</td><td>${esc(dateDe(x.last))}</td>
       <td class="${x.bad?'r-bad':'r-ok'}">${x.bad?x.bad+'× Überschreitung':'ohne Befund'}</td></tr>`;
   }
   return html+'</tbody></table></div>';
@@ -1193,10 +1251,10 @@ function pAreas(rows,pageBreak){
 function pList(rows){
   const sorted=[...rows].sort(comparator(sortKey));
   return `<div class="p-sec"><h3>Prüfberichte (${sorted.length})</h3><table class="t-dense"><thead><tr>
-    <th>Bericht-Nr.</th><th>Probenahme</th><th>Hausverwaltung</th><th>Objekt</th><th>Bereich</th><th>Untersuchungsart</th><th>Umfang</th><th class="r-num">Legio.</th><th>Befund</th><th>Auftrag</th><th>Ablage</th></tr></thead><tbody>
+    <th>Bericht-Nr.</th><th>Probenahme</th><th>Hausverwaltung</th><th>Objekt</th><th>Bereich</th><th>Untersuchungsart</th><th>Umfang</th><th class="r-num">Höchste Überschreitung</th><th>Befund</th><th>Auftrag</th><th>Ablage</th></tr></thead><tbody>
     ${sorted.map(r=>`<tr><td>${esc(r.berichtsnummer)}</td><td>${esc(dateDe(r.probenahmedatum))}</td><td>${esc(r.hausverwaltung)}</td>
       <td>${esc(r.objekt)}</td><td>${esc(r.bereich)}</td><td>${esc(r.untersuchungsart)}</td><td>${esc((r.umfang||[]).join(' + '))}</td>
-      <td class="r-num">${esc(r.legionellen_max??'')}</td><td class="${r.ueberschreitung?'r-bad':'r-ok'}">${esc(r.befund)}</td><td>${esc(r.auftragsnummer||'')}</td><td class="${r.ablage_status==='Abweichung'?'r-bad':r.ablage_status==='OK'?'r-ok':''}">${esc(r.ablage_status||'')}</td></tr>`).join('')}
+      <td class="r-num">${esc(exceedanceText(r))}</td><td class="${r.ueberschreitung?'r-bad':'r-ok'}">${esc(r.befund)}</td><td>${esc(r.auftragsnummer||'')}</td><td class="${r.ablage_status==='Abweichung'?'r-bad':r.ablage_status==='OK'?'r-ok':''}">${esc(r.ablage_status||'')}</td></tr>`).join('')}
   </tbody></table></div>`;
 }
 function setPageOrientation(landscape){
@@ -1280,7 +1338,7 @@ $('#btnClear').onclick=clearData;
 $('#btnReset').onclick=resetFilters;
 $('#btnShowAblage').onclick=showAblageProblems;
 $('#chkOnlyBad').onchange=()=>renderAnlagen(stripIgnored(filteredReports()));
-for(const s of ['#fType','#fScope','#fResult','#fAblage'])$(s).onchange=render;
+for(const s of ['#fType','#fScope','#fResult','#fParam','#fAblage'])$(s).onchange=render;
 $('#fHv').onchange=()=>{refreshFilterOptions();render();};
 $('#fObj').onchange=()=>{refreshFilterOptions();render();};
 $('#fArea').onchange=render;
@@ -1356,6 +1414,8 @@ function helpHtml(){return `
   <b>Objekte</b><span>${esc(DEFS.objects)}</span>
   <b>Aufträge</b><span>${esc(DEFS.orders)}</span>
   <b>Nachuntersuchungen</b><span>Bleiben im Bestand und in der Berichtsliste, werden in den Auswertungen aber nicht mitgezählt.</span>
+  <b>Höchste Überschreitung</b><span>Zeigt nur tatsächlich überschrittene Messwerte: Legionellen ab 100 KBE/100 ml; bei Mikrobiologie/Chemie die mit Warnzeichen markierte Parameterzeile. Der Tooltip nennt Parameter, Einheit und Grenzwert.</span>
+  <b>Parameterfilter</b><span>Filtert gezielt nach dem überschrittenen Parameter, etwa Coliforme Bakterien, Nickel oder Legionellen. In der Jahresauswertung zeigt eine schmale Infozeile zusätzlich den häufigsten überschrittenen Parameter der aktuellen Auswahl; ein Klick setzt den Filter.</span>
 </div>
 <div class="help-note tip">Beispiel: AWO Legau mit Altbau und Neubau, in jedem Bereich Legionellen und Mikrobiologie. Bereiche untersucht = 2. Prüfberichte = 2, wenn das Labor je Bereich einen kombinierten Bericht ausgibt, und 4, wenn es Legionellen und Mikrobiologie getrennt ausweist. Die Zahl der Termine oder Anfahrten wird bewusst nicht ausgewertet.</div>
 <div class="sub">Jede Kachel in der Jahresauswertung zeigt ihre Definition als Kurzinfo, wenn du mit der Maus darauf zeigst.</div>
@@ -1369,7 +1429,7 @@ $('#btnHelp').onclick=()=>showDialog('Kurzanleitung – NOVA Prüfberichte-Viewe
 
 /* ================= STARTANSICHT ================= */
 function goHome(){
-  for(const sel of ['#fYear','#fHv','#fObj','#fArea','#fType','#fScope','#fResult','#fAblage','#fSearch'])$(sel).value='';
+  for(const sel of ['#fYear','#fHv','#fObj','#fArea','#fType','#fScope','#fResult','#fParam','#fAblage','#fSearch'])$(sel).value='';
   $('#chkOnlyBad').checked=false;updateSearchBox();
   sortKey='probenahmedatum';sortDir=-1;
   $$('.tab').forEach(x=>x.classList.remove('active'));
