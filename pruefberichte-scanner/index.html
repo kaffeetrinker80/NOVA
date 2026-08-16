@@ -626,6 +626,10 @@ function normalizeReport(r){
   out.berichtsversion=Number(out.berichtsversion)||0;
   out.ablage_status=String(out.ablage_status||'Nicht prüfbar');
   out.ablage_grund=String(out.ablage_grund||'');
+  out.ablage_bestaetigt=out.ablage_bestaetigt===true;
+  out.ablage_bestaetigt_am=String(out.ablage_bestaetigt_am||'');
+  out.ablage_status_berechnet=String(out.ablage_status_berechnet||'');
+  out.ablage_grund_berechnet=String(out.ablage_grund_berechnet||'');
   out.ueberschreitungen=Array.isArray(out.ueberschreitungen)?out.ueberschreitungen.filter(Boolean):[];
   /* Rückwärtskompatibilität für alte JSONs: Legionellen-Überschreitungen
      können aus dem bisherigen Feld rekonstruiert werden. */
@@ -646,8 +650,14 @@ function chooseNewer(o,n){if((n.berichtsversion||0)!==(o.berichtsversion||0))ret
 function mergePair(oldR,newR){
   const oldH=hashSet(oldR),newH=hashSet(newR);
   if([...newH].some(h=>oldH.has(h))){
+    /* Gleiche physische PDF: Pfade zusammenführen, aber die neu importierten
+       Auswertungsfelder übernehmen. So können verbesserte Scanner-Versionen
+       (z. B. strukturierte Parameterüberschreitungen oder Ablagefreigaben)
+       einen bereits gespeicherten Datensatz aktualisieren. */
     const paths=mergeArrays(oldR.quellpfade,newR.quellpfade);
-    return {action:'skip',report:{...oldR,quellpfade:paths,datei_hashes:mergeArrays([...oldH],[...newH]),fundstellen:paths.length}};
+    const refreshed={...oldR,...newR,quellpfade:paths,datei_hashes:mergeArrays([...oldH],[...newH])};
+    refreshed.fundstellen=paths.length||1;
+    return {action:'update',report:normalizeReport(refreshed)};
   }
   const winner=chooseNewer(oldR,newR),loser=winner===newR?oldR:newR;
   const merged={...winner,quellpfade:mergeArrays(oldR.quellpfade,newR.quellpfade),datei_hashes:mergeArrays([...oldH],[...newH]),hat_dateivarianten:true};
@@ -800,13 +810,13 @@ function baseFiltered(){
   const hv=$('#fHv').value,obj=$('#fObj').value,area=$('#fArea').value,type=$('#fType').value,scope=$('#fScope').value,result=$('#fResult').value,param=$('#fParam').value,ablage=$('#fAblage').value,q=$('#fSearch').value.trim().toLowerCase();
   return reports.filter(r=>(!hv||r.hausverwaltung===hv)&&(!obj||r.objekt===obj)&&(!area||r.bereich===area)&&(!type||r.untersuchungsart===type)&&(!scope||(r.umfang||[]).includes(scope))&&(!result||r.befund===result)&&
     (!param||(r.ueberschreitungen||[]).some(x=>x&&x.parameter===param))&&
-    (!ablage||(ablage==='__auffaellig__'?['Abweichung','Prüfen'].includes(r.ablage_status):r.ablage_status===ablage))&&
+    (!ablage||(ablage==='__auffaellig__'?!r.ablage_bestaetigt&&['Abweichung','Prüfen'].includes(r.ablage_status):r.ablage_status===ablage))&&
     (!q||[r.berichtsnummer,r.auftragsnummer,r.hausverwaltung,r.objekt,r.bereich,r.anlage_laut_bericht,r.untersuchungsart,r.befund,r.ablage_status,r.ablage_grund,r.pdf_dateiname,...(r.parameter||[])].join(' ').toLowerCase().includes(q)));
 }
 function filteredReports(){const y=$('#fYear').value;return baseFiltered().filter(r=>!y||String(r.jahr)===y);}
 
 function ablageProblems(){
-  return reports.filter(r=>['Abweichung','Prüfen'].includes(r.ablage_status));
+  return reports.filter(r=>!r.ablage_bestaetigt&&['Abweichung','Prüfen'].includes(r.ablage_status));
 }
 function renderAblageAlert(){
   const box=$('#ablageAlert');
@@ -1062,14 +1072,14 @@ function renderReports(rows){
     const pill=r.ueberschreitung?'bad':r.befund==='Ohne Befund'?'ok':'unk';
     const path=r.relativer_pfad||(r.quellpfade||[])[0]||'';
     const rowClass=r.ablage_status==='Abweichung'?'ablage-bad':r.ablage_status==='Prüfen'?'ablage-check':'';
-    const ablageVergleich=(r.ablage_status==='Abweichung'||r.ablage_status==='Prüfen')
+    const ablageVergleich=(!r.ablage_bestaetigt&&(r.ablage_status==='Abweichung'||r.ablage_status==='Prüfen'))
       ? `<span class="ablage-detail">Ordner: ${esc([r.objekt,r.bereich].filter(Boolean).join(' › '))}<br>PDF: ${esc(r.anlage_laut_bericht||'keine Anlage lesbar')}</span>`:'';
     return `<tr class="${rowClass}"><td>${esc(r.berichtsnummer)}${(r.fundstellen||1)>1?` <span class="pill info">${r.fundstellen}×</span>`:''}</td>
       <td>${esc(dateDe(r.probenahmedatum))}</td><td>${esc(r.hausverwaltung)}</td><td>${esc(r.objekt)}</td><td>${esc(r.bereich)}</td>
       <td>${esc(r.untersuchungsart)}</td><td title="${esc((r.parameter||[]).join(', '))}">${esc((r.umfang||[]).join(' + '))}</td>
       <td class="num" title="${esc(exceedanceTooltip(r))}">${esc(exceedanceText(r))}</td><td><span class="pill ${pill}">${esc(r.befund)}</span></td>
       <td${r.auftragsnummer_quelle?` title="Auftragsnummer erkannt im Feld: ${esc(r.auftragsnummer_quelle)}"`:''}>${esc(r.auftragsnummer||'')}${r.auftragsnummer_quelle?'<i class="src-dot"></i>':''}</td>
-      <td title="${esc(r.ablage_grund||'')}"><span class="pill ${r.ablage_status==='OK'?'ok':r.ablage_status==='Abweichung'?'bad':'unk'}">${esc(r.ablage_status)}</span>${ablageVergleich}</td>
+      <td title="${esc(r.ablage_grund||'')}"><span class="pill ${(r.ablage_status==='OK'||r.ablage_bestaetigt)?'ok':r.ablage_status==='Abweichung'?'bad':'unk'}">${esc(r.ablage_bestaetigt?'OK (geprüft)':r.ablage_status)}</span>${ablageVergleich}</td>
       <td class="path" title="${esc([r.pdf_dateiname,path].filter(Boolean).join('\n'))}"><button class="file-btn" data-open="${esc(r.id)}">${esc(r.pdf_dateiname||path.split('/').at(-1)||'PDF öffnen')}</button></td></tr>`;
   }).join('');
   tb.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>openPdf(b.dataset.open));
