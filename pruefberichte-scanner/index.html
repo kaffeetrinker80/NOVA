@@ -1336,8 +1336,23 @@ $$('#printModes .optcard').forEach(c=>c.onclick=()=>{
 });
 $('#printCancel').onclick=()=>$('#printBackdrop').classList.remove('show');
 $('#printBackdrop').onclick=e=>{if(e.target===$('#printBackdrop'))$('#printBackdrop').classList.remove('show');};
-$('#printRun').onclick=()=>{$('#printBackdrop').classList.remove('show');buildReport(printMode);setTimeout(()=>window.print(),120);};
+$('#printRun').onclick=async()=>{
+  $('#printBackdrop').classList.remove('show');
+  buildReport(printMode);
 
+  const logo=$('#printRoot img[src="nova_logo.png"]');
+
+  if(logo && !logo.complete){
+    await new Promise(resolve=>{
+      const done=()=>resolve();
+      logo.addEventListener('load',done,{once:true});
+      logo.addEventListener('error',done,{once:true});
+      setTimeout(done,2000);
+    });
+  }
+
+  window.print();
+};
 /* ================= EVENTS ================= */
 $('#btnTheme').onclick=()=>applyTheme(document.documentElement.dataset.theme==='dark'?'light':'dark');
 $('#btnImport').onclick=openImportDialog;
