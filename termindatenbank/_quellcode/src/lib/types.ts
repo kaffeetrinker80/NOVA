@@ -157,6 +157,16 @@ export function kundeOutlook(k?: { name_lang?: string; name_kurz?: string }): st
    Prüfberichte (Import aus dem NOVA Prüfberichte-Scanner)
    ========================================================== */
 export type PbZuordnung = 'auto' | 'manuell' | 'keine'
+/** Einzelne Überschreitung laut Scanner (strukturiert aus dem PDF gelesen). */
+export interface PbUeberschreitung {
+  parameter: string
+  gruppe?: string
+  wert?: number
+  anzeigewert?: string
+  grenzwert?: number
+  einheit?: string
+  quelle?: string
+}
 export interface Pruefbericht {
   id: string
   labor?: string
@@ -180,6 +190,22 @@ export interface Pruefbericht {
   befund_grund?: string
   legionellen_max?: string | null
   legionellen_max_num?: number | null
+  ueberschreitungen?: PbUeberschreitung[] | null
+  /* Scanner 1.15: eindeutige Herkunfts- und Ablageprüfung */
+  kundennummer?: string
+  herkunft?: string            // "NOVA" = sicher von uns (Kundennummer im Bericht)
+  herkunft_grund?: string
+  dokumentart?: string
+  dokumentart_grund?: string
+  objekt_quelle?: string
+  datum_quelle?: string
+  auftragsnummer_hinweis?: string
+  ablage_status?: string       // "OK" | "Auffällig" | "Nicht prüfbar"
+  ablage_grund?: string
+  ablage_bestaetigt?: boolean
+  ablage_bestaetigt_am?: string | null
+  ablage_status_berechnet?: string | null
+  ablage_grund_berechnet?: string | null
   pdf_dateiname?: string
   relativer_pfad?: string
   datei_hash?: string

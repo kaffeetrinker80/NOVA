@@ -311,6 +311,18 @@ export const db = {
     return nr
   },
 
+  /** Fachliche Untersuchungsart eines Auftrags setzen (z. B. aus dem Prüfbericht abgeleitet). */
+  async auftragFachartSetzen(auftragId: string, art: FachlicheUntersuchungsart): Promise<void> {
+    if (!supabase) {
+      const a = demo.auftraege.find(x => x.id === auftragId)
+      if (a) a.fachliche_untersuchungsart = art
+      return
+    }
+    const { error } = await supabase.from('td_auftraege')
+      .update({ fachliche_untersuchungsart: art }).eq('id', auftragId)
+    if (error) throw error
+  },
+
   async unterauftragAktualisieren(id: string, patch: Partial<{
     umfang: string | null; proben_geplant: number | null; proben_ist: number | null
     status: string; ergebnis: string; notizen: string

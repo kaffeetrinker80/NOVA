@@ -17,7 +17,7 @@ const ROLLE_LABEL: Record<string, string> = {
 const NAV: [string, string, string][] = [
   ['planung', 'Planung', 'fa-calendar-day'],
   ['auftragsbuch', 'Auftragsbuch', 'fa-book'],
-  ['pruefberichte', 'Prüfberichte', 'fa-file-shield'],
+  ['pruefberichte', 'Auswertung', 'fa-chart-simple'],
   ['stammdaten', 'Stammdaten', 'fa-building-user'],
   ['system', 'System', 'fa-gear'],
 ]
