@@ -151,6 +151,10 @@ tr.ablage-check:hover td{background:var(--amberSoft)}
 .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:14px}
 
 /* ============ TABLES ============ */
+.busybar{display:none;align-items:center;gap:10px;margin:0 0 12px;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:var(--panel);font-weight:600}
+.busybar.show{display:flex}
+.busy-spin{width:15px;height:15px;border-radius:50%;border:2px solid var(--line);border-top-color:var(--teal);animation:busyspin .8s linear infinite;flex:0 0 auto}
+@keyframes busyspin{to{transform:rotate(360deg)}}
 .table-wrap{overflow:auto;max-height:58vh}
 .table-wrap.tall{max-height:none}
 table{width:100%;border-collapse:collapse}
@@ -326,7 +330,7 @@ footer .heart{color:var(--red)}
     <div id="homeZone" role="button" tabindex="0" title="Startansicht wiederherstellen: alle Filter zurücksetzen, Jahresauswertung, alle Jahrgänge">
       <img src="nova_logo_web.png" class="logo-mark" alt="NOVA" onerror="this.style.display='none'">
       <span class="title-block">
-        <h1>Prüfberichte-Viewer <span class="badge">V 1.2.7</span></h1>
+        <h1>Prüfberichte-Viewer <span class="badge">V 1.2.8</span></h1>
         <span class="sub" id="headerSub">Keine Daten geladen</span>
         <span class="home-hint">Klicken für Startansicht</span>
       </span>
@@ -344,6 +348,7 @@ footer .heart{color:var(--red)}
     <button class="btn" id="btnExport" disabled>Gesamtbestand exportieren</button>
     <button class="btn" id="btnFolder">Kundenordner wählen</button>
     <button class="btn" id="btnPrint">Bericht drucken …</button>
+    <button class="btn" id="btnReload" title="Ansicht aus dem lokalen Speicher neu aufbauen, ohne die Seite neu zu laden">⟳ Ansicht neu aufbauen</button>
     <span class="grow"></span>
     <button class="btn danger" id="btnClear" disabled>Datenbestand löschen</button>
   </div>
@@ -354,6 +359,7 @@ footer .heart{color:var(--red)}
   </div>
 
   <div class="banner" id="banner"></div>
+  <div class="busybar noprint" id="busyBar"><span class="busy-spin"></span><span id="busyText">Daten werden verarbeitet …</span></div>
 
   <div class="ablage-alert noprint" id="ablageAlert">
     <span class="ablage-icon">⚠</span>
@@ -547,7 +553,7 @@ footer .heart{color:var(--red)}
 <script>
 'use strict';
 /* ================= KONSTANTEN & STATE ================= */
-const APP_VERSION='1.2.6';
+const APP_VERSION='1.2.8';
 const APP_DB='nova-pruefberichte-viewer';
 const DB_VERSION=2;
 const STORE_REPORTS='reports', STORE_SETTINGS='settings';
@@ -580,13 +586,55 @@ async function dbGetAll(store){const db=await openDb();return new Promise((res,r
 async function dbGet(store,key){const db=await openDb();return new Promise((res,rej)=>{const r=db.transaction(store,'readonly').objectStore(store).get(key);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}
 async function dbPut(store,value,key){const db=await openDb();return new Promise((res,rej)=>{const os=db.transaction(store,'readwrite').objectStore(store);const r=key===undefined?os.put(value):os.put(value,key);r.onsuccess=()=>res();r.onerror=()=>rej(r.error);});}
 async function dbDeleteAll(store){const db=await openDb();return new Promise((res,rej)=>{const tx=db.transaction(store,'readwrite');tx.objectStore(store).clear();tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error);});}
-async function dbReplaceReports(items){const db=await openDb();return new Promise((res,rej)=>{const tx=db.transaction(STORE_REPORTS,'readwrite');const os=tx.objectStore(STORE_REPORTS);os.clear();for(const i of items)os.put(i);tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error);tx.onabort=()=>rej(tx.error||new Error('Speichervorgang abgebrochen.'));});}
+/* Ein einzelner nicht speicherbarer Datensatz darf nicht die ganze Transaktion
+   abbrechen und damit den kompletten Bestand verlieren. Fehler werden deshalb
+   pro Datensatz abgefangen und als Liste zurückgegeben. */
+async function dbReplaceReports(items){const db=await openDb();return new Promise((res,rej)=>{const tx=db.transaction(STORE_REPORTS,'readwrite');const os=tx.objectStore(STORE_REPORTS);const failed=[];os.clear();
+  for(const i of items){let rq=null;try{rq=os.put(i);}catch(e){failed.push({id:i&&i.id,error:String(e&&e.message||e)});continue;}
+    rq.onerror=ev=>{failed.push({id:i&&i.id,error:String(rq.error&&rq.error.message||'unbekannt')});ev.preventDefault();ev.stopPropagation();};}
+  tx.oncomplete=()=>res(failed);tx.onerror=()=>rej(tx.error);tx.onabort=()=>rej(tx.error||new Error('Speichervorgang abgebrochen.'));});}
+async function dbCountReports(){const db=await openDb();return new Promise((res,rej)=>{const r=db.transaction(STORE_REPORTS,'readonly').objectStore(STORE_REPORTS).count();r.onsuccess=()=>res(r.result||0);r.onerror=()=>rej(r.error);});}
 function saveFallback(items){try{const raw=JSON.stringify(items);if(raw.length<=4500000)localStorage.setItem(FALLBACK_KEY,raw);else localStorage.removeItem(FALLBACK_KEY);}catch(_){}}
 function loadFallback(){try{const raw=localStorage.getItem(FALLBACK_KEY);return raw?JSON.parse(raw):[];}catch(_){return [];}}
 async function requestPersistentStorage(){try{if(navigator.storage?.persist)await navigator.storage.persist();}catch(_){}}
 
 /* ================= UI-HELFER ================= */
 function showBanner(text,type='ok'){const b=$('#banner');b.className='banner show '+type;b.innerHTML=text;clearTimeout(showBanner.t);showBanner.t=setTimeout(()=>b.classList.remove('show'),9000);}
+
+/* ================= LADEZUSTAND / SELBSTHEILUNG ================= */
+/* Solange gearbeitet wird, ist die Ansicht bewusst nicht verlässlich. Der
+   Zustand wird angezeigt und die automatische Prüfung pausiert. */
+let busy=false;
+function setBusy(on,text='Daten werden verarbeitet …'){
+  busy=!!on;$('#busyText').textContent=text;$('#busyBar').classList.toggle('show',busy);
+  for(const sel of ['#btnImport','#btnExport','#btnClear','#btnReload'])$(sel).disabled=busy|| (sel==='#btnExport'||sel==='#btnClear'?!reports.length:false);
+}
+/* Baut den Bestand komplett aus dem lokalen Speicher neu auf. Das ist ein
+   vollwertiger Ersatz für „Seite neu laden“, ohne Filter und Ansicht zu verlieren. */
+async function reloadFromDb(info=''){
+  try{
+    const stored=(await dbGetAll(STORE_REPORTS)).map(normalizeReport);
+    reports=stored;
+    scanMeta=await dbGet(STORE_SETTINGS,'scanMeta')||scanMeta;
+    refreshAll(false);
+    if(info)showBanner(info,'ok');
+    return true;
+  }catch(err){showBanner('Der Datenbestand konnte nicht neu geladen werden: '+esc(err.message||String(err)),'bad');return false;}
+}
+/* Vergleicht regelmäßig die Anzeige mit dem tatsächlichen Speicherstand.
+   Weicht sie ab (zweites Fenster, abgebrochener Import, Renderfehler),
+   wird im Hintergrund automatisch neu aufgebaut. */
+let lastAutoHeal=0;
+async function checkConsistency(){
+  if(busy||document.hidden)return;
+  try{
+    const n=await dbCountReports();
+    if(n===reports.length)return;
+    if(Date.now()-lastAutoHeal<4000)return;
+    lastAutoHeal=Date.now();
+    await reloadFromDb(`Die Ansicht war nicht mehr aktuell und wurde neu aufgebaut: ${de(n)} Berichte im lokalen Speicher.`);
+  }catch(_){}
+}
 function showDialog(title,html){$('#dialogTitle').textContent=title;$('#dialogBody').innerHTML=html;$('#dialogBackdrop').classList.add('show');}
 $('#dialogClose').onclick=()=>$('#dialogBackdrop').classList.remove('show');
 $('#dialogBackdrop').onclick=e=>{if(e.target===$('#dialogBackdrop'))$('#dialogBackdrop').classList.remove('show');};
@@ -682,8 +730,24 @@ function extractScanMeta(payload){
 function scanRuleText(meta=scanMeta){
   return meta?.selection?.summary_de||'';
 }
+let importing=false;
 async function importPayloads(sources){
+  if(importing){showBanner('Es läuft bereits ein Import. Bitte warten, bis er abgeschlossen ist.','warn');return;}
+  importing=true;
+  setBusy(true,'Import läuft – bitte nichts anderes anklicken …');
+  try{
+    await runImport(sources);
+  }catch(err){
+    showBanner('Der Import ist fehlgeschlagen: '+esc(err&&err.message||String(err))+' Der zuletzt gespeicherte Bestand bleibt erhalten.','bad');
+    await reloadFromDb();
+  }finally{
+    importing=false;setBusy(false);
+  }
+}
+async function runImport(sources){
   const summary={files:0,newCount:0,updated:0,skipped:0,invalid:0,conflicts:[],scanMeta:null};
+  /* Auf einer Kopie arbeiten: schlägt das Speichern fehl, bleibt der bisherige
+     Bestand im Fenster unverändert stehen statt halb ersetzt. */
   const map=new Map(reports.map(r=>[r.id,r]));
   for(const src of sources){
     summary.files++;
@@ -702,14 +766,31 @@ async function importPayloads(sources){
       }
     }catch(_){summary.invalid++;}
   }
-  reports=[...map.values()];
+  const merged=[...map.values()];
+  setBusy(true,`Import läuft – ${de(merged.length)} Berichte werden gespeichert …`);
   await requestPersistentStorage();
-  await dbReplaceReports(reports);
-  saveFallback(reports);
+  let failed=await dbReplaceReports(merged);
+  saveFallback(merged);
   if(scanMeta)await dbPut(STORE_SETTINGS,scanMeta,'scanMeta');
-  const stored=await dbGetAll(STORE_REPORTS);
-  if(stored.length!==reports.length)showBanner(`Achtung: Speicherprüfung – ${stored.length} von ${reports.length} Berichten gespeichert.`,'warn');
-  refreshAll(false);
+
+  /* Speicherprüfung mit einem Wiederholungsversuch. Erst danach wird die
+     Ansicht aus dem tatsächlichen Speicherstand aufgebaut – angezeigt wird
+     also immer nur das, was wirklich gespeichert ist. */
+  setBusy(true,'Speicherstand wird geprüft …');
+  let stored=await dbCountReports();
+  if(stored!==merged.length){
+    setBusy(true,'Speichern wird wiederholt …');
+    try{failed=await dbReplaceReports(merged);stored=await dbCountReports();}catch(_){}
+  }
+  await reloadFromDb();
+  announceChange();
+  if(stored!==merged.length){
+    showBanner(`Achtung: Es wurden ${de(stored)} von ${de(merged.length)} Berichten gespeichert.`
+      +(failed.length?` ${de(failed.length)} Datensätze wurden abgewiesen.`:'')
+      +' Angezeigt wird der tatsächlich gespeicherte Bestand. Bitte den Import wiederholen.','warn');
+  }else if(failed.length){
+    showBanner(`${de(failed.length)} Datensätze konnten nicht gespeichert werden und fehlen im Bestand.`,'warn');
+  }
   const cHtml=summary.conflicts.length?`<details style="margin-top:10px"><summary>${summary.conflicts.length} geänderte Berichte anzeigen</summary>${summary.conflicts.slice(0,80).map(c=>`<div class="conflict"><b>${esc(c.number||c.id)}</b><br><span class="muted">Version ${c.oldVersion} → ${c.newVersion}; neuer Dateiinhalt wurde übernommen beziehungsweise zusammengeführt.</span></div>`).join('')}</details>`:'';
   const m=summary.scanMeta||scanMeta;
   const mHtml=m?.selection?`<div class="divider"></div><div class="subhead" style="margin-top:0">Scanner / Erfassungsregel</div><div class="help-def"><b>Quelle</b><span>${esc(m.source?.application||'Scanner')} ${m.source?.version?'V '+esc(m.source.version):''}</span><b>Jahrgänge</b><span>${esc((m.scan?.selected_years||[]).join(', ')||'nicht angegeben')}</span><b>Regel</b><span>${esc(scanRuleText(m)||'keine Regelmetadaten')}</span></div>`:'';
@@ -1119,14 +1200,42 @@ function renderAnlagen(rows){
 }
 
 /* ================= HAUPT-RENDER ================= */
+/* Jeder Teilschritt wird einzeln abgesichert. Vorher konnte ein einziger
+   fehlerhafter Datensatz mitten im Rendern eine Ausnahme auslösen; alle
+   danach folgenden Ansichten blieben dann auf dem alten Stand stehen –
+   genau das führte zu unterschiedlichen Zahlen in den einzelnen Reitern. */
+function safeStep(name,fn){
+  try{fn();}catch(err){
+    console.error('Renderfehler in '+name,err);
+    renderErrors.push(name+': '+(err&&err.message||String(err)));
+  }
+}
+let renderErrors=[];
+let renderQueued=false;
+/* Mehrere Auslöser kurz hintereinander (Tippen, Filter, Reiterwechsel)
+   führen zu genau einem Rendervorgang im nächsten Bildaufbau. */
+function scheduleRender(){
+  if(renderQueued)return;
+  renderQueued=true;
+  requestAnimationFrame(()=>{renderQueued=false;render();});
+}
 function render(){
-  renderAblageAlert();
-  renderYearChips();
-  const rows=filteredReports();
-  const ev=stripIgnored(rows);
-  renderKpis(ev,rows);renderParamInsight();renderTypeBars(ev);renderScopeBars(ev);renderMonths(ev);
-  renderExceedances(ev);renderHvCompare(ev);renderStats();
-  renderReports(rows);renderAnlagen(ev);
+  renderErrors=[];
+  safeStep('Ablagehinweis',()=>renderAblageAlert());
+  safeStep('Jahrgangsauswahl',()=>renderYearChips());
+  let rows=[],ev=[];
+  safeStep('Filterung',()=>{rows=filteredReports();ev=stripIgnored(rows);});
+  safeStep('Kennzahlen',()=>renderKpis(ev,rows));
+  safeStep('Parameterhinweis',()=>renderParamInsight());
+  safeStep('Untersuchungsarten',()=>renderTypeBars(ev));
+  safeStep('Umfänge',()=>renderScopeBars(ev));
+  safeStep('Monatsverlauf',()=>renderMonths(ev));
+  safeStep('Überschreitungen',()=>renderExceedances(ev));
+  safeStep('Hausverwaltungen',()=>renderHvCompare(ev));
+  safeStep('Jahresauswertung',()=>renderStats());
+  safeStep('Berichtsliste',()=>renderReports(rows));
+  safeStep('Untersuchte Anlagen',()=>renderAnlagen(ev));
+  if(renderErrors.length)showBanner('Teile der Ansicht konnten nicht aufgebaut werden ('+esc(renderErrors.join(' · '))+'). Die übrigen Bereiche sind aktuell.','warn');
   $('#headerSub').textContent=reports.length?`${de(reports.length)} geprüfte Prüfberichte${scanRuleText()?' · Erfassungsregel ✓':''}`:'Keine Daten geladen';
   $('#headerSub').title=scanRuleText()||'';
   $('#btnExport').disabled=!reports.length;$('#btnClear').disabled=!reports.length;
@@ -1151,7 +1260,7 @@ function exportPayload(){
 function downloadJson(){const blob=new Blob([JSON.stringify(exportPayload(),null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`Pruefberichte_Gesamtbestand_${new Date().toISOString().slice(0,10)}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
 async function clearData(){
   if(!confirm('Den gesamten lokal im Viewer gespeicherten Prüfberichtbestand löschen? Die Original-PDFs bleiben selbstverständlich erhalten.'))return;
-  await dbDeleteAll(STORE_REPORTS);localStorage.removeItem(FALLBACK_KEY);reports=[];scanMeta=null;await dbPut(STORE_SETTINGS,null,'scanMeta');refreshAll();
+  await dbDeleteAll(STORE_REPORTS);localStorage.removeItem(FALLBACK_KEY);reports=[];scanMeta=null;await dbPut(STORE_SETTINGS,null,'scanMeta');refreshAll();announceChange();
   showBanner('Der lokale Viewer-Datenbestand wurde gelöscht.','ok');
 }
 function resetFilters(){for(const s of ['#fYear','#fHv','#fObj','#fArea','#fType','#fScope','#fResult','#fParam','#fAblage','#fSearch'])$(s).value='';updateSearchBox();refreshFilterOptions();render();}
@@ -1368,12 +1477,17 @@ $('#fHv').onchange=()=>{refreshFilterOptions();render();};
 $('#fObj').onchange=()=>{refreshFilterOptions();render();};
 $('#fArea').onchange=render;
 function updateSearchBox(){document.querySelector('.searchbox').classList.toggle('filled',$('#fSearch').value.trim()!=='');}
-$('#fSearch').oninput=()=>{updateSearchBox();render();};
+let searchTimer=null;
+$('#fSearch').oninput=()=>{updateSearchBox();clearTimeout(searchTimer);searchTimer=setTimeout(()=>render(),180);};
 $('#fSearchClear').onclick=()=>{$('#fSearch').value='';updateSearchBox();render();$('#fSearch').focus();};
 $$('#reportsTable th').forEach(th=>th.onclick=()=>{const k=th.dataset.key;if(sortKey===k)sortDir*=-1;else{sortKey=k;sortDir=1;}render();});
 $$('.tab').forEach(t=>t.onclick=()=>{
   $$('.tab').forEach(x=>x.classList.remove('active'));t.classList.add('active');
   $$('.view').forEach(v=>v.classList.remove('active'));$('#view-'+t.dataset.view).classList.add('active');
+  /* Der neue Reiter wird immer frisch aufgebaut, damit alle Reiter
+     garantiert denselben Datenstand zeigen. */
+  scheduleRender();
+  checkConsistency();
 });
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){['#dialogBackdrop','#importBackdrop','#printBackdrop'].forEach(s=>$(s).classList.remove('show'));}
@@ -1465,6 +1579,25 @@ function goHome(){
   refreshAll(false);
   window.scrollTo({top:0,behavior:'smooth'});
 }
+$('#btnReload').onclick=async()=>{
+  if(busy)return;
+  setBusy(true,'Ansicht wird neu aufgebaut …');
+  const n=await dbCountReports().catch(()=>null);
+  await reloadFromDb(n==null?'Ansicht neu aufgebaut.':`Ansicht neu aufgebaut: ${de(n)} Berichte aus dem lokalen Speicher.`);
+  setBusy(false);
+};
+/* Hintergrundprüfung: beim Zurückwechseln zum Fenster, in ruhigem Takt und
+   sobald ein anderes Fenster desselben Viewers den Bestand geändert hat. */
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkConsistency();});
+window.addEventListener('focus',()=>checkConsistency());
+setInterval(()=>checkConsistency(),20000);
+let viewerChannel=null;
+try{
+  viewerChannel=new BroadcastChannel('nova-pruefberichte-viewer');
+  viewerChannel.onmessage=e=>{if(e.data&&e.data.type==='reports-changed')checkConsistency();};
+}catch(_){}
+function announceChange(){try{viewerChannel&&viewerChannel.postMessage({type:'reports-changed',at:Date.now()});}catch(_){}}
+
 $('#homeZone').onclick=goHome;
 $('#homeZone').onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();goHome();}};
 
