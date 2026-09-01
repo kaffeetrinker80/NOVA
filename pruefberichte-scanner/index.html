@@ -104,6 +104,9 @@ tr.ablage-bad td{background:var(--redSoft)}
 tr.ablage-bad:hover td{background:var(--redSoft)}
 tr.ablage-check td{background:var(--amberSoft)}
 tr.ablage-check:hover td{background:var(--amberSoft)}
+.sel-col{width:30px;text-align:center}
+.sel-bar{margin:0 0 8px}
+tr.ablage-freigegeben td{background:var(--panel)}
 .ablage-detail{display:block;margin-top:3px;font-size:10.5px;color:var(--muted);max-width:280px;white-space:normal}
 
 /* ============ TABS ============ */
@@ -330,7 +333,7 @@ footer .heart{color:var(--red)}
     <div id="homeZone" role="button" tabindex="0" title="Startansicht wiederherstellen: alle Filter zurücksetzen, Jahresauswertung, alle Jahrgänge">
       <img src="nova_logo_web.png" class="logo-mark" alt="NOVA" onerror="this.style.display='none'">
       <span class="title-block">
-        <h1>Prüfberichte-Viewer <span class="badge">V 1.2.8</span></h1>
+        <h1>Prüfberichte-Viewer <span class="badge">V 1.2.9</span></h1>
         <span class="sub" id="headerSub">Keine Daten geladen</span>
         <span class="home-hint">Klicken für Startansicht</span>
       </span>
@@ -378,6 +381,7 @@ footer .heart{color:var(--red)}
     <select id="fAblage" title="Ablageprüfung – auffällige Fälle werden zusätzlich automatisch oben angezeigt">
       <option value="">Alle Ablagen</option>
       <option value="__auffaellig__">⚠ Nur auffällige Ablagen</option>
+      <option value="__bestaetigt__">✓ Nur bestätigte Ablagen</option>
       <option value="OK">✓ Nur unauffällige Ablagen</option>
     </select>
     <div class="searchbox">
@@ -433,6 +437,14 @@ footer .heart{color:var(--red)}
   <section class="view" id="view-berichte">
     <section class="panel">
       <div class="panel-head"><h2>Gefundene Prüfberichte</h2><span class="hint" id="listHint"></span></div>
+      <div class="toolbar noprint sel-bar" id="selBar">
+        <span class="sub" id="selHint">Keine Zeile ausgewählt</span>
+        <span class="grow"></span>
+        <button class="btn small" id="btnSelAuffaellig">Alle auffälligen auswählen</button>
+        <button class="btn small" id="btnSelNone">Auswahl aufheben</button>
+        <button class="btn small primary" id="btnAblageOk" disabled>Ablage geprüft → passt so</button>
+        <button class="btn small" id="btnAblageUndo" disabled>Bestätigung zurücknehmen</button>
+      </div>
       <div class="table-wrap">
         <table id="reportsTable">
           <thead><tr>
@@ -446,6 +458,7 @@ footer .heart{color:var(--red)}
             <th data-key="hoechste_ueberschreitung" class="num" title="Höchster Messwert einer tatsächlichen Überschreitung. Tooltip zeigt Parameter, Einheit und Grenzwert.">Höchste Überschreitung</th>
             <th data-key="befund">Befund</th>
             <th data-key="auftragsnummer">Auftrag</th>
+            <th class="sel-col noprint" title="Zeile für die Ablage-Bestätigung auswählen"><input type="checkbox" id="selAll" aria-label="Alle sichtbaren auswählen"></th>
             <th data-key="ablage_status">Ablage</th>
             <th data-key="pdf_dateiname">Datei</th>
           </tr></thead>
@@ -540,10 +553,10 @@ footer .heart{color:var(--red)}
 <div id="globalDrop"><div class="gd-box">JSON hier ablegen<br><span class="sub">Import wird automatisch geöffnet</span></div></div>
 
 <footer class="noprint">
-  <span>Made with Love <span class="heart">&#10084;</span> &copy; &ndash; NOVA Prüfberichte-Viewer V 1.2.8</span>
+  <span>Made with Love <span class="heart">&#10084;</span> &copy; &ndash; NOVA Prüfberichte-Viewer <span id="footVersion">V 1.2.9</span></span>
   <span class="grow"></span>
   <span>NOVA Praxis-Hygiene GmbH &middot; Depotstr. 5 1/2 &middot; 86153 Augsburg</span>
-  <a href="mailto:cryptopower@outlook.de?subject=Feedback%20NOVA%20Pr%C3%BCfberichte-Viewer%20V%201.2.0">Feedback senden</a>
+  <a id="footFeedback" href="mailto:cryptopower@outlook.de?subject=Feedback%20NOVA%20Pr%C3%BCfberichte-Viewer">Feedback senden</a>
 </footer>
 
 <button id="toTop" class="noprint" title="Nach oben" aria-label="Nach oben">&#9650;</button>
@@ -553,7 +566,7 @@ footer .heart{color:var(--red)}
 <script>
 'use strict';
 /* ================= KONSTANTEN & STATE ================= */
-const APP_VERSION='1.2.8';
+const APP_VERSION='1.2.9';
 const APP_DB='nova-pruefberichte-viewer';
 const DB_VERSION=2;
 const STORE_REPORTS='reports', STORE_SETTINGS='settings';
@@ -616,6 +629,7 @@ async function reloadFromDb(info=''){
     const stored=(await dbGetAll(STORE_REPORTS)).map(normalizeReport);
     reports=stored;
     scanMeta=await dbGet(STORE_SETTINGS,'scanMeta')||scanMeta;
+    ablageFreigaben=(await dbGet(STORE_SETTINGS,'ablageFreigaben'))||ablageFreigaben;
     refreshAll(false);
     if(info)showBanner(info,'ok');
     return true;
@@ -891,10 +905,92 @@ function baseFiltered(){
   const hv=$('#fHv').value,obj=$('#fObj').value,area=$('#fArea').value,type=$('#fType').value,scope=$('#fScope').value,result=$('#fResult').value,param=$('#fParam').value,ablage=$('#fAblage').value,q=$('#fSearch').value.trim().toLowerCase();
   return reports.filter(r=>(!hv||r.hausverwaltung===hv)&&(!obj||r.objekt===obj)&&(!area||r.bereich===area)&&(!type||r.untersuchungsart===type)&&(!scope||(r.umfang||[]).includes(scope))&&(!result||r.befund===result)&&
     (!param||(r.ueberschreitungen||[]).some(x=>x&&x.parameter===param))&&
-    (!ablage||(ablage==='__auffaellig__'?!r.ablage_bestaetigt&&['Abweichung','Prüfen'].includes(r.ablage_status):r.ablage_status===ablage))&&
+    (!ablage||(ablage==='__auffaellig__'?!r.ablage_bestaetigt&&['Abweichung','Prüfen'].includes(r.ablage_status)
+      :ablage==='__bestaetigt__'?r.ablage_bestaetigt
+      :r.ablage_status===ablage))&&
     (!q||[r.berichtsnummer,r.auftragsnummer,r.hausverwaltung,r.objekt,r.bereich,r.anlage_laut_bericht,r.untersuchungsart,r.befund,r.ablage_status,r.ablage_grund,r.pdf_dateiname,...(r.parameter||[])].join(' ').toLowerCase().includes(q)));
 }
 function filteredReports(){const y=$('#fYear').value;return baseFiltered().filter(r=>!y||String(r.jahr)===y);}
+
+/* ================= ABLAGE-FREIGABEN IM VIEWER ================= */
+/* Die Freigaben liegen bewusst getrennt von den Berichten. So überleben sie
+   jeden neuen Import: Der Scanner liefert die Berichte neu, die hier im
+   Viewer getroffenen Entscheidungen bleiben erhalten und werden erneut
+   angewendet. Gespeichert wird im lokalen Speicher dieses Browsers. */
+let ablageFreigaben={};
+function applyAblageFreigaben(){
+  for(const r of reports){
+    const f=ablageFreigaben[r.id];
+    r.ablage_freigabe_lokal=false;
+    if(!f)continue;
+    r.ablage_freigabe_lokal=true;
+    if(!r.ablage_bestaetigt){
+      r.ablage_bestaetigt=true;
+      r.ablage_bestaetigt_am=f.am||'';
+    }
+  }
+}
+async function saveAblageFreigaben(){
+  try{await dbPut(STORE_SETTINGS,ablageFreigaben,'ablageFreigaben');}
+  catch(err){showBanner('Die Ablage-Bestätigung konnte nicht gespeichert werden: '+esc(err.message||String(err)),'bad');}
+}
+/* Auswahl in der Berichtsliste. Die Menge überlebt das Neuzeichnen, wird
+   aber auf tatsächlich noch vorhandene Berichte begrenzt. */
+let selectedIds=new Set();
+function pruneSelection(){
+  if(!selectedIds.size)return;
+  const vorhanden=new Set(reports.map(r=>r.id));
+  for(const id of [...selectedIds])if(!vorhanden.has(id))selectedIds.delete(id);
+}
+function updateSelBar(){
+  const n=selectedIds.size;
+  const sel=reports.filter(r=>selectedIds.has(r.id));
+  const offen=sel.filter(r=>!r.ablage_bestaetigt).length;
+  const lokal=sel.filter(r=>r.ablage_freigabe_lokal).length;
+  $('#selHint').textContent=n?`${de(n)} Zeile${n===1?'':'n'} ausgewählt`:'Keine Zeile ausgewählt';
+  const bOk=$('#btnAblageOk'),bUndo=$('#btnAblageUndo');
+  bOk.disabled=offen===0;
+  bOk.textContent=offen>1?`Ablage geprüft → passt so (${de(offen)})`:'Ablage geprüft → passt so';
+  bUndo.disabled=lokal===0;
+  bUndo.textContent=lokal>1?`Bestätigung zurücknehmen (${de(lokal)})`:'Bestätigung zurücknehmen';
+  const alle=filteredReports();
+  const selAll=$('#selAll');
+  selAll.checked=alle.length>0&&alle.every(r=>selectedIds.has(r.id));
+  selAll.indeterminate=!selAll.checked&&alle.some(r=>selectedIds.has(r.id));
+}
+async function bestaetigeAuswahl(){
+  const offen=reports.filter(r=>selectedIds.has(r.id)&&!r.ablage_bestaetigt);
+  if(!offen.length)return;
+  const unauffaellig=offen.filter(r=>!['Abweichung','Prüfen'].includes(r.ablage_status)).length;
+  const frage=offen.length===1
+    ? 'Die Ablage dieses Berichts als geprüft und passend markieren?'
+    : `${de(offen.length)} Berichte als geprüft und passend markieren?`;
+  const zusatz=unauffaellig?`\n\nDavon ${de(unauffaellig)} ohne Auffälligkeit – sie werden trotzdem markiert.`:'';
+  if(!confirm(frage+zusatz+'\n\nDie Markierung gilt nur in diesem Viewer und bleibt bei künftigen Importen erhalten.'))return;
+  const am=new Date().toISOString();
+  for(const r of offen){
+    ablageFreigaben[r.id]={am,status:r.ablage_status,grund:r.ablage_grund,nummer:r.berichtsnummer};
+  }
+  await saveAblageFreigaben();
+  applyAblageFreigaben();
+  render();
+  announceChange();
+  showBanner(`${de(offen.length)} Ablage${offen.length===1?'':'n'} als geprüft markiert.`,'ok');
+}
+async function widerrufeAuswahl(){
+  const lokal=reports.filter(r=>selectedIds.has(r.id)&&r.ablage_freigabe_lokal);
+  if(!lokal.length)return;
+  if(!confirm(lokal.length===1
+    ? 'Die im Viewer gesetzte Ablage-Bestätigung zurücknehmen?'
+    : `${de(lokal.length)} im Viewer gesetzte Ablage-Bestätigungen zurücknehmen?`))return;
+  for(const r of lokal)delete ablageFreigaben[r.id];
+  await saveAblageFreigaben();
+  /* Neu aus dem Speicher aufbauen: damit gilt wieder exakt der Stand aus dem
+     Scanner-Import. Eine dort bereits gesetzte Freigabe bleibt erhalten. */
+  await reloadFromDb();
+  announceChange();
+  showBanner(`${de(lokal.length)} Bestätigung${lokal.length===1?'':'en'} zurückgenommen.`,'ok');
+}
 
 function ablageProblems(){
   return reports.filter(r=>!r.ablage_bestaetigt&&['Abweichung','Prüfen'].includes(r.ablage_status));
@@ -1152,7 +1248,8 @@ function renderReports(rows){
   tb.innerHTML=rows.map(r=>{
     const pill=r.ueberschreitung?'bad':r.befund==='Ohne Befund'?'ok':'unk';
     const path=r.relativer_pfad||(r.quellpfade||[])[0]||'';
-    const rowClass=r.ablage_status==='Abweichung'?'ablage-bad':r.ablage_status==='Prüfen'?'ablage-check':'';
+    const rowClass=r.ablage_bestaetigt?'ablage-freigegeben'
+      :r.ablage_status==='Abweichung'?'ablage-bad':r.ablage_status==='Prüfen'?'ablage-check':'';
     const ablageVergleich=(!r.ablage_bestaetigt&&(r.ablage_status==='Abweichung'||r.ablage_status==='Prüfen'))
       ? `<span class="ablage-detail">Ordner: ${esc([r.objekt,r.bereich].filter(Boolean).join(' › '))}<br>PDF: ${esc(r.anlage_laut_bericht||'keine Anlage lesbar')}</span>`:'';
     return `<tr class="${rowClass}"><td>${esc(r.berichtsnummer)}${(r.fundstellen||1)>1?` <span class="pill info">${r.fundstellen}×</span>`:''}</td>
@@ -1160,10 +1257,15 @@ function renderReports(rows){
       <td>${esc(r.untersuchungsart)}</td><td title="${esc((r.parameter||[]).join(', '))}">${esc((r.umfang||[]).join(' + '))}</td>
       <td class="num" title="${esc(exceedanceTooltip(r))}">${esc(exceedanceText(r))}</td><td><span class="pill ${pill}">${esc(r.befund)}</span></td>
       <td${r.auftragsnummer_quelle?` title="Auftragsnummer erkannt im Feld: ${esc(r.auftragsnummer_quelle)}"`:''}>${esc(r.auftragsnummer||'')}${r.auftragsnummer_quelle?'<i class="src-dot"></i>':''}</td>
-      <td title="${esc(r.ablage_grund||'')}"><span class="pill ${(r.ablage_status==='OK'||r.ablage_bestaetigt)?'ok':r.ablage_status==='Abweichung'?'bad':'unk'}">${esc(r.ablage_bestaetigt?'OK (geprüft)':r.ablage_status)}</span>${ablageVergleich}</td>
+      <td class="sel-col noprint"><input type="checkbox" data-sel="${esc(r.id)}"${selectedIds.has(r.id)?' checked':''} aria-label="Bericht auswählen"></td>
+      <td title="${esc(r.ablage_grund||'')}"><span class="pill ${(r.ablage_status==='OK'||r.ablage_bestaetigt)?'ok':r.ablage_status==='Abweichung'?'bad':'unk'}">${esc(r.ablage_bestaetigt?(r.ablage_freigabe_lokal?'OK (hier geprüft)':'OK (geprüft)'):r.ablage_status)}</span>${ablageVergleich}</td>
       <td class="path" title="${esc([r.pdf_dateiname,path].filter(Boolean).join('\n'))}"><button class="file-btn" data-open="${esc(r.id)}">${esc(r.pdf_dateiname||path.split('/').at(-1)||'PDF öffnen')}</button></td></tr>`;
   }).join('');
   tb.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>openPdf(b.dataset.open));
+  tb.querySelectorAll('[data-sel]').forEach(c=>c.onchange=()=>{
+    if(c.checked)selectedIds.add(c.dataset.sel);else selectedIds.delete(c.dataset.sel);
+    updateSelBar();
+  });
   $('#listHint').textContent=`${de(rows.length)} Bericht${rows.length===1?'':'e'}`;
   $$('#reportsTable th').forEach(th=>{th.textContent=th.textContent.replace(/[ ▲▼]$/,'')+(th.dataset.key===sortKey?(sortDir>0?' ▲':' ▼'):'');});
 }
@@ -1221,6 +1323,7 @@ function scheduleRender(){
 }
 function render(){
   renderErrors=[];
+  safeStep('Ablagefreigaben',()=>{pruneSelection();applyAblageFreigaben();});
   safeStep('Ablagehinweis',()=>renderAblageAlert());
   safeStep('Jahrgangsauswahl',()=>renderYearChips());
   let rows=[],ev=[];
@@ -1235,6 +1338,7 @@ function render(){
   safeStep('Jahresauswertung',()=>renderStats());
   safeStep('Berichtsliste',()=>renderReports(rows));
   safeStep('Untersuchte Anlagen',()=>renderAnlagen(ev));
+  safeStep('Auswahlleiste',()=>updateSelBar());
   if(renderErrors.length)showBanner('Teile der Ansicht konnten nicht aufgebaut werden ('+esc(renderErrors.join(' · '))+'). Die übrigen Bereiche sind aktuell.','warn');
   $('#headerSub').textContent=reports.length?`${de(reports.length)} geprüfte Prüfberichte${scanRuleText()?' · Erfassungsregel ✓':''}`:'Keine Daten geladen';
   $('#headerSub').title=scanRuleText()||'';
@@ -1598,6 +1702,22 @@ try{
 }catch(_){}
 function announceChange(){try{viewerChannel&&viewerChannel.postMessage({type:'reports-changed',at:Date.now()});}catch(_){}}
 
+$('#btnAblageOk').onclick=()=>bestaetigeAuswahl();
+$('#btnAblageUndo').onclick=()=>widerrufeAuswahl();
+$('#btnSelNone').onclick=()=>{selectedIds.clear();render();};
+$('#btnSelAuffaellig').onclick=()=>{
+  /* Bezieht sich bewusst auf die aktuell gefilterte Liste, damit die Auswahl
+     immer dem entspricht, was tatsächlich auf dem Bildschirm steht. */
+  for(const r of filteredReports())
+    if(!r.ablage_bestaetigt&&['Abweichung','Prüfen'].includes(r.ablage_status))selectedIds.add(r.id);
+  render();
+};
+$('#selAll').onchange=e=>{
+  const sichtbar=filteredReports();
+  if(e.target.checked)for(const r of sichtbar)selectedIds.add(r.id);
+  else for(const r of sichtbar)selectedIds.delete(r.id);
+  render();
+};
 $('#homeZone').onclick=goHome;
 $('#homeZone').onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();goHome();}};
 
@@ -1618,6 +1738,7 @@ window.addEventListener('scroll',()=>{toTop.classList.toggle('show',window.scrol
     }
     directoryHandle=await dbGet(STORE_SETTINGS,'directoryHandle');
     scanMeta=await dbGet(STORE_SETTINGS,'scanMeta')||null;
+    ablageFreigaben=(await dbGet(STORE_SETTINGS,'ablageFreigaben'))||{};
     $('#fYear').value='';
     updateFolderUi();refreshAll(false);
     if(location.protocol==='file:'&&!reports.length)showBanner('Hinweis: Bei direkt geöffneten lokalen HTML-Dateien kann der Browser den Speicher an genau diese Datei binden. Für dauerhaft denselben Bestand den Viewer über GitHub Pages oder localhost öffnen – oder nach jedem Merge den Gesamtbestand exportieren.','warn');
