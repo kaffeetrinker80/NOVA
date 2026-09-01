@@ -333,7 +333,7 @@ footer .heart{color:var(--red)}
     <div id="homeZone" role="button" tabindex="0" title="Startansicht wiederherstellen: alle Filter zurücksetzen, Jahresauswertung, alle Jahrgänge">
       <img src="nova_logo_web.png" class="logo-mark" alt="NOVA" onerror="this.style.display='none'">
       <span class="title-block">
-        <h1>Prüfberichte-Viewer <span class="badge">V 1.2.9</span></h1>
+        <h1>Prüfberichte-Viewer <span class="badge">V 1.2.10</span></h1>
         <span class="sub" id="headerSub">Keine Daten geladen</span>
         <span class="home-hint">Klicken für Startansicht</span>
       </span>
@@ -553,7 +553,7 @@ footer .heart{color:var(--red)}
 <div id="globalDrop"><div class="gd-box">JSON hier ablegen<br><span class="sub">Import wird automatisch geöffnet</span></div></div>
 
 <footer class="noprint">
-  <span>Made with Love <span class="heart">&#10084;</span> &copy; &ndash; NOVA Prüfberichte-Viewer <span id="footVersion">V 1.2.9</span></span>
+  <span>Made with Love <span class="heart">&#10084;</span> &copy; &ndash; NOVA Prüfberichte-Viewer <span id="footVersion">V 1.2.10</span></span>
   <span class="grow"></span>
   <span>NOVA Praxis-Hygiene GmbH &middot; Depotstr. 5 1/2 &middot; 86153 Augsburg</span>
   <a id="footFeedback" href="mailto:cryptopower@outlook.de?subject=Feedback%20NOVA%20Pr%C3%BCfberichte-Viewer">Feedback senden</a>
@@ -566,7 +566,7 @@ footer .heart{color:var(--red)}
 <script>
 'use strict';
 /* ================= KONSTANTEN & STATE ================= */
-const APP_VERSION='1.2.9';
+const APP_VERSION='1.2.10';
 const APP_DB='nova-pruefberichte-viewer';
 const DB_VERSION=2;
 const STORE_REPORTS='reports', STORE_SETTINGS='settings';
@@ -1074,7 +1074,16 @@ const DEFS={
   orders:'Anzahl unterschiedlicher NOVA-Auftragsnummern in den Prüfberichten – einschließlich Nachuntersuchungen. Diese Zahl lässt sich direkt mit den im Auftragsbuch vergebenen Nummern vergleichen.',
   follow:'Nachuntersuchungen im Datenbestand. Sie sind in allen übrigen Kennzahlen dieser Auswertung nicht enthalten, damit ein Bereich nicht doppelt gezählt wird.'
 };
-function stripIgnored(rows){return rows.filter(r=>!AUSWERTUNG_IGNORIERT.includes(r.untersuchungsart));}
+/* Wählt man eine sonst ausgeblendete Untersuchungsart im Filter gezielt aus,
+   wäre die Auswertung sonst zwangsläufig leer: erst filtert der Nutzer auf
+   Nachuntersuchungen, dann würden genau diese wieder entfernt. In diesem Fall
+   gilt die Auswahl des Nutzers und die Art bleibt drin. */
+function ignoredArten(){
+  const typ=$('#fType').value;
+  return AUSWERTUNG_IGNORIERT.filter(a=>a!==typ);
+}
+function istIgnorierteArtGewaehlt(){return AUSWERTUNG_IGNORIERT.includes($('#fType').value);}
+function stripIgnored(rows){const ign=ignoredArten();return rows.filter(r=>!ign.includes(r.untersuchungsart));}
 function reportKey(r){return r.id||`${r.labor||''}|${r.berichtsnummer||''}`;}
 function areaKey(r){return [r.hausverwaltung||'',r.objekt||'',r.bereich||r.objekt||''].join('|');}
 function legioNum(v){if(v==null||v==='')return null;const m=String(v).match(/[0-9]+(?:[.,][0-9]+)?/);return m?Number(m[0].replace(',','.')):null;}
@@ -1141,7 +1150,8 @@ function renderKpis(rows,allRows){
     [s.legioMax>=100?'bad':'good',s.legioMax==null?'–':de(s.legioMax),'höchster Legionellenwert',s.legioMax==null?'':'<span class="delta flat">KBE/100 ml</span>',DEFS.legio],
     ['info',de(s.badReports),'Prüfberichte mit Überschreitung','',DEFS.badReports],
     ['info',de(sAll.orders),'Aufträge','<span class="delta flat">inkl. Nachuntersuchungen</span>',DEFS.orders],
-    ['warn',de(new Set(follow.map(reportKey)).size),'Nachuntersuchungen','<span class="delta flat">nicht in den Kennzahlen</span>',DEFS.follow]
+    ['warn',de(new Set(follow.map(reportKey)).size),'Nachuntersuchungen',
+      `<span class="delta flat">${istIgnorierteArtGewaehlt()?'in dieser Auswahl mitgezählt':'nicht in den Kennzahlen'}</span>`,DEFS.follow]
   ];
   $('#kpis').innerHTML=cards.map(([cls,val,lbl,extra,def])=>`<div class="kpi ${cls}" title="${esc(lbl)}: ${esc(def)}"><b>${esc(val)}</b><span>${esc(lbl)}<i class="def">?</i></span>${extra}</div>`).join('');
 }
@@ -1216,9 +1226,12 @@ function categoryStats(rows){
 function renderStats(){
   const rows=stripIgnored(baseFiltered());
   const st=categoryStats(rows),years=[...new Set(st.map(x=>x.year))];
-  if(!st.length){$('#statsBody').innerHTML='<div class="empty">Keine Daten für die aktuelle Auswahl.</div>';return;}
+  const hinweis=istIgnorierteArtGewaehlt()
+    ? `<div class="sub" style="margin:0 0 10px">Der Filter steht auf „${esc($('#fType').value)}“. Diese Untersuchungsart wird sonst bewusst aus der Auswertung herausgehalten – hier wird sie ausgewertet, weil du sie gezielt ausgewählt hast.</div>`
+    : '';
+  if(!st.length){$('#statsBody').innerHTML=hinweis+'<div class="empty">Keine Daten für die aktuelle Auswahl.</div>';return;}
   const cur=currentYear();
-  $('#statsBody').innerHTML=years.map((year,i)=>{
+  $('#statsBody').innerHTML=hinweis+years.map((year,i)=>{
     const ys=st.filter(x=>x.year===year),yr=rows.filter(r=>String(r.jahr)===String(year)),s=stats(yr);
     const open=cur?String(year)===cur:i===0;
     return `<details class="year-block" ${open?'open':''}><summary class="group-title">${esc(year)}<span class="g-right">${de(s.reports)} Prüfberichte · ${de(s.areas)} Bereiche · ${de(s.badAreas)} überschritten</span></summary>
