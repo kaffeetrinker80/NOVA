@@ -333,7 +333,7 @@ footer .heart{color:var(--red)}
     <div id="homeZone" role="button" tabindex="0" title="Startansicht wiederherstellen: alle Filter zurücksetzen, Jahresauswertung, alle Jahrgänge">
       <img src="nova_logo_web.png" class="logo-mark" alt="NOVA" onerror="this.style.display='none'">
       <span class="title-block">
-        <h1>Prüfberichte-Viewer <span class="badge">V 1.2.12</span></h1>
+        <h1>Prüfberichte-Viewer <span class="badge">V 1.2.13</span></h1>
         <span class="sub" id="headerSub">Keine Daten geladen</span>
         <span class="home-hint">Klicken für Startansicht</span>
       </span>
@@ -553,7 +553,7 @@ footer .heart{color:var(--red)}
 <div id="globalDrop"><div class="gd-box">JSON hier ablegen<br><span class="sub">Import wird automatisch geöffnet</span></div></div>
 
 <footer class="noprint">
-  <span>Made with Love <span class="heart">&#10084;</span> &copy; &ndash; NOVA Prüfberichte-Viewer <span id="footVersion">V 1.2.12</span></span>
+  <span>Made with Love <span class="heart">&#10084;</span> &copy; &ndash; NOVA Prüfberichte-Viewer <span id="footVersion">V 1.2.13</span></span>
   <span class="grow"></span>
   <span>NOVA Praxis-Hygiene GmbH &middot; Depotstr. 5 1/2 &middot; 86153 Augsburg</span>
   <a id="footFeedback" href="mailto:cryptopower@outlook.de?subject=Feedback%20NOVA%20Pr%C3%BCfberichte-Viewer">Feedback senden</a>
@@ -566,7 +566,7 @@ footer .heart{color:var(--red)}
 <script>
 'use strict';
 /* ================= KONSTANTEN & STATE ================= */
-const APP_VERSION='1.2.12';
+const APP_VERSION='1.2.13';
 const APP_DB='nova-pruefberichte-viewer';
 const DB_VERSION=2;
 const STORE_REPORTS='reports', STORE_SETTINGS='settings';
@@ -1066,12 +1066,14 @@ function renderParamInsight(){
 }
 
 /* ================= STATISTIK ================= */
-/* Untersuchungsarten, die in der Auswertung nicht dargestellt werden.
-   Die Berichte bleiben im Bestand und im Tab "Prüfberichte" sichtbar. */
-const AUSWERTUNG_IGNORIERT=['Nachuntersuchung'];
+/* Nachuntersuchungen sind vollwertige Untersuchungen und werden in allen
+   Kennzahlen mitgezählt. Sie bleiben zusätzlich als eigene Untersuchungsart
+   filterbar und werden in einer separaten KPI transparent ausgewiesen. */
+const NACHUNTERSUCHUNG_ART='Nachuntersuchung';
+const AUSWERTUNG_IGNORIERT=[];
 /* Erklärtexte für Kacheln und Kurzanleitung – zentral gepflegt */
 const DEFS={
-  reports:'Anzahl eindeutiger Berichtsnummern. Gibt das Labor für einen Bereich Legionellen und Mikrobiologie getrennt aus, sind das zwei Prüfberichte.',
+  reports:'Anzahl eindeutiger Berichtsnummern einschließlich Nachuntersuchungen. Gibt das Labor für einen Bereich Legionellen und Mikrobiologie getrennt aus, sind das zwei Prüfberichte.',
   areas:'Eindeutige Kombination aus Hausverwaltung, Objekt und Bereich. Mehrere Prüfberichte zum selben Bereich zählen im gewählten Jahr nur einmal.',
   badAreas:'Bereiche, in denen mindestens ein Prüfbericht eine Überschreitung enthält.',
   ratio:'Überschrittene Bereiche geteilt durch untersuchte Bereiche. Bewusst nicht über die Zahl der Prüfberichte gerechnet, sonst würden Bereiche mit vielen Einzelberichten das Ergebnis verzerren.',
@@ -1079,13 +1081,11 @@ const DEFS={
   hvs:'Anzahl unterschiedlicher Hausverwaltungen in der Auswahl.',
   legio:'Höchster gemessener Legionellenwert in KBE/100 ml. Der technische Maßnahmenwert liegt bei 100.',
   badReports:'Anzahl der Prüfberichte mit Überschreitung. Zum Vergleich: „Bereiche mit Überschreitung“ fasst mehrere Berichte desselben Bereichs zusammen.',
-  orders:'Anzahl unterschiedlicher NOVA-Auftragsnummern in den Prüfberichten – einschließlich Nachuntersuchungen. Diese Zahl lässt sich direkt mit den im Auftragsbuch vergebenen Nummern vergleichen.',
-  follow:'Nachuntersuchungen im Datenbestand. Sie sind in allen übrigen Kennzahlen dieser Auswertung nicht enthalten, damit ein Bereich nicht doppelt gezählt wird.'
+  orders:'Anzahl unterschiedlicher erkannter NOVA-Auftragsnummern in den Prüfberichten. Berichte ohne lesbare Auftragsnummer werden trotzdem als Prüfbericht, Bereich und Objekt gezählt.',
+  follow:'Nachuntersuchungen im Datenbestand. Sie werden wie alle anderen Untersuchungen in den Kennzahlen mitgezählt und bleiben zusätzlich über die Untersuchungsart separat filterbar.'
 };
-/* Wählt man eine sonst ausgeblendete Untersuchungsart im Filter gezielt aus,
-   wäre die Auswertung sonst zwangsläufig leer: erst filtert der Nutzer auf
-   Nachuntersuchungen, dann würden genau diese wieder entfernt. In diesem Fall
-   gilt die Auswahl des Nutzers und die Art bleibt drin. */
+/* Rückwärtskompatible Helfer: aktuell wird keine Untersuchungsart aus der
+   Auswertung entfernt. */
 function ignoredArten(){
   const typ=$('#fType').value;
   return AUSWERTUNG_IGNORIERT.filter(a=>a!==typ);
@@ -1123,12 +1123,12 @@ function currentYear(){return $('#fYear').value;}
 /* ================= RENDER: JAHRESAUSWERTUNG ================= */
 function renderYearChips(){
   /* Die Zahl auf dem Chip ist dieselbe Kennzahl wie die Kachel "Prüfberichte":
-     eindeutige Berichtsnummern, ohne Nachuntersuchungen. */
-  const base=stripIgnored(baseFiltered());
+     eindeutige Berichtsnummern einschließlich Nachuntersuchungen. */
+  const base=baseFiltered();
   const years=[...new Set(base.map(r=>r.jahr).filter(Boolean))].sort((a,b)=>b-a);
   const cur=currentYear();
   const cnt=rows=>new Set(rows.map(reportKey)).size;
-  const tip=`Prüfberichte in der Auswertung – ${DEFS.reports} Nachuntersuchungen sind nicht enthalten.`;
+  const tip=`Prüfberichte in der Auswertung – ${DEFS.reports}`;
   const chips=[`<button class="chip ${cur?'':'active'}" data-year="" title="${esc(tip)}">Alle Jahre<span class="cnt">${de(cnt(base))}</span></button>`]
     .concat(years.map(y=>`<button class="chip ${String(y)===cur?'active':''}" data-year="${y}" title="${esc(tip)}">${y}<span class="cnt">${de(cnt(base.filter(r=>r.jahr===y)))}</span></button>`));
   $('#yearChips').innerHTML=chips.join('')+`<span class="chip-legend" title="${esc(tip)}">Prüfberichte je Jahrgang</span>`;
@@ -1144,10 +1144,10 @@ function deltaHtml(now,prev,invert=false){
 function renderKpis(rows,allRows){
   const s=stats(rows);
   const sAll=stats(allRows||rows);
-  const follow=(allRows||rows).filter(r=>AUSWERTUNG_IGNORIERT.includes(r.untersuchungsart));
+  const follow=(allRows||rows).filter(r=>r.untersuchungsart===NACHUNTERSUCHUNG_ART);
   const y=currentYear();
   let prev=null;
-  if(y){const py=String(Number(y)-1);const pr=stripIgnored(baseFiltered()).filter(r=>String(r.jahr)===py);if(pr.length)prev=stats(pr);}
+  if(y){const py=String(Number(y)-1);const pr=baseFiltered().filter(r=>String(r.jahr)===py);if(pr.length)prev=stats(pr);}
   const cards=[
     ['info',de(s.reports),'Prüfberichte',prev?deltaHtml(s.reports,prev.reports,true):'',DEFS.reports],
     ['',de(s.areas),'Bereiche untersucht',prev?deltaHtml(s.areas,prev.areas,true):'',DEFS.areas],
@@ -1157,9 +1157,9 @@ function renderKpis(rows,allRows){
     ['',de(s.hvs),'Hausverwaltungen','',DEFS.hvs],
     [s.legioMax>=100?'bad':'good',s.legioMax==null?'–':de(s.legioMax),'höchster Legionellenwert',s.legioMax==null?'':'<span class="delta flat">KBE/100 ml</span>',DEFS.legio],
     ['info',de(s.badReports),'Prüfberichte mit Überschreitung','',DEFS.badReports],
-    ['info',de(sAll.orders),'Aufträge','<span class="delta flat">inkl. Nachuntersuchungen</span>',DEFS.orders],
+    ['info',de(sAll.orders),'Erkannte Aufträge','<span class="delta flat">nur mit lesbarer Auftragsnummer</span>',DEFS.orders],
     ['warn',de(new Set(follow.map(reportKey)).size),'Nachuntersuchungen',
-      `<span class="delta flat">${istIgnorierteArtGewaehlt()?'in dieser Auswahl mitgezählt':'nicht in den Kennzahlen'}</span>`,DEFS.follow]
+      `<span class="delta flat">in den Kennzahlen enthalten</span>`,DEFS.follow]
   ];
   $('#kpis').innerHTML=cards.map(([cls,val,lbl,extra,def])=>`<div class="kpi ${cls}" title="${esc(lbl)}: ${esc(def)}"><b>${esc(val)}</b><span>${esc(lbl)}<i class="def">?</i></span>${extra}</div>`).join('');
 }
@@ -1232,11 +1232,9 @@ function categoryStats(rows){
     .map(x=>({...x,reportCount:x.reports.size,areaCount:x.areas.size,badCount:x.badAreas.size,ratio:x.areas.size?x.badAreas.size/x.areas.size*100:0}));
 }
 function renderStats(){
-  const rows=stripIgnored(baseFiltered());
+  const rows=baseFiltered();
   const st=categoryStats(rows),years=[...new Set(st.map(x=>x.year))];
-  const hinweis=istIgnorierteArtGewaehlt()
-    ? `<div class="sub" style="margin:0 0 10px">Der Filter steht auf „${esc($('#fType').value)}“. Diese Untersuchungsart wird sonst bewusst aus der Auswertung herausgehalten – hier wird sie ausgewertet, weil du sie gezielt ausgewählt hast.</div>`
-    : '';
+  const hinweis='';
   if(!st.length){$('#statsBody').innerHTML=hinweis+'<div class="empty">Keine Daten für die aktuelle Auswahl.</div>';return;}
   const cur=currentYear();
   $('#statsBody').innerHTML=hinweis+years.map((year,i)=>{
@@ -1348,7 +1346,7 @@ function render(){
   safeStep('Ablagehinweis',()=>renderAblageAlert());
   safeStep('Jahrgangsauswahl',()=>renderYearChips());
   let rows=[],ev=[];
-  safeStep('Filterung',()=>{rows=filteredReports();ev=stripIgnored(rows);});
+  safeStep('Filterung',()=>{rows=filteredReports();ev=rows;});
   safeStep('Kennzahlen',()=>renderKpis(ev,rows));
   safeStep('Parameterhinweis',()=>renderParamInsight());
   safeStep('Untersuchungsarten',()=>renderTypeBars(ev));
@@ -1428,8 +1426,8 @@ function pKpis(s,hvMode,extra){
     ['',de(s.hvs),'Hausverwaltungen'],
     ['',s.legioMax==null?'–':de(s.legioMax),'höchster Legionellenwert (KBE/100 ml)'],
     ['',de(s.badReports),'Prüfberichte mit Überschreitung'],
-    ['',de(extra?.orders??s.orders),'Aufträge (inkl. Nachunt.)'],
-    ['',de(extra?.follow??0),'Nachuntersuchungen (nicht gezählt)']
+    ['',de(extra?.orders??s.orders),'Erkannte Aufträge'],
+    ['',de(extra?.follow??0),'Nachuntersuchungen (mitgezählt)']
   ];
   const use=hvMode?cards.slice(0,4):cards;
   return `<div class="p-kpis">${use.map(([c,v,l])=>`<div class="p-kpi ${c}"><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join('')}</div>`;
@@ -1510,8 +1508,8 @@ function setPageOrientation(landscape){
 }
 function buildReport(mode){
   const all=filteredReports();
-  const rows=mode==='liste'?all:stripIgnored(all);
-  const extra={orders:stats(all).orders,follow:new Set(all.filter(r=>AUSWERTUNG_IGNORIERT.includes(r.untersuchungsart)).map(reportKey)).size};
+  const rows=all;
+  const extra={orders:stats(all).orders,follow:new Set(all.filter(r=>r.untersuchungsart===NACHUNTERSUCHUNG_ART).map(reportKey)).size};
   const y=currentYear();
   const s=stats(rows);
   const titleExtra=$('#optTitle').value.trim();
@@ -1596,7 +1594,7 @@ $('#btnPrint').onclick=openPrintDialog;
 $('#btnClear').onclick=clearData;
 $('#btnReset').onclick=resetFilters;
 $('#btnShowAblage').onclick=showAblageProblems;
-$('#chkOnlyBad').onchange=()=>renderAnlagen(stripIgnored(filteredReports()));
+$('#chkOnlyBad').onchange=()=>renderAnlagen(filteredReports());
 for(const s of ['#fType','#fScope','#fResult','#fParam'])$(s).onchange=render;
 $('#fAblage').onchange=()=>{ablageFocusMode=false;render();};
 $('#fHv').onchange=()=>{refreshFilterOptions();render();};
@@ -1606,7 +1604,7 @@ function updateSearchBox(){document.querySelector('.searchbox').classList.toggle
 let searchTimer=null;
 $('#fSearch').oninput=()=>{updateSearchBox();clearTimeout(searchTimer);searchTimer=setTimeout(()=>render(),180);};
 $('#fSearchClear').onclick=()=>{$('#fSearch').value='';updateSearchBox();render();$('#fSearch').focus();};
-$$('#reportsTable th').forEach(th=>th.onclick=()=>{const k=th.dataset.key;if(sortKey===k)sortDir*=-1;else{sortKey=k;sortDir=1;}render();});
+$$('#reportsTable th[data-key]').forEach(th=>th.onclick=()=>{const k=th.dataset.key;if(sortKey===k)sortDir*=-1;else{sortKey=k;sortDir=1;}render();});
 $$('.tab').forEach(t=>t.onclick=()=>{
   /* Die über den Warnhinweis geöffnete Auffälligkeitsansicht ist nur ein
      temporärer Prüfmodus. Beim Verlassen zurück auf Gesamtbestand / alle Jahre,
@@ -1685,8 +1683,8 @@ function helpHtml(){return `
   <b>Bereiche mit Überschreitung</b><span>${esc(DEFS.badAreas)}</span>
   <b>Überschreitungsquote</b><span>${esc(DEFS.ratio)}</span>
   <b>Objekte</b><span>${esc(DEFS.objects)}</span>
-  <b>Aufträge</b><span>${esc(DEFS.orders)}</span>
-  <b>Nachuntersuchungen</b><span>Bleiben im Bestand und in der Berichtsliste, werden in den Auswertungen aber nicht mitgezählt.</span>
+  <b>Erkannte Aufträge</b><span>${esc(DEFS.orders)}</span>
+  <b>Nachuntersuchungen</b><span>${esc(DEFS.follow)}</span>
   <b>Höchste Überschreitung</b><span>Zeigt nur tatsächlich überschrittene Messwerte: Legionellen ab 100 KBE/100 ml; bei Mikrobiologie/Chemie die mit Warnzeichen markierte Parameterzeile. Der Tooltip nennt Parameter, Einheit und Grenzwert.</span>
   <b>Parameterfilter</b><span>Filtert gezielt nach dem überschrittenen Parameter, etwa Coliforme Bakterien, Nickel oder Legionellen. In der Jahresauswertung zeigt eine schmale Infozeile zusätzlich den häufigsten überschrittenen Parameter der aktuellen Auswahl; ein Klick setzt den Filter.</span>
 </div>
