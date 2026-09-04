@@ -333,7 +333,7 @@ footer .heart{color:var(--red)}
     <div id="homeZone" role="button" tabindex="0" title="Startansicht wiederherstellen: alle Filter zurücksetzen, Jahresauswertung, alle Jahrgänge">
       <img src="nova_logo_web.png" class="logo-mark" alt="NOVA" onerror="this.style.display='none'">
       <span class="title-block">
-        <h1>Prüfberichte-Viewer <span class="badge">V 1.2.10</span></h1>
+        <h1>Prüfberichte-Viewer <span class="badge">V 1.2.11</span></h1>
         <span class="sub" id="headerSub">Keine Daten geladen</span>
         <span class="home-hint">Klicken für Startansicht</span>
       </span>
@@ -553,7 +553,7 @@ footer .heart{color:var(--red)}
 <div id="globalDrop"><div class="gd-box">JSON hier ablegen<br><span class="sub">Import wird automatisch geöffnet</span></div></div>
 
 <footer class="noprint">
-  <span>Made with Love <span class="heart">&#10084;</span> &copy; &ndash; NOVA Prüfberichte-Viewer <span id="footVersion">V 1.2.10</span></span>
+  <span>Made with Love <span class="heart">&#10084;</span> &copy; &ndash; NOVA Prüfberichte-Viewer <span id="footVersion">V 1.2.11</span></span>
   <span class="grow"></span>
   <span>NOVA Praxis-Hygiene GmbH &middot; Depotstr. 5 1/2 &middot; 86153 Augsburg</span>
   <a id="footFeedback" href="mailto:cryptopower@outlook.de?subject=Feedback%20NOVA%20Pr%C3%BCfberichte-Viewer">Feedback senden</a>
@@ -566,7 +566,7 @@ footer .heart{color:var(--red)}
 <script>
 'use strict';
 /* ================= KONSTANTEN & STATE ================= */
-const APP_VERSION='1.2.10';
+const APP_VERSION='1.2.11';
 const APP_DB='nova-pruefberichte-viewer';
 const DB_VERSION=2;
 const STORE_REPORTS='reports', STORE_SETTINGS='settings';
@@ -1280,7 +1280,7 @@ function renderReports(rows){
     updateSelBar();
   });
   $('#listHint').textContent=`${de(rows.length)} Bericht${rows.length===1?'':'e'}`;
-  $$('#reportsTable th').forEach(th=>{th.textContent=th.textContent.replace(/[ ▲▼]$/,'')+(th.dataset.key===sortKey?(sortDir>0?' ▲':' ▼'):'');});
+  $$('#reportsTable th[data-key]').forEach(th=>{th.textContent=th.textContent.replace(/[ ▲▼]$/,'')+(th.dataset.key===sortKey?(sortDir>0?' ▲':' ▼'):'');});
 }
 
 /* ================= RENDER: ANLAGEN ================= */
