@@ -333,7 +333,7 @@ footer .heart{color:var(--red)}
     <div id="homeZone" role="button" tabindex="0" title="Startansicht wiederherstellen: alle Filter zurücksetzen, Jahresauswertung, alle Jahrgänge">
       <img src="nova_logo_web.png" class="logo-mark" alt="NOVA" onerror="this.style.display='none'">
       <span class="title-block">
-        <h1>Prüfberichte-Viewer <span class="badge">V 1.2.11</span></h1>
+        <h1>Prüfberichte-Viewer <span class="badge">V 1.2.12</span></h1>
         <span class="sub" id="headerSub">Keine Daten geladen</span>
         <span class="home-hint">Klicken für Startansicht</span>
       </span>
@@ -553,7 +553,7 @@ footer .heart{color:var(--red)}
 <div id="globalDrop"><div class="gd-box">JSON hier ablegen<br><span class="sub">Import wird automatisch geöffnet</span></div></div>
 
 <footer class="noprint">
-  <span>Made with Love <span class="heart">&#10084;</span> &copy; &ndash; NOVA Prüfberichte-Viewer <span id="footVersion">V 1.2.11</span></span>
+  <span>Made with Love <span class="heart">&#10084;</span> &copy; &ndash; NOVA Prüfberichte-Viewer <span id="footVersion">V 1.2.12</span></span>
   <span class="grow"></span>
   <span>NOVA Praxis-Hygiene GmbH &middot; Depotstr. 5 1/2 &middot; 86153 Augsburg</span>
   <a id="footFeedback" href="mailto:cryptopower@outlook.de?subject=Feedback%20NOVA%20Pr%C3%BCfberichte-Viewer">Feedback senden</a>
@@ -566,7 +566,7 @@ footer .heart{color:var(--red)}
 <script>
 'use strict';
 /* ================= KONSTANTEN & STATE ================= */
-const APP_VERSION='1.2.11';
+const APP_VERSION='1.2.12';
 const APP_DB='nova-pruefberichte-viewer';
 const DB_VERSION=2;
 const STORE_REPORTS='reports', STORE_SETTINGS='settings';
@@ -918,6 +918,10 @@ function filteredReports(){const y=$('#fYear').value;return baseFiltered().filte
    Viewer getroffenen Entscheidungen bleiben erhalten und werden erneut
    angewendet. Gespeichert wird im lokalen Speicher dieses Browsers. */
 let ablageFreigaben={};
+/* Wird ausschließlich durch den Warnhinweis aktiviert. So kann die daraus
+   geöffnete Sonderansicht beim Verlassen automatisch wieder auf eine neutrale
+   Gesamtansicht zurückfallen, ohne manuell gesetzte Filter anzutasten. */
+let ablageFocusMode=false;
 function applyAblageFreigaben(){
   for(const r of reports){
     const f=ablageFreigaben[r.id];
@@ -997,9 +1001,12 @@ function ablageProblems(){
 }
 function renderAblageAlert(){
   const box=$('#ablageAlert');
-  const bad=reports.filter(r=>r.ablage_status==='Abweichung');
-  const check=reports.filter(r=>r.ablage_status==='Prüfen');
-  const total=bad.length+check.length;
+  /* Der Hinweis muss exakt dieselben offenen Fälle zählen wie der Klick darauf.
+     Bereits bestätigte Ablagen dürfen deshalb hier nicht mehr auftauchen. */
+  const offen=ablageProblems();
+  const bad=offen.filter(r=>r.ablage_status==='Abweichung');
+  const check=offen.filter(r=>r.ablage_status==='Prüfen');
+  const total=offen.length;
   box.classList.toggle('show',total>0);
   if(!total)return;
   $('#ablageAlertTitle').textContent=bad.length
@@ -1014,6 +1021,7 @@ function showAblageProblems(){
   for(const sel of ['#fHv','#fObj','#fArea','#fType','#fScope','#fResult','#fParam','#fSearch'])$(sel).value='';
   $('#fYear').value='';
   $('#fAblage').value='__auffaellig__';
+  ablageFocusMode=true;
   $('#chkOnlyBad').checked=false;
   updateSearchBox();
   refreshFilterOptions();
@@ -1589,7 +1597,8 @@ $('#btnClear').onclick=clearData;
 $('#btnReset').onclick=resetFilters;
 $('#btnShowAblage').onclick=showAblageProblems;
 $('#chkOnlyBad').onchange=()=>renderAnlagen(stripIgnored(filteredReports()));
-for(const s of ['#fType','#fScope','#fResult','#fParam','#fAblage'])$(s).onchange=render;
+for(const s of ['#fType','#fScope','#fResult','#fParam'])$(s).onchange=render;
+$('#fAblage').onchange=()=>{ablageFocusMode=false;render();};
 $('#fHv').onchange=()=>{refreshFilterOptions();render();};
 $('#fObj').onchange=()=>{refreshFilterOptions();render();};
 $('#fArea').onchange=render;
@@ -1599,6 +1608,14 @@ $('#fSearch').oninput=()=>{updateSearchBox();clearTimeout(searchTimer);searchTim
 $('#fSearchClear').onclick=()=>{$('#fSearch').value='';updateSearchBox();render();$('#fSearch').focus();};
 $$('#reportsTable th').forEach(th=>th.onclick=()=>{const k=th.dataset.key;if(sortKey===k)sortDir*=-1;else{sortKey=k;sortDir=1;}render();});
 $$('.tab').forEach(t=>t.onclick=()=>{
+  /* Die über den Warnhinweis geöffnete Auffälligkeitsansicht ist nur ein
+     temporärer Prüfmodus. Beim Verlassen zurück auf Gesamtbestand / alle Jahre,
+     damit ein unscheinbarer Restfilter nicht den Eindruck leerer Daten erzeugt. */
+  if(ablageFocusMode&&t.dataset.view!=='berichte'){
+    $('#fAblage').value='';
+    $('#fYear').value='';
+    ablageFocusMode=false;
+  }
   $$('.tab').forEach(x=>x.classList.remove('active'));t.classList.add('active');
   $$('.view').forEach(v=>v.classList.remove('active'));$('#view-'+t.dataset.view).classList.add('active');
   /* Der neue Reiter wird immer frisch aufgebaut, damit alle Reiter
@@ -1685,6 +1702,7 @@ $('#btnHelp').onclick=()=>showDialog('Kurzanleitung – NOVA Prüfberichte-Viewe
 
 /* ================= STARTANSICHT ================= */
 function goHome(){
+  ablageFocusMode=false;
   for(const sel of ['#fYear','#fHv','#fObj','#fArea','#fType','#fScope','#fResult','#fParam','#fAblage','#fSearch'])$(sel).value='';
   $('#chkOnlyBad').checked=false;updateSearchBox();
   sortKey='probenahmedatum';sortDir=-1;
