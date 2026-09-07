@@ -21,7 +21,7 @@
 
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Probenahmeplan Generator v1.4.0</title>
+<title>Probenahmeplan Generator v1.4.1</title>
 <style>
 :root{--blue:#075985;--blue2:#0c4a6e;--pale:#f0f9ff;--line:#cbd5e1;--text:#1e293b;--muted:#64748b;--bg:#f8fafc;--danger:#b91c1c;--dangerbg:#fef2f2;--warn:#92400e;--warnbg:#fffbeb;--ok:#166534;--okbg:#f0fdf4}
 *{box-sizing:border-box} body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text)}
@@ -63,7 +63,9 @@ main{max-width:1450px;margin:0 auto;padding:18px}.grid{display:grid;grid-templat
 .paper.soft .section-row td{background:#fff;color:#0f172a;border-color:#94a3b8;border-top-width:2px;letter-spacing:.02em}
 .paper.soft .result-bad{background:transparent;color:#111;text-decoration:underline}
 .paper.soft .loc-street{color:#111}
-.mini{font-size:9px;color:#94a3b8;margin-top:2px}.temp-print{font-size:8.4px;color:#64748b;margin-top:3px;line-height:1.25}.temp-print b{color:#475569}.result-bad{font-weight:850;color:#991b1b;background:#fef2f2}.check{font-size:18px;line-height:1;color:#94a3b8}.section-row td{background:#075985;color:#fff;font-weight:750;border-color:#075985;padding:4px 7px}.footer-note{font-size:9px;color:#64748b;margin-top:8px}.empty{text-align:center;padding:60px 20px;color:#94a3b8}
+.mini{font-size:9px;color:#94a3b8;margin-top:2px}.temp-print{font-size:8.4px;color:#64748b;margin-top:3px;line-height:1.25}.temp-print b{color:#475569}.result-bad{font-weight:850;color:#991b1b;background:#fef2f2}.check{font-size:18px;line-height:1;color:#94a3b8}.section-row td{background:#075985;color:#fff;font-weight:750;border-color:#075985;padding:4px 7px}
+.section-row.sub td{background:#e0f2fe;color:#075985;font-weight:750;border-color:#bae6fd;padding-left:16px;font-size:9.5px}
+.paper.soft .section-row.sub td{background:#fff;color:#334155;border-color:#b6c2d0;border-top-width:1px}.footer-note{font-size:9px;color:#64748b;margin-top:8px}.empty{text-align:center;padding:60px 20px;color:#94a3b8}
 
 /* Druckoptionen */
 .modal-backdrop{position:fixed;inset:0;z-index:1000;background:rgba(15,23,42,.46);display:none;align-items:center;justify-content:center;padding:20px}
@@ -91,7 +93,7 @@ main{max-width:1450px;margin:0 auto;padding:18px}.grid{display:grid;grid-templat
 </style>
 </head>
 <body>
-<div class="appbar"><div class="appbar-left"><img class="app-logo" src="nova_logo_web.png" alt="NOVA"><div class="header-copy"><span class="brand-title">Probenahmeplan Generator <span class="version">v1.4.0</span></span><span class="workflow">PDF
+<div class="appbar"><div class="appbar-left"><img class="app-logo" src="nova_logo_web.png" alt="NOVA"><div class="header-copy"><span class="brand-title">Probenahmeplan Generator <span class="version">v1.4.1</span></span><span class="workflow">PDF
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M5 12h14"></path><path d="m13 6 6 6-6 6"></path>
       </svg>
@@ -192,6 +194,27 @@ function cleanLines(text){return text.split(/\n+/).map(normalize).filter(Boolean
 function firstDate(s){return (String(s||'').match(/\d{2}\.\d{2}\.\d{4}/)||[])[0]||''}
 function matchField(text,label,nextLabels){const e=nextLabels.map(x=>x.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|'); const rx=new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\s+(.+?)(?=\\s+(?:'+e+')\\s+|$)','is'); const m=text.match(rx); return m?normalize(m[1]):''}
 function inferGroup(loc){let m=loc.match(/^(Gebäude\s+[^,]+)/i); if(m)return m[1]; m=loc.match(/\b(\d+\.?\s*OG|EG|UG|DG|Untergeschoss\s*\d*|Obergeschoss\s*\d*|Erdgeschoss)\b/i); if(m)return m[1].replace(/\s+/g,' '); return ''}
+function inferBuildingOrStreet(loc){
+ const clean=canonicalizeLocation(loc);
+ const g=clean.match(/^(Gebäude\s+[^·,]+)/i); if(g)return normalize(g[1]);
+ const first=(clean.split(' · ')[0]||'').trim();
+ return looksLikeStreetAddress(first)?shortStreetAddress(first):'';
+}
+function inferFloor(loc){
+ const m=canonicalizeLocation(loc).match(/\b(\d+\.?\s*OG|\d+\.?\s*UG|EG|UG|DG|KG|(?:Ober|Unter|Erd|Dach|Keller|Zwischen)geschoss(?:\s*\d+)?)\b/i);
+ return m?normalize(m[1]):'';
+}
+// Groups by street/building first and only then by floor - but the street level is
+// only added when the plan actually covers more than one address.
+function applyAutoGroups(){
+ const streets=new Set(state.samples.map(s=>inferBuildingOrStreet(s.location)).filter(Boolean));
+ const multi=streets.size>1;
+ state.samples.forEach(s=>{
+   const top=multi?inferBuildingOrStreet(s.location):'';
+   const floor=inferFloor(s.location);
+   s.group=[top,floor].filter(Boolean).join(' · ')||inferGroup(s.location);
+ });
+}
 function inferWaterFromLocation(loc){
  const s=' '+String(loc||'').toUpperCase()+' ';
  if(/\b(KW|KALTWASSER|WBE|KW-ZULAUF)\b/.test(s))return 'KW';
@@ -206,7 +229,8 @@ function shortStreetAddress(s){
 }
 function looksLikeStreetAddress(s){
  s=normalize(s);
- return /\b(?:str(?:aße|\.)?|straße|weg|platz|allee|gasse|ring|damm|ufer|steig|chaussee|promenade|markt)\s*\d+[a-zA-Z]?\b/i.test(s);
+ // No leading \b: "Horemannstr. 2" has no word boundary in front of "str".
+ return /(?:str(?:aße|asse|\.)?|weg|platz|allee|gasse|ring|damm|ufer|steig|chaussee|promenade|markt)\s*\d+[a-zA-Z]?\b/i.test(s);
 }
 
 function cleanLocationText(s){
@@ -552,12 +576,20 @@ function renderPreview(){
  const infoHeader=showResult&&showTemp?'Befund / Temp.':showResult?'Letzter Befund':'Temperaturen';
  const colCount=showInfo?5:4;
  const start=Math.max(1,parseInt($('#startNo').value)||1);
- let rows='',lastGroup=null;
+ let rows='',lastTop=null,lastSub=null;
  state.samples.forEach((s,i)=>{
-   if(s.group&&s.group!==lastGroup){
-     rows+=`<tr class="section-row"><td colspan="${colCount}">${esc(s.group)}</td></tr>`;
-     lastGroup=s.group;
-   } else if(!s.group){lastGroup=null}
+   const gp=(s.group||'').split('·').map(x=>x.trim()).filter(Boolean);
+   const top=gp.length>1?gp[0]:'';
+   const sub=gp.length>1?gp.slice(1).join(' · '):(gp[0]||'');
+   if(!gp.length){lastTop=null;lastSub=null;}
+   if(top&&top!==lastTop){
+     rows+=`<tr class="section-row"><td colspan="${colCount}">${esc(top)}</td></tr>`;
+     lastTop=top; lastSub=null;
+   }
+   if(sub&&sub!==lastSub){
+     rows+=`<tr class="section-row${top?' sub':''}"><td colspan="${colCount}">${esc(sub)}</td></tr>`;
+     lastSub=sub;
+   }
    let info='';
    if(showInfo){
      const resultHtml=showResult
@@ -581,11 +613,11 @@ function renderPreview(){
 function normalizeLegacySamples(){
  state.samples.forEach(s=>{if(s.location)s.location=canonicalizeLocation(s.location);});state.samples.forEach(s=>{if(s.details?.type==='Legio'){if(s.water!=='KW')s.water='WW';const parts=(s.scope||'').split('·').map(x=>x.trim()).filter(Boolean).filter(x=>!/^Legio(?:nellen)?$/i.test(x)&&!/^WW$|^KW$/i.test(x));s.scope=[s.water,'Legionellen',...parts].filter(Boolean).join(' · ');}})}
 function renderAll(){normalizeLegacySamples();putMeta();renderRows();renderPreview();}
-async function handlePdf(file){if(!file)return;$('#status').textContent='PDF wird ausgelesen …';try{const text=await extractPdf(file);const parsed=parseReport(text);state=parsed;undoStack.length=0;flashId=null;putMeta();renderAll();const bad=state.samples.filter(x=>x.bad).length;$('#status').innerHTML=`Erkannt: <b>${state.samples.length}</b> Proben${bad?` · <b style="color:#b91c1c">${bad} auffällig</b>`:''} · Format: <b>${esc(parsed.parser||'Standard')}</b>. Bitte kurz prüfen und bei Bedarf sortieren/korrigieren.`;if(!state.samples.length){$('#status').innerHTML='Keine Proben erkannt. Das Laborformat ist noch nicht sauber zugeordnet oder der Bericht ist bildbasiert.';}}catch(e){console.error(e);$('#status').textContent='PDF konnte nicht ausgewertet werden: '+e.message;}}
+async function handlePdf(file){if(!file)return;$('#status').textContent='PDF wird ausgelesen …';try{const text=await extractPdf(file);const parsed=parseReport(text);state=parsed;undoStack.length=0;flashId=null;applyAutoGroups();putMeta();renderAll();const bad=state.samples.filter(x=>x.bad).length;$('#status').innerHTML=`Erkannt: <b>${state.samples.length}</b> Proben${bad?` · <b style="color:#b91c1c">${bad} auffällig</b>`:''} · Format: <b>${esc(parsed.parser||'Standard')}</b>. Bitte kurz prüfen und bei Bedarf sortieren/korrigieren.`;if(!state.samples.length){$('#status').innerHTML='Keine Proben erkannt. Das Laborformat ist noch nicht sauber zugeordnet oder der Bericht ist bildbasiert.';}}catch(e){console.error(e);$('#status').textContent='PDF konnte nicht ausgewertet werden: '+e.message;}}
 ['reportNo','sampleDate','client','object','objectId','sampler','sourceLab'].forEach(id=>$('#'+id).addEventListener('input',renderPreview));$('#startNo').addEventListener('input',()=>{renderRows();renderPreview()});$('#pdfInput').addEventListener('change',e=>handlePdf(e.target.files[0]));const drop=$('#drop');['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('over')}));['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('over')}));drop.addEventListener('drop',e=>handlePdf([...e.dataTransfer.files].find(f=>f.type==='application/pdf')));
 $('#undoBtn').onclick=undo;
 document.addEventListener('keydown',e=>{const t=e.target,typing=t&&/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName);if((e.ctrlKey||e.metaKey)&&!e.shiftKey&&e.key.toLowerCase()==='z'&&!typing){e.preventDefault();undo();}});
-$('#addRow').onclick=()=>{snapshot('Probe hinzugefügt');state.samples.push({id:crypto.randomUUID(),tw:'',eId:'',location:'Neue Entnahmestelle',scope:'',last:'',bad:false,group:'',details:{}});renderAll()};$('#autoGroups').onclick=()=>{snapshot('Bereiche automatisch gesetzt');state.samples.forEach(s=>s.group=inferGroup(s.location));renderAll()};$('#clearGroups').onclick=()=>{snapshot('Bereiche geleert');state.samples.forEach(s=>s.group='');renderAll()};
+$('#addRow').onclick=()=>{snapshot('Probe hinzugefügt');state.samples.push({id:crypto.randomUUID(),tw:'',eId:'',location:'Neue Entnahmestelle',scope:'',last:'',bad:false,group:'',details:{}});renderAll()};$('#autoGroups').onclick=()=>{snapshot('Bereiche automatisch gesetzt');applyAutoGroups();renderAll()};$('#clearGroups').onclick=()=>{snapshot('Bereiche geleert');state.samples.forEach(s=>s.group='');renderAll()};
 
 const printModal=$('#printModal');
 function openPrintModal(){printModal.classList.add('open');}
