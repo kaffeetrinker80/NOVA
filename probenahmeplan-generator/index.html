@@ -40,8 +40,10 @@ main{max-width:1450px;margin:0 auto;padding:18px}.grid{display:grid;grid-templat
 .drop{border:2px dashed #94a3b8;border-radius:12px;padding:26px;text-align:center;background:#f8fafc;transition:.15s}.drop.over{border-color:#0284c7;background:#f0f9ff}.drop strong{display:block;font-size:16px;margin-bottom:5px}.muted{color:var(--muted);font-size:12px}
 .formgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}.field label{display:block;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.03em;margin-bottom:4px}.field input,.field textarea{width:100%;border:1px solid #cbd5e1;border-radius:7px;padding:8px 9px;font:inherit;background:#fff}.field textarea{min-height:58px;resize:vertical}.full{grid-column:1/-1}
 .toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:14px 0 10px}.toolbar input[type=number]{width:76px;padding:7px;border:1px solid #cbd5e1;border-radius:7px}.count{font-size:12px;color:#64748b;margin-left:auto}
-.rows{display:flex;flex-direction:column;gap:7px}.row{border:1px solid #dbe3ec;border-radius:9px;background:#fff;display:grid;grid-template-columns:34px 46px minmax(360px,1fr) 112px 92px 72px;gap:7px;align-items:center;padding:8px}.row.dragging{opacity:.45}.row.drop-target{outline:2px solid #38bdf8}.handle{cursor:grab;color:#94a3b8;font-size:20px;text-align:center;user-select:none}.num{font-weight:800;font-size:17px;text-align:center;color:var(--blue2)}.row input{width:100%;border:1px solid #d5dde6;border-radius:6px;padding:7px;font:inherit;font-size:12px}
-.row input.scope-edit,.row input.last{padding-left:6px;padding-right:6px;font-size:11.5px}.row input:focus{outline:2px solid #bae6fd;border-color:#38bdf8}.last.bad{background:var(--dangerbg);border-color:#fecaca;color:var(--danger);font-weight:750}.result-edit{min-width:0}.temp-note{font-size:9px;color:#64748b;line-height:1.25;margin-top:3px;white-space:nowrap}.temp-note b{color:#475569}.row-actions{display:flex;gap:4px;justify-content:flex-end}.row-actions button{padding:5px 7px;font-size:11px}
+.rows{display:flex;flex-direction:column;gap:4px}.row{border:1px solid #dbe3ec;border-radius:7px;background:#fff;display:grid;grid-template-columns:28px 34px minmax(420px,1fr) 92px 58px 54px;gap:4px;align-items:center;padding:4px 5px}.row.dragging{opacity:.45}.row.drop-target{outline:2px solid #38bdf8}.handle{cursor:grab;color:#94a3b8;font-size:18px;text-align:center;user-select:none}.num{font-weight:800;font-size:15px;text-align:center;color:var(--blue2)}.row input{width:100%;border:1px solid #d5dde6;border-radius:5px;padding:4px 5px;font:inherit;font-size:11px;min-height:28px}
+.row textarea.loc{width:100%;border:1px solid #d5dde6;border-radius:5px;padding:3px 5px;font:inherit;font-size:11.2px;line-height:1.22;resize:none;min-height:36px;max-height:36px;overflow:auto;background:#fff}
+.row textarea.loc:focus{outline:2px solid #bae6fd;border-color:#38bdf8}
+.row input.scope-edit,.row input.last{padding-left:3px;padding-right:3px;font-size:10.5px}.row input:focus{outline:2px solid #bae6fd;border-color:#38bdf8}.last.bad{background:var(--dangerbg);border-color:#fecaca;color:var(--danger);font-weight:750}.result-edit{min-width:0}.temp-note{font-size:9px;color:#64748b;line-height:1.25;margin-top:3px;white-space:nowrap}.temp-note b{color:#475569}.row-actions{display:flex;gap:2px;justify-content:flex-end}.row-actions button{padding:4px 5px;font-size:10px;min-width:23px}
 .hint{padding:9px 11px;border-radius:8px;font-size:12px;margin-top:10px;background:#f8fafc;border:1px solid #e2e8f0}.hint.bad{background:var(--dangerbg);border-color:#fecaca;color:#991b1b}.status{font-size:12px;color:#475569;margin-top:8px;min-height:18px}
 .preview-wrap{position:sticky;top:71px}.paper{background:#fff;min-height:297mm;padding:14mm 13mm;margin:0 auto;color:#222;box-shadow:0 1px 12px #00000018;font-size:11px}.print-head{border:2px solid #075985;border-radius:6px;padding:10px 12px;margin-bottom:12px;background:#fbfdff}
 .print-brandrow{display:flex;align-items:center;gap:14px;border-bottom:1px solid #cbd5e1;padding-bottom:6px;margin-bottom:7px}
@@ -69,7 +71,7 @@ main{max-width:1450px;margin:0 auto;padding:18px}.grid{display:grid;grid-templat
 .switch input:checked + .switch-track::after{transform:translateX(18px)}
 .modal-actions{display:flex;justify-content:flex-end;gap:8px;padding:13px 20px 18px;border-top:1px solid #e2e8f0}
 @media print{.modal-backdrop{display:none!important}}
-@media(max-width:1100px){.grid{grid-template-columns:1fr}.preview-wrap{position:static}.row{grid-template-columns:30px 42px minmax(300px,1fr) 105px 88px 65px}}
+@media(max-width:1100px){.grid{grid-template-columns:1fr}.preview-wrap{position:static}.row{grid-template-columns:26px 32px minmax(320px,1fr) 88px 56px 52px}}
 @page{size:A4;margin:11mm}
 @media print{body{background:#fff}.appbar,main>.grid>.panel:first-child,.panel-h{display:none!important}main{max-width:none;padding:0}.grid{display:block}.panel{border:0;box-shadow:none}.panel-b{padding:0}.preview-wrap{position:static}.paper{box-shadow:none;padding:0;min-height:auto;margin:0;font-size:10.5px}.print-head{break-inside:avoid}.print-logo{width:175px;max-width:32%}.print-table tr{break-inside:avoid}.print-table th{font-size:8.5px}.print-table .pn{font-size:13px}.mini{font-size:8.5px}}
 </style>
@@ -171,8 +173,8 @@ function matchField(text,label,nextLabels){const e=nextLabels.map(x=>x.replace(/
 function inferGroup(loc){let m=loc.match(/^(Gebäude\s+[^,]+)/i); if(m)return m[1]; m=loc.match(/\b(\d+\.?\s*OG|EG|UG|DG|Untergeschoss\s*\d*|Obergeschoss\s*\d*|Erdgeschoss)\b/i); if(m)return m[1].replace(/\s+/g,' '); return ''}
 function inferWaterFromLocation(loc){
  const s=' '+String(loc||'').toUpperCase()+' ';
- if(/\b(KW|KALTWASSER)\b/.test(s))return 'KW';
- if(/\b(WW|WARMWASSER|WBA|ZIRKULATION)\b/.test(s))return 'WW';
+ if(/\b(KW|KALTWASSER|WBE|KW-ZULAUF)\b/.test(s))return 'KW';
+ if(/\b(WW|WARMWASSER|WBA|WW-ABGANG|ZIRKULATION|ZIRKULATION-RL)\b/.test(s))return 'WW';
  return '';
 }
 function shortStreetAddress(s){
@@ -188,8 +190,12 @@ function looksLikeStreetAddress(s){
 
 function cleanLocationText(s){
   s=normalize(s)
+    .replace(/\bProbenahmeadresse\s*:?\s*/ig,'')
     .replace(/\bWW[-\s]*Steigstrang\b/ig,'')
     .replace(/\bSteigstrang\s*WW\b/ig,'')
+    .replace(/\bWBA\b/ig,'WW-Abgang')
+    .replace(/\bWBE\b/ig,'KW-Zulauf')
+    .replace(/(^|[\s·*])Z(?=$|[\s·*])/ig,'$1Zirkulation-RL')
     .replace(/\s*·\s*·\s*/g,' · ')
     .replace(/\s*\*\s*\*\s*/g,' * ')
     .replace(/^[·*]\s*|\s*[·*]$/g,'')
@@ -233,7 +239,7 @@ function canonicalizeLocation(loc){
     // Room/use area: Bad, Küche, WC, Dusche etc.
     const roomMatch=part.match(/\b(Bad|Küche|Kueche|KüSpü|KueSpü|WC|Dusche|DU|Pausenraum|Teeküche|Teekueche|Waschraum|Umkleide|Sanitärraum|Sanitaerraum)\b/i);
     // Armature / outlet information.
-    const armMatch=part.match(/\b(?:WB|SB|Spü|Spue|KüSpü|KueSpü|PH|EV|KH|ZM|EM|EHM|MW|WW|KW|WBA|WBE|Z)\b/i);
+    const armMatch=part.match(/\b(?:WB|SB|Spü|Spue|KüSpü|KueSpü|PH|EV|KH|ZM|EM|EHM|MW|WW|KW|WW-Abgang|KW-Zulauf|Zirkulation-RL|WBA|WBE|Z)\b/i);
 
     if(roomMatch){
       // If a segment contains room + armature, keep it together as the final technical description.
@@ -467,8 +473,8 @@ async function extractPdf(file){const data=new Uint8Array(await file.arrayBuffer
 function syncMetaFromInputs(){for(const k of Object.keys(state.meta)){const el=$('#'+k);if(el)state.meta[k]=el.value.trim();}}
 function putMeta(){for(const k of Object.keys(state.meta)){const el=$('#'+k);if(el)el.value=state.meta[k]||'';}}
 function updateRowField(id,key,val){const s=state.samples.find(x=>x.id===id);if(!s)return;s[key]=val;if(key==='last')s.bad=/^[⚠!]/.test(val.trim())||s.bad&&val.includes('⚠');renderPreview();}
-function renderRows(){const wrap=$('#rows');wrap.innerHTML='';const start=Math.max(1,parseInt($('#startNo').value)||1); state.samples.forEach((s,i)=>{const d=document.createElement('div');d.className='row';d.draggable=true;d.dataset.id=s.id;d.innerHTML=`<div class="handle" title="Ziehen">☰</div><div class="num">${start+i}</div><input class="loc" value="${esc(s.location)}" title="Entnahmestelle"><input value="${esc(s.scope)}" title="Probe / Parameter"><div class="result-edit"><input class="last ${s.bad?'bad':''}" value="${esc(s.last)}" title="Letzter Befund">${(s.details?.tempConstant||s.details?.tempSample)?`<div class="temp-note">${s.details?.tempSample?`PN ${esc(s.details.tempSample)}°C`:''}${s.details?.tempConstant&&s.details?.tempSample?' · ':''}${s.details?.tempConstant?`${esc(s.details?.tempConstantLabel||'konst.')} ${esc(s.details.tempConstant)}°C`:''}</div>`:''}</div><div class="row-actions"><button title="Bereich bearbeiten" aria-label="Bereich bearbeiten">✎</button><button class="danger" title="Löschen">×</button></div><input class="group-edit" value="${esc(s.group||'')}" style="grid-column:3/-1;display:none" placeholder="Bereich / Zwischenüberschrift, z. B. Gebäude B 145 oder 4. OG">`;
- const inputs=d.querySelectorAll('input'); inputs[0].addEventListener('input',e=>updateRowField(s.id,'location',e.target.value));inputs[0].addEventListener('blur',e=>{s.location=canonicalizeLocation(e.target.value);renderAll();});inputs[1].addEventListener('input',e=>updateRowField(s.id,'scope',e.target.value));inputs[2].addEventListener('input',e=>{s.bad=/^[⚠!]/.test(e.target.value.trim());updateRowField(s.id,'last',e.target.value);renderRows();});inputs[3].addEventListener('input',e=>updateRowField(s.id,'group',e.target.value));
+function renderRows(){const wrap=$('#rows');wrap.innerHTML='';const start=Math.max(1,parseInt($('#startNo').value)||1); state.samples.forEach((s,i)=>{const d=document.createElement('div');d.className='row';d.draggable=true;d.dataset.id=s.id;d.innerHTML=`<div class="handle" title="Ziehen">☰</div><div class="num">${start+i}</div><textarea class="loc" rows="2" title="Entnahmestelle">${esc(s.location)}</textarea><input class="scope-edit" value="${esc(s.scope)}" title="Probe / Parameter"><div class="result-edit"><input class="last ${s.bad?'bad':''}" value="${esc(s.last)}" title="Letzter Befund">${(s.details?.tempConstant||s.details?.tempSample)?`<div class="temp-note">${s.details?.tempSample?`PN ${esc(s.details.tempSample)}°C`:''}${s.details?.tempConstant&&s.details?.tempSample?' · ':''}${s.details?.tempConstant?`${esc(s.details?.tempConstantLabel||'konst.')} ${esc(s.details.tempConstant)}°C`:''}</div>`:''}</div><div class="row-actions"><button title="Bereich bearbeiten" aria-label="Bereich bearbeiten">✎</button><button class="danger" title="Löschen">×</button></div><input class="group-edit" value="${esc(s.group||'')}" style="grid-column:3/-1;display:none" placeholder="Bereich / Zwischenüberschrift, z. B. Gebäude B 145 oder 4. OG">`;
+ const locInput=d.querySelector('textarea.loc'); const inputs=d.querySelectorAll('input'); locInput.addEventListener('input',e=>updateRowField(s.id,'location',e.target.value));locInput.addEventListener('blur',e=>{s.location=canonicalizeLocation(e.target.value);renderAll();});inputs[0].addEventListener('input',e=>updateRowField(s.id,'scope',e.target.value));inputs[1].addEventListener('input',e=>{s.bad=/^[⚠!]/.test(e.target.value.trim());updateRowField(s.id,'last',e.target.value);renderRows();});inputs[2].addEventListener('input',e=>updateRowField(s.id,'group',e.target.value));
  const btns=d.querySelectorAll('button');btns[0].onclick=()=>{const g=d.querySelector('.group-edit');g.style.display=g.style.display==='none'?'block':'none';};btns[1].onclick=()=>{state.samples=state.samples.filter(x=>x.id!==s.id);renderAll();};
  d.addEventListener('dragstart',()=>{d.classList.add('dragging');window._dragId=s.id});d.addEventListener('dragend',()=>{d.classList.remove('dragging');document.querySelectorAll('.drop-target').forEach(x=>x.classList.remove('drop-target'));window._dragId=null});d.addEventListener('dragover',e=>{e.preventDefault();d.classList.add('drop-target')});d.addEventListener('dragleave',()=>d.classList.remove('drop-target'));d.addEventListener('drop',e=>{e.preventDefault();const from=state.samples.findIndex(x=>x.id===window._dragId),to=state.samples.findIndex(x=>x.id===s.id);if(from<0||to<0||from===to)return;const [m]=state.samples.splice(from,1);state.samples.splice(to,0,m);renderAll();});wrap.appendChild(d);}); $('#count').textContent=`${state.samples.length} Probe${state.samples.length===1?'':'n'}`;}
 function allScopeChips(){const set=new Set();state.samples.forEach(s=>s.scope.split('·').map(x=>x.trim()).filter(Boolean).forEach(x=>set.add(x)));return [...set];}
