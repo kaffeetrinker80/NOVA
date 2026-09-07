@@ -21,7 +21,7 @@
 
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Probenahmeplan Generator v1.3.8</title>
+<title>Probenahmeplan Generator v1.4.0</title>
 <style>
 :root{--blue:#075985;--blue2:#0c4a6e;--pale:#f0f9ff;--line:#cbd5e1;--text:#1e293b;--muted:#64748b;--bg:#f8fafc;--danger:#b91c1c;--dangerbg:#fef2f2;--warn:#92400e;--warnbg:#fffbeb;--ok:#166534;--okbg:#f0fdf4}
 *{box-sizing:border-box} body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text)}
@@ -91,7 +91,7 @@ main{max-width:1450px;margin:0 auto;padding:18px}.grid{display:grid;grid-templat
 </style>
 </head>
 <body>
-<div class="appbar"><div class="appbar-left"><img class="app-logo" src="nova_logo_web.png" alt="NOVA"><div class="header-copy"><span class="brand-title">Probenahmeplan Generator <span class="version">v1.3.8</span></span><span class="workflow">PDF
+<div class="appbar"><div class="appbar-left"><img class="app-logo" src="nova_logo_web.png" alt="NOVA"><div class="header-copy"><span class="brand-title">Probenahmeplan Generator <span class="version">v1.4.0</span></span><span class="workflow">PDF
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M5 12h14"></path><path d="m13 6 6 6-6 6"></path>
       </svg>
@@ -229,7 +229,7 @@ function cleanLocationText(s){
 
 function splitFloorAndUnit(part){
   part=cleanLocationText(part);
-  const m=part.match(/^((?:\d+\.\s*OG|\d+\.OG|EG|UG|DG|KG)(?:\s+(?:li|re|mi|vo|hi|links|rechts|mitte|vorne|hinten)){0,4})\b\s*(.*)$/i);
+  const m=part.match(/^((?:\d+\.\s*OG|\d+\.OG|(?:Ober|Unter|Erd|Dach|Keller|Zwischen)geschoss(?:\s*\d+)?|EG|UG|DG|KG)(?:\s+(?:li|re|mi|vo|hi|links|rechts|mitte|vorne|hinten)){0,4})\b\s*(.*)$/i);
   if(!m)return {floor:'',unit:part};
   return {floor:normalize(m[1]),unit:normalize(m[2])};
 }
@@ -262,7 +262,8 @@ function canonicalizeLocation(loc){
     // Room/use area: Bad, Küche, WC, Dusche etc.
     const roomMatch=part.match(/\b(Bad|Küche|Kueche|KüSpü|KueSpü|WC|Dusche|DU|Pausenraum|Teeküche|Teekueche|Waschraum|Umkleide|Sanitärraum|Sanitaerraum)\b/i);
     // Armature / outlet information.
-    const armMatch=part.match(/\b(?:WB|SB|Spü|Spue|KüSpü|KueSpü|PH|EV|KH|ZM|EM|EHM|MW|WW|KW|WW-Abgang|KW-Zulauf|Zirkulation-RL|WBA|WBE|Z)\b/i);
+    const armMatch=part.match(/\b(?:WB|SB|Spü|Spue|KüSpü|KueSpü|PH|EV|KH|ZM|EM|EHM|MW|WW|KW|WW-Abgang|KW-Zulauf|Zirkulation-RL|WBA|WBE|Z)\b/i)
+      ||part.match(/\b(?:Waschbecken|Waschb\.?|Mischbatterie|Mischb\.?|Schwenkh\.?|Schwenkhahn|Spüle|Spültisch|Einhebelmischer|Einhebelmisch\.?|Zweigriff\w*|Schlaucharmatur|Brause|Boiler|Entnahmeventil|Zapfhahn|Auslauf|Armatur)\b/i);
 
     if(roomMatch){
       // If a segment contains room + armature, keep it together as the final technical description.
@@ -452,6 +453,18 @@ function parseGBA(text){
 }
 
 /* Dr. Blasy / AGROLAB ---------------------------------------------------- */
+// AGROLAB prints: <Armatur> . <Straße, PLZ Ort, Geschoss, Nutzeinheit, Nutzer, Raum, Bad/Küche, Strang>
+// The parts are comma separated, so they are converted to the common " · " structure here.
+function restructureAgrolabLocation(loc){
+  loc=normalize(loc).replace(/^\.\s*/,'');
+  let fitting='',addr=loc;
+  const dot=loc.search(/\s\.\s/);
+  if(dot>=0){fitting=normalize(loc.slice(0,dot));addr=normalize(loc.slice(dot+3));}
+  const parts=addr.split(/\s*,\s*/).map(normalize).filter(Boolean)
+    .filter(x=>!/^\d{5}\b/.test(x));            // Postleitzahl + Ort entfallen, stehen im Kopf
+  if(fitting)parts.push(fitting);                // Armatur ans Ende
+  return parts.filter(Boolean).join(' · ');
+}
 function parseAgrolab(text){
  const lines=cleanLines(text), flat=normalize(text.replace(/\n/g,' '));
  let report=(flat.match(/Auftrag\s+(\d+)\s+Legionellenuntersuchung/i)||[])[1]||'';
@@ -473,8 +486,15 @@ function parseAgrolab(text){
    if(!/Legionellen\s*\(berechnet\)/i.test(block))continue;
    const compact=normalize(block.replace(/\n/g,' '));
    let loc='';
-   let m=compact.match(/Entnahmestelle\s+(.+?)(?=\s+Weitergehende|\s+Orientierende|\s+Techn\.\s*Maßnahme)/i);
+   const stop='(?=\\s+Ersatzentnahmestelle|\\s+Weitergehende|\\s+Orientierende|\\s+Techn\\.\\s*Ma\u00dfnahme|$)';
+   // "Ersatzentnahmestelle" must not be mistaken for the label itself.
+   let m=compact.match(new RegExp('(?:^|[^A-Za-z\u00c4\u00d6\u00dc\u00e4\u00f6\u00fc\u00df])Entnahmestelle(?!n)\\s+(.+?)'+stop,'i'));
    if(m)loc=normalize(m[1]).replace(/^\.\s*/,'');
+   // Replacement sampling points are printed without the label - only the address line starting with ".".
+   if(!loc){const m2=compact.match(new RegExp('(?:^|\\s)\\.\\s+(.+?)'+stop,'i'));if(m2)loc=normalize(m2[1]);}
+   loc=loc.replace(/\s*Ersatzentnahmestelle.*$/i,'').trim();
+   loc=restructureAgrolabLocation(loc);
+   const isErsatz=/Ersatzentnahmestelle\s*\(1=Ja\)\s*1\b/i.test(compact);
    // Remove the duplicate object prefix only if the remainder is still meaningful.
    loc=loc.replace(/\s+\.\s+/g,' ').trim();
    let value='';
@@ -492,7 +512,7 @@ function parseAgrolab(text){
    }
    if(!tempConstant){const m=compact.match(/max\.?\s*erreichbare\s*Wassertemperatur\D{0,16}(\d+(?:[.,]\d+)?)/i);if(m)tempConstant=m[1];}
    if(!tempSample){const m=compact.replace(/max\.?\s*erreichbare\s*Wassertemperatur\D{0,16}\d+(?:[.,]\d+)?/ig,' ').match(/Wassertemperatur\s*\(\s*vor\s*Ort\s*\)\D{0,16}(\d+(?:[.,]\d+)?)/i);if(m)tempSample=m[1];}
-   if(loc&&value)samples.push(makeSample({location:loc,water,type:'Legio',results:[legioResult(value)],labId,tempSample,tempConstant,tempConstantLabel:'max.'}));
+   if(loc&&value){const sm=makeSample({location:loc,water,type:'Legio',results:[legioResult(value)],labId,tempSample,tempConstant,tempConstantLabel:'max.'});if(isErsatz)sm.scope=(sm.scope?sm.scope+' \u00b7 ':'')+'Ersatzstelle';samples.push(sm);}
  }
  return {meta:{reportNo:report,sampleDate:firstDate((flat.match(/Probenahme\s+(\d{2}\.\d{2}\.\d{4})/i)||[])[1]||''),client:normalize(client),object:normalize(obj),objectId:'',sampler:normalize(sampler),sourceLab:'Vorbericht anderes Labor: Dr. Blasy - Dr. Busse / AGROLAB'},samples,parser:'Dr. Blasy / AGROLAB'};
 }
