@@ -21,7 +21,7 @@
 
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Probenahmeplan Generator v1.3.6</title>
+<title>Probenahmeplan Generator v1.3.7</title>
 <style>
 :root{--blue:#075985;--blue2:#0c4a6e;--pale:#f0f9ff;--line:#cbd5e1;--text:#1e293b;--muted:#64748b;--bg:#f8fafc;--danger:#b91c1c;--dangerbg:#fef2f2;--warn:#92400e;--warnbg:#fffbeb;--ok:#166534;--okbg:#f0fdf4}
 *{box-sizing:border-box} body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text)}
@@ -49,6 +49,15 @@ main{max-width:1450px;margin:0 auto;padding:18px}.grid{display:grid;grid-templat
 .print-brandrow{display:flex;align-items:center;gap:14px;border-bottom:1px solid #cbd5e1;padding-bottom:6px;margin-bottom:7px}
 .print-title{font-size:16px;font-weight:800;color:#075985;letter-spacing:.04em;flex:1}
 .print-logo{width:190px;max-width:34%;height:auto;object-fit:contain;display:block;opacity:.92}.meta{display:grid;grid-template-columns:1fr 1fr;gap:8px}.meta b{color:#334155}.scope{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}.param-legend{margin-top:7px;padding-top:6px;border-top:1px solid #dbe3ec;font-size:8.8px;line-height:1.45;color:#64748b}.param-legend b{color:#475569}.param-legend .legend-line{margin-top:1px}.chip{display:inline-block;border-radius:4px;padding:2px 6px;font-size:9.5px;font-weight:750;background:#e0f2fe;color:#075985}.chip.gray{background:#f1f5f9;color:#475569}.print-table{width:100%;border-collapse:collapse;margin-top:7px}.print-table th,.print-table td{border:1px solid #cbd5e1;padding:5px 6px;vertical-align:top}.print-table th{background:#f1f5f9;font-size:9px;text-transform:uppercase;color:#475569;text-align:left}.print-table .pn{width:37px;text-align:center;font-weight:850;font-size:14px}.print-table .pp{width:100px}.print-table .pv{width:112px}.print-table .pc{width:54px;text-align:center}.loc-street{font-weight:700;color:#1f2937}.loc-rest{font-weight:400;color:#334155}
+.paper.soft .print-head{border:1px solid #94a3b8;background:#fff}
+.paper.soft .print-title{color:#334155}
+.paper.soft .print-logo{opacity:.75}
+.paper.soft .chip{background:#fff;border:1px solid #cbd5e1;color:#334155}
+.paper.soft .print-table th{background:#fff;color:#334155}
+.paper.soft .print-table th,.paper.soft .print-table td{border-color:#b6c2d0}
+.paper.soft .section-row td{background:#fff;color:#0f172a;border-color:#94a3b8;border-top-width:2px;letter-spacing:.02em}
+.paper.soft .result-bad{background:transparent;color:#111;text-decoration:underline}
+.paper.soft .loc-street{color:#111}
 .mini{font-size:9px;color:#94a3b8;margin-top:2px}.temp-print{font-size:8.4px;color:#64748b;margin-top:3px;line-height:1.25}.temp-print b{color:#475569}.result-bad{font-weight:850;color:#991b1b;background:#fef2f2}.check{font-size:18px;line-height:1;color:#94a3b8}.section-row td{background:#075985;color:#fff;font-weight:750;border-color:#075985;padding:4px 7px}.footer-note{font-size:9px;color:#64748b;margin-top:8px}.empty{text-align:center;padding:60px 20px;color:#94a3b8}
 
 /* Druckoptionen */
@@ -77,7 +86,7 @@ main{max-width:1450px;margin:0 auto;padding:18px}.grid{display:grid;grid-templat
 </style>
 </head>
 <body>
-<div class="appbar"><div class="appbar-left"><img class="app-logo" src="nova_logo_web.png" alt="NOVA"><div class="header-copy"><span class="brand-title">Probenahmeplan Generator <span class="version">v1.3.6</span></span><span class="workflow">PDF
+<div class="appbar"><div class="appbar-left"><img class="app-logo" src="nova_logo_web.png" alt="NOVA"><div class="header-copy"><span class="brand-title">Probenahmeplan Generator <span class="version">v1.3.7</span></span><span class="workflow">PDF
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M5 12h14"></path><path d="m13 6 6 6-6 6"></path>
       </svg>
@@ -100,6 +109,13 @@ main{max-width:1450px;margin:0 auto;padding:18px}.grid{display:grid;grid-templat
         <div><strong>Temperaturen anzeigen</strong><span>Konstante Temperatur und Probenahmetemperatur</span></div>
         <label class="switch">
           <input id="printShowTemp" type="checkbox" checked>
+          <span class="switch-track"></span>
+        </label>
+      </div>
+      <div class="print-option">
+        <div><strong>Sanfter Druck</strong><span>Tintensparend: helle Flächen, dezente Hervorhebungen</span></div>
+        <label class="switch">
+          <input id="printSoftInk" type="checkbox">
           <span class="switch-track"></span>
         </label>
       </div>
@@ -133,7 +149,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/p
 
 const $=s=>document.querySelector(s); const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 let state={meta:{reportNo:'',sampleDate:'',client:'',object:'',objectId:'',sampler:'',sourceLab:''},samples:[]};
-let printView={active:false,showResult:true,showTemp:true};
+let printView={active:false,showResult:true,showTemp:true,soft:false};
 const paramDefs=[
  {k:'Legionellen',rx:/Legionellen\s+([<>]?\s*[\d.,]+)(?:\s*[⚠!])?\s+([\d.,]+)/i,short:'Legio'},
  {k:'Escherichia coli',rx:/Escherichia\s+coli\s+([<>]?\s*[\d.,]+)\s+([\d.,]+)/i,short:'E. coli'},
@@ -193,6 +209,8 @@ function cleanLocationText(s){
     .replace(/\bProbenahmeadresse\s*:?\s*/ig,'')
     .replace(/\bWW[-\s]*Steigstrang\b/ig,'')
     .replace(/\bSteigstrang\s*WW\b/ig,'')
+    .replace(/\bTWE[-\s]*Ausgang\b/ig,'WW-Abgang')
+    .replace(/\bTWE[-\s]*Zirkulation\b/ig,'Zirkulation-RL')
     .replace(/\bWBA\b/ig,'WW-Abgang')
     .replace(/\bWBE\b/ig,'KW-Zulauf')
     .replace(/(^|[\s·*])Z(?=$|[\s·*])/ig,'$1Zirkulation-RL')
@@ -414,9 +432,15 @@ function parseGBA(text){
     if(!value){for(let j=li+1;j<Math.min(bl.length,li+5);j++){const m=bl[j].match(/^([<>]?\s*\d{1,3}(?:[.,]\d{3})*(?:,\d+)?)$/);if(m){value=normalize(m[1]);break;}}}
   }
   if(!value){const m=normalize(block.replace(/\n/g,' ')).match(/Legionellen\s+berechnet.*?([<>]?\s*\d{1,3}(?:[.,]\d{3})*(?:,\d+)?)(?=\s*(?:\*|BG|Seite|$))/i);if(m)value=normalize(m[1]);}
+  // GBA prints label, unit and value on one visual row, so read them by label.
   let tempSample='',tempConstant='';
-  const methodIdx=bl.findIndex(x=>/^[MD]$/i.test(x.trim()));
-  if(methodIdx>=0){const nums=[]; for(let j=methodIdx+1;j<Math.min(bl.length,methodIdx+8);j++){if(/^[<>]?\s*\d+(?:[.,]\d+)?$/.test(bl[j].trim()))nums.push(bl[j].trim()); if(nums.length>=2)break;} if(nums[0])tempSample=nums[0]; if(nums[1])tempConstant=nums[1];}
+  const cmp=normalize(block.replace(/\n/g,' '));
+  for(const l of bl){
+    if(!tempSample){const m=l.match(/Temperatur\s*\(\s*Probenahme\s*\)\D{0,14}([<>]?\s*\d+(?:[.,]\d+)?)/i);if(m)tempSample=m[1];}
+    if(!tempConstant){const m=l.match(/Temperatur\s*\(\s*max\.?\s*\)\D{0,14}([<>]?\s*\d+(?:[.,]\d+)?)/i);if(m)tempConstant=m[1];}
+  }
+  if(!tempSample){const m=cmp.match(/Temperatur\s*\(\s*Probenahme\s*\)\D{0,14}([<>]?\s*\d+(?:[.,]\d+)?)/i);if(m)tempSample=m[1];}
+  if(!tempConstant){const m=cmp.match(/Temperatur\s*\(\s*max\.?\s*\)\D{0,14}([<>]?\s*\d+(?:[.,]\d+)?)/i);if(m)tempConstant=m[1];}
   if(loc&&value)samples.push(makeSample({location:loc,water:inferWaterFromLocation(loc),type:'Legio',results:[legioResult(value)],labId,tempSample,tempConstant,tempConstantLabel:'max.'}));
  }
  return {meta:{reportNo:report,sampleDate:firstDate(sampleDate),client:normalize(client),object:normalize(obj),objectId:'',sampler,sourceLab:'Vorbericht anderes Labor: GBA Gesellschaft für Bioanalytik mbH'},samples,parser:'GBA'};
@@ -454,9 +478,15 @@ function parseAgrolab(text){
    if(!value){m=compact.match(/Legionellen\s*\(berechnet\).*?([<>]?\s*\d{1,3}(?:[.,]\d{3})*(?:,\d+)?)\s+100\s+(?:keine|mittlere|hohe|extrem)/i);if(m)value=normalize(m[1]);}
    let water='';
    const wm=compact.match(/KW\/\s*WW.*?\b(Kaltwasser|Warmwasser)\b/i);if(wm)water=/kalt/i.test(wm[1])?'KW':'WW';else water=inferWaterFromLocation(loc);
+   // AGROLAB uses "Wassertemperatur (vor Ort)" and "max. erreichbare Wassertemperatur (vor Ort)".
    let tempSample='',tempConstant='';
-   const abl=cleanLines(block); const klarIdx=abl.findIndex(x=>/^klar$/i.test(x.trim()));
-   if(klarIdx>=0){const nums=[];for(let j=klarIdx+1;j<Math.min(abl.length,klarIdx+7);j++){if(/^\d+(?:[.,]\d+)?$/.test(abl[j].trim()))nums.push(abl[j].trim());if(nums.length>=2)break;}if(nums[0])tempSample=nums[0];if(nums[1])tempConstant=nums[1];}
+   const abl=cleanLines(block);
+   for(const l of abl){
+     if(!tempConstant){const m=l.match(/max\.?\s*erreichbare\s*Wassertemperatur\D{0,16}(\d+(?:[.,]\d+)?)/i);if(m){tempConstant=m[1];continue;}}
+     if(!tempSample&&!/max\.?\s*erreichbare/i.test(l)){const m=l.match(/Wassertemperatur\s*\(\s*vor\s*Ort\s*\)\D{0,16}(\d+(?:[.,]\d+)?)/i);if(m)tempSample=m[1];}
+   }
+   if(!tempConstant){const m=compact.match(/max\.?\s*erreichbare\s*Wassertemperatur\D{0,16}(\d+(?:[.,]\d+)?)/i);if(m)tempConstant=m[1];}
+   if(!tempSample){const m=compact.replace(/max\.?\s*erreichbare\s*Wassertemperatur\D{0,16}\d+(?:[.,]\d+)?/ig,' ').match(/Wassertemperatur\s*\(\s*vor\s*Ort\s*\)\D{0,16}(\d+(?:[.,]\d+)?)/i);if(m)tempSample=m[1];}
    if(loc&&value)samples.push(makeSample({location:loc,water,type:'Legio',results:[legioResult(value)],labId,tempSample,tempConstant,tempConstantLabel:'max.'}));
  }
  return {meta:{reportNo:report,sampleDate:firstDate((flat.match(/Probenahme\s+(\d{2}\.\d{2}\.\d{4})/i)||[])[1]||''),client:normalize(client),object:normalize(obj),objectId:'',sampler:normalize(sampler),sourceLab:'Vorbericht anderes Labor: Dr. Blasy - Dr. Busse / AGROLAB'},samples,parser:'Dr. Blasy / AGROLAB'};
@@ -483,6 +513,7 @@ function renderPreview(){
  syncMetaFromInputs();
  const p=$('#paper');
  if(!state.samples.length){p.innerHTML='<div class="empty">Noch kein Bericht eingelesen.</div>';return;}
+ p.classList.toggle('soft',!!(printView.active&&printView.soft));
  const showResult=!printView.active||printView.showResult;
  const showTemp=!printView.active||printView.showTemp;
  const showInfo=showResult||showTemp;
@@ -530,13 +561,13 @@ $('#printCancel').onclick=closePrintModal;
 printModal.addEventListener('click',e=>{if(e.target===printModal)closePrintModal();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&printModal.classList.contains('open'))closePrintModal();});
 $('#printConfirm').onclick=()=>{
-  printView={active:true,showResult:$('#printShowResult').checked,showTemp:$('#printShowTemp').checked};
+  printView={active:true,showResult:$('#printShowResult').checked,showTemp:$('#printShowTemp').checked,soft:$('#printSoftInk').checked};
   closePrintModal();
   renderPreview();
   requestAnimationFrame(()=>requestAnimationFrame(()=>window.print()));
 };
 window.addEventListener('afterprint',()=>{
-  printView={active:false,showResult:true,showTemp:true};
+  printView={active:false,showResult:true,showTemp:true,soft:false};
   renderPreview();
 });
 $('#saveJson').onclick=()=>{syncMetaFromInputs();const blob=new Blob([JSON.stringify({...state,startNo:parseInt($('#startNo').value)||1},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`Probenahmeplan_${state.meta.objectId||state.meta.reportNo||'Projekt'}.json`;a.click();URL.revokeObjectURL(a.href)};$('#loadJson').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;try{const x=JSON.parse(await f.text());state={meta:x.meta||{},samples:(x.samples||[]).map(s=>({...s,id:s.id||crypto.randomUUID()}))};$('#startNo').value=x.startNo||1;renderAll();$('#status').textContent='Projekt geladen.'}catch{$('#status').textContent='Projektdatei konnte nicht geladen werden.'}});
