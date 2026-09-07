@@ -21,7 +21,7 @@
 
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Probenahmeplan Generator v1.3.5</title>
+<title>Probenahmeplan Generator v1.3.6</title>
 <style>
 :root{--blue:#075985;--blue2:#0c4a6e;--pale:#f0f9ff;--line:#cbd5e1;--text:#1e293b;--muted:#64748b;--bg:#f8fafc;--danger:#b91c1c;--dangerbg:#fef2f2;--warn:#92400e;--warnbg:#fffbeb;--ok:#166534;--okbg:#f0fdf4}
 *{box-sizing:border-box} body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text)}
@@ -45,7 +45,8 @@ main{max-width:1450px;margin:0 auto;padding:18px}.grid{display:grid;grid-templat
 .preview-wrap{position:sticky;top:71px}.paper{background:#fff;min-height:297mm;padding:14mm 13mm;margin:0 auto;color:#222;box-shadow:0 1px 12px #00000018;font-size:11px}.print-head{border:2px solid #075985;border-radius:6px;padding:10px 12px;margin-bottom:12px;background:#fbfdff}
 .print-brandrow{display:flex;align-items:center;gap:14px;border-bottom:1px solid #cbd5e1;padding-bottom:6px;margin-bottom:7px}
 .print-title{font-size:16px;font-weight:800;color:#075985;letter-spacing:.04em;flex:1}
-.print-logo{width:190px;max-width:34%;height:auto;object-fit:contain;display:block;opacity:.92}.meta{display:grid;grid-template-columns:1fr 1fr;gap:8px}.meta b{color:#334155}.scope{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}.param-legend{margin-top:7px;padding-top:6px;border-top:1px solid #dbe3ec;font-size:8.8px;line-height:1.45;color:#64748b}.param-legend b{color:#475569}.param-legend .legend-line{margin-top:1px}.chip{display:inline-block;border-radius:4px;padding:2px 6px;font-size:9.5px;font-weight:750;background:#e0f2fe;color:#075985}.chip.gray{background:#f1f5f9;color:#475569}.print-table{width:100%;border-collapse:collapse;margin-top:7px}.print-table th,.print-table td{border:1px solid #cbd5e1;padding:5px 6px;vertical-align:top}.print-table th{background:#f1f5f9;font-size:9px;text-transform:uppercase;color:#475569;text-align:left}.print-table .pn{width:37px;text-align:center;font-weight:850;font-size:14px}.print-table .pp{width:112px}.print-table .pv{width:126px}.print-table .pc{width:54px;text-align:center}.mini{font-size:9px;color:#64748b;margin-top:2px}.temp-print{font-size:8.4px;color:#64748b;margin-top:3px;line-height:1.25}.temp-print b{color:#475569}.result-bad{font-weight:850;color:#991b1b;background:#fef2f2}.check{font-size:18px;line-height:1;color:#94a3b8}.section-row td{background:#075985;color:#fff;font-weight:750;border-color:#075985;padding:4px 7px}.footer-note{font-size:9px;color:#64748b;margin-top:8px}.empty{text-align:center;padding:60px 20px;color:#94a3b8}
+.print-logo{width:190px;max-width:34%;height:auto;object-fit:contain;display:block;opacity:.92}.meta{display:grid;grid-template-columns:1fr 1fr;gap:8px}.meta b{color:#334155}.scope{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}.param-legend{margin-top:7px;padding-top:6px;border-top:1px solid #dbe3ec;font-size:8.8px;line-height:1.45;color:#64748b}.param-legend b{color:#475569}.param-legend .legend-line{margin-top:1px}.chip{display:inline-block;border-radius:4px;padding:2px 6px;font-size:9.5px;font-weight:750;background:#e0f2fe;color:#075985}.chip.gray{background:#f1f5f9;color:#475569}.print-table{width:100%;border-collapse:collapse;margin-top:7px}.print-table th,.print-table td{border:1px solid #cbd5e1;padding:5px 6px;vertical-align:top}.print-table th{background:#f1f5f9;font-size:9px;text-transform:uppercase;color:#475569;text-align:left}.print-table .pn{width:37px;text-align:center;font-weight:850;font-size:14px}.print-table .pp{width:112px}.print-table .pv{width:126px}.print-table .pc{width:54px;text-align:center}.loc-street{font-weight:700;color:#1f2937}.loc-rest{font-weight:400;color:#334155}
+.mini{font-size:9px;color:#94a3b8;margin-top:2px}.temp-print{font-size:8.4px;color:#64748b;margin-top:3px;line-height:1.25}.temp-print b{color:#475569}.result-bad{font-weight:850;color:#991b1b;background:#fef2f2}.check{font-size:18px;line-height:1;color:#94a3b8}.section-row td{background:#075985;color:#fff;font-weight:750;border-color:#075985;padding:4px 7px}.footer-note{font-size:9px;color:#64748b;margin-top:8px}.empty{text-align:center;padding:60px 20px;color:#94a3b8}
 
 /* Druckoptionen */
 .modal-backdrop{position:fixed;inset:0;z-index:1000;background:rgba(15,23,42,.46);display:none;align-items:center;justify-content:center;padding:20px}
@@ -73,7 +74,7 @@ main{max-width:1450px;margin:0 auto;padding:18px}.grid{display:grid;grid-templat
 </style>
 </head>
 <body>
-<div class="appbar"><div class="appbar-left"><img class="app-logo" src="nova_logo_web.png" alt="NOVA"><div class="header-copy"><span class="brand-title">Probenahmeplan Generator <span class="version">v1.3.5</span></span><span class="workflow">PDF
+<div class="appbar"><div class="appbar-left"><img class="app-logo" src="nova_logo_web.png" alt="NOVA"><div class="header-copy"><span class="brand-title">Probenahmeplan Generator <span class="version">v1.3.6</span></span><span class="workflow">PDF
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M5 12h14"></path><path d="m13 6 6 6-6 6"></path>
       </svg>
@@ -183,7 +184,96 @@ function looksLikeStreetAddress(s){
  s=normalize(s);
  return /\b(?:str(?:aße|\.)?|straße|weg|platz|allee|gasse|ring|damm|ufer|steig|chaussee|promenade|markt)\s*\d+[a-zA-Z]?\b/i.test(s);
 }
-function makeSample({tw='',eId='',location,water='',type,results=[],lf='',ph='',labId='',tempSample='',tempConstant=''}){const group=inferGroup(location); const bads=results.filter(x=>x.bad);
+
+function cleanLocationText(s){
+  s=normalize(s)
+    .replace(/\bWW[-\s]*Steigstrang\b/ig,'')
+    .replace(/\bSteigstrang\s*WW\b/ig,'')
+    .replace(/\s*·\s*·\s*/g,' · ')
+    .replace(/\s*\*\s*\*\s*/g,' * ')
+    .replace(/^[·*]\s*|\s*[·*]$/g,'')
+    .replace(/\s{2,}/g,' ')
+    .trim();
+  return s;
+}
+
+function splitFloorAndUnit(part){
+  part=cleanLocationText(part);
+  const m=part.match(/^((?:\d+\.\s*OG|\d+\.OG|EG|UG|DG|KG)(?:\s+(?:li|re|mi|vo|hi|links|rechts|mitte|vorne|hinten)){0,4})\b\s*(.*)$/i);
+  if(!m)return {floor:'',unit:part};
+  return {floor:normalize(m[1]),unit:normalize(m[2])};
+}
+
+function canonicalizeLocation(loc){
+  loc=cleanLocationText(loc);
+  if(!loc)return '';
+
+  const rawParts=loc.split(/\s*(?:·|\*)\s*/).map(cleanLocationText).filter(Boolean);
+  let street='', floor='', unit='', room='', armature='', rest=[];
+
+  for(const raw of rawParts){
+    let part=cleanLocationText(raw);
+    if(!part)continue;
+
+    if(!street && looksLikeStreetAddress(part)){
+      street=shortStreetAddress(part);
+      const remainder=cleanLocationText(part.slice(street.length).replace(/^[,\s]+/,''));
+      if(remainder)rawParts.push(remainder);
+      continue;
+    }
+
+    const fu=splitFloorAndUnit(part);
+    if(fu.floor){
+      if(!floor)floor=fu.floor;
+      part=fu.unit;
+      if(!part)continue;
+    }
+
+    // Room/use area: Bad, Küche, WC, Dusche etc.
+    const roomMatch=part.match(/\b(Bad|Küche|Kueche|KüSpü|KueSpü|WC|Dusche|DU|Pausenraum|Teeküche|Teekueche|Waschraum|Umkleide|Sanitärraum|Sanitaerraum)\b/i);
+    // Armature / outlet information.
+    const armMatch=part.match(/\b(?:WB|SB|Spü|Spue|KüSpü|KueSpü|PH|EV|KH|ZM|EM|EHM|MW|WW|KW|WBA|WBE|Z)\b/i);
+
+    if(roomMatch){
+      // If a segment contains room + armature, keep it together as the final technical description.
+      room=room?room+' · '+part:part;
+      continue;
+    }
+    if(armMatch){
+      armature=armature?armature+' · '+part:part;
+      continue;
+    }
+
+    // Names / practices / apartments are treated as the user unit.
+    if(!unit)unit=part;
+    else rest.push(part);
+  }
+
+  // Anything unclassified belongs after the user unit but before technical room/armature info.
+  const ordered=[street,floor,unit,...rest,room,armature]
+    .map(cleanLocationText)
+    .filter(Boolean);
+
+  // Remove exact duplicates while preserving order.
+  const seen=new Set();
+  return ordered.filter(x=>{
+    const k=x.toLowerCase();
+    if(seen.has(k))return false;
+    seen.add(k); return true;
+  }).join(' · ');
+}
+
+function locationDisplayHtml(loc){
+  const clean=canonicalizeLocation(loc);
+  const parts=clean.split(/\s*·\s*/).filter(Boolean);
+  if(!parts.length)return '';
+  const first=parts[0];
+  if(looksLikeStreetAddress(first)){
+    return `<strong class="loc-street">${esc(first)}</strong>${parts.length>1?` <span class="loc-rest">· ${parts.slice(1).map(esc).join(' · ')}</span>`:''}`;
+  }
+  return `<span class="loc-rest">${parts.map(esc).join(' · ')}</span>`;
+}
+function makeSample({tw='',eId='',location,water='',type,results=[],lf='',ph='',labId='',tempSample='',tempConstant='',tempConstantLabel='konst.'}){location=canonicalizeLocation(location); const group=inferGroup(location); const bads=results.filter(x=>x.bad);
  if(type==='Legio' && water!=='KW') water='WW';
  const displayType=type==='Legio'?'Legionellen':(type==='Metalle'?'Chemie':type);
  let scope=[water,displayType].filter(Boolean); if(type==='Metalle'&&(lf||ph))scope.push('VO'); let last='';
@@ -197,7 +287,7 @@ function makeSample({tw='',eId='',location,water='',type,results=[],lf='',ph='',
  } else if(type==='Metalle') {
    const bits=['✓']; if(lf)bits.push(`LF ${normalize(lf)}`); if(ph)bits.push(`pH ${normalize(ph)}`); last=bits.join(' · ');
  } else last='✓';
- return {id:crypto.randomUUID(),tw:tw,eId,location,water,scope:scope.join(' · '),last,bad:bads.length>0,group,details:{type,results,lf:normalize(lf),ph:normalize(ph),labId,tempSample:normalize(tempSample),tempConstant:normalize(tempConstant)}};
+ return {id:crypto.randomUUID(),tw:tw,eId,location,water,scope:scope.join(' · '),last,bad:bads.length>0,group,details:{type,results,lf:normalize(lf),ph:normalize(ph),labId,tempSample:normalize(tempSample),tempConstant:normalize(tempConstant),tempConstantLabel:tempConstantLabel||'konst.'}};
 }
 function legioResult(value,limit='100'){value=normalize(value).replace(/\s+/g,' ');return {name:'Legionellen',short:'Legio',result:value,limit,bad:isBad(value,limit,value)}}
 
@@ -320,7 +410,7 @@ function parseGBA(text){
   let tempSample='',tempConstant='';
   const methodIdx=bl.findIndex(x=>/^[MD]$/i.test(x.trim()));
   if(methodIdx>=0){const nums=[]; for(let j=methodIdx+1;j<Math.min(bl.length,methodIdx+8);j++){if(/^[<>]?\s*\d+(?:[.,]\d+)?$/.test(bl[j].trim()))nums.push(bl[j].trim()); if(nums.length>=2)break;} if(nums[0])tempSample=nums[0]; if(nums[1])tempConstant=nums[1];}
-  if(loc&&value)samples.push(makeSample({location:loc,water:inferWaterFromLocation(loc),type:'Legio',results:[legioResult(value)],labId,tempSample,tempConstant}));
+  if(loc&&value)samples.push(makeSample({location:loc,water:inferWaterFromLocation(loc),type:'Legio',results:[legioResult(value)],labId,tempSample,tempConstant,tempConstantLabel:'max.'}));
  }
  return {meta:{reportNo:report,sampleDate:firstDate(sampleDate),client:normalize(client),object:normalize(obj),objectId:'',sampler,sourceLab:'Vorbericht anderes Labor: GBA Gesellschaft für Bioanalytik mbH'},samples,parser:'GBA'};
 }
@@ -360,7 +450,7 @@ function parseAgrolab(text){
    let tempSample='',tempConstant='';
    const abl=cleanLines(block); const klarIdx=abl.findIndex(x=>/^klar$/i.test(x.trim()));
    if(klarIdx>=0){const nums=[];for(let j=klarIdx+1;j<Math.min(abl.length,klarIdx+7);j++){if(/^\d+(?:[.,]\d+)?$/.test(abl[j].trim()))nums.push(abl[j].trim());if(nums.length>=2)break;}if(nums[0])tempSample=nums[0];if(nums[1])tempConstant=nums[1];}
-   if(loc&&value)samples.push(makeSample({location:loc,water,type:'Legio',results:[legioResult(value)],labId,tempSample,tempConstant}));
+   if(loc&&value)samples.push(makeSample({location:loc,water,type:'Legio',results:[legioResult(value)],labId,tempSample,tempConstant,tempConstantLabel:'max.'}));
  }
  return {meta:{reportNo:report,sampleDate:firstDate((flat.match(/Probenahme\s+(\d{2}\.\d{2}\.\d{4})/i)||[])[1]||''),client:normalize(client),object:normalize(obj),objectId:'',sampler:normalize(sampler),sourceLab:'Vorbericht anderes Labor: Dr. Blasy - Dr. Busse / AGROLAB'},samples,parser:'Dr. Blasy / AGROLAB'};
 }
@@ -376,8 +466,8 @@ async function extractPdf(file){const data=new Uint8Array(await file.arrayBuffer
 function syncMetaFromInputs(){for(const k of Object.keys(state.meta)){const el=$('#'+k);if(el)state.meta[k]=el.value.trim();}}
 function putMeta(){for(const k of Object.keys(state.meta)){const el=$('#'+k);if(el)el.value=state.meta[k]||'';}}
 function updateRowField(id,key,val){const s=state.samples.find(x=>x.id===id);if(!s)return;s[key]=val;if(key==='last')s.bad=/^[⚠!]/.test(val.trim())||s.bad&&val.includes('⚠');renderPreview();}
-function renderRows(){const wrap=$('#rows');wrap.innerHTML='';const start=Math.max(1,parseInt($('#startNo').value)||1); state.samples.forEach((s,i)=>{const d=document.createElement('div');d.className='row';d.draggable=true;d.dataset.id=s.id;d.innerHTML=`<div class="handle" title="Ziehen">☰</div><div class="num">${start+i}</div><input class="loc" value="${esc(s.location)}" title="Entnahmestelle"><input value="${esc(s.scope)}" title="Probe / Parameter"><div class="result-edit"><input class="last ${s.bad?'bad':''}" value="${esc(s.last)}" title="Letzter Befund">${(s.details?.tempConstant||s.details?.tempSample)?`<div class="temp-note">${s.details?.tempConstant?`<b>konst.</b> ${esc(s.details.tempConstant)}°C`:''}${s.details?.tempConstant&&s.details?.tempSample?' · ':''}${s.details?.tempSample?`PN ${esc(s.details.tempSample)}°C`:''}</div>`:''}</div><div class="row-actions"><button title="Bereich bearbeiten" aria-label="Bereich bearbeiten">✎</button><button class="danger" title="Löschen">×</button></div><input class="group-edit" value="${esc(s.group||'')}" style="grid-column:3/-1;display:none" placeholder="Bereich / Zwischenüberschrift, z. B. Gebäude B 145 oder 4. OG">`;
- const inputs=d.querySelectorAll('input'); inputs[0].addEventListener('input',e=>updateRowField(s.id,'location',e.target.value));inputs[1].addEventListener('input',e=>updateRowField(s.id,'scope',e.target.value));inputs[2].addEventListener('input',e=>{s.bad=/^[⚠!]/.test(e.target.value.trim());updateRowField(s.id,'last',e.target.value);renderRows();});inputs[3].addEventListener('input',e=>updateRowField(s.id,'group',e.target.value));
+function renderRows(){const wrap=$('#rows');wrap.innerHTML='';const start=Math.max(1,parseInt($('#startNo').value)||1); state.samples.forEach((s,i)=>{const d=document.createElement('div');d.className='row';d.draggable=true;d.dataset.id=s.id;d.innerHTML=`<div class="handle" title="Ziehen">☰</div><div class="num">${start+i}</div><input class="loc" value="${esc(s.location)}" title="Entnahmestelle"><input value="${esc(s.scope)}" title="Probe / Parameter"><div class="result-edit"><input class="last ${s.bad?'bad':''}" value="${esc(s.last)}" title="Letzter Befund">${(s.details?.tempConstant||s.details?.tempSample)?`<div class="temp-note">${s.details?.tempSample?`PN ${esc(s.details.tempSample)}°C`:''}${s.details?.tempConstant&&s.details?.tempSample?' · ':''}${s.details?.tempConstant?`${esc(s.details?.tempConstantLabel||'konst.')} ${esc(s.details.tempConstant)}°C`:''}</div>`:''}</div><div class="row-actions"><button title="Bereich bearbeiten" aria-label="Bereich bearbeiten">✎</button><button class="danger" title="Löschen">×</button></div><input class="group-edit" value="${esc(s.group||'')}" style="grid-column:3/-1;display:none" placeholder="Bereich / Zwischenüberschrift, z. B. Gebäude B 145 oder 4. OG">`;
+ const inputs=d.querySelectorAll('input'); inputs[0].addEventListener('input',e=>updateRowField(s.id,'location',e.target.value));inputs[0].addEventListener('blur',e=>{s.location=canonicalizeLocation(e.target.value);renderAll();});inputs[1].addEventListener('input',e=>updateRowField(s.id,'scope',e.target.value));inputs[2].addEventListener('input',e=>{s.bad=/^[⚠!]/.test(e.target.value.trim());updateRowField(s.id,'last',e.target.value);renderRows();});inputs[3].addEventListener('input',e=>updateRowField(s.id,'group',e.target.value));
  const btns=d.querySelectorAll('button');btns[0].onclick=()=>{const g=d.querySelector('.group-edit');g.style.display=g.style.display==='none'?'block':'none';};btns[1].onclick=()=>{state.samples=state.samples.filter(x=>x.id!==s.id);renderAll();};
  d.addEventListener('dragstart',()=>{d.classList.add('dragging');window._dragId=s.id});d.addEventListener('dragend',()=>{d.classList.remove('dragging');document.querySelectorAll('.drop-target').forEach(x=>x.classList.remove('drop-target'));window._dragId=null});d.addEventListener('dragover',e=>{e.preventDefault();d.classList.add('drop-target')});d.addEventListener('dragleave',()=>d.classList.remove('drop-target'));d.addEventListener('drop',e=>{e.preventDefault();const from=state.samples.findIndex(x=>x.id===window._dragId),to=state.samples.findIndex(x=>x.id===s.id);if(from<0||to<0||from===to)return;const [m]=state.samples.splice(from,1);state.samples.splice(to,0,m);renderAll();});wrap.appendChild(d);}); $('#count').textContent=`${state.samples.length} Probe${state.samples.length===1?'':'n'}`;}
 function allScopeChips(){const set=new Set();state.samples.forEach(s=>s.scope.split('·').map(x=>x.trim()).filter(Boolean).forEach(x=>set.add(x)));return [...set];}
@@ -405,20 +495,21 @@ function renderPreview(){
        :'';
      const tempBits=[];
      if(showTemp&&s.details?.tempSample) tempBits.push(`PN ${esc(s.details.tempSample)}°C`);
-     if(showTemp&&s.details?.tempConstant) tempBits.push(`konst. ${esc(s.details.tempConstant)}°C`);
+     if(showTemp&&s.details?.tempConstant) tempBits.push(`${esc(s.details?.tempConstantLabel||'konst.')} ${esc(s.details.tempConstant)}°C`);
      const tempHtml=tempBits.length?`<div class="temp-print">${tempBits.join(' · ')}</div>`:'';
      info=`<td class="pv">${resultHtml}${tempHtml}</td>`;
    }
-   rows+=`<tr><td class="pn">${start+i}</td><td><b>${esc(s.location)}</b>${s.tw||s.eId?`<div class="mini">${esc([s.tw,s.eId].filter(Boolean).join(' · '))}</div>`:''}</td><td class="pp">${esc(s.scope)}</td>${info}<td class="pc"><span class="check">□</span></td></tr>`;
+   rows+=`<tr><td class="pn">${start+i}</td><td>${locationDisplayHtml(s.location)}${s.tw||s.eId?`<div class="mini">${esc([s.tw,s.eId].filter(Boolean).join(' · '))}</div>`:''}</td><td class="pp">${esc(s.scope)}</td>${info}<td class="pc"><span class="check">□</span></td></tr>`;
  });
  const chips=allScopeChips().map(x=>`<span class="chip">${esc(x)}</span>`).join('');
  const infoHead=showInfo?`<th class="pv">${infoHeader}</th>`:'';
  let notes=['Nummerierung dient der Kennzeichnung der Probengefäße.'];
  if(showResult)notes.unshift('⚠ = auffälliger Befund bzw. bei Legionellen Erreichen/Überschreiten von 100 KBE/100 ml im zuletzt eingelesenen Prüfbericht.');
- if(showTemp)notes.push('Bei Legionellen: konst. = konstante Temperatur, PN = Probenahmetemperatur.');
+ if(showTemp)notes.push('Bei Legionellen: PN = Probenahmetemperatur; konst. = konstante Temperatur; max. = maximale bzw. max. erreichbare Temperatur.');
  p.innerHTML=`<div class="print-head"><div class="print-brandrow"><div class="print-title">PROBENAHMEPLAN – TRINKWASSER</div><img class="print-logo" src="nova_logo.png" alt="NOVA Praxis-Hygiene GmbH"></div><div class="meta"><div><b>Auftraggeber / Hausverwaltung</b><br>${esc(state.meta.client||'—')}</div><div><b>Anlage / Objekt</b><br>${esc(state.meta.object||'—')}</div><div><b>Objekt-ID:</b> ${esc(state.meta.objectId||'—')}</div><div><b>Grundlage:</b> ${esc(state.meta.reportNo?'Prüfbericht '+state.meta.reportNo:'—')}${state.meta.sampleDate?' · Probenahme '+esc(state.meta.sampleDate):''}<div class="mini" style="margin-top:3px;font-weight:700">${esc(state.meta.sourceLab||'')}</div></div></div><div class="scope">${chips}</div>${buildParameterLegend()}</div><table class="print-table"><thead><tr><th class="pn">Nr.</th><th>Entnahmestelle</th><th class="pp">Probe / Parameter</th>${infoHead}<th class="pc">✓</th></tr></thead><tbody>${rows}</tbody></table><div class="footer-note">${notes.join(' ')}</div>`;
 }
-function normalizeLegacySamples(){state.samples.forEach(s=>{if(s.details?.type==='Legio'){if(s.water!=='KW')s.water='WW';const parts=(s.scope||'').split('·').map(x=>x.trim()).filter(Boolean).filter(x=>!/^Legio(?:nellen)?$/i.test(x)&&!/^WW$|^KW$/i.test(x));s.scope=[s.water,'Legionellen',...parts].filter(Boolean).join(' · ');}})}
+function normalizeLegacySamples(){
+ state.samples.forEach(s=>{if(s.location)s.location=canonicalizeLocation(s.location);});state.samples.forEach(s=>{if(s.details?.type==='Legio'){if(s.water!=='KW')s.water='WW';const parts=(s.scope||'').split('·').map(x=>x.trim()).filter(Boolean).filter(x=>!/^Legio(?:nellen)?$/i.test(x)&&!/^WW$|^KW$/i.test(x));s.scope=[s.water,'Legionellen',...parts].filter(Boolean).join(' · ');}})}
 function renderAll(){normalizeLegacySamples();putMeta();renderRows();renderPreview();}
 async function handlePdf(file){if(!file)return;$('#status').textContent='PDF wird ausgelesen …';try{const text=await extractPdf(file);const parsed=parseReport(text);state=parsed;putMeta();renderAll();const bad=state.samples.filter(x=>x.bad).length;$('#status').innerHTML=`Erkannt: <b>${state.samples.length}</b> Proben${bad?` · <b style="color:#b91c1c">${bad} auffällig</b>`:''} · Format: <b>${esc(parsed.parser||'Standard')}</b>. Bitte kurz prüfen und bei Bedarf sortieren/korrigieren.`;if(!state.samples.length){$('#status').innerHTML='Keine Proben erkannt. Das Laborformat ist noch nicht sauber zugeordnet oder der Bericht ist bildbasiert.';}}catch(e){console.error(e);$('#status').textContent='PDF konnte nicht ausgewertet werden: '+e.message;}}
 ['reportNo','sampleDate','client','object','objectId','sampler','sourceLab'].forEach(id=>$('#'+id).addEventListener('input',renderPreview));$('#startNo').addEventListener('input',()=>{renderRows();renderPreview()});$('#pdfInput').addEventListener('change',e=>handlePdf(e.target.files[0]));const drop=$('#drop');['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('over')}));['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('over')}));drop.addEventListener('drop',e=>handlePdf([...e.dataTransfer.files].find(f=>f.type==='application/pdf')));
