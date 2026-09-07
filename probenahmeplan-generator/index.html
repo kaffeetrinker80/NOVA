@@ -21,7 +21,7 @@
 
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Probenahmeplan Generator v1.3.4</title>
+<title>Probenahmeplan Generator v1.3.5</title>
 <style>
 :root{--blue:#075985;--blue2:#0c4a6e;--pale:#f0f9ff;--line:#cbd5e1;--text:#1e293b;--muted:#64748b;--bg:#f8fafc;--danger:#b91c1c;--dangerbg:#fef2f2;--warn:#92400e;--warnbg:#fffbeb;--ok:#166534;--okbg:#f0fdf4}
 *{box-sizing:border-box} body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text)}
@@ -73,7 +73,7 @@ main{max-width:1450px;margin:0 auto;padding:18px}.grid{display:grid;grid-templat
 </style>
 </head>
 <body>
-<div class="appbar"><div class="appbar-left"><img class="app-logo" src="nova_logo_web.png" alt="NOVA"><div class="header-copy"><span class="brand-title">Probenahmeplan Generator <span class="version">v1.3.4</span></span><span class="workflow">PDF
+<div class="appbar"><div class="appbar-left"><img class="app-logo" src="nova_logo_web.png" alt="NOVA"><div class="header-copy"><span class="brand-title">Probenahmeplan Generator <span class="version">v1.3.5</span></span><span class="workflow">PDF
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M5 12h14"></path><path d="m13 6 6 6-6 6"></path>
       </svg>
@@ -173,6 +173,16 @@ function inferWaterFromLocation(loc){
  if(/\b(WW|WARMWASSER|WBA|ZIRKULATION)\b/.test(s))return 'WW';
  return '';
 }
+function shortStreetAddress(s){
+ s=normalize(s);
+ // Keep only street + house number; city/postcode are already in the object header.
+ const m=s.match(/^(.+?\b\d+[a-zA-Z]?(?:\s*[-\/]\s*\d+[a-zA-Z]?)?)(?=\s*,|\s+\d{5}\b|$)/);
+ return m?normalize(m[1]):s;
+}
+function looksLikeStreetAddress(s){
+ s=normalize(s);
+ return /\b(?:str(?:aße|\.)?|straße|weg|platz|allee|gasse|ring|damm|ufer|steig|chaussee|promenade|markt)\s*\d+[a-zA-Z]?\b/i.test(s);
+}
 function makeSample({tw='',eId='',location,water='',type,results=[],lf='',ph='',labId='',tempSample='',tempConstant=''}){const group=inferGroup(location); const bads=results.filter(x=>x.bad);
  if(type==='Legio' && water!=='KW') water='WW';
  const displayType=type==='Legio'?'Legionellen':(type==='Metalle'?'Chemie':type);
@@ -187,7 +197,7 @@ function makeSample({tw='',eId='',location,water='',type,results=[],lf='',ph='',
  } else if(type==='Metalle') {
    const bits=['✓']; if(lf)bits.push(`LF ${normalize(lf)}`); if(ph)bits.push(`pH ${normalize(ph)}`); last=bits.join(' · ');
  } else last='✓';
- return {id:crypto.randomUUID(),tw:tw||labId,eId,location,water,scope:scope.join(' · '),last,bad:bads.length>0,group,details:{type,results,lf:normalize(lf),ph:normalize(ph),labId,tempSample:normalize(tempSample),tempConstant:normalize(tempConstant)}};
+ return {id:crypto.randomUUID(),tw:tw,eId,location,water,scope:scope.join(' · '),last,bad:bads.length>0,group,details:{type,results,lf:normalize(lf),ph:normalize(ph),labId,tempSample:normalize(tempSample),tempConstant:normalize(tempConstant)}};
 }
 function legioResult(value,limit='100'){value=normalize(value).replace(/\s+/g,' ');return {name:'Legionellen',short:'Legio',result:value,limit,bad:isBad(value,limit,value)}}
 
@@ -226,11 +236,32 @@ function parseRoyal(text){
  const ids=[...text.matchAll(/\b(PL\d{2}-\d{7}\s*-\s*\d{8})\b/g)], samples=[];
  for(let i=0;i<ids.length;i++){
    const a=ids[i].index,b=i+1<ids.length?ids[i+1].index:text.length, block=text.slice(a,b), bl=cleanLines(block), labId=normalize(ids[i][1]);
-   let loc='';
+   let loc='', sampleAddress='';
+   // Royal prints the per-sample address separately from the actual Entnahmestelle.
+   // In extracted text it is normally the first street-address line following the laboratory ID.
+   const addressLine=bl.find((x,idx)=>idx>0 && idx<8 && looksLikeStreetAddress(x));
+   if(addressLine)sampleAddress=shortStreetAddress(addressLine);
+
    const same=block.match(/Entnahmestelle:\s*([^\n]+)/i); if(same&&normalize(same[1]))loc=normalize(same[1]);
-   if(!loc){const li=bl.findIndex(x=>/^Entnahmestelle:?$/i.test(x)); if(li>=0)loc=normalize(bl[li-1]||bl[li+1]||'');}
-   if(!loc){const li=bl.findIndex(x=>/Entnahmestelle:/i.test(x));if(li>=0)loc=normalize(bl[li].replace(/^.*?Entnahmestelle:\s*/i,'')||bl[li-1]||'');}
+   if(!loc){
+     const labelIndex=bl.findIndex(x=>/^Entnahmestelle:?$/i.test(x));
+     if(labelIndex>=0){
+       // With Royal's two-column PDF extraction the values usually follow in sequence:
+       // laboratory ID, sample address, sampler, entnahmestelle.
+       const candidates=bl.slice(1,8).filter(x=>
+         !/^PL\d{2}-/i.test(x) &&
+         !looksLikeStreetAddress(x) &&
+         !/Royal-Service GmbH/i.test(x) &&
+         !/Zweck\s*b|DIN EN ISO|Probenahmeverfahren/i.test(x)
+       );
+       loc=normalize(candidates.find(x=>/\*|\b(?:WBA|WBE|PH|WB|KüSpü|DU|Bad|WC|OG|UG|DG|EG)\b/i.test(x))||'');
+     }
+   }
+   if(!loc){const li=bl.findIndex(x=>/Entnahmestelle:/i.test(x));if(li>=0)loc=normalize(bl[li].replace(/^.*?Entnahmestelle:\s*/i,'')||'');}
    loc=loc.replace(/\s*\*\s*\d{1,2}:\d{2}\s*Uhr.*$/i,'').trim();
+   if(sampleAddress && loc && !loc.toLowerCase().includes(sampleAddress.toLowerCase())){
+     loc=sampleAddress+' · '+loc;
+   }
    let value='';
    const row=normalize(block.replace(/\n/g,' ')).match(/Legionella\s+spec\.\s*\([^)]*\).*?([<>]?\s*\d{1,3}(?:[.,]\d{3})*(?:,\d+)?)\s*KbE\s*\/\s*100\s*ml\s+100/i);
    if(row)value=normalize(row[1]);
