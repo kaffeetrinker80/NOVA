@@ -16,18 +16,22 @@
 <meta property="og:title" content="NOVA Probenahmeplan-Generator">
 <meta property="og:description" content="Saubere Probenahmestellen erstellen">
 <meta property="og:url" content="https://kaffeetrinker80.github.io/NOVA/probenahmeplan-generator/">
-<meta property="og:image" content="https://kaffeetrinker80.github.io/NOVA/probenahmeplan-generator/og-image.png">
+<meta property="og:image" content="https://kaffeetrinker80.github.io/NOVA/probenahmeplan-generator/og-image.png"> 
 <meta name="twitter:card" content="summary_large_image">
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Probenahmeplan Generator v1.3.1</title>
+<title>Probenahmeplan Generator v1.3.3</title>
 <style>
 :root{--blue:#075985;--blue2:#0c4a6e;--pale:#f0f9ff;--line:#cbd5e1;--text:#1e293b;--muted:#64748b;--bg:#f8fafc;--danger:#b91c1c;--dangerbg:#fef2f2;--warn:#92400e;--warnbg:#fffbeb;--ok:#166534;--okbg:#f0fdf4}
 *{box-sizing:border-box} body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text)}
 .appbar{position:sticky;top:0;z-index:20;background:#fff;border-bottom:1px solid #e2e8f0;padding:12px 18px;display:flex;align-items:center;gap:12px;box-shadow:0 1px 3px #0000000d}
-.brand{font-weight:750;color:var(--blue2);font-size:18px;display:flex;align-items:center;gap:9px}
+.appbar-left{display:flex;align-items:center;gap:9px;min-width:0}
 .app-logo{width:31px;height:31px;object-fit:contain;display:block;flex:0 0 auto}
-.workflow{display:inline-flex;align-items:center;gap:6px;line-height:1;white-space:nowrap}
+.header-copy{display:flex;align-items:baseline;gap:12px;min-width:0;white-space:nowrap}
+.brand-title{font-weight:750;color:var(--blue2);font-size:18px;line-height:1}
+.version{color:var(--muted);font-size:11px;font-weight:600;margin-left:4px;vertical-align:baseline}
+.workflow{display:inline-flex;align-items:center;gap:6px;line-height:1;font-size:12px;color:var(--muted);white-space:nowrap}
 .workflow svg{display:block;flex:0 0 auto}
 .spacer{flex:1}
 button,.btn{border:1px solid #cbd5e1;background:#fff;border-radius:8px;padding:8px 11px;font:inherit;cursor:pointer;color:#334155}.primary{background:var(--blue);border-color:var(--blue);color:#fff}.danger{color:#b91c1c}.small{padding:5px 8px;font-size:12px}.icon{width:34px;padding:7px;text-align:center}
@@ -36,23 +40,72 @@ main{max-width:1450px;margin:0 auto;padding:18px}.grid{display:grid;grid-templat
 .drop{border:2px dashed #94a3b8;border-radius:12px;padding:26px;text-align:center;background:#f8fafc;transition:.15s}.drop.over{border-color:#0284c7;background:#f0f9ff}.drop strong{display:block;font-size:16px;margin-bottom:5px}.muted{color:var(--muted);font-size:12px}
 .formgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}.field label{display:block;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.03em;margin-bottom:4px}.field input,.field textarea{width:100%;border:1px solid #cbd5e1;border-radius:7px;padding:8px 9px;font:inherit;background:#fff}.field textarea{min-height:58px;resize:vertical}.full{grid-column:1/-1}
 .toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:14px 0 10px}.toolbar input[type=number]{width:76px;padding:7px;border:1px solid #cbd5e1;border-radius:7px}.count{font-size:12px;color:#64748b;margin-left:auto}
-.rows{display:flex;flex-direction:column;gap:7px}.row{border:1px solid #dbe3ec;border-radius:9px;background:#fff;display:grid;grid-template-columns:34px 46px 1fr 190px 92px 72px;gap:7px;align-items:center;padding:8px}.row.dragging{opacity:.45}.row.drop-target{outline:2px solid #38bdf8}.handle{cursor:grab;color:#94a3b8;font-size:20px;text-align:center;user-select:none}.num{font-weight:800;font-size:17px;text-align:center;color:var(--blue2)}.row input{width:100%;border:1px solid #d5dde6;border-radius:6px;padding:7px;font:inherit;font-size:12px}.row input:focus{outline:2px solid #bae6fd;border-color:#38bdf8}.last.bad{background:var(--dangerbg);border-color:#fecaca;color:var(--danger);font-weight:750}.row-actions{display:flex;gap:4px;justify-content:flex-end}.row-actions button{padding:5px 7px;font-size:11px}
+.rows{display:flex;flex-direction:column;gap:7px}.row{border:1px solid #dbe3ec;border-radius:9px;background:#fff;display:grid;grid-template-columns:34px 46px 1fr 190px 92px 72px;gap:7px;align-items:center;padding:8px}.row.dragging{opacity:.45}.row.drop-target{outline:2px solid #38bdf8}.handle{cursor:grab;color:#94a3b8;font-size:20px;text-align:center;user-select:none}.num{font-weight:800;font-size:17px;text-align:center;color:var(--blue2)}.row input{width:100%;border:1px solid #d5dde6;border-radius:6px;padding:7px;font:inherit;font-size:12px}.row input:focus{outline:2px solid #bae6fd;border-color:#38bdf8}.last.bad{background:var(--dangerbg);border-color:#fecaca;color:var(--danger);font-weight:750}.result-edit{min-width:0}.temp-note{font-size:9px;color:#64748b;line-height:1.25;margin-top:3px;white-space:nowrap}.temp-note b{color:#475569}.row-actions{display:flex;gap:4px;justify-content:flex-end}.row-actions button{padding:5px 7px;font-size:11px}
 .hint{padding:9px 11px;border-radius:8px;font-size:12px;margin-top:10px;background:#f8fafc;border:1px solid #e2e8f0}.hint.bad{background:var(--dangerbg);border-color:#fecaca;color:#991b1b}.status{font-size:12px;color:#475569;margin-top:8px;min-height:18px}
 .preview-wrap{position:sticky;top:71px}.paper{background:#fff;min-height:297mm;padding:14mm 13mm;margin:0 auto;color:#222;box-shadow:0 1px 12px #00000018;font-size:11px}.print-head{border:2px solid #075985;border-radius:6px;padding:10px 12px;margin-bottom:12px;background:#fbfdff}
 .print-brandrow{display:flex;align-items:center;gap:14px;border-bottom:1px solid #cbd5e1;padding-bottom:6px;margin-bottom:7px}
 .print-title{font-size:16px;font-weight:800;color:#075985;letter-spacing:.04em;flex:1}
-.print-logo{width:190px;max-width:34%;height:auto;object-fit:contain;display:block;opacity:.92}.meta{display:grid;grid-template-columns:1fr 1fr;gap:8px}.meta b{color:#334155}.scope{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}.param-legend{margin-top:7px;padding-top:6px;border-top:1px solid #dbe3ec;font-size:8.8px;line-height:1.45;color:#64748b}.param-legend b{color:#475569}.param-legend .legend-line{margin-top:1px}.chip{display:inline-block;border-radius:4px;padding:2px 6px;font-size:9.5px;font-weight:750;background:#e0f2fe;color:#075985}.chip.gray{background:#f1f5f9;color:#475569}.print-table{width:100%;border-collapse:collapse;margin-top:7px}.print-table th,.print-table td{border:1px solid #cbd5e1;padding:5px 6px;vertical-align:top}.print-table th{background:#f1f5f9;font-size:9px;text-transform:uppercase;color:#475569;text-align:left}.print-table .pn{width:37px;text-align:center;font-weight:850;font-size:14px}.print-table .pp{width:150px}.print-table .pv{width:92px}.print-table .pc{width:54px;text-align:center}.mini{font-size:9px;color:#64748b;margin-top:2px}.result-bad{font-weight:850;color:#991b1b;background:#fef2f2}.check{font-size:18px;line-height:1;color:#94a3b8}.section-row td{background:#075985;color:#fff;font-weight:750;border-color:#075985;padding:4px 7px}.footer-note{font-size:9px;color:#64748b;margin-top:8px}.empty{text-align:center;padding:60px 20px;color:#94a3b8}
+.print-logo{width:190px;max-width:34%;height:auto;object-fit:contain;display:block;opacity:.92}.meta{display:grid;grid-template-columns:1fr 1fr;gap:8px}.meta b{color:#334155}.scope{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}.param-legend{margin-top:7px;padding-top:6px;border-top:1px solid #dbe3ec;font-size:8.8px;line-height:1.45;color:#64748b}.param-legend b{color:#475569}.param-legend .legend-line{margin-top:1px}.chip{display:inline-block;border-radius:4px;padding:2px 6px;font-size:9.5px;font-weight:750;background:#e0f2fe;color:#075985}.chip.gray{background:#f1f5f9;color:#475569}.print-table{width:100%;border-collapse:collapse;margin-top:7px}.print-table th,.print-table td{border:1px solid #cbd5e1;padding:5px 6px;vertical-align:top}.print-table th{background:#f1f5f9;font-size:9px;text-transform:uppercase;color:#475569;text-align:left}.print-table .pn{width:37px;text-align:center;font-weight:850;font-size:14px}.print-table .pp{width:150px}.print-table .pv{width:92px}.print-table .pc{width:54px;text-align:center}.mini{font-size:9px;color:#64748b;margin-top:2px}.temp-print{font-size:8.4px;color:#64748b;margin-top:3px;line-height:1.25}.temp-print b{color:#475569}.result-bad{font-weight:850;color:#991b1b;background:#fef2f2}.check{font-size:18px;line-height:1;color:#94a3b8}.section-row td{background:#075985;color:#fff;font-weight:750;border-color:#075985;padding:4px 7px}.footer-note{font-size:9px;color:#64748b;margin-top:8px}.empty{text-align:center;padding:60px 20px;color:#94a3b8}
+
+/* Druckoptionen */
+.modal-backdrop{position:fixed;inset:0;z-index:1000;background:rgba(15,23,42,.46);display:none;align-items:center;justify-content:center;padding:20px}
+.modal-backdrop.open{display:flex}
+.modal-card{width:min(430px,100%);background:#fff;border:1px solid #dbe3ec;border-radius:16px;box-shadow:0 24px 70px rgba(15,23,42,.25);overflow:hidden}
+.modal-head{padding:18px 20px 13px;border-bottom:1px solid #e2e8f0}
+.modal-head h3{margin:0;font-size:17px;color:var(--blue2)}
+.modal-head p{margin:5px 0 0;color:var(--muted);font-size:12px}
+.modal-body{padding:16px 20px}
+.print-option{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid #eef2f7}
+.print-option:last-child{border-bottom:0}
+.print-option strong{display:block;font-size:13px;color:#334155}
+.print-option span{display:block;font-size:11px;color:var(--muted);margin-top:2px}
+.switch{position:relative;width:42px;height:24px;flex:0 0 auto}
+.switch input{position:absolute;opacity:0;pointer-events:none}
+.switch-track{position:absolute;inset:0;border-radius:999px;background:#cbd5e1;transition:.18s;cursor:pointer}
+.switch-track::after{content:"";position:absolute;width:18px;height:18px;left:3px;top:3px;border-radius:50%;background:#fff;box-shadow:0 1px 4px #0003;transition:.18s}
+.switch input:checked + .switch-track{background:var(--blue)}
+.switch input:checked + .switch-track::after{transform:translateX(18px)}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px;padding:13px 20px 18px;border-top:1px solid #e2e8f0}
+@media print{.modal-backdrop{display:none!important}}
 @media(max-width:1100px){.grid{grid-template-columns:1fr}.preview-wrap{position:static}.row{grid-template-columns:30px 42px 1fr 150px 88px 65px}}
 @page{size:A4;margin:11mm}
 @media print{body{background:#fff}.appbar,main>.grid>.panel:first-child,.panel-h{display:none!important}main{max-width:none;padding:0}.grid{display:block}.panel{border:0;box-shadow:none}.panel-b{padding:0}.preview-wrap{position:static}.paper{box-shadow:none;padding:0;min-height:auto;margin:0;font-size:10.5px}.print-head{break-inside:avoid}.print-logo{width:175px;max-width:32%}.print-table tr{break-inside:avoid}.print-table th{font-size:8.5px}.print-table .pn{font-size:13px}.mini{font-size:8.5px}}
 </style>
 </head>
 <body>
-<div class="appbar"><div class="brand"><img class="app-logo" src="nova_logo_web.png" alt="NOVA"><span>Probenahmeplan Generator <span class="muted">v1.3.1</span></span></div><span class="muted workflow">PDF
+<div class="appbar"><div class="appbar-left"><img class="app-logo" src="nova_logo_web.png" alt="NOVA"><div class="header-copy"><span class="brand-title">Probenahmeplan Generator <span class="version">v1.3.3</span></span><span class="workflow">PDF
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M5 12h14"></path><path d="m13 6 6 6-6 6"></path>
       </svg>
-      Arbeitsplan</span><div class="spacer"></div><button id="saveJson">Projekt speichern</button><label class="btn" for="loadJson">Projekt laden</label><input id="loadJson" type="file" accept="application/json" hidden><button id="printBtn" class="primary">Drucken / PDF</button></div>
+      Arbeitsplan</span></div></div><div class="spacer"></div><button id="saveJson">Projekt speichern</button><label class="btn" for="loadJson">Projekt laden</label><input id="loadJson" type="file" accept="application/json" hidden><button id="printBtn" class="primary">Drucken / PDF</button></div>
+<div id="printModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="printModalTitle">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3 id="printModalTitle">Druckoptionen</h3>
+      <p>Welche Informationen sollen auf dem Arbeitsplan erscheinen?</p>
+    </div>
+    <div class="modal-body">
+      <div class="print-option">
+        <div><strong>Letzten Befund anzeigen</strong><span>Laborwert des zuletzt eingelesenen Berichts</span></div>
+        <label class="switch">
+          <input id="printShowResult" type="checkbox" checked>
+          <span class="switch-track"></span>
+        </label>
+      </div>
+      <div class="print-option">
+        <div><strong>Temperaturen anzeigen</strong><span>Konstante Temperatur und Probenahmetemperatur</span></div>
+        <label class="switch">
+          <input id="printShowTemp" type="checkbox" checked>
+          <span class="switch-track"></span>
+        </label>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button id="printCancel">Abbrechen</button>
+      <button id="printConfirm" class="primary">Drucken / PDF</button>
+    </div>
+  </div>
+</div>
 <main><div class="grid">
 <section class="panel"><div class="panel-h"><h2>1 · Bericht einlesen & Plan bearbeiten</h2></div><div class="panel-b">
 <div id="drop" class="drop"><strong>Prüfbericht hier ablegen</strong><span class="muted">oder PDF auswählen · Verarbeitung bleibt im Browser</span><br><label class="btn primary" for="pdfInput" style="display:inline-block;margin-top:12px">PDF auswählen</label><input id="pdfInput" type="file" accept="application/pdf" hidden></div>
@@ -76,6 +129,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/p
 
 const $=s=>document.querySelector(s); const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 let state={meta:{reportNo:'',sampleDate:'',client:'',object:'',objectId:'',sampler:'',sourceLab:''},samples:[]};
+let printView={active:false,showResult:true,showTemp:true};
 const paramDefs=[
  {k:'Legionellen',rx:/Legionellen\s+([<>]?\s*[\d.,]+)(?:\s*[⚠!])?\s+([\d.,]+)/i,short:'Legio'},
  {k:'Escherichia coli',rx:/Escherichia\s+coli\s+([<>]?\s*[\d.,]+)\s+([\d.,]+)/i,short:'E. coli'},
@@ -119,7 +173,8 @@ function inferWaterFromLocation(loc){
  if(/\b(WW|WARMWASSER|WBA|ZIRKULATION)\b/.test(s))return 'WW';
  return '';
 }
-function makeSample({tw='',eId='',location,water='',type,results=[],lf='',ph='',labId=''}){const group=inferGroup(location); const bads=results.filter(x=>x.bad);
+function makeSample({tw='',eId='',location,water='',type,results=[],lf='',ph='',labId='',tempSample='',tempConstant=''}){const group=inferGroup(location); const bads=results.filter(x=>x.bad);
+ if(type==='Legio' && water!=='KW') water='WW';
  const displayType=type==='Legio'?'Legionellen':(type==='Metalle'?'Chemie':type);
  let scope=[water,displayType].filter(Boolean); if(type==='Metalle'&&(lf||ph))scope.push('VO'); let last='';
  if(type==='Legio'){
@@ -132,7 +187,7 @@ function makeSample({tw='',eId='',location,water='',type,results=[],lf='',ph='',
  } else if(type==='Metalle') {
    const bits=['✓']; if(lf)bits.push(`LF ${normalize(lf)}`); if(ph)bits.push(`pH ${normalize(ph)}`); last=bits.join(' · ');
  } else last='✓';
- return {id:crypto.randomUUID(),tw:tw||labId,eId,location,water,scope:scope.join(' · '),last,bad:bads.length>0,group,details:{type,results,lf:normalize(lf),ph:normalize(ph),labId}};
+ return {id:crypto.randomUUID(),tw:tw||labId,eId,location,water,scope:scope.join(' · '),last,bad:bads.length>0,group,details:{type,results,lf:normalize(lf),ph:normalize(ph),labId,tempSample:normalize(tempSample),tempConstant:normalize(tempConstant)}};
 }
 function legioResult(value,limit='100'){value=normalize(value).replace(/\s+/g,' ');return {name:'Legionellen',short:'Legio',result:value,limit,bad:isBad(value,limit,value)}}
 
@@ -143,10 +198,11 @@ function parseMetaWasserBW(text){const flat=normalize(text.replace(/\n/g,' ')); 
  return {reportNo:r,sampleDate:firstDate(dateRaw),client:matchField(flat,'Auftraggeber',labels.slice(1)),object:matchField(flat,'Anlage / Objekt',labels.slice(2)),objectId:matchField(flat,'Anlagen/Objekt-ID',labels.slice(3)),sampler:matchField(flat,'Probennehmer',labels.slice(6)),sourceLab:'Wasser BW GmbH'}; }
 function parseSampleBlockWasserBW(block){const first=block.match(/\((TW\d+)\)\s*\/\s*(.+?)(?:\s*\/\s*Zweck\s*[a-z]\)|\n)/i); if(!first)return []; const tw=first[1], location=normalize(first[2]); const em=block.match(/\b(E\d+)\s*\/\s*Trinkwasser\s*\(([^)]+)\)/i); const eId=em?em[1]:''; const wt=em?em[2].toLowerCase():''; const water=wt.includes('erwärmt')?'WW':wt.includes('kalt')?'KW':''; const compact=normalize(block.replace(/\n/g,' '));
  const results=[]; for(const d of paramDefs){const m=compact.match(d.rx); if(m){const res=normalize(m[1]),lim=normalize(m[2]||''); results.push({name:d.k,short:d.short,result:res,limit:lim,bad:isBad(res,lim,m[0])});}}
+ const tempSample=(compact.match(/Entnahmetemperatur\s+([<>]?\s*[\d.,]+)\s*°C/i)||[])[1]||''; const tempConstant=(compact.match(/Konstante\s+Temperatur\s+([<>]?\s*[\d.,]+)\s*°C/i)||[])[1]||'';
  const lf=(compact.match(/Leitfähigkeit\s*25\s*°?C\s*\(vor(?:\s+Ort\))?\s+([<>]?\s*[\d.,]+)/i)||[])[1]||''; const ph=(compact.match(/pH-Wert\s*\(vor\s*Ort\)\s+([<>]?\s*[\d.,]+)/i)||[])[1]||'';
  const mibiNames=['Escherichia coli','Coliforme Bakterien','Koloniezahl 22 °C','Koloniezahl 36 °C','Enterokokken','Pseudomonas aeruginosa']; const metalNames=['Blei','Cadmium','Eisen','Kupfer','Mangan','Nickel','Zink'];
  const legio=results.filter(x=>x.name==='Legionellen'), mibi=results.filter(x=>mibiNames.includes(x.name)), metals=results.filter(x=>metalNames.includes(x.name)); const out=[];
- if(legio.length)out.push(makeSample({tw,eId,location,water,type:'Legio',results:legio}));
+ if(legio.length)out.push(makeSample({tw,eId,location,water,type:'Legio',results:legio,tempSample,tempConstant}));
  if(mibi.length)out.push(makeSample({tw,eId,location,water,type:'Mibi',results:mibi}));
  if(metals.length||lf||ph)out.push(makeSample({tw,eId,location,water,type:'Metalle',results:metals,lf,ph}));
  if(!out.length)out.push({id:crypto.randomUUID(),tw,eId,location,water,scope:water,last:'',bad:false,group:inferGroup(location),details:{type:'',results,lf:normalize(lf),ph:normalize(ph)}});
@@ -179,7 +235,10 @@ function parseRoyal(text){
    const row=normalize(block.replace(/\n/g,' ')).match(/Legionella\s+spec\.\s*\([^)]*\).*?([<>]?\s*\d{1,3}(?:[.,]\d{3})*(?:,\d+)?)\s*KbE\s*\/\s*100\s*ml\s+100/i);
    if(row)value=normalize(row[1]);
    if(!value){const li=bl.findIndex(x=>/Legionella\s+spec\./i.test(x)); if(li>=0){for(let j=li;j<Math.min(bl.length,li+7);j++){const m=bl[j].match(/(?:^|\s)([<>]?\s*\d{1,3}(?:[.,]\d{3})*(?:,\d+)?)(?:\s|$)/); if(m && !/11731|2018|2022/.test(bl[j])){value=normalize(m[1]);break;}}}}
-   if(loc && value){const water=inferWaterFromLocation(loc);samples.push(makeSample({location:loc,water,type:'Legio',results:[legioResult(value)],labId}));}
+   let tempSample='',tempConstant='';
+   const t1=normalize(block.replace(/\n/g,' ')).match(/Probenahmetemperatur.*?([\d.,]+)\s*°C/i); if(t1)tempSample=t1[1];
+   const t2=normalize(block.replace(/\n/g,' ')).match(/Konstante\s+Temperatur.*?([\d.,]+)\s*°C/i); if(t2)tempConstant=t2[1];
+   if(loc && value){const water=inferWaterFromLocation(loc);samples.push(makeSample({location:loc,water,type:'Legio',results:[legioResult(value)],labId,tempSample,tempConstant}));}
  }
  // If header extraction did not yield the sampler, take the first per-sample value.
  if(!sampler){const m=flat.match(/Probenehmer:?\s+(.+?Royal-Service GmbH)/i);sampler=m?normalize(m[1]):''}
@@ -227,7 +286,10 @@ function parseGBA(text){
     if(!value){for(let j=li+1;j<Math.min(bl.length,li+5);j++){const m=bl[j].match(/^([<>]?\s*\d{1,3}(?:[.,]\d{3})*(?:,\d+)?)$/);if(m){value=normalize(m[1]);break;}}}
   }
   if(!value){const m=normalize(block.replace(/\n/g,' ')).match(/Legionellen\s+berechnet.*?([<>]?\s*\d{1,3}(?:[.,]\d{3})*(?:,\d+)?)(?=\s*(?:\*|BG|Seite|$))/i);if(m)value=normalize(m[1]);}
-  if(loc&&value)samples.push(makeSample({location:loc,water:inferWaterFromLocation(loc),type:'Legio',results:[legioResult(value)],labId}));
+  let tempSample='',tempConstant='';
+  const methodIdx=bl.findIndex(x=>/^[MD]$/i.test(x.trim()));
+  if(methodIdx>=0){const nums=[]; for(let j=methodIdx+1;j<Math.min(bl.length,methodIdx+8);j++){if(/^[<>]?\s*\d+(?:[.,]\d+)?$/.test(bl[j].trim()))nums.push(bl[j].trim()); if(nums.length>=2)break;} if(nums[0])tempSample=nums[0]; if(nums[1])tempConstant=nums[1];}
+  if(loc&&value)samples.push(makeSample({location:loc,water:inferWaterFromLocation(loc),type:'Legio',results:[legioResult(value)],labId,tempSample,tempConstant}));
  }
  return {meta:{reportNo:report,sampleDate:firstDate(sampleDate),client:normalize(client),object:normalize(obj),objectId:'',sampler,sourceLab:'Vorbericht anderes Labor: GBA Gesellschaft für Bioanalytik mbH'},samples,parser:'GBA'};
 }
@@ -264,7 +326,10 @@ function parseAgrolab(text){
    if(!value){m=compact.match(/Legionellen\s*\(berechnet\).*?([<>]?\s*\d{1,3}(?:[.,]\d{3})*(?:,\d+)?)\s+100\s+(?:keine|mittlere|hohe|extrem)/i);if(m)value=normalize(m[1]);}
    let water='';
    const wm=compact.match(/KW\/\s*WW.*?\b(Kaltwasser|Warmwasser)\b/i);if(wm)water=/kalt/i.test(wm[1])?'KW':'WW';else water=inferWaterFromLocation(loc);
-   if(loc&&value)samples.push(makeSample({location:loc,water,type:'Legio',results:[legioResult(value)],labId}));
+   let tempSample='',tempConstant='';
+   const abl=cleanLines(block); const klarIdx=abl.findIndex(x=>/^klar$/i.test(x.trim()));
+   if(klarIdx>=0){const nums=[];for(let j=klarIdx+1;j<Math.min(abl.length,klarIdx+7);j++){if(/^\d+(?:[.,]\d+)?$/.test(abl[j].trim()))nums.push(abl[j].trim());if(nums.length>=2)break;}if(nums[0])tempSample=nums[0];if(nums[1])tempConstant=nums[1];}
+   if(loc&&value)samples.push(makeSample({location:loc,water,type:'Legio',results:[legioResult(value)],labId,tempSample,tempConstant}));
  }
  return {meta:{reportNo:report,sampleDate:firstDate((flat.match(/Probenahme\s+(\d{2}\.\d{2}\.\d{4})/i)||[])[1]||''),client:normalize(client),object:normalize(obj),objectId:'',sampler:normalize(sampler),sourceLab:'Vorbericht anderes Labor: Dr. Blasy - Dr. Busse / AGROLAB'},samples,parser:'Dr. Blasy / AGROLAB'};
 }
@@ -280,18 +345,69 @@ async function extractPdf(file){const data=new Uint8Array(await file.arrayBuffer
 function syncMetaFromInputs(){for(const k of Object.keys(state.meta)){const el=$('#'+k);if(el)state.meta[k]=el.value.trim();}}
 function putMeta(){for(const k of Object.keys(state.meta)){const el=$('#'+k);if(el)el.value=state.meta[k]||'';}}
 function updateRowField(id,key,val){const s=state.samples.find(x=>x.id===id);if(!s)return;s[key]=val;if(key==='last')s.bad=/^[⚠!]/.test(val.trim())||s.bad&&val.includes('⚠');renderPreview();}
-function renderRows(){const wrap=$('#rows');wrap.innerHTML='';const start=Math.max(1,parseInt($('#startNo').value)||1); state.samples.forEach((s,i)=>{const d=document.createElement('div');d.className='row';d.draggable=true;d.dataset.id=s.id;d.innerHTML=`<div class="handle" title="Ziehen">☰</div><div class="num">${start+i}</div><input class="loc" value="${esc(s.location)}" title="Entnahmestelle"><input value="${esc(s.scope)}" title="Probe / Parameter"><input class="last ${s.bad?'bad':''}" value="${esc(s.last)}" title="Letzter Befund"><div class="row-actions"><button title="Bereich bearbeiten" aria-label="Bereich bearbeiten">✎</button><button class="danger" title="Löschen">×</button></div><input class="group-edit" value="${esc(s.group||'')}" style="grid-column:3/-1;display:none" placeholder="Bereich / Zwischenüberschrift, z. B. Gebäude B 145 oder 4. OG">`;
+function renderRows(){const wrap=$('#rows');wrap.innerHTML='';const start=Math.max(1,parseInt($('#startNo').value)||1); state.samples.forEach((s,i)=>{const d=document.createElement('div');d.className='row';d.draggable=true;d.dataset.id=s.id;d.innerHTML=`<div class="handle" title="Ziehen">☰</div><div class="num">${start+i}</div><input class="loc" value="${esc(s.location)}" title="Entnahmestelle"><input value="${esc(s.scope)}" title="Probe / Parameter"><div class="result-edit"><input class="last ${s.bad?'bad':''}" value="${esc(s.last)}" title="Letzter Befund">${(s.details?.tempConstant||s.details?.tempSample)?`<div class="temp-note">${s.details?.tempConstant?`<b>konst.</b> ${esc(s.details.tempConstant)}°C`:''}${s.details?.tempConstant&&s.details?.tempSample?' · ':''}${s.details?.tempSample?`PN ${esc(s.details.tempSample)}°C`:''}</div>`:''}</div><div class="row-actions"><button title="Bereich bearbeiten" aria-label="Bereich bearbeiten">✎</button><button class="danger" title="Löschen">×</button></div><input class="group-edit" value="${esc(s.group||'')}" style="grid-column:3/-1;display:none" placeholder="Bereich / Zwischenüberschrift, z. B. Gebäude B 145 oder 4. OG">`;
  const inputs=d.querySelectorAll('input'); inputs[0].addEventListener('input',e=>updateRowField(s.id,'location',e.target.value));inputs[1].addEventListener('input',e=>updateRowField(s.id,'scope',e.target.value));inputs[2].addEventListener('input',e=>{s.bad=/^[⚠!]/.test(e.target.value.trim());updateRowField(s.id,'last',e.target.value);renderRows();});inputs[3].addEventListener('input',e=>updateRowField(s.id,'group',e.target.value));
  const btns=d.querySelectorAll('button');btns[0].onclick=()=>{const g=d.querySelector('.group-edit');g.style.display=g.style.display==='none'?'block':'none';};btns[1].onclick=()=>{state.samples=state.samples.filter(x=>x.id!==s.id);renderAll();};
  d.addEventListener('dragstart',()=>{d.classList.add('dragging');window._dragId=s.id});d.addEventListener('dragend',()=>{d.classList.remove('dragging');document.querySelectorAll('.drop-target').forEach(x=>x.classList.remove('drop-target'));window._dragId=null});d.addEventListener('dragover',e=>{e.preventDefault();d.classList.add('drop-target')});d.addEventListener('dragleave',()=>d.classList.remove('drop-target'));d.addEventListener('drop',e=>{e.preventDefault();const from=state.samples.findIndex(x=>x.id===window._dragId),to=state.samples.findIndex(x=>x.id===s.id);if(from<0||to<0||from===to)return;const [m]=state.samples.splice(from,1);state.samples.splice(to,0,m);renderAll();});wrap.appendChild(d);}); $('#count').textContent=`${state.samples.length} Probe${state.samples.length===1?'':'n'}`;}
 function allScopeChips(){const set=new Set();state.samples.forEach(s=>s.scope.split('·').map(x=>x.trim()).filter(Boolean).forEach(x=>set.add(x)));return [...set];}
 function buildParameterLegend(){const seen={Mibi:new Set(),Chemie:new Set(),VO:new Set(),Legionellen:new Set()}; state.samples.forEach(s=>{const d=s.details||{};(d.results||[]).forEach(r=>{if(r.name==='Legionellen')seen.Legionellen.add('Legionellen'); else if(['Escherichia coli','Coliforme Bakterien','Koloniezahl 22 °C','Koloniezahl 36 °C','Enterokokken','Pseudomonas aeruginosa'].includes(r.name))seen.Mibi.add(r.name.replace('Koloniezahl 22 °C','KZ 22°C').replace('Koloniezahl 36 °C','KZ 36°C').replace('Coliforme Bakterien','Coliforme').replace('Pseudomonas aeruginosa','Pseudomonas')); else seen.Chemie.add(r.name);}); if(d.lf)seen.VO.add('Leitfähigkeit');if(d.ph)seen.VO.add('pH');}); const lines=[]; if(seen.Mibi.size)lines.push(`<div class="legend-line"><b>Mikrobiologie:</b> ${esc([...seen.Mibi].join(' · '))}</div>`);if(seen.Chemie.size)lines.push(`<div class="legend-line"><b>Chemie:</b> ${esc([...seen.Chemie].join(' · '))}</div>`);if(seen.VO.size)lines.push(`<div class="legend-line"><b>Vor-Ort-Parameter:</b> ${esc([...seen.VO].join(' · '))}</div>`);if(seen.Legionellen.size)lines.push(`<div class="legend-line"><b>Legionellen:</b> Legionella spec.</div>`);return lines.length?`<div class="param-legend">${lines.join('')}</div>`:'';}
-function renderPreview(){syncMetaFromInputs();const p=$('#paper');if(!state.samples.length){p.innerHTML='<div class="empty">Noch kein Bericht eingelesen.</div>';return;} const start=Math.max(1,parseInt($('#startNo').value)||1); let rows='',lastGroup=null;state.samples.forEach((s,i)=>{if(s.group&&s.group!==lastGroup){rows+=`<tr class="section-row"><td colspan="5">${esc(s.group)}</td></tr>`;lastGroup=s.group}else if(!s.group){lastGroup=null} rows+=`<tr><td class="pn">${start+i}</td><td><b>${esc(s.location)}</b>${s.tw||s.eId?`<div class="mini">${esc([s.tw,s.eId].filter(Boolean).join(' · '))}</div>`:''}</td><td class="pp">${esc(s.scope)}</td><td class="pv ${s.bad?'result-bad':''}">${esc(s.last)}</td><td class="pc"><span class="check">□</span></td></tr>`;});
- const chips=allScopeChips().map(x=>`<span class="chip">${esc(x)}</span>`).join('');p.innerHTML=`<div class="print-head"><div class="print-brandrow"><div class="print-title">PROBENAHMEPLAN – TRINKWASSER</div><img class="print-logo" src="nova_logo.png" alt="NOVA Praxis-Hygiene GmbH"></div><div class="meta"><div><b>Auftraggeber / Hausverwaltung</b><br>${esc(state.meta.client||'—')}</div><div><b>Anlage / Objekt</b><br>${esc(state.meta.object||'—')}</div><div><b>Objekt-ID:</b> ${esc(state.meta.objectId||'—')}</div><div><b>Grundlage:</b> ${esc(state.meta.reportNo?'Prüfbericht '+state.meta.reportNo:'—')}${state.meta.sampleDate?' · Probenahme '+esc(state.meta.sampleDate):''}<div class="mini" style="margin-top:3px;font-weight:700">${esc(state.meta.sourceLab||'')}</div></div></div><div class="scope">${chips}</div>${buildParameterLegend()}</div><table class="print-table"><thead><tr><th class="pn">Nr.</th><th>Entnahmestelle</th><th class="pp">Probe / Parameter</th><th class="pv">Letzter Befund</th><th class="pc">✓</th></tr></thead><tbody>${rows}</tbody></table><div class="footer-note">⚠ = auffälliger Befund bzw. bei Legionellen Erreichen/Überschreiten von 100 KBE/100 ml im zuletzt eingelesenen Prüfbericht. Nummerierung dient der Kennzeichnung der Probengefäße.</div>`;}
-function renderAll(){putMeta();renderRows();renderPreview();}
+function renderPreview(){
+ syncMetaFromInputs();
+ const p=$('#paper');
+ if(!state.samples.length){p.innerHTML='<div class="empty">Noch kein Bericht eingelesen.</div>';return;}
+ const showResult=!printView.active||printView.showResult;
+ const showTemp=!printView.active||printView.showTemp;
+ const showInfo=showResult||showTemp;
+ const infoHeader=showResult&&showTemp?'Befund / Temperaturen':showResult?'Letzter Befund':'Temperaturen';
+ const colCount=showInfo?5:4;
+ const start=Math.max(1,parseInt($('#startNo').value)||1);
+ let rows='',lastGroup=null;
+ state.samples.forEach((s,i)=>{
+   if(s.group&&s.group!==lastGroup){
+     rows+=`<tr class="section-row"><td colspan="${colCount}">${esc(s.group)}</td></tr>`;
+     lastGroup=s.group;
+   } else if(!s.group){lastGroup=null}
+   let info='';
+   if(showInfo){
+     const resultHtml=showResult?esc(s.last):'';
+     const tempHtml=showTemp&&(s.details?.tempConstant||s.details?.tempSample)
+       ?`<div class="temp-print">${s.details?.tempConstant?`<b>konst.</b> ${esc(s.details.tempConstant)}°C`:''}${s.details?.tempConstant&&s.details?.tempSample?' · ':''}${s.details?.tempSample?`PN ${esc(s.details.tempSample)}°C`:''}</div>`
+       :'';
+     const badClass=showResult&&s.bad?' result-bad':'';
+     info=`<td class="pv${badClass}">${resultHtml}${tempHtml}</td>`;
+   }
+   rows+=`<tr><td class="pn">${start+i}</td><td><b>${esc(s.location)}</b>${s.tw||s.eId?`<div class="mini">${esc([s.tw,s.eId].filter(Boolean).join(' · '))}</div>`:''}</td><td class="pp">${esc(s.scope)}</td>${info}<td class="pc"><span class="check">□</span></td></tr>`;
+ });
+ const chips=allScopeChips().map(x=>`<span class="chip">${esc(x)}</span>`).join('');
+ const infoHead=showInfo?`<th class="pv">${infoHeader}</th>`:'';
+ let notes=['Nummerierung dient der Kennzeichnung der Probengefäße.'];
+ if(showResult)notes.unshift('⚠ = auffälliger Befund bzw. bei Legionellen Erreichen/Überschreiten von 100 KBE/100 ml im zuletzt eingelesenen Prüfbericht.');
+ if(showTemp)notes.push('Bei Legionellen: konst. = konstante Temperatur, PN = Probenahmetemperatur.');
+ p.innerHTML=`<div class="print-head"><div class="print-brandrow"><div class="print-title">PROBENAHMEPLAN – TRINKWASSER</div><img class="print-logo" src="nova_logo.png" alt="NOVA Praxis-Hygiene GmbH"></div><div class="meta"><div><b>Auftraggeber / Hausverwaltung</b><br>${esc(state.meta.client||'—')}</div><div><b>Anlage / Objekt</b><br>${esc(state.meta.object||'—')}</div><div><b>Objekt-ID:</b> ${esc(state.meta.objectId||'—')}</div><div><b>Grundlage:</b> ${esc(state.meta.reportNo?'Prüfbericht '+state.meta.reportNo:'—')}${state.meta.sampleDate?' · Probenahme '+esc(state.meta.sampleDate):''}<div class="mini" style="margin-top:3px;font-weight:700">${esc(state.meta.sourceLab||'')}</div></div></div><div class="scope">${chips}</div>${buildParameterLegend()}</div><table class="print-table"><thead><tr><th class="pn">Nr.</th><th>Entnahmestelle</th><th class="pp">Probe / Parameter</th>${infoHead}<th class="pc">✓</th></tr></thead><tbody>${rows}</tbody></table><div class="footer-note">${notes.join(' ')}</div>`;
+}
+function normalizeLegacySamples(){state.samples.forEach(s=>{if(s.details?.type==='Legio'){if(s.water!=='KW')s.water='WW';const parts=(s.scope||'').split('·').map(x=>x.trim()).filter(Boolean).filter(x=>!/^Legio(?:nellen)?$/i.test(x)&&!/^WW$|^KW$/i.test(x));s.scope=[s.water,'Legionellen',...parts].filter(Boolean).join(' · ');}})}
+function renderAll(){normalizeLegacySamples();putMeta();renderRows();renderPreview();}
 async function handlePdf(file){if(!file)return;$('#status').textContent='PDF wird ausgelesen …';try{const text=await extractPdf(file);const parsed=parseReport(text);state=parsed;putMeta();renderAll();const bad=state.samples.filter(x=>x.bad).length;$('#status').innerHTML=`Erkannt: <b>${state.samples.length}</b> Proben${bad?` · <b style="color:#b91c1c">${bad} auffällig</b>`:''} · Format: <b>${esc(parsed.parser||'Standard')}</b>. Bitte kurz prüfen und bei Bedarf sortieren/korrigieren.`;if(!state.samples.length){$('#status').innerHTML='Keine Proben erkannt. Das Laborformat ist noch nicht sauber zugeordnet oder der Bericht ist bildbasiert.';}}catch(e){console.error(e);$('#status').textContent='PDF konnte nicht ausgewertet werden: '+e.message;}}
 ['reportNo','sampleDate','client','object','objectId','sampler','sourceLab'].forEach(id=>$('#'+id).addEventListener('input',renderPreview));$('#startNo').addEventListener('input',()=>{renderRows();renderPreview()});$('#pdfInput').addEventListener('change',e=>handlePdf(e.target.files[0]));const drop=$('#drop');['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('over')}));['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('over')}));drop.addEventListener('drop',e=>handlePdf([...e.dataTransfer.files].find(f=>f.type==='application/pdf')));
-$('#addRow').onclick=()=>{state.samples.push({id:crypto.randomUUID(),tw:'',eId:'',location:'Neue Entnahmestelle',scope:'',last:'',bad:false,group:'',details:{}});renderAll()};$('#autoGroups').onclick=()=>{state.samples.forEach(s=>s.group=inferGroup(s.location));renderAll()};$('#clearGroups').onclick=()=>{state.samples.forEach(s=>s.group='');renderAll()};$('#printBtn').onclick=()=>window.print();
+$('#addRow').onclick=()=>{state.samples.push({id:crypto.randomUUID(),tw:'',eId:'',location:'Neue Entnahmestelle',scope:'',last:'',bad:false,group:'',details:{}});renderAll()};$('#autoGroups').onclick=()=>{state.samples.forEach(s=>s.group=inferGroup(s.location));renderAll()};$('#clearGroups').onclick=()=>{state.samples.forEach(s=>s.group='');renderAll()};
+
+const printModal=$('#printModal');
+function openPrintModal(){printModal.classList.add('open');}
+function closePrintModal(){printModal.classList.remove('open');}
+$('#printBtn').onclick=openPrintModal;
+$('#printCancel').onclick=closePrintModal;
+printModal.addEventListener('click',e=>{if(e.target===printModal)closePrintModal();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&printModal.classList.contains('open'))closePrintModal();});
+$('#printConfirm').onclick=()=>{
+  printView={active:true,showResult:$('#printShowResult').checked,showTemp:$('#printShowTemp').checked};
+  closePrintModal();
+  renderPreview();
+  requestAnimationFrame(()=>requestAnimationFrame(()=>window.print()));
+};
+window.addEventListener('afterprint',()=>{
+  printView={active:false,showResult:true,showTemp:true};
+  renderPreview();
+});
 $('#saveJson').onclick=()=>{syncMetaFromInputs();const blob=new Blob([JSON.stringify({...state,startNo:parseInt($('#startNo').value)||1},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`Probenahmeplan_${state.meta.objectId||state.meta.reportNo||'Projekt'}.json`;a.click();URL.revokeObjectURL(a.href)};$('#loadJson').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;try{const x=JSON.parse(await f.text());state={meta:x.meta||{},samples:(x.samples||[]).map(s=>({...s,id:s.id||crypto.randomUUID()}))};$('#startNo').value=x.startNo||1;renderAll();$('#status').textContent='Projekt geladen.'}catch{$('#status').textContent='Projektdatei konnte nicht geladen werden.'}});
 renderAll();
 </script>
