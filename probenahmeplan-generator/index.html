@@ -21,7 +21,7 @@
 
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Probenahmeplan Generator v1.4.1</title>
+<title>Probenahmeplan Generator v1.4.2</title>
 <style>
 :root{--blue:#075985;--blue2:#0c4a6e;--pale:#f0f9ff;--line:#cbd5e1;--text:#1e293b;--muted:#64748b;--bg:#f8fafc;--danger:#b91c1c;--dangerbg:#fef2f2;--warn:#92400e;--warnbg:#fffbeb;--ok:#166534;--okbg:#f0fdf4}
 *{box-sizing:border-box} body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text)}
@@ -63,7 +63,9 @@ main{max-width:1450px;margin:0 auto;padding:18px}.grid{display:grid;grid-templat
 .paper.soft .section-row td{background:#fff;color:#0f172a;border-color:#94a3b8;border-top-width:2px;letter-spacing:.02em}
 .paper.soft .result-bad{background:transparent;color:#111;text-decoration:underline}
 .paper.soft .loc-street{color:#111}
-.mini{font-size:9px;color:#94a3b8;margin-top:2px}.temp-print{font-size:8.4px;color:#64748b;margin-top:3px;line-height:1.25}.temp-print b{color:#475569}.result-bad{font-weight:850;color:#991b1b;background:#fef2f2}.check{font-size:18px;line-height:1;color:#94a3b8}.section-row td{background:#075985;color:#fff;font-weight:750;border-color:#075985;padding:4px 7px}
+.mini{font-size:9px;color:#94a3b8;margin-top:2px}
+.source-lab{font-size:11px;line-height:1.25;color:#0f172a;font-weight:800;margin-top:4px}
+.source-lab:empty{display:none}.temp-print{font-size:8.4px;color:#64748b;margin-top:3px;line-height:1.25}.temp-print b{color:#475569}.result-bad{font-weight:850;color:#991b1b;background:#fef2f2}.check{font-size:18px;line-height:1;color:#94a3b8}.section-row td{background:#075985;color:#fff;font-weight:750;border-color:#075985;padding:4px 7px}
 .section-row.sub td{background:#e0f2fe;color:#075985;font-weight:750;border-color:#bae6fd;padding-left:16px;font-size:9.5px}
 .paper.soft .section-row.sub td{background:#fff;color:#334155;border-color:#b6c2d0;border-top-width:1px}.footer-note{font-size:9px;color:#64748b;margin-top:8px}.empty{text-align:center;padding:60px 20px;color:#94a3b8}
 
@@ -93,7 +95,7 @@ main{max-width:1450px;margin:0 auto;padding:18px}.grid{display:grid;grid-templat
 </style>
 </head>
 <body>
-<div class="appbar"><div class="appbar-left"><img class="app-logo" src="nova_logo_web.png" alt="NOVA"><div class="header-copy"><span class="brand-title">Probenahmeplan Generator <span class="version">v1.4.1</span></span><span class="workflow">PDF
+<div class="appbar"><div class="appbar-left"><img class="app-logo" src="nova_logo_web.png" alt="NOVA"><div class="header-copy"><span class="brand-title">Probenahmeplan Generator <span class="version">v1.4.2</span></span><span class="workflow">PDF
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M5 12h14"></path><path d="m13 6 6 6-6 6"></path>
       </svg>
@@ -181,13 +183,16 @@ function numVal(v){
  else v=v.replace(',','.');
  return {n:parseFloat(v),lt,gt};
 }
-function isBad(result,limit,raw=''){
+function isBad(result,limit,raw='',name=''){
  if(/[⚠!]/.test(raw))return true;
  if(!limit)return false;
  const r=numVal(result),l=numVal(limit);
  if(!Number.isFinite(r.n)||!Number.isFinite(l.n)||r.lt)return false;
- // For the working plan, the technical action value itself (100 KBE/100 ml) already stands out.
- return r.n>=l.n;
+ // Legionellen: the technical action value counts as soon as it is reached (>= 100 KBE/100 ml).
+ // All other parameters are only a finding when the limit is exceeded - otherwise a clean
+ // "E. coli 0 / limit 0" would be flagged as a warning.
+ if(/legionell/i.test(name))return r.n>=l.n;
+ return r.n>l.n;
 }
 function normalize(s){return String(s||'').replace(/[‐‑–—]/g,'-').replace(/\u00a0/g,' ').replace(/[ \t]+/g,' ').trim()}
 function cleanLines(text){return text.split(/\n+/).map(normalize).filter(Boolean)}
@@ -344,7 +349,7 @@ function makeSample({tw='',eId='',location,water='',type,results=[],lf='',ph='',
  } else last='✓';
  return {id:crypto.randomUUID(),tw:tw,eId,location,water,scope:scope.join(' · '),last,bad:bads.length>0,group,details:{type,results,lf:normalize(lf),ph:normalize(ph),labId,tempSample:normalize(tempSample),tempConstant:normalize(tempConstant),tempConstantLabel:tempConstantLabel||'konst.'}};
 }
-function legioResult(value,limit='100'){value=normalize(value).replace(/\s+/g,' ');return {name:'Legionellen',short:'Legio',result:value,limit,bad:isBad(value,limit,value)}}
+function legioResult(value,limit='100'){value=normalize(value).replace(/\s+/g,' ');return {name:'Legionellen',short:'Legio',result:value,limit,bad:isBad(value,limit,value,'Legionellen')}}
 
 /* Wasser BW -------------------------------------------------------------- */
 function parseMetaWasserBW(text){const flat=normalize(text.replace(/\n/g,' ')); const labels=['Auftraggeber','Anlage / Objekt','Anlagen/Objekt-ID','Kunden ID','Probennahmedatum','Probennehmer','Probennahmeverfahren','Flaschensatz','Prüfverfahren','Probenart','Empfangsdatum','Prüfzeitraum','Bemerkungen'];
@@ -352,7 +357,7 @@ function parseMetaWasserBW(text){const flat=normalize(text.replace(/\n/g,' ')); 
  const dateRaw=matchField(flat,'Probennahmedatum',labels.slice(5));
  return {reportNo:r,sampleDate:firstDate(dateRaw),client:matchField(flat,'Auftraggeber',labels.slice(1)),object:matchField(flat,'Anlage / Objekt',labels.slice(2)),objectId:matchField(flat,'Anlagen/Objekt-ID',labels.slice(3)),sampler:matchField(flat,'Probennehmer',labels.slice(6)),sourceLab:'Wasser BW GmbH'}; }
 function parseSampleBlockWasserBW(block){const first=block.match(/\((TW\d+)\)\s*\/\s*(.+?)(?:\s*\/\s*Zweck\s*[a-z]\)|\n)/i); if(!first)return []; const tw=first[1], location=normalize(first[2]); const em=block.match(/\b(E\d+)\s*\/\s*Trinkwasser\s*\(([^)]+)\)/i); const eId=em?em[1]:''; const wt=em?em[2].toLowerCase():''; const water=wt.includes('erwärmt')?'WW':wt.includes('kalt')?'KW':''; const compact=normalize(block.replace(/\n/g,' '));
- const results=[]; for(const d of paramDefs){const m=compact.match(d.rx); if(m){const res=normalize(m[1]),lim=normalize(m[2]||''); results.push({name:d.k,short:d.short,result:res,limit:lim,bad:isBad(res,lim,m[0])});}}
+ const results=[]; for(const d of paramDefs){const m=compact.match(d.rx); if(m){const res=normalize(m[1]),lim=normalize(m[2]||''); results.push({name:d.k,short:d.short,result:res,limit:lim,bad:isBad(res,lim,m[0],d.k)});}}
  const tempSample=(compact.match(/Entnahmetemperatur\s+([<>]?\s*[\d.,]+)\s*°C/i)||[])[1]||''; const tempConstant=(compact.match(/Konstante\s+Temperatur\s+([<>]?\s*[\d.,]+)\s*°C/i)||[])[1]||'';
  const lf=(compact.match(/Leitfähigkeit\s*25\s*°?C\s*\(vor(?:\s+Ort\))?\s+([<>]?\s*[\d.,]+)/i)||[])[1]||''; const ph=(compact.match(/pH-Wert\s*\(vor\s*Ort\)\s+([<>]?\s*[\d.,]+)/i)||[])[1]||'';
  const mibiNames=['Escherichia coli','Coliforme Bakterien','Koloniezahl 22 °C','Koloniezahl 36 °C','Enterokokken','Pseudomonas aeruginosa']; const metalNames=['Blei','Cadmium','Eisen','Kupfer','Mangan','Nickel','Zink'];
@@ -608,7 +613,7 @@ function renderPreview(){
  let notes=['Nummerierung dient der Kennzeichnung der Probengefäße.'];
  if(showResult)notes.unshift('⚠ = auffälliger Befund bzw. bei Legionellen Erreichen/Überschreiten von 100 KBE/100 ml im zuletzt eingelesenen Prüfbericht.');
  if(showTemp)notes.push('Bei Legionellen: PN = Probenahmetemperatur; konst. = konstante Temperatur; max. = maximale bzw. max. erreichbare Temperatur.');
- p.innerHTML=`<div class="print-head"><div class="print-brandrow"><div class="print-title">PROBENAHMEPLAN – TRINKWASSER</div><img class="print-logo" src="nova_logo.png" alt="NOVA Praxis-Hygiene GmbH"></div><div class="meta"><div><b>Auftraggeber / Hausverwaltung</b><br>${esc(state.meta.client||'—')}</div><div><b>Anlage / Objekt</b><br>${esc(state.meta.object||'—')}</div><div><b>Objekt-ID:</b> ${esc(state.meta.objectId||'—')}</div><div><b>Grundlage:</b> ${esc(state.meta.reportNo?'Prüfbericht '+state.meta.reportNo:'—')}${state.meta.sampleDate?' · Probenahme '+esc(state.meta.sampleDate):''}<div class="mini" style="margin-top:3px;font-weight:700">${esc(state.meta.sourceLab||'')}</div></div></div><div class="scope">${chips}</div>${buildParameterLegend()}</div><table class="print-table"><thead><tr><th class="pn">Nr.</th><th>Entnahmestelle</th><th class="pp">Probe / Parameter</th>${infoHead}<th class="pc">✓</th></tr></thead><tbody>${rows}</tbody></table><div class="footer-note">${notes.join(' ')}</div>`;
+ p.innerHTML=`<div class="print-head"><div class="print-brandrow"><div class="print-title">PROBENAHMEPLAN – TRINKWASSER</div><img class="print-logo" src="nova_logo.png" alt="NOVA Praxis-Hygiene GmbH"></div><div class="meta"><div><b>Auftraggeber / Hausverwaltung</b><br>${esc(state.meta.client||'—')}</div><div><b>Anlage / Objekt</b><br>${esc(state.meta.object||'—')}</div><div><b>Objekt-ID:</b> ${esc(state.meta.objectId||'—')}</div><div><b>Grundlage:</b> ${esc(state.meta.reportNo?'Prüfbericht '+state.meta.reportNo:'—')}${state.meta.sampleDate?' · Probenahme '+esc(state.meta.sampleDate):''}<div class="source-lab">${esc(state.meta.sourceLab||'')}</div></div></div><div class="scope">${chips}</div>${buildParameterLegend()}</div><table class="print-table"><thead><tr><th class="pn">Nr.</th><th>Entnahmestelle</th><th class="pp">Probe / Parameter</th>${infoHead}<th class="pc">✓</th></tr></thead><tbody>${rows}</tbody></table><div class="footer-note">${notes.join(' ')}</div>`;
 }
 function normalizeLegacySamples(){
  state.samples.forEach(s=>{if(s.location)s.location=canonicalizeLocation(s.location);});state.samples.forEach(s=>{if(s.details?.type==='Legio'){if(s.water!=='KW')s.water='WW';const parts=(s.scope||'').split('·').map(x=>x.trim()).filter(Boolean).filter(x=>!/^Legio(?:nellen)?$/i.test(x)&&!/^WW$|^KW$/i.test(x));s.scope=[s.water,'Legionellen',...parts].filter(Boolean).join(' · ');}})}
