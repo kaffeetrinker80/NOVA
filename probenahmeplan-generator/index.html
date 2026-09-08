@@ -21,7 +21,7 @@
 
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Probenahmeplan Generator v1.4.3</title>
+<title>Probenahmeplan Generator v1.5.0</title>
 <style>
 :root{--blue:#075985;--blue2:#0c4a6e;--pale:#f0f9ff;--line:#cbd5e1;--text:#1e293b;--muted:#64748b;--bg:#f8fafc;--danger:#b91c1c;--dangerbg:#fef2f2;--warn:#92400e;--warnbg:#fffbeb;--ok:#166534;--okbg:#f0fdf4}
 *{box-sizing:border-box} body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text)}
@@ -48,9 +48,9 @@ main{max-width:1450px;margin:0 auto;padding:18px}.grid{display:grid;grid-templat
 .rows{display:flex;flex-direction:column;gap:4px}.row{border:1px solid #dbe3ec;border-radius:7px;background:#fff;display:grid;grid-template-columns:26px 32px minmax(0,1fr) 92px 58px 52px;gap:4px;align-items:center;padding:4px 5px}.row>*{min-width:0}.row.dragging{opacity:.45}.row.drop-target{outline:2px solid #38bdf8}.handle{cursor:grab;color:#94a3b8;font-size:18px;text-align:center;user-select:none}.num{font-weight:800;font-size:15px;text-align:center;color:var(--blue2)}.row input{width:100%;border:1px solid #d5dde6;border-radius:5px;padding:4px 5px;font:inherit;font-size:11px;min-height:28px}
 .row textarea.loc{width:100%;border:1px solid #d5dde6;border-radius:5px;padding:3px 5px;font:inherit;font-size:11.2px;line-height:1.22;resize:none;min-height:34px;max-height:34px;overflow:auto;background:#fff}
 .row textarea.loc:focus{outline:2px solid #bae6fd;border-color:#38bdf8}
-.row input.scope-edit,.row input.last{padding-left:3px;padding-right:3px;font-size:10.5px}.row input:focus{outline:2px solid #bae6fd;border-color:#38bdf8}.last.bad{background:var(--dangerbg);border-color:#fecaca;color:var(--danger);font-weight:750}.result-edit{min-width:0}.temp-note{font-size:9px;color:#64748b;line-height:1.25;margin-top:3px;white-space:nowrap}.temp-note b{color:#475569}.row input.group-edit{grid-column:3/-1;margin-top:3px;font-size:10px;padding:3px 6px;border:1px dashed #cbd5e1;background:transparent;color:#64748b;opacity:.55;transition:opacity .12s}
-.row input.group-edit:hover,.row input.group-edit:focus{opacity:1}
-.row input.group-edit.active{opacity:1;border:1px solid #bae6fd;background:#f0f9ff;color:#075985;font-weight:750}
+.row input.scope-edit,.row input.last{padding-left:3px;padding-right:3px;font-size:10.5px}.row input:focus{outline:2px solid #bae6fd;border-color:#38bdf8}.last.bad{background:var(--dangerbg);border-color:#fecaca;color:var(--danger);font-weight:750}.result-edit{min-width:0}.temp-note{font-size:9px;color:#64748b;line-height:1.25;margin-top:3px;white-space:nowrap}.temp-note b{color:#475569}.row.heading{background:#f0f9ff;border-color:#bae6fd}
+.row.heading .num{color:#0ea5e9;font-size:13px}
+.row input.heading-edit{grid-column:3/-2;font-weight:800;color:#075985;background:#fff;border-color:#bae6fd;font-size:11.5px}
 .row-actions{display:flex;gap:2px;justify-content:flex-end}.row-actions button{padding:3px 4px;font-size:10px;min-width:22px}
 .hint{padding:9px 11px;border-radius:8px;font-size:12px;margin-top:10px;background:#f8fafc;border:1px solid #e2e8f0}.hint.bad{background:var(--dangerbg);border-color:#fecaca;color:#991b1b}.status{font-size:12px;color:#475569;margin-top:8px;min-height:18px}
 .preview-wrap{position:sticky;top:71px}.paper{background:#fff;min-height:297mm;padding:14mm 13mm;margin:0 auto;color:#222;box-shadow:0 1px 12px #00000018;font-size:11px}.print-head{border:2px solid #075985;border-radius:6px;padding:10px 12px;margin-bottom:12px;background:#fbfdff}
@@ -98,7 +98,7 @@ main{max-width:1450px;margin:0 auto;padding:18px}.grid{display:grid;grid-templat
 </style>
 </head>
 <body>
-<div class="appbar"><div class="appbar-left"><img class="app-logo" src="nova_logo_web.png" alt="NOVA"><div class="header-copy"><span class="brand-title">Probenahmeplan Generator <span class="version">v1.4.3</span></span><span class="workflow">PDF
+<div class="appbar"><div class="appbar-left"><img class="app-logo" src="nova_logo_web.png" alt="NOVA"><div class="header-copy"><span class="brand-title">Probenahmeplan Generator <span class="version">v1.5.0</span></span><span class="workflow">PDF
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M5 12h14"></path><path d="m13 6 6 6-6 6"></path>
       </svg>
@@ -148,7 +148,7 @@ main{max-width:1450px;margin:0 auto;padding:18px}.grid{display:grid;grid-templat
 <div class="field"><label>Objekt-ID</label><input id="objectId"></div><div class="field"><label>Probennehmer letzter Bericht</label><input id="sampler"></div>
 <div class="field full"><label>Quelle / Vorbericht</label><input id="sourceLab" placeholder="z. B. Vorbericht anderes Labor: Royal-Service GmbH"></div>
 </div>
-<div class="toolbar"><button id="undoBtn" class="small" disabled title="Letzte Änderung rückgängig machen (Strg+Z)">↶ Rückgängig</button><button id="addRow" class="small">+ Probe</button><button id="autoGroups" class="small">Bereiche automatisch</button><button id="clearGroups" class="small">Bereiche leeren</button><label class="muted">Startnummer</label><input id="startNo" type="number" value="1" min="1"><span class="count" id="count"></span></div>
+<div class="toolbar"><button id="undoBtn" class="small" disabled title="Letzte Änderung rückgängig machen (Strg+Z)">↶ Rückgängig</button><button id="addRow" class="small">+ Probe</button><button id="addHeading" class="small">+ Überschrift</button><button id="autoGroups" class="small">Überschriften automatisch</button><button id="clearGroups" class="small">Überschriften entfernen</button><label class="muted">Startnummer</label><input id="startNo" type="number" value="1" min="1"><span class="count" id="count"></span></div>
 <div class="hint">Tipp: Am Griff <b>☰</b> ziehen. Die Nummerierung folgt automatisch deiner Laufreihenfolge. <b>Bereich</b> erzeugt in der Druckansicht eine Zwischenüberschrift.</div>
 <div id="rows" class="rows" style="margin-top:10px"></div>
 </div></section>
@@ -212,16 +212,27 @@ function inferFloor(loc){
  const m=canonicalizeLocation(loc).match(/\b(\d+\.?\s*OG|\d+\.?\s*UG|EG|UG|DG|KG|(?:Ober|Unter|Erd|Dach|Keller|Zwischen)geschoss(?:\s*\d+)?)\b/i);
  return m?normalize(m[1]):'';
 }
-// Groups by street/building first and only then by floor - but the street level is
-// only added when the plan actually covers more than one address.
+const isHeading=s=>s&&s.kind==='heading';
+function newHeading(text=''){return {id:crypto.randomUUID(),kind:'heading',text,location:'',scope:'',last:'',bad:false,group:'',details:{}};}
+// Auto headings: one line per street/building, only where it actually changes.
 function applyAutoGroups(){
- const streets=new Set(state.samples.map(s=>inferBuildingOrStreet(s.location)).filter(Boolean));
- const multi=streets.size>1;
- state.samples.forEach(s=>{
-   const top=multi?inferBuildingOrStreet(s.location):'';
-   const floor=inferFloor(s.location);
-   s.group=[top,floor].filter(Boolean).join(' · ')||inferGroup(s.location);
+ const items=state.samples.filter(x=>!isHeading(x));
+ const out=[]; let lastTop=null;
+ items.forEach(s=>{
+   const top=inferBuildingOrStreet(s.location)||inferFloor(s.location);
+   if(top&&top!==lastTop){out.push(newHeading(top));lastTop=top;}
+   s.group='';
+   out.push(s);
  });
+ state.samples=out;
+}
+// Older projects stored the section as a field on every sample - convert once.
+function convertLegacyGroups(){
+ if(state.samples.some(isHeading))return;
+ if(!state.samples.some(x=>x.group))return;
+ const out=[];let last=null;
+ state.samples.forEach(s=>{const g=(s.group||'').split('·')[0].trim();if(g&&g!==last){out.push(newHeading(g));last=g;}s.group='';out.push(s);});
+ state.samples=out;
 }
 function inferWaterFromLocation(loc){
  const s=' '+String(loc||'').toUpperCase()+' ';
@@ -567,16 +578,39 @@ function updateUndoBtn(){const b=$('#undoBtn');if(!b)return;b.disabled=undoStack
 function snapshot(label){syncMetaFromInputs();undoStack.push({label,state:cloneState(),startNo:$('#startNo').value});if(undoStack.length>40)undoStack.shift();updateUndoBtn();}
 function undo(){const last=undoStack.pop();if(!last)return;state=last.state;$('#startNo').value=last.startNo;flashId=null;renderAll();updateUndoBtn();$('#status').textContent=`Rückgängig gemacht: ${last.label}.`;}
 function flashRow(id,msg){flashId=id;renderAll();const el=document.querySelector(`.row[data-id="${id}"]`);if(el&&el.scrollIntoView)el.scrollIntoView({block:'nearest',behavior:'smooth'});if(msg)$('#status').textContent=msg;setTimeout(()=>{if(flashId===id)flashId=null;},1700);}
-function renderRows(){const wrap=$('#rows');wrap.innerHTML='';const start=Math.max(1,parseInt($('#startNo').value)||1); state.samples.forEach((s,i)=>{const prevGroup=i>0?(state.samples[i-1].group||''):''; const startsGroup=!!s.group&&s.group!==prevGroup; const d=document.createElement('div');d.className='row'+(s.id===flashId?' moved':'');d.draggable=true;d.dataset.id=s.id;d.innerHTML=`<div class="handle" title="Ziehen">☰</div><div class="num">${start+i}</div><textarea class="loc" rows="2" title="Entnahmestelle">${esc(s.location)}</textarea><input class="scope-edit" value="${esc(s.scope)}" title="Probe / Parameter"><div class="result-edit"><input class="last ${s.bad?'bad':''}" value="${esc(s.last)}" title="Letzter Befund">${(s.details?.tempConstant||s.details?.tempSample)?`<div class="temp-note">${s.details?.tempSample?`PN ${esc(s.details.tempSample)}°C`:''}${s.details?.tempConstant&&s.details?.tempSample?' · ':''}${s.details?.tempConstant?`${esc(s.details?.tempConstantLabel||'konst.')} ${esc(s.details.tempConstant)}°C`:''}</div>`:''}</div><div class="row-actions"><button class="danger" title="Löschen">×</button></div><input class="group-edit${startsGroup?' active':''}" value="${esc(s.group||'')}" placeholder="${startsGroup?'Bereich / Zwischenüberschrift':'+ neuen Bereich ab hier beginnen'}" title="Bereich / Zwischenüberschrift">`;
- const locInput=d.querySelector('textarea.loc'); const inputs=d.querySelectorAll('input'); locInput.addEventListener('input',e=>updateRowField(s.id,'location',e.target.value));locInput.addEventListener('blur',e=>{s.location=canonicalizeLocation(e.target.value);renderAll();});inputs[0].addEventListener('input',e=>updateRowField(s.id,'scope',e.target.value));inputs[1].addEventListener('input',e=>{s.bad=/^[⚠!]/.test(e.target.value.trim());updateRowField(s.id,'last',e.target.value);renderRows();});inputs[2].addEventListener('input',e=>updateRowField(s.id,'group',e.target.value));inputs[2].addEventListener('blur',()=>renderRows());
+function attachDrag(d,s){
+ d.addEventListener('dragstart',()=>{d.classList.add('dragging');window._dragId=s.id});
+ d.addEventListener('dragend',()=>{d.classList.remove('dragging');document.querySelectorAll('.drop-target').forEach(x=>x.classList.remove('drop-target'));window._dragId=null});
+ d.addEventListener('dragover',e=>{e.preventDefault();d.classList.add('drop-target')});
+ d.addEventListener('dragleave',()=>d.classList.remove('drop-target'));
+ d.addEventListener('drop',e=>{e.preventDefault();const from=state.samples.findIndex(x=>x.id===window._dragId),to=state.samples.findIndex(x=>x.id===s.id);
+  if(from<0||to<0||from===to){d.classList.remove('drop-target');return;}
+  const moved=state.samples[from];
+  snapshot(isHeading(moved)?'Überschrift verschoben':'Probe verschoben');
+  const [m]=state.samples.splice(from,1);state.samples.splice(to,0,m);
+  if(isHeading(m))flashRow(m.id,`Überschrift verschoben: ${m.text||'(leer)'}`);
+  else flashRow(m.id,`Verschoben: Nr. ${sampleNumber(m.id)} · ${m.location||'Probe'}`);
+ });
+}
+function sampleNumber(id){const start=Math.max(1,parseInt($('#startNo').value)||1);let n=start;for(const x of state.samples){if(isHeading(x))continue;if(x.id===id)return n;n++;}return n;}
+function renderHeadingRow(s){
+ const d=document.createElement('div');d.className='row heading'+(s.id===flashId?' moved':'');d.draggable=true;d.dataset.id=s.id;
+ d.innerHTML=`<div class="handle" title="Ziehen">☰</div><div class="num">¶</div><input class="heading-edit" value="${esc(s.text||'')}" placeholder="Überschrift, z. B. Seefelder Str. 27" title="Überschrift"><div class="row-actions"><button class="danger" title="Überschrift löschen">×</button></div>`;
+ d.querySelector('input').addEventListener('input',e=>{s.text=e.target.value;renderPreview();});
+ d.querySelector('button').onclick=()=>{snapshot('Überschrift gelöscht');state.samples=state.samples.filter(x=>x.id!==s.id);renderAll();$('#status').textContent='Überschrift gelöscht. Mit „Rückgängig" wiederherstellbar.';};
+ attachDrag(d,s);
+ return d;
+}
+function renderRows(){const wrap=$('#rows');wrap.innerHTML='';const start=Math.max(1,parseInt($('#startNo').value)||1); let no=start; state.samples.forEach((s,i)=>{if(isHeading(s)){wrap.appendChild(renderHeadingRow(s));return;} const num=no++; const d=document.createElement('div');d.className='row'+(s.id===flashId?' moved':'');d.draggable=true;d.dataset.id=s.id;d.innerHTML=`<div class="handle" title="Ziehen">☰</div><div class="num">${num}</div><textarea class="loc" rows="2" title="Entnahmestelle">${esc(s.location)}</textarea><input class="scope-edit" value="${esc(s.scope)}" title="Probe / Parameter"><div class="result-edit"><input class="last ${s.bad?'bad':''}" value="${esc(s.last)}" title="Letzter Befund">${(s.details?.tempConstant||s.details?.tempSample)?`<div class="temp-note">${s.details?.tempSample?`PN ${esc(s.details.tempSample)}°C`:''}${s.details?.tempConstant&&s.details?.tempSample?' · ':''}${s.details?.tempConstant?`${esc(s.details?.tempConstantLabel||'konst.')} ${esc(s.details.tempConstant)}°C`:''}</div>`:''}</div><div class="row-actions"><button class="danger" title="Löschen">×</button></div>`;
+ const locInput=d.querySelector('textarea.loc'); const inputs=d.querySelectorAll('input'); locInput.addEventListener('input',e=>updateRowField(s.id,'location',e.target.value));locInput.addEventListener('blur',e=>{s.location=canonicalizeLocation(e.target.value);renderAll();});inputs[0].addEventListener('input',e=>updateRowField(s.id,'scope',e.target.value));inputs[1].addEventListener('input',e=>{s.bad=/^[⚠!]/.test(e.target.value.trim());updateRowField(s.id,'last',e.target.value);renderRows();});
  const btns=d.querySelectorAll('button');btns[0].onclick=()=>{snapshot('Probe gelöscht');state.samples=state.samples.filter(x=>x.id!==s.id);renderAll();$('#status').textContent='Probe gelöscht. Mit „Rückgängig" wiederherstellbar.';};
- d.addEventListener('dragstart',()=>{d.classList.add('dragging');window._dragId=s.id});d.addEventListener('dragend',()=>{d.classList.remove('dragging');document.querySelectorAll('.drop-target').forEach(x=>x.classList.remove('drop-target'));window._dragId=null});d.addEventListener('dragover',e=>{e.preventDefault();d.classList.add('drop-target')});d.addEventListener('dragleave',()=>d.classList.remove('drop-target'));d.addEventListener('drop',e=>{e.preventDefault();const from=state.samples.findIndex(x=>x.id===window._dragId),to=state.samples.findIndex(x=>x.id===s.id);if(from<0||to<0||from===to){d.classList.remove('drop-target');return;}snapshot('Probe verschoben');const [m]=state.samples.splice(from,1);state.samples.splice(to,0,m);const st=Math.max(1,parseInt($('#startNo').value)||1);flashRow(m.id,`Verschoben: Nr. ${st+from} → Nr. ${st+to} · ${m.location||'Probe'}`);});wrap.appendChild(d);}); $('#count').textContent=`${state.samples.length} Probe${state.samples.length===1?'':'n'}`; updateUndoBtn();}
-function allScopeChips(){const set=new Set();state.samples.forEach(s=>s.scope.split('·').map(x=>x.trim()).filter(Boolean).forEach(x=>set.add(x)));return [...set];}
-function buildParameterLegend(){const seen={Mibi:new Set(),Chemie:new Set(),VO:new Set(),Legionellen:new Set()}; state.samples.forEach(s=>{const d=s.details||{};(d.results||[]).forEach(r=>{if(r.name==='Legionellen')seen.Legionellen.add('Legionellen'); else if(['Escherichia coli','Coliforme Bakterien','Koloniezahl 22 °C','Koloniezahl 36 °C','Enterokokken','Pseudomonas aeruginosa'].includes(r.name))seen.Mibi.add(r.name.replace('Koloniezahl 22 °C','KZ 22°C').replace('Koloniezahl 36 °C','KZ 36°C').replace('Coliforme Bakterien','Coliforme').replace('Pseudomonas aeruginosa','Pseudomonas')); else seen.Chemie.add(r.name);}); if(d.lf)seen.VO.add('Leitfähigkeit');if(d.ph)seen.VO.add('pH');}); const lines=[]; if(seen.Mibi.size)lines.push(`<div class="legend-line"><b>Mikrobiologie:</b> ${esc([...seen.Mibi].join(' · '))}</div>`);if(seen.Chemie.size)lines.push(`<div class="legend-line"><b>Chemie:</b> ${esc([...seen.Chemie].join(' · '))}</div>`);if(seen.VO.size)lines.push(`<div class="legend-line"><b>Vor-Ort-Parameter:</b> ${esc([...seen.VO].join(' · '))}</div>`);if(seen.Legionellen.size)lines.push(`<div class="legend-line"><b>Legionellen:</b> Legionella spec.</div>`);return lines.length?`<div class="param-legend">${lines.join('')}</div>`:'';}
+ attachDrag(d,s);wrap.appendChild(d);}); const n=state.samples.filter(x=>!isHeading(x)).length; $('#count').textContent=`${n} Probe${n===1?'':'n'}`; updateUndoBtn();}
+function allScopeChips(){const set=new Set();state.samples.filter(x=>!isHeading(x)).forEach(s=>(s.scope||'').split('·').map(x=>x.trim()).filter(Boolean).forEach(x=>set.add(x)));return [...set];}
+function buildParameterLegend(){const seen={Mibi:new Set(),Chemie:new Set(),VO:new Set(),Legionellen:new Set()}; state.samples.filter(x=>!isHeading(x)).forEach(s=>{const d=s.details||{};(d.results||[]).forEach(r=>{if(r.name==='Legionellen')seen.Legionellen.add('Legionellen'); else if(['Escherichia coli','Coliforme Bakterien','Koloniezahl 22 °C','Koloniezahl 36 °C','Enterokokken','Pseudomonas aeruginosa'].includes(r.name))seen.Mibi.add(r.name.replace('Koloniezahl 22 °C','KZ 22°C').replace('Koloniezahl 36 °C','KZ 36°C').replace('Coliforme Bakterien','Coliforme').replace('Pseudomonas aeruginosa','Pseudomonas')); else seen.Chemie.add(r.name);}); if(d.lf)seen.VO.add('Leitfähigkeit');if(d.ph)seen.VO.add('pH');}); const lines=[]; if(seen.Mibi.size)lines.push(`<div class="legend-line"><b>Mikrobiologie:</b> ${esc([...seen.Mibi].join(' · '))}</div>`);if(seen.Chemie.size)lines.push(`<div class="legend-line"><b>Chemie:</b> ${esc([...seen.Chemie].join(' · '))}</div>`);if(seen.VO.size)lines.push(`<div class="legend-line"><b>Vor-Ort-Parameter:</b> ${esc([...seen.VO].join(' · '))}</div>`);if(seen.Legionellen.size)lines.push(`<div class="legend-line"><b>Legionellen:</b> Legionella spec.</div>`);return lines.length?`<div class="param-legend">${lines.join('')}</div>`:'';}
 function renderPreview(){
  syncMetaFromInputs();
  const p=$('#paper');
- if(!state.samples.length){p.innerHTML='<div class="empty">Noch kein Bericht eingelesen.</div>';return;}
+ if(!state.samples.filter(x=>!isHeading(x)).length){p.innerHTML='<div class="empty">Noch kein Bericht eingelesen.</div>';return;}
  p.classList.toggle('soft',!!(printView.active&&printView.soft));
  const showResult=!printView.active||printView.showResult;
  const showTemp=!printView.active||printView.showTemp;
@@ -584,20 +618,13 @@ function renderPreview(){
  const infoHeader=showResult&&showTemp?'Befund / Temp.':showResult?'Letzter Befund':'Temperaturen';
  const colCount=showInfo?5:4;
  const start=Math.max(1,parseInt($('#startNo').value)||1);
- let rows='',lastTop=null,lastSub=null;
- state.samples.forEach((s,i)=>{
-   const gp=(s.group||'').split('·').map(x=>x.trim()).filter(Boolean);
-   const top=gp.length>1?gp[0]:'';
-   const sub=gp.length>1?gp.slice(1).join(' · '):(gp[0]||'');
-   if(!gp.length){lastTop=null;lastSub=null;}
-   if(top&&top!==lastTop){
-     rows+=`<tr class="section-row"><td colspan="${colCount}">${esc(top)}</td></tr>`;
-     lastTop=top; lastSub=null;
+ let rows='',no=start;
+ state.samples.forEach(s=>{
+   if(isHeading(s)){
+     if((s.text||'').trim())rows+=`<tr class="section-row${s.id===flashId?' moved':''}"><td colspan="${colCount}">${esc(s.text)}</td></tr>`;
+     return;
    }
-   if(sub&&sub!==lastSub){
-     rows+=`<tr class="section-row${top?' sub':''}"><td colspan="${colCount}">${esc(sub)}</td></tr>`;
-     lastSub=sub;
-   }
+   const num=no++;
    let info='';
    if(showInfo){
      const resultHtml=showResult
@@ -609,7 +636,7 @@ function renderPreview(){
      const tempHtml=tempBits.length?`<div class="temp-print">${tempBits.join(' · ')}</div>`:'';
      info=`<td class="pv">${resultHtml}${tempHtml}</td>`;
    }
-   rows+=`<tr${s.id===flashId?' class="moved"':''}><td class="pn">${start+i}</td><td>${locationDisplayHtml(s.location)}${s.tw||s.eId?`<div class="mini">${esc([s.tw,s.eId].filter(Boolean).join(' · '))}</div>`:''}</td><td class="pp">${esc(s.scope)}</td>${info}<td class="pc"><span class="check">□</span></td></tr>`;
+   rows+=`<tr${s.id===flashId?' class="moved"':''}><td class="pn">${num}</td><td>${locationDisplayHtml(s.location)}${s.tw||s.eId?`<div class="mini">${esc([s.tw,s.eId].filter(Boolean).join(' · '))}</div>`:''}</td><td class="pp">${esc(s.scope)}</td>${info}<td class="pc"><span class="check">□</span></td></tr>`;
  });
  const chips=allScopeChips().map(x=>`<span class="chip">${esc(x)}</span>`).join('');
  const infoHead=showInfo?`<th class="pv">${infoHeader}</th>`:'';
@@ -619,13 +646,16 @@ function renderPreview(){
  p.innerHTML=`<div class="print-head"><div class="print-brandrow"><div class="print-title">PROBENAHMEPLAN – TRINKWASSER</div><img class="print-logo" src="nova_logo.png" alt="NOVA Praxis-Hygiene GmbH"></div><div class="meta"><div><b>Auftraggeber / Hausverwaltung</b><br>${esc(state.meta.client||'—')}</div><div><b>Anlage / Objekt</b><br>${esc(state.meta.object||'—')}</div><div><b>Objekt-ID:</b> ${esc(state.meta.objectId||'—')}</div><div><b>Grundlage:</b> ${esc(state.meta.reportNo?'Prüfbericht '+state.meta.reportNo:'—')}${state.meta.sampleDate?' · Probenahme '+esc(state.meta.sampleDate):''}<div class="source-lab">${esc(state.meta.sourceLab||'')}</div></div></div><div class="scope">${chips}</div>${buildParameterLegend()}</div><table class="print-table"><thead><tr><th class="pn">Nr.</th><th>Entnahmestelle</th><th class="pp">Probe / Parameter</th>${infoHead}<th class="pc">✓</th></tr></thead><tbody>${rows}</tbody></table><div class="footer-note">${notes.join(' ')}</div>`;
 }
 function normalizeLegacySamples(){
- state.samples.forEach(s=>{if(s.location)s.location=canonicalizeLocation(s.location);});state.samples.forEach(s=>{if(s.details?.type==='Legio'){if(s.water!=='KW')s.water='WW';const parts=(s.scope||'').split('·').map(x=>x.trim()).filter(Boolean).filter(x=>!/^Legio(?:nellen)?$/i.test(x)&&!/^WW$|^KW$/i.test(x));s.scope=[s.water,'Legionellen',...parts].filter(Boolean).join(' · ');}})}
+ convertLegacyGroups();
+ state.samples.filter(x=>!isHeading(x)).forEach(s=>{if(s.location)s.location=canonicalizeLocation(s.location);});state.samples.filter(x=>!isHeading(x)).forEach(s=>{if(s.details?.type==='Legio'){if(s.water!=='KW')s.water='WW';const parts=(s.scope||'').split('·').map(x=>x.trim()).filter(Boolean).filter(x=>!/^Legio(?:nellen)?$/i.test(x)&&!/^WW$|^KW$/i.test(x));s.scope=[s.water,'Legionellen',...parts].filter(Boolean).join(' · ');}})}
 function renderAll(){normalizeLegacySamples();putMeta();renderRows();renderPreview();}
-async function handlePdf(file){if(!file)return;$('#status').textContent='PDF wird ausgelesen …';try{const text=await extractPdf(file);const parsed=parseReport(text);state=parsed;undoStack.length=0;flashId=null;applyAutoGroups();putMeta();renderAll();const bad=state.samples.filter(x=>x.bad).length;$('#status').innerHTML=`Erkannt: <b>${state.samples.length}</b> Proben${bad?` · <b style="color:#b91c1c">${bad} auffällig</b>`:''} · Format: <b>${esc(parsed.parser||'Standard')}</b>. Bitte kurz prüfen und bei Bedarf sortieren/korrigieren.`;if(!state.samples.length){$('#status').innerHTML='Keine Proben erkannt. Das Laborformat ist noch nicht sauber zugeordnet oder der Bericht ist bildbasiert.';}}catch(e){console.error(e);$('#status').textContent='PDF konnte nicht ausgewertet werden: '+e.message;}}
+async function handlePdf(file){if(!file)return;$('#status').textContent='PDF wird ausgelesen …';try{const text=await extractPdf(file);const parsed=parseReport(text);state=parsed;undoStack.length=0;flashId=null;applyAutoGroups();putMeta();renderAll();const bad=state.samples.filter(x=>x.bad).length;const cnt=state.samples.filter(x=>!isHeading(x)).length;$('#status').innerHTML=`Erkannt: <b>${cnt}</b> Proben${bad?` · <b style="color:#b91c1c">${bad} auffällig</b>`:''} · Format: <b>${esc(parsed.parser||'Standard')}</b>. Bitte kurz prüfen und bei Bedarf sortieren/korrigieren.`;if(!state.samples.length){$('#status').innerHTML='Keine Proben erkannt. Das Laborformat ist noch nicht sauber zugeordnet oder der Bericht ist bildbasiert.';}}catch(e){console.error(e);$('#status').textContent='PDF konnte nicht ausgewertet werden: '+e.message;}}
 ['reportNo','sampleDate','client','object','objectId','sampler','sourceLab'].forEach(id=>$('#'+id).addEventListener('input',renderPreview));$('#startNo').addEventListener('input',()=>{renderRows();renderPreview()});$('#pdfInput').addEventListener('change',e=>handlePdf(e.target.files[0]));const drop=$('#drop');['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('over')}));['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('over')}));drop.addEventListener('drop',e=>handlePdf([...e.dataTransfer.files].find(f=>f.type==='application/pdf')));
 $('#undoBtn').onclick=undo;
 document.addEventListener('keydown',e=>{const t=e.target,typing=t&&/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName);if((e.ctrlKey||e.metaKey)&&!e.shiftKey&&e.key.toLowerCase()==='z'&&!typing){e.preventDefault();undo();}});
-$('#addRow').onclick=()=>{snapshot('Probe hinzugefügt');state.samples.push({id:crypto.randomUUID(),tw:'',eId:'',location:'Neue Entnahmestelle',scope:'',last:'',bad:false,group:'',details:{}});renderAll()};$('#autoGroups').onclick=()=>{snapshot('Bereiche automatisch gesetzt');applyAutoGroups();renderAll()};$('#clearGroups').onclick=()=>{snapshot('Bereiche geleert');state.samples.forEach(s=>s.group='');renderAll()};
+$('#addRow').onclick=()=>{snapshot('Probe hinzugefügt');state.samples.push({id:crypto.randomUUID(),tw:'',eId:'',location:'Neue Entnahmestelle',scope:'',last:'',bad:false,group:'',details:{}});renderAll()};$('#autoGroups').onclick=()=>{snapshot('Überschriften automatisch gesetzt');applyAutoGroups();renderAll()};
+$('#clearGroups').onclick=()=>{snapshot('Überschriften entfernt');state.samples=state.samples.filter(x=>!isHeading(x));state.samples.forEach(s=>s.group='');renderAll()};
+$('#addHeading').onclick=()=>{snapshot('Überschrift hinzugefügt');const h=newHeading('');state.samples.unshift(h);renderAll();$('#status').textContent='Überschrift oben eingefügt – Text eintragen und an die gewünschte Stelle ziehen.';const el=document.querySelector(`.row[data-id="${h.id}"] input`);if(el)el.focus();};
 
 const printModal=$('#printModal');
 function openPrintModal(){printModal.classList.add('open');}
