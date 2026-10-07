@@ -1314,7 +1314,7 @@
   <div id="tableContainer"></div>
 
   <div class="footer">
-    Anmeldung aktiv · Cloud-Sync (Row-Level Live) · Version 3.0.9</div>
+    Anmeldung aktiv · Cloud-Sync (Row-Level Live) · Version 3.0.10</div>
 
   <!-- Modal für Anlagenverwaltung -->
   <div id="modalOverlay" class="modal-overlay">
@@ -1394,7 +1394,9 @@
     };
 
     // ===================================================================
-    //  CLOUD-SYNC (v3.0.9 – Row-Level Live + zentrale Admin-Standorte)
+    //  CLOUD-SYNC (v3.0.10 – Row-Level Live + zentrale Admin-Standorte)
+    //  v3.0.10: Poll gegen Upload-Race abgesichert, Paging >1000 Zeilen,
+    //           aktive Anlage bleibt bei Sync erhalten.
     //  - Beim Login: alle Zeilen ziehen und lokale Seiten rekonstruieren.
     //  - Beim Bearbeiten: ausschließlich tatsächlich geänderte Zeilen hochladen.
     //  - Realtime übernimmt fremde Zeilen sofort; 3-Sekunden-Polling dient als Fallback.
@@ -1415,7 +1417,10 @@
       realtimeSubscribed: false,
       pollTimer: null,
       pollBusy: false,
-      remoteRenderTimer: null
+      remoteRenderTimer: null,
+      uploadEpoch: 0,              // v3.0.10: zählt laufende/abgeschlossene Uploads
+      uploadsInFlight: 0,
+      missingStrikes: new Map()    // v3.0.10: Seite muss 2x in Folge fehlen
     };
 
     const LIVE_POLL_INTERVAL = 3000; // Fallback wie bei der Termindatenbank
@@ -1625,14 +1630,32 @@
       });
     }
 
-    async function pullAllPagesFromCloud() {
-      if (!db) return { ok: false, reason: "no-db" };
-      try {
+    // v3.0.10: Supabase liefert pro Abfrage max. 1000 Zeilen. Ohne Paging
+    // "fehlen" ab dann zufällig Zeilen -> Seiten wurden lokal entfernt.
+    async function fetchAllCloudRows() {
+      const PAGE = 1000;
+      let from = 0;
+      const all = [];
+      while (true) {
         const { data, error } = await db
           .from(NOVA_TABLE)
           .select("id, kind, anlage, bereich, page_number, data, updated_by, updated_by_name, updated_at")
-          .eq("kind", "row");
+          .eq("kind", "row")
+          .order("id", { ascending: true })
+          .range(from, from + PAGE - 1);
         if (error) throw error;
+        const chunk = data || [];
+        all.push(...chunk);
+        if (chunk.length < PAGE) break;
+        from += PAGE;
+      }
+      return all;
+    }
+
+    async function pullAllPagesFromCloud() {
+      if (!db) return { ok: false, reason: "no-db" };
+      try {
+        const data = await fetchAllCloudRows();
 
         SYNC.applyingRemote = true;
         pages = rebuildPagesFromCloudRecords(data || []);
@@ -1718,6 +1741,8 @@
         return;
       }
 
+      SYNC.uploadEpoch++;
+      SYNC.uploadsInFlight++;
       try {
         const { error } = await db.from(NOVA_TABLE).upsert(payload, { onConflict: "id" });
         if (error) throw error;
@@ -1727,6 +1752,9 @@
         console.error("Upload-Fehler:", e);
         ids.forEach(id => SYNC.dirtyRowIds.add(id));
         setSyncStatus("error");
+      } finally {
+        SYNC.uploadsInFlight--;
+        SYNC.uploadEpoch++;
       }
     }
 
@@ -1751,14 +1779,21 @@
 
     function reconcileActivePageAfterSync() {
       const active = pages.find(p => p.id === activePageId);
-      if (!active || isPageDeleted(active)) {
-        const fallback = pages
-          .filter(p => !isPageDeleted(p))
-          .slice()
-          .sort((a, b) => getPageNumber(a) - getPageNumber(b))[0] || null;
-        activePageId = fallback ? fallback.id : null;
+      if (active && !isPageDeleted(active)) {
+        lastActiveLocation = { anlage: active.anlage || "", bereich: active.bereich || "" };
+        return;
       }
+      // v3.0.10: Nicht mehr auf die Seite mit der kleinsten Nummer (z. B.
+      // Sander-Stift) springen, sondern möglichst an derselben Anlage bleiben.
+      const alive = pages.filter(p => !isPageDeleted(p)).slice()
+        .sort((a, b) => getPageNumber(a) - getPageNumber(b));
+      const loc = lastActiveLocation;
+      const sameLoc = loc ? alive.filter(p => (p.anlage || "") === loc.anlage && (p.bereich || "") === loc.bereich) : [];
+      const sameAnlage = loc ? alive.filter(p => (p.anlage || "") === loc.anlage) : [];
+      const fallback = sameLoc[sameLoc.length - 1] || sameAnlage[sameAnlage.length - 1] || alive[0] || null;
+      activePageId = fallback ? fallback.id : null;
     }
+    let lastActiveLocation = null;
 
     function captureTableFocus() {
       const el = document.activeElement;
@@ -1870,13 +1905,17 @@
 
     async function pollCloudRows() {
       if (!db || !SYNC.enabled || SYNC.paused || SYNC.pollBusy) return;
+      // v3.0.10: Während ein Upload läuft, keinen Poll starten.
+      if (SYNC.uploadsInFlight > 0) return;
       SYNC.pollBusy = true;
+      const epochAtStart = SYNC.uploadEpoch;
       try {
-        const { data, error } = await db
-          .from(NOVA_TABLE)
-          .select("id, kind, anlage, bereich, page_number, data, updated_by, updated_by_name, updated_at")
-          .eq("kind", "row");
-        if (error) throw error;
+        const data = await fetchAllCloudRows();
+
+        // v3.0.10: Ist während der Abfrage ein Upload gelaufen, ist das
+        // Ergebnis veraltet (eigene neue Zeile fehlt noch). Früher wurde die
+        // Seite dann als "gelöscht" behandelt -> Sprung zu anderer Anlage.
+        if (epochAtStart !== SYNC.uploadEpoch || SYNC.uploadsInFlight > 0) return;
 
         const remoteIds = new Set();
         (data || []).forEach(rec => {
@@ -1894,7 +1933,15 @@
           const parsed = parseRowDbId(id);
           if (parsed) missingPages.add(parsed.pageId);
         });
+        // v3.0.10: Seite erst entfernen, wenn sie in 2 Polls hintereinander fehlt.
+        Array.from(SYNC.missingStrikes.keys()).forEach(pid => {
+          if (!missingPages.has(pid)) SYNC.missingStrikes.delete(pid);
+        });
         missingPages.forEach(pageId => {
+          const strikes = (SYNC.missingStrikes.get(pageId) || 0) + 1;
+          SYNC.missingStrikes.set(pageId, strikes);
+          if (strikes < 2) return;
+          SYNC.missingStrikes.delete(pageId);
           const anyId = Array.from(SYNC.rowShadow.keys()).find(id => {
             const parsed = parseRowDbId(id);
             return parsed && parsed.pageId === pageId;
@@ -3473,6 +3520,7 @@
     function getActivePage() {
       const p = pages.find(p => p.id === activePageId) || null;
       if (p && isPageDeleted(p)) return null;
+      if (p) lastActiveLocation = { anlage: p.anlage || "", bereich: p.bereich || "" }; // v3.0.10
       return p;
     }
     // Wählt einen Standort und öffnet das passende vorhandene Protokoll.
@@ -5611,14 +5659,44 @@ case "4":
       }, 350);
     });
 
-    fabNext.addEventListener("click", () => {
-      const firstFree = document.querySelector("[data-free-row='true']");
-      if (firstFree) {
-        firstFree.scrollIntoView({behavior: "smooth", block: "start"});
-      } else {
-        // Fallback: ans Ende scrollen
-        window.scrollTo({top: document.body.scrollHeight, behavior: "smooth"});
+    // v3.0.10: Ziel wird beim Klick aus den aktuellen Daten berechnet (nicht
+    // aus einem beim Rendern gesetzten Attribut, das nach Eingaben veraltet).
+    // Ziel = erste leere Zeile NACH dem letzten Eintrag; funktioniert mobil
+    // und am Desktop. Nach dem Scrollen wird einmal nachkorrigiert, falls
+    // sich das Layout zwischendurch verschoben hat (z. B. Live-Sync).
+    function findNextFreeRowElement() {
+      const page = getActivePage();
+      if (!page || !Array.isArray(page.rows)) return null;
+      const isFilled = r => r && !r.deletedAt && (r.date || r.time || rowHasMeaningfulData(r));
+      let lastFilled = 0;
+      page.rows.forEach(r => { if (isFilled(r)) lastFilled = Math.max(lastFilled, Number(r.index) || 0); });
+      const target = page.rows.find(r => r && (Number(r.index) || 0) > lastFilled && !isFilled(r));
+      if (!target) return null;
+      const id = rowDbId(page.id, target.index);
+      return Array.from(document.querySelectorAll("#tableContainer [data-sync-row-id]"))
+        .find(el => el.dataset.syncRowId === id) || null;
+    }
+
+    function scrollToNextFreeRow(behavior) {
+      const el = findNextFreeRowElement();
+      if (!el) {
+        window.scrollTo({ top: document.body.scrollHeight, behavior });
+        return null;
       }
+      const top = el.getBoundingClientRect().top + window.scrollY - 12;
+      window.scrollTo({ top: Math.max(0, top), behavior });
+      return el;
+    }
+
+    fabNext.addEventListener("click", () => {
+      const el = scrollToNextFreeRow("smooth");
+      if (!el) return;
+      setTimeout(() => {
+        const again = findNextFreeRowElement();
+        if (!again) return;
+        const off = again.getBoundingClientRect().top - 12;
+        if (Math.abs(off) > 30) scrollToNextFreeRow("auto");
+      }, 700);
     });
 
     // Mobile Bearbeiter-Bar ein-/ausblenden; Auswahl wird zentral verwaltet.
