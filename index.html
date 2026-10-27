@@ -184,6 +184,21 @@
     }
     .btn-nova-card:hover { background: rgba(94, 234, 212, 0.18); border-color: rgba(94, 234, 212, 0.45); }
 
+    /* ── Pilot / In Erprobung ── */
+    .section-title.pilot { border-left-color: #fbbf24; }
+    .card.card-pilot { border-style: dashed; border-color: rgba(251, 191, 36, 0.35); }
+    .card.card-pilot:hover { border-color: rgba(251, 191, 36, 0.6); }
+    .card-pilot .card-tag {
+      color: #fbbf24; background: rgba(251, 191, 36, 0.08); border-color: rgba(251, 191, 36, 0.35);
+    }
+    .card-pilot .icon { color: #fbbf24; border-color: rgba(251, 191, 36, 0.35); }
+    .pilot-note {
+      font-size: 0.8rem; color: var(--muted); margin: 0 0 20px;
+      padding: 10px 12px; border-radius: 10px;
+      background: rgba(251, 191, 36, 0.06); border-left: 3px solid rgba(251, 191, 36, 0.5);
+    }
+    .pilot-note strong { color: #fde68a; }
+
     /* ── Dev Area (Test Tool) ── */
     .dev-area {
       margin-top: 20px;
@@ -399,6 +414,41 @@
             <line x1="10" y1="14" x2="21" y2="3"></line>
           </svg>
           Tool öffnen
+        </a>
+      </article>
+
+    </section>
+
+    <!-- SEKTION 3: Pilot / In Erprobung -->
+    <h2 class="section-title pilot animate-in delay-3">In Erprobung (Pilotphase)</h2>
+    <section class="grid animate-in delay-3">
+
+      <!-- Fahrtenbuch -->
+      <article class="card card-pilot">
+        <span class="card-tag">Pilot · Testbetrieb</span>
+        <div class="icon">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 17h14v-5l-2-5H7l-2 5v5z"/>
+            <path d="M5 12h14"/>
+            <circle cx="8" cy="17" r="2"/>
+            <circle cx="16" cy="17" r="2"/>
+          </svg>
+        </div>
+        <h3>Fahrtenbuch</h3>
+        <p>Digitales Fahrtenbuch für Dienstfahrten im Probenahme-Alltag. Aktuell im Testbetrieb.</p>
+        <ul class="list">
+          <li>Erfassung von Fahrten & Kilometerständen</li>
+          <li>Trennung dienstlich / privat</li>
+          <li>Export für die Buchhaltung</li>
+        </ul>
+        <div class="pilot-note">
+          <strong>Hinweis:</strong> Freigabe durch den Steuerberater steht noch aus. Bis dahin nur zu Testzwecken – nicht als offizielles Fahrtenbuch verwenden.
+        </div>
+        <a class="btn-card btn-nova-card" href="https://kaffeetrinker80.github.io/NOVA/fahrtenbuch/">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="9 18 15 12 9 6"/>
+          </svg>
+          Pilot öffnen
         </a>
       </article>
 
