@@ -2,8 +2,8 @@
   "name": "Spülprotokoll Anlagen",
   "short_name": "Spülprotokoll",
   "description": "Kontrolle der Wassertemperaturen und Hygienespülungen für mehrere Anlagen und Bereiche.",
-  "start_url": "./",
-  "scope": "./",
+  "start_url": "/NOVA/spuelprotokoll-anlagen/",
+  "scope": "/NOVA/spuelprotokoll-anlagen/",
   "display": "standalone",
   "orientation": "landscape",
   "background_color": "#f3f4f6",
@@ -25,5 +25,6 @@
       "type": "image/png",
       "purpose": "maskable"
     }
-  ]
+  ],
+  "id": "/NOVA/spuelprotokoll-anlagen/"
 }
