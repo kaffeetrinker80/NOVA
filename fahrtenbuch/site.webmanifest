@@ -1,0 +1,32 @@
+{
+  "name": "fahrtenwerk - Dein Fahrtenbuch",
+  "short_name": "fahrtenwerk",
+  "description": "Fahrtenbuch zur Aufzeichnung privater und geschäftlicher Fahrten für Firmenautos.",
+  "id": "/NOVA/fahrtenbuch/",
+  "start_url": "/NOVA/fahrtenbuch/",
+  "scope": "/NOVA/fahrtenbuch/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f3f6fa",
+  "theme_color": "#172f4d",
+  "icons": [
+    {
+      "src": "android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "android-chrome-512x512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
