@@ -52,6 +52,7 @@ button,input,select{font:inherit;color:inherit}
 .year{display:flex;align-items:center;gap:2px;flex:none}
 .year button{width:36px;height:36px;border:1px solid var(--line);background:var(--surface);border-radius:10px;cursor:pointer;font-size:1.1rem}
 .year .theme{margin-right:8px;font-size:1rem}
+.top .year select{width:auto;min-height:36px;padding:4px 8px;font-family:Outfit,sans-serif;font-weight:700;font-size:1.05rem;border-radius:10px;cursor:pointer}
 .year span{font-family:Outfit,sans-serif;font-weight:700;font-size:1.15rem;min-width:3.4em;text-align:center}
 .tabs{display:flex;gap:4px;max-width:1040px;margin:0 auto;padding:0 10px;overflow-x:auto;scrollbar-width:none}
 .tabs::-webkit-scrollbar{display:none}
@@ -151,9 +152,10 @@ footer a{color:var(--accent)}
 
 /* Handy: Reiter unten, große Felder */
 @media (max-width:700px){
-  .tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surface);border-top:1px solid var(--line);max-width:none;margin:0;padding:2px 2px calc(2px + env(safe-area-inset-bottom,0px));gap:0;overflow:visible}
-  .tabs button{flex:1 1 0;min-width:0;padding:8px 2px;min-height:54px;border-bottom:0;border-top:3px solid transparent;font-size:.8rem;line-height:1.15}
-  .tabs button[aria-selected="true"]{border-top-color:var(--accent);font-weight:700}
+  .tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:#1b4d8c;border-top:0;box-shadow:0 -2px 12px rgba(0,0,0,.14);max-width:none;margin:0;padding:0 0 env(safe-area-inset-bottom,0px);gap:0;overflow:visible}
+  .tabs button{flex:1 1 0;min-width:0;padding:8px 2px;min-height:56px;border-bottom:0;border-top:3px solid transparent;font-size:.8rem;line-height:1.15;color:rgba(255,255,255,.76)}
+  .tabs button[aria-selected="true"]{color:#fff;border-top-color:#fff;background:rgba(255,255,255,.13);font-weight:700}
+  .tabs button:focus-visible{outline-color:#fff;outline-offset:-3px}
   .tabs .lg{display:none}
   .tabs .sm{display:inline}
   .tabs [data-tab="tanken"]{order:1}
@@ -162,7 +164,8 @@ footer a{color:var(--accent)}
   .tabs [data-tab="fahrten"]{order:4}
   .tabs [data-tab="uebersicht"]{order:5}
   .top{border-bottom:1px solid var(--line)}
-  .bar{padding:10px 14px}
+  .bar{padding:8px 12px}
+  .brand h1{font-size:1.02rem;white-space:normal;line-height:1.15}
   body{padding-bottom:76px}
   main{padding:12px 10px 20px}
   .panel{padding:14px;border-radius:12px;margin-bottom:12px}
@@ -173,7 +176,11 @@ footer a{color:var(--accent)}
   .form .seg,.form .btn,.form .wide{grid-column:1/-1}
   .form .btn{min-height:52px;font-size:1.02rem}
   .km th,.km td{padding:5px 4px}
-  .km input{max-width:none;min-height:46px}
+  table.km{font-size:.9rem}
+  table.km input{max-width:none;min-height:42px;font-size:15px;padding:6px 8px}
+  #tab-tanken input[type=text],#tab-tanken input[type=date]{min-height:44px;font-size:16px;padding:7px 9px}
+  #tab-tanken .form label{font-size:.8rem}
+  #tab-tanken .form .btn{min-height:46px}
   #toast{bottom:calc(84px + env(safe-area-inset-bottom,0px))}
 }
 
@@ -197,12 +204,10 @@ footer a{color:var(--accent)}
 <body>
 <header class="top">
   <div class="bar">
-    <div class="brand"><h1>Fahrtenbuch-Auswertung</h1><span class="ver" id="verBadge">V1.1.1</span></div>
+    <div class="brand"><h1>Fahrtenbuch-Auswertung</h1></div>
     <div class="year">
       <button id="themeBtn" class="theme" aria-label="Hell oder dunkel">☀</button>
-      <button id="yPrev" aria-label="Vorheriges Jahr">‹</button>
-      <span id="yLabel" class="num">2026</span>
-      <button id="yNext" aria-label="Nächstes Jahr">›</button>
+      <select id="ySel" aria-label="Jahr wählen"></select>
     </div>
   </div>
   <nav class="tabs" role="tablist" aria-label="Bereiche">
@@ -342,7 +347,7 @@ footer a{color:var(--accent)}
 </main>
 
 <footer>
-  <span id="footText">Fahrtenbuch-Auswertung · V1.1.1 · Made with Love ©</span>
+  <span id="footText">Fahrtenbuch-Auswertung · V1.2.0 · Made with Love ©</span>
   <a id="feedback" href="#">✉ Feedback</a>
 </footer>
 
@@ -351,7 +356,7 @@ footer a{color:var(--accent)}
 <script>
 (function(){
 "use strict";
-const VERSION = "1.1.1";
+const VERSION = "1.2.0";
 const TOOL = "Fahrtenbuch-Auswertung";
 const KEY = "fahrtenbuch-auswertung";
 const MONTHS = ["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
@@ -717,9 +722,15 @@ $(".tabs").addEventListener("click", e=>{
   if(location.hash !== "#"+b.dataset.tab) history.replaceState(null,"","#"+b.dataset.tab);
 });
 window.addEventListener("hashchange", ()=>showTab(location.hash.slice(1)));
-function changeYear(delta){ cancelEdit(); S.current += delta; ensure(S.current); save(); renderAll(); }
-$("#yPrev").addEventListener("click", ()=>changeYear(-1));
-$("#yNext").addEventListener("click", ()=>changeYear(1));
+function hasData(d){ return !!d && (d.trips.length || d.fuel.length || d.oil.length || d.misc.length || d.jan0 != null || d.ends.some(v=>v != null)); }
+function renderYearSel(){
+  const now = new Date().getFullYear();
+  const ys = new Set([now-1, now, now+1, S.current]);
+  for(const y of Object.keys(S.years)) if(hasData(S.years[y])) ys.add(Number(y));
+  $("#ySel").innerHTML = [...ys].sort((a,b)=>a-b).map(y=>`<option value="${y}"${y === S.current ? " selected" : ""}>${y}</option>`).join("");
+}
+function setYear(y){ cancelEdit(); S.current = y; ensure(S.current); save(); renderAll(); }
+$("#ySel").addEventListener("change", e=>setYear(Number(e.target.value)));
 
 /* ---------- Toast ---------- */
 let toastTimer = null;
@@ -813,7 +824,7 @@ $("#fileImport").addEventListener("change", e=>{
 
 /* ---------- Start ---------- */
 function renderAll(){
-  $("#yLabel").textContent = S.current;
+  renderYearSel();
   renderKm(); renderOverview();
   for(const k of Object.keys(LISTS)) renderList(k);
   setDefaultDates();
@@ -840,7 +851,6 @@ $("#themeBtn").addEventListener("click", ()=>{
   applyTheme(themePref);
 });
 darkMQ.addEventListener("change", ()=>{ if(!themePref) applyTheme(null); });
-$("#verBadge").textContent = "V" + VERSION;
 $("#footText").textContent = `${TOOL} · V${VERSION} · Made with Love ©`;
 $("#feedback").href = `mailto:cryptopower@outlook.de?subject=${encodeURIComponent(`Feedback: ${TOOL} V${VERSION}`)}`;
 ensure(S.current);
