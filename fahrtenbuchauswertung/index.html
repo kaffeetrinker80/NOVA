@@ -151,8 +151,6 @@ footer a{color:var(--accent)}
 .tabs .sm{display:none}
 #tab-kosten:not([hidden]){display:flex;flex-direction:column}
 #tab-kosten .panel:last-child{order:-1}
-.quick{margin:6px 0 12px}
-.quickbtn{width:100%;text-align:left;font-weight:600;border-style:dashed;border-color:var(--field-line);min-height:46px}
 .km tr.now td{background:var(--accent-soft)}
 .km tr.now td:first-child{font-weight:700}
 
@@ -232,7 +230,7 @@ footer a{color:var(--accent)}
     <button role="tab" data-tab="km" aria-selected="false"><span class="lg">Kilometer</span><span class="sm">km-Stand</span></button>
     <button role="tab" data-tab="fahrten" aria-selected="false"><span class="lg">Privat &amp; Arbeitsweg</span><span class="sm">Fahrten</span></button>
     <button role="tab" data-tab="tanken" aria-selected="false">Tanken</button>
-    <button role="tab" data-tab="kosten" aria-selected="false"><span class="lg">Wäsche, Öl &amp; Co.</span><span class="sm">Wäsche &amp; Co.</span></button>
+    <button role="tab" data-tab="kosten" aria-selected="false"><span class="lg">Autowäsche, Öl &amp; Co.</span><span class="sm">Wäsche &amp; Co.</span></button>
   </nav>
 </header>
 
@@ -346,12 +344,11 @@ footer a{color:var(--accent)}
       <ul class="list" id="lOil"></ul>
     </div>
     <div class="panel">
-      <h2>Wäsche &amp; sonstige Ausgaben</h2>
-      <div class="quick" id="quickWash"></div>
+      <h2>Autowäsche &amp; sonstige Ausgaben</h2>
       <form class="form" id="fMisc" novalidate>
         <label>Datum<input type="date" name="date" required></label>
         <label>Art<select name="cat">
-          <option>Wäsche</option><option>Pflege</option><option>Parken/Maut</option><option>Reparatur/Wartung</option><option>Sonstiges</option>
+          <option>Autowäsche</option><option>Parken/Maut</option><option>Reparatur/Wartung</option><option>Sonstiges</option>
         </select></label>
         <label>Betrag in €<input type="text" name="eur" inputmode="decimal" autocomplete="off"></label>
         <label class="wide">Notiz (optional)<input type="text" name="note" autocomplete="off"></label>
@@ -364,7 +361,7 @@ footer a{color:var(--accent)}
 </main>
 
 <footer>
-  <span id="footText">Fahrtenbuch-Auswertung · V1.3.0 · Made with Love ©</span>
+  <span id="footText">Fahrtenbuch-Auswertung · V1.3.1 · Made with Love ©</span>
   <a id="feedback" href="#">✉ Feedback</a>
 </footer>
 
@@ -373,11 +370,11 @@ footer a{color:var(--accent)}
 <script>
 (function(){
 "use strict";
-const VERSION = "1.3.0";
+const VERSION = "1.3.1";
 const TOOL = "Fahrtenbuch-Auswertung";
 const KEY = "fahrtenbuch-auswertung";
 const MONTHS = ["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
-const MISC_CATS = ["Wäsche","Pflege","Parken/Maut","Reparatur/Wartung","Sonstiges"];
+const MISC_CATS = ["Autowäsche","Parken/Maut","Reparatur/Wartung","Sonstiges"];
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const NF = d => new Intl.NumberFormat("de-DE",{minimumFractionDigits:d,maximumFractionDigits:d});
@@ -405,6 +402,8 @@ function ensure(y){
   const d = S.years[y];
   for(const k of ["trips","fuel","oil","misc"]) if(!Array.isArray(d[k])) d[k] = [];
   if(!Array.isArray(d.ends) || d.ends.length !== 12) d.ends = Array(12).fill(null);
+  // ab V1.3.1: Wäsche und Pflege sind zu „Autowäsche“ zusammengelegt
+  for(const x of d.misc) if(x.cat === "Wäsche" || x.cat === "Pflege") x.cat = "Autowäsche";
   return d;
 }
 const Y = () => ensure(S.current);
@@ -572,17 +571,7 @@ const LISTS = {
     sub: arr => `${n2.format(arr.reduce((a,x)=>a+x.eur,0))} €`,
     row: x => [ `${esc(x.cat)}${x.note ? ` <small>${esc(x.note)}</small>` : ""}`, n2.format(x.eur) + " €" ]}
 };
-function todayStr(){ const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}-${String(n.getDate()).padStart(2,"0")}`; }
-function renderQuickWash(){
-  const el = $("#quickWash");
-  if(new Date().getFullYear() !== S.current){ el.innerHTML = ""; return; }
-  const prev = S.years[S.current-1];
-  const all = [...((prev && prev.misc) || []), ...Y().misc].filter(x=>x.cat==="Wäsche").sort((a,b)=>a.date.localeCompare(b.date));
-  const last = all[all.length-1];
-  el.innerHTML = last ? `<button class="btn quickbtn" id="quickWashBtn" data-eur="${last.eur}">+ Wäsche heute · ${n2.format(last.eur)} €</button>` : "";
-}
 function renderList(key){
-  if(key === "misc") renderQuickWash();
   const cfg = LISTS[key], arr = Y()[key].slice().sort((a,b)=>a.date.localeCompare(b.date));
   const el = $(cfg.el);
   if(!arr.length){ el.innerHTML = `<li><p class="empty-list">${cfg.empty}</p></li>`; return; }
@@ -601,15 +590,6 @@ function renderList(key){
   }
   el.innerHTML = html;
 }
-$("#quickWash").addEventListener("click", e=>{
-  const b = e.target.closest("#quickWashBtn");
-  if(!b) return;
-  const item = {id:uid(), date:todayStr(), cat:"Wäsche", eur:Number(b.dataset.eur), note:""};
-  const year = S.current;
-  Y().misc.push(item);
-  save(); renderList("misc"); renderOverview();
-  toast("Wäsche hinzugefügt.", ()=>{ const a = ensure(year).misc; const i = a.findIndex(x=>x.id===item.id); if(i >= 0) a.splice(i,1); save(); renderAll(); });
-});
 document.addEventListener("click", e=>{
   const b = e.target.closest(".del");
   if(!b){
@@ -890,7 +870,9 @@ $("#themeBtn").addEventListener("click", ()=>{
 darkMQ.addEventListener("change", ()=>{ if(!themePref) applyTheme(null); });
 $("#footText").textContent = `${TOOL} · V${VERSION} · Made with Love ©`;
 $("#feedback").href = `mailto:cryptopower@outlook.de?subject=${encodeURIComponent(`Feedback: ${TOOL} V${VERSION}`)}`;
+for(const y of Object.keys(S.years)) ensure(Number(y));
 ensure(S.current);
+save();
 renderAll();
 showTab(location.hash.slice(1) || (MOBILE.matches ? "tanken" : "uebersicht"));
 })();
