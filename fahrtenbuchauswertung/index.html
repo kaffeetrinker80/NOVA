@@ -149,8 +149,9 @@ footer a{color:var(--accent)}
 #toast button{border:0;background:none;color:var(--accent-soft);font-weight:700;cursor:pointer}
 
 .tabs .sm{display:none}
-#tab-kosten:not([hidden]){display:flex;flex-direction:column}
-#tab-kosten .panel:last-child{order:-1}
+.kseg{background:var(--surface);margin-bottom:12px}
+.kseg label{font-weight:600}
+#panelOil[hidden],#panelMisc[hidden]{display:none}
 .km tr.now td{background:var(--accent-soft)}
 .km tr.now td:first-child{font-weight:700}
 
@@ -331,11 +332,15 @@ footer a{color:var(--accent)}
 
   <!-- Kosten -->
   <section id="tab-kosten" hidden>
-    <div class="panel">
-      <h2>Öl &amp; AdBlue</h2>
+    <div class="seg kseg" role="radiogroup" aria-label="Art der Ausgabe">
+      <label><input type="radio" name="kview" value="misc" checked>Autowäsche &amp; Co.</label>
+      <label><input type="radio" name="kview" value="oil">AdBlue / Öl</label>
+    </div>
+    <div class="panel" id="panelOil" hidden>
+      <h2>AdBlue &amp; Öl</h2>
       <form class="form" id="fOil" novalidate>
         <label>Datum<input type="date" name="date" required></label>
-        <label>Art<select name="kind"><option>Öl</option><option>AdBlue</option></select></label>
+        <label>Art<select name="kind"><option>AdBlue</option><option>Öl</option></select></label>
         <label>Liter<input type="text" name="l" inputmode="decimal" autocomplete="off"></label>
         <label>Betrag in €<input type="text" name="eur" inputmode="decimal" autocomplete="off"></label>
         <button class="btn primary" type="submit">Beleg hinzufügen</button>
@@ -343,7 +348,7 @@ footer a{color:var(--accent)}
       <p class="err" id="eOil" role="alert"></p>
       <ul class="list" id="lOil"></ul>
     </div>
-    <div class="panel">
+    <div class="panel" id="panelMisc">
       <h2>Autowäsche &amp; sonstige Ausgaben</h2>
       <form class="form" id="fMisc" novalidate>
         <label>Datum<input type="date" name="date" required></label>
@@ -361,7 +366,7 @@ footer a{color:var(--accent)}
 </main>
 
 <footer>
-  <span id="footText">Fahrtenbuch-Auswertung · V1.3.1 · Made with Love ©</span>
+  <span id="footText">Fahrtenbuch-Auswertung · V1.3.2 · Made with Love ©</span>
   <a id="feedback" href="#">✉ Feedback</a>
 </footer>
 
@@ -370,7 +375,7 @@ footer a{color:var(--accent)}
 <script>
 (function(){
 "use strict";
-const VERSION = "1.3.1";
+const VERSION = "1.3.2";
 const TOOL = "Fahrtenbuch-Auswertung";
 const KEY = "fahrtenbuch-auswertung";
 const MONTHS = ["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
@@ -818,6 +823,13 @@ $("#fileImport").addEventListener("change", e=>{
   };
   r.readAsText(file);
 });
+
+/* ---------- Umschalter Autowäsche & Co. / AdBlue & Öl ---------- */
+function showKView(v){ $("#panelMisc").hidden = v !== "misc"; $("#panelOil").hidden = v !== "oil"; }
+for(const r of document.querySelectorAll('input[name="kview"]')){
+  r.addEventListener("change", e=>{ cancelEdit(); showKView(e.target.value); });
+}
+showKView("misc");
 
 /* ---------- Menü (Handy) ---------- */
 const menu = $("#menu"), menuBtn = $("#menuBtn");
