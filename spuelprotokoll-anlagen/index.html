@@ -363,11 +363,45 @@
     }
 
     .footer {
-      margin-top: 8px;
-      font-size: 0.75rem;
-      color: #777;
-      text-align: right;
+      margin: 22px auto 14px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border, #e5e7eb);
+      max-width: 520px;
+      font-size: 0.8rem;
+      color: #6b7280;
+      text-align: center;
+      line-height: 1.5;
     }
+    .footer-main { font-weight: 600; color: #374151; }
+    .footer-main .footer-version {
+      display: inline-block;
+      padding: 1px 8px;
+      border-radius: 999px;
+      background: #e5e7eb;
+      color: #111827;
+      font-weight: 700;
+    }
+    .footer-sub { font-size: 0.72rem; color: #9ca3af; }
+    .footer a { color: inherit; text-decoration: none; }
+    .footer a:hover { text-decoration: underline; }
+
+    /* v3.0.11: Hinweis bei fehlendem Haus / App.-Nr. / Zimmer */
+    .mobile-stack.unit-missing > span { color: #b91c1c; }
+    .mobile-stack.unit-missing input {
+      border-color: #f87171 !important;
+      background: #fef2f2 !important;
+      box-shadow: 0 0 0 3px rgba(248,113,113,.25);
+    }
+    .unit-missing-hint {
+      display: none;
+      font-size: .74rem;
+      font-weight: 700;
+      color: #b91c1c;
+    }
+    .mobile-stack.unit-missing .unit-missing-hint { display: block; }
+    .unit-missing-flash { animation: unitFlash .5s ease 2; }
+    @keyframes unitFlash { 50% { box-shadow: 0 0 0 6px rgba(248,113,113,.45); } }
+    @media (prefers-reduced-motion: reduce) { .unit-missing-flash { animation: none; } }
 
     .search-results {
       margin: 10px 0 0;
@@ -498,8 +532,13 @@
       .footer {
         position: fixed;
         bottom: 5mm;
-        right: 10mm;
+        left: 0;
+        right: 0;
+        margin: 0 auto;
+        border-top: none;
+        padding-top: 0;
       }
+      .footer-feedback, .footer-sub { display: none; }
       th.workercol, td.workercol{
         width: 52px;
         min-width: 52px;
@@ -742,7 +781,9 @@
       text-align: center;
       box-shadow: 0 10px 30px rgba(0,0,0,.25);
     }
-    .toast.show{ opacity: 1; }
+    .toast.show{ opacity: 1; pointer-events: auto; }
+    .toast{ display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap; }
+    .toast-action{ background:#fff; color:#111827; border:none; border-radius:999px; padding:5px 12px; font-weight:700; font-size:.82rem; cursor:pointer; }
 
 
   .header { border-radius: 0 0 16px 16px;
@@ -1314,7 +1355,9 @@
   <div id="tableContainer"></div>
 
   <div class="footer">
-    Anmeldung aktiv · Cloud-Sync (Row-Level Live) · Version 3.0.10</div>
+    <div class="footer-main">Spülprotokoll · <span class="footer-version">V3.0.11</span> · Made with Love ©<span class="footer-feedback"> · <a href="mailto:cryptopower@outlook.de?subject=Feedback%3A%20Sp%C3%BClprotokoll%20V3.0.11" title="Feedback senden">✉ Feedback</a></span></div>
+    <div class="footer-sub">Anmeldung aktiv · Cloud-Sync (Row-Level Live)</div>
+  </div>
 
   <!-- Modal für Anlagenverwaltung -->
   <div id="modalOverlay" class="modal-overlay">
@@ -2294,6 +2337,25 @@
       return index >= 0 ? index + 1 : 0;
     }
 
+    // v3.0.11: Anzeige-Nummer pro Standort ("Blatt"). Die globale pageNumber
+    // bleibt unverändert als interne/Cloud-Nummer bestehen.
+    function getSheetNumber(page) {
+      if (!page) return 0;
+      const sameLoc = findPagesForLocation(page.anlage, page.bereich)
+        .slice()
+        .sort((a, b) => {
+          const c = String(a.created || "").localeCompare(String(b.created || ""));
+          return c || (getPageNumber(a) - getPageNumber(b));
+        });
+      const idx = sameLoc.findIndex(p => p.id === page.id);
+      return idx >= 0 ? idx + 1 : 1;
+    }
+
+    function getSheetCount(page) {
+      if (!page) return 0;
+      return findPagesForLocation(page.anlage, page.bereich).length;
+    }
+
     function getSmallestFreePageNumber() {
       const used = new Set();
       pages.forEach(page => {
@@ -3130,7 +3192,7 @@
       if (!page) return;
       const index = getPageNumber(page);
       const ok = await uiConfirm(
-        `Achtung:\n\nSoll die Seite ${index} für\n${page.anlage} – ${page.bereich}\nwirklich gelöscht werden?\n\nDie Seite wird lokal und in der Datenbank entfernt.`
+        `Achtung:\n\nSoll Blatt ${getSheetNumber(page)} (lfd. Nr. ${index}) für\n${page.anlage} – ${page.bereich}\nwirklich gelöscht werden?\n\nDie Seite wird lokal und in der Datenbank entfernt.`
       );
       if (!ok) return;
       const sameLocationPages = findPagesForLocation(page.anlage, page.bereich).filter(p => p.id !== page.id);
@@ -3431,8 +3493,8 @@
             const span = document.createElement("span");
             span.className = "page-badge" + (primary.id === activePageId ? " active" : "");
             // Display local numbering per Bereich (always 1 here)
-            span.textContent = `${primaryGlobalIndex}: ${bereichName}`;
-            span.title = `Erstellt: ${primary.created}`;
+            span.textContent = `${bereichName} · Blatt 1`;
+            span.title = `Erstellt: ${primary.created}\nlfd. Nr. ${primaryGlobalIndex}`;
             span.addEventListener("click", () => {
               activePageId = primary.id;
               saveState();
@@ -3452,8 +3514,8 @@
           const badge = document.createElement("span");
           badge.className = "dd-badge" + (primary.id === activePageId ? " active" : "");
           // Keep the original global number in front (so it matches your "Nr. X" above)
-          badge.textContent = `${primaryGlobalIndex}: ${bereichName}`;
-          badge.title = `Aktiv: Seite ${primaryLocalIndex} von ${arr.length}\nErstellt: ${primary.created}\n(Klick: Historie öffnen)`;
+          badge.textContent = `${bereichName} · Blatt ${primaryLocalIndex}/${arr.length}`;
+          badge.title = `Blatt ${primaryLocalIndex} von ${arr.length}\nErstellt: ${primary.created}\nlfd. Nr. ${primaryGlobalIndex}\n(Klick: Historie öffnen)`;
 
           summary.appendChild(badge);
           dd.appendChild(summary);
@@ -3468,7 +3530,7 @@
 
           const sub = document.createElement("div");
           sub.className = "dd-sub";
-          sub.textContent = `Historie: ${arr.length} Seiten (aktive ist grün)`;
+          sub.textContent = `Historie: ${arr.length} Blätter (aktives ist grün)`;
           panel.appendChild(sub);
 
           const badgesWrap = document.createElement("div");
@@ -3485,8 +3547,8 @@
             const b = document.createElement("span");
             b.className = "page-badge" + (p.id === activePageId ? " active" : "");
             // Compact display: local number, but tooltip includes global
-            b.textContent = `Seite ${idxLocal}`;
-            b.title = `Global Nr. ${idxGlobal}\nErstellt: ${p.created}`;
+            b.textContent = `Blatt ${idxLocal}`;
+            b.title = `lfd. Nr. ${idxGlobal}\nErstellt: ${p.created}`;
             b.addEventListener("click", (ev) => {
               ev.preventDefault();
               ev.stopPropagation();
@@ -3578,7 +3640,7 @@
         activePageId = matches[0].id;
         saveState();
         renderAll();
-        toast(`Vorhandene Seite ${getPageNumber(matches[0])} geöffnet.`);
+        toast(`Vorhandenes Blatt ${getSheetNumber(matches[0])} geöffnet.`);
         return;
       }
 
@@ -3589,7 +3651,7 @@
       });
       const labels = sorted.map(p => {
         const status = pageHasMeaningfulData(p) ? "mit Einträgen" : "leer";
-        return `Seite ${getPageNumber(p)} · ${status} · erstellt ${p.created || "-"}`;
+        return `Blatt ${getSheetNumber(p)} · ${status} · erstellt ${p.created || "-"}`;
       });
 
       const choice = await uiSelect(
@@ -3633,7 +3695,7 @@
         return;
       }
       const index = getPageNumber(page);
-      info.textContent = `Nr. ${index} – ${page.anlage} / ${page.bereich}${getPageWorker(page) ? " · " + getPageWorker(page) : ""} (erstellt: ${page.created})`;
+      info.textContent = `Blatt ${getSheetNumber(page)} von ${getSheetCount(page)} – ${page.anlage} / ${page.bereich}${getPageWorker(page) ? " · " + getPageWorker(page) : ""} (erstellt: ${page.created} · lfd. Nr. ${index})`;
     }
 
 
@@ -3675,8 +3737,7 @@
         if (workerEl) workerEl.textContent = normalizeWorkerName(workerName) ? `Aktueller Spüler: ${normalizeWorkerName(workerName)}` : "";
         return;
       }
-      const pageIndex = getPageNumber(page);
-      el.textContent = `${page.anlage} · ${page.bereich} · Seite ${pageIndex}`;
+      el.textContent = `${page.anlage} · ${page.bereich} · Blatt ${getSheetNumber(page)}`;
       if (workerEl) {
         const name = getPageWorker(page);
         workerEl.textContent = name ? `Aktueller Spüler: ${name}` : "";
@@ -3699,7 +3760,7 @@
       if (!page) return;
 
       if (!pageHasMeaningfulData(page)) {
-        await uiAlert(`Seite ${getPageNumber(page)} ist noch leer. Bitte zuerst diese Seite verwenden, statt eine weitere leere Seite anzulegen.`, "Keine doppelte Leerseite");
+        await uiAlert(`Blatt ${getSheetNumber(page)} ist noch leer. Bitte zuerst dieses Blatt verwenden, statt ein weiteres leeres anzulegen.`, "Keine doppelte Leerseite");
         return;
       }
 
@@ -3710,12 +3771,12 @@
         activePageId = existingEmpty.id;
         saveState();
         renderAll();
-        await uiAlert(`Es gibt bereits die leere Seite ${getPageNumber(existingEmpty)} für diesen Standort. Sie wurde geöffnet.`, "Vorhandene Seite geöffnet");
+        await uiAlert(`Es gibt bereits das leere Blatt ${getSheetNumber(existingEmpty)} für diesen Standort. Es wurde geöffnet.`, "Vorhandenes Blatt geöffnet");
         return;
       }
 
-      const nextNumber = getSmallestFreePageNumber();
-      const ok = await uiConfirm(`Neue Fortsetzungsseite ${nextNumber} erstellen und mit ${page.anlage} / ${page.bereich} fortfahren?`, "Neue Protokollseite");
+      const nextSheet = getSheetCount(page) + 1;
+      const ok = await uiConfirm(`Blatt ist voll – neues Blatt ${nextSheet} für ${page.anlage} / ${page.bereich} anlegen und weitermachen?`, "Neues Blatt");
       if (!ok) return;
       createNewPage(page.anlage, page.bereich);
       // createNewPage does renderAll already
@@ -3972,7 +4033,38 @@
 
           const unitWrap = document.createElement("label"); unitWrap.className = "mobile-stack"; unitWrap.innerHTML = '<span>Haus / App.-Nr. / Zimmer</span>';
           const unitInput = document.createElement("input"); unitInput.type = "text"; unitInput.value = row.unit || ""; unitInput.placeholder = "z. B. Haus 4 · App. 2";
-          unitInput.addEventListener("input", () => { ensureDateTime(); row.unit = unitInput.value; saveState(); }); unitWrap.appendChild(unitInput);
+          unitInput.addEventListener("input", () => { ensureDateTime(); row.unit = unitInput.value; saveState(); updateUnitMissing(false); }); unitWrap.appendChild(unitInput);
+          const unitHint = document.createElement("div");
+          unitHint.className = "unit-missing-hint";
+          unitHint.textContent = "⚠ Bitte Haus / App.-Nr. / Zimmer eintragen";
+          unitWrap.appendChild(unitHint);
+
+          // v3.0.11: Warnen, sobald ein anderes Feld der Zeile angetippt wird,
+          // während Haus / App.-Nr. / Zimmer noch leer ist (nicht bei Technikraum).
+          let unitWarnedOnce = false;
+          const unitNeeded = () => row.roomType !== "Heiz- / Technikraum" && !String(row.unit || "").trim();
+          function updateUnitMissing(show) {
+            const missing = unitNeeded();
+            if (!missing) { unitWrap.classList.remove("unit-missing"); return; }
+            if (show) unitWrap.classList.add("unit-missing");
+          }
+          card.addEventListener("focusin", (ev) => {
+            const t = ev.target;
+            if (!t || t === unitInput || t === floorSelect || t === roomTypeSelect) return;
+            if (t === dateInput || t === timeInput || t.classList.contains("mobile-del-btn")) return;
+            if (!unitNeeded()) return;
+            updateUnitMissing(true);
+            if (unitWarnedOnce) return;
+            unitWarnedOnce = true;
+            unitInput.classList.remove("unit-missing-flash"); void unitInput.offsetWidth; unitInput.classList.add("unit-missing-flash");
+            try { if (navigator.vibrate) navigator.vibrate([60, 40, 60]); } catch (_) {}
+            toast(`Nr. ${row.index}: Haus / App.-Nr. / Zimmer ist noch leer.`, "Jetzt eintragen", () => {
+              unitWrap.scrollIntoView({ behavior: "smooth", block: "center" });
+              setTimeout(() => unitInput.focus(), 250);
+            }, 6000);
+          });
+          roomTypeSelect.addEventListener("change", () => updateUnitMissing(false));
+          if (rowHasMeaningfulData(row)) updateUnitMissing(true);
 
           const legacyKwOnly = normalizeKwOnly(row);
           row.tempMode = normalizeTemperatureMode(row);
@@ -5411,7 +5503,7 @@ case "4":
       let html = `Gefundene Einträge (${results.length}):<br>`;
       results.slice(0, maxShown).forEach((r) => {
         const pNum = r.pageNumber || (r.pageIndex + 1);
-        const label = `${pNum}: ${r.page.anlage} – ${r.page.bereich}, ${r.row.floor || ""} ${r.row.unit || ""} (Datum: ${r.row.date || "-"})`;
+        const label = `${r.page.anlage} – ${r.page.bereich} · Blatt ${getSheetNumber(r.page)}, ${r.row.floor || ""} ${r.row.unit || ""} (Datum: ${r.row.date || "-"})`;
         html += `<div class="search-results-item"><a href="#" class="search-link" data-page-id="${r.page.id}" data-row-index="${r.row.index}">${label}</a></div>`;
       });
       if (results.length > maxShown) {
