@@ -185,6 +185,21 @@
     .btn-nova-card:hover { background: rgba(94, 234, 212, 0.18); border-color: rgba(94, 234, 212, 0.45); }
 
 
+    /* ── Animiertes Fahrzeug-Icon (Fahrtenbuch-Auswertung) ── */
+    .icon.icon-drive { overflow: hidden; }
+    .card:hover .icon.icon-drive { transform: scale(1.1); }
+    .icon-drive .car-body { animation: carBob 1.2s ease-in-out infinite; }
+    .icon-drive .wheel { transform-box: fill-box; transform-origin: center; animation: wheelSpin 0.9s linear infinite; }
+    .icon-drive .road { stroke-dasharray: 3 3; animation: roadMove 0.6s linear infinite; opacity: 0.55; }
+    .card:hover .icon-drive .wheel { animation-duration: 0.4s; }
+    .card:hover .icon-drive .road { animation-duration: 0.25s; }
+    @keyframes carBob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-0.6px); } }
+    @keyframes wheelSpin { to { transform: rotate(360deg); } }
+    @keyframes roadMove { to { stroke-dashoffset: 6; } }
+    @media (prefers-reduced-motion: reduce) {
+      .icon-drive .car-body, .icon-drive .wheel, .icon-drive .road { animation: none; }
+    }
+
     /* ── Dev Area (Test Tool) ── */
     .dev-area {
       margin-top: 20px;
@@ -394,6 +409,46 @@
           <li>Legionellen, Mibi, Metalle & Vor-Ort-Parameter</li>
         </ul>
         <a class="btn-card btn-nova-card" href="https://kaffeetrinker80.github.io/NOVA/probenahmeplan-generator/">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <line x1="10" y1="14" x2="21" y2="3"></line>
+          </svg>
+          Tool öffnen
+        </a>
+      </article>
+
+
+      <!-- Fahrtenbuch-Auswertung -->
+      <article class="card">
+        <span class="card-tag">Aktiv · Lokale Daten</span>
+        <div class="icon icon-drive">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <g class="car-body">
+              <path d="M3.5 15.5v-3.2l1.8-4.1A1.5 1.5 0 0 1 6.7 7.3h8.1a1.5 1.5 0 0 1 1.2.6l2.6 3.4 1.6.5a1.2 1.2 0 0 1 .8 1.1v2.6"/>
+              <path d="M5.4 11.3h13"/>
+              <path d="M11 7.3v4"/>
+              <path d="M9.7 15.5h4.6"/>
+            </g>
+            <g class="wheel">
+              <circle cx="7.6" cy="15.6" r="2"/>
+              <line x1="7.6" y1="13.6" x2="7.6" y2="17.6"/>
+            </g>
+            <g class="wheel">
+              <circle cx="16.4" cy="15.6" r="2"/>
+              <line x1="16.4" y1="13.6" x2="16.4" y2="17.6"/>
+            </g>
+            <line class="road" x1="0" y1="20.5" x2="24" y2="20.5"/>
+          </svg>
+        </div>
+        <h3>Fahrtenbuch-Auswertung</h3>
+        <p>Hilfstool für die Jahreszusammenfassung zum Fahrtenbuch – Monatswerte, Privatfahrten und Tankvorgänge, optimiert für die mobile Nutzung.</p>
+        <ul class="list">
+          <li>Kilometerstände je Monat (Anfang/Ende)</li>
+          <li>Privatfahrten, Tanken (Liter/Betrag) & Sonstiges</li>
+          <li>JSON-Sicherung über den Teilen-Dialog</li>
+        </ul>
+        <a class="btn-card btn-nova-card" href="https://kaffeetrinker80.github.io/NOVA/fahrtenbuchauswertung/">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
             <polyline points="15 3 21 3 21 9"></polyline>
