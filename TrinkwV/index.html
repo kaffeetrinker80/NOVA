@@ -61,6 +61,47 @@ mark{background:var(--mark);color:inherit;border-radius:2px;padding:0 1px}
 .norm div small{color:var(--muted);display:block}
 .empty{text-align:center;color:var(--muted);padding:40px 10px}
 footer{color:var(--muted);font-size:12px;text-align:center;padding:10px 16px 30px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+@media(min-width:600px){.grid{grid-template-columns:repeat(4,1fr)}}
+.grid[hidden]{display:none}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 6px 10px;text-align:center;color:var(--ink);font-size:13px;font-weight:600;line-height:1.2;min-height:88px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer}
+.tile:active{background:var(--acc-soft)}
+.tile .ic{font-size:26px;line-height:1}
+.tile .n{font-size:11px;color:var(--muted);font-weight:400}
+.tile.hl{border-color:var(--acc)}
+.fbar{display:none;align-items:center;gap:10px;margin-top:8px}
+.fbar.show{display:flex}
+.fbar button{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:6px 12px;font-size:14px}
+.fbar .cur{font-weight:600;font-size:15px}
+a.nl{color:var(--acc);text-decoration:underline dotted;text-underline-offset:3px;cursor:pointer}
+.norm{cursor:pointer}
+.norm:active{background:var(--acc-soft)}
+.norm b{color:var(--acc)}
+details{scroll-margin-top:140px}
+details.flash{animation:fl 1.8s}
+@keyframes fl{0%,50%{box-shadow:0 0 0 3px var(--acc)}100%{box-shadow:0 0 0 0 transparent}}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;display:flex;align-items:flex-end;justify-content:center}
+.modal[hidden]{display:none}
+.sheet{background:var(--card);width:100%;max-width:560px;max-height:82vh;overflow:auto;border-radius:18px 18px 0 0;padding:18px 16px 26px;position:relative}
+@media(min-width:600px){.modal{align-items:center}.sheet{border-radius:18px}}
+.sheet h3{margin:0 40px 6px 0;font-size:19px}
+.sheet p{margin:4px 0 10px}
+.sheet .x{position:absolute;right:10px;top:10px;border:0;background:var(--bg);color:var(--ink);width:36px;height:36px;border-radius:50%;font-size:22px}
+.sheet h4{font-size:13px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin:16px 0 6px}
+.goto{display:block;width:100%;text-align:left;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:10px;padding:10px 12px;margin:6px 0;font-size:14px}
+.goto small{display:block;color:var(--muted);font-size:12px}
+.calc label{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px}
+.calc select,.calc input{width:100%;font-size:16px;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
+.res{margin:14px 0 6px;padding:14px;border-radius:12px;background:var(--acc-soft);text-align:center}
+.res .big{font-size:36px;font-weight:700;color:var(--acc);line-height:1.1}
+.res small{display:block;color:var(--muted);font-size:13px;margin-top:6px}
+.qb{display:flex;gap:6px;margin-top:6px}
+.qb button{flex:1;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:8px 4px;font-size:14px}
+.seg{display:grid;grid-template-columns:1fr 78px 38px;gap:6px;margin:6px 0;align-items:center}
+.seg select,.seg input{font-size:15px;padding:8px}
+.seg button,.addseg{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:8px;font-size:15px}
+.addseg{width:100%;margin-top:4px}
+.sum{margin-top:10px;padding:10px 12px;border-radius:10px;font-weight:600;font-size:14px}
 .top{position:fixed;right:14px;bottom:18px;border:0;background:var(--acc);color:#fff;width:44px;height:44px;border-radius:50%;font-size:20px;box-shadow:0 4px 14px rgba(0,0,0,.25);display:none}
 </style>
 </head>
@@ -71,21 +112,24 @@ footer{color:var(--muted);font-size:12px;text-align:center;padding:10px 16px 30p
     <input id="q" type="search" placeholder="Suchen: z. B. Enterokokken, 19458, Zweck b, Redox …" autocomplete="off">
     <button id="clr" aria-label="Suche leeren">×</button>
   </div>
-  <div class="chips" id="chips"></div>
+  <div class="fbar" id="fbar"><button id="back">◀ Alle Bereiche</button><span class="cur" id="cur"></span></div>
 </header>
 <main>
+  <div class="grid" id="grid"></div>
   <div class="note"><b>Spickzettel, keine SOP.</b> Maßgeblich sind eure Prüfanweisungen / das QM-Handbuch und die aktuelle Normfassung. Stand der Recherche: Nov. 2026 (TrinkwV 2023, UBA-Legionellen-Empfehlung vom 13.10.2025, DIN 19643:2023).</div>
   <div class="count" id="count"></div>
   <div id="list"></div>
 </main>
 <footer>NOVA Praxis-Hygiene · interner Spickzettel für Probenehmer</footer>
+<div class="modal" id="modal" hidden><div class="sheet"><button class="x" id="mx" aria-label="Schließen">×</button><div id="mbody"></div></div></div>
 <button class="top" id="top" aria-label="Nach oben">↑</button>
 
 <script>
 const CATS = [
-  ["alle","Alle"],["basis","Grundlagen"],["leg","Legionellen"],["mibi","Mikrobiologie"],
-  ["chem","Phys.-chem. vor Ort"],["metall","Z-Probe / Metalle"],["bad","Schwimmbad"],
-  ["gw","Grenzwerte"],["norm","Normen / DIN"],["audit","Audit"],["faq","Kunden-FAQ"]
+  ["basis","Grundlagen","🧭"],["leg","Legionellen","🚿"],["mibi","Mikrobiologie","🧫"],
+  ["chem","Vor-Ort-Messung","⚗️"],["metall","Z-Probe / Metalle","🔩"],["bad","Schwimmbad","🏊"],
+  ["gw","Grenzwerte","📏"],["norm","Normen / DIN","📘"],["calc","Rechner","🧮"],
+  ["audit","Audit","✅"],["faq","Kunden-FAQ","💬"]
 ];
 
 const CARDS = [
@@ -442,6 +486,11 @@ const CARDS = [
 {cat:"faq",t:"„Wie oft muss ich untersuchen lassen?“",s:"Kunde fragt (Legionellen)",h:`<p>Großanlage mit Duschen: öffentlich jährlich, gewerblich (z. B. Vermieter) alle 3 Jahre. Das Gesundheitsamt kann andere Intervalle anordnen.</p>`},
 {cat:"faq",t:"„Muss das Wasser vorher laufen? Soll ich vorher spülen?“",s:"Kunde fragt",h:`<p>Nein, bitte vorher <b>nicht</b> spülen, nicht desinfizieren und die Warmwassertemperatur nicht hochdrehen. Wir müssen den normalen Betriebszustand untersuchen, sonst ist das Ergebnis nicht aussagekräftig.</p>`},
 {cat:"faq",t:"„Was passiert, wenn etwas gefunden wird?“",s:"Kunde fragt",h:`<p>Bei Grenzwertüberschreitungen oder Erreichen des Legionellen-Maßnahmenwerts informiert das Labor das Gesundheitsamt (gesetzliche Pflicht). Der Betreiber muss die Ursache klären, Maßnahmen ergreifen und nachuntersuchen lassen. Bei E. coli/Enterokokken gibt es oft ein Abkochgebot.</p>`},
+
+/* ================= RECHNER ================= */
+{cat:"calc",t:"Rechner: Leitungsinhalt & 3-Liter-Regel",s:"Rohr wählen → Länge bis 3 L (oder beliebiges Volumen)",nohl:true,
+ kw:"Rechner Leitungsinhalt Volumen Liter Rohr Halbzoll Zoll Kupfer Stahl verzinkt Mehrschichtverbund Edelstahl PE-X 3-Liter-Regel Großanlage Meter Länge Innendurchmesser",
+ h:`<div class="calc" id="calcRoot"></div>`},
 ];
 
 const NORMS = [
@@ -484,69 +533,203 @@ const NORMS = [
  ["VDI 2047-2","Hygiene bei Verdunstungskühlanlagen","Legionellen · Kühlwasser"],
 ];
 
+const NOTES = {
+ "DIN EN ISO 19458":"Tabelle 1: Probenahme-Zwecke a / b / c. Anhang: Konservierung und Höchstfristen für den Transport mikrobiologischer Proben.",
+ "DIN ISO 5667-5":"Leitfaden für die Probenahme von Trinkwasser aus Aufbereitungsanlagen und Rohrnetzen (inkl. Hausinstallation).",
+ "DIN EN ISO 5667-3":"Gefäße, Konservierung, Kühlung und Haltbarkeit von Wasserproben für chemische Parameter.",
+ "DIN EN ISO 11731":"Kulturverfahren für Legionellen. Nach UBA 10/2025: Matrix A, Anhang J – Direktansatz 2 × 0,5 ml plus Membranfiltration 50–80 ml.",
+ "DVGW W 551":"Technische Maßnahmen gegen Legionellenwachstum: Temperaturen (≥ 60 °C / ≥ 55 °C), Großanlagen-Definition (> 400 L / > 3 L).",
+ "VDI/DVGW 6023":"Hygiene in Trinkwasser-Installationen: Planung, Bau, Betrieb, Instandhaltung; Schulungsgrundlage (Kat. A/B).",
+ "DIN 19643-1":"Schwimm- und Badebeckenwasser: Anforderungen an Füll-, Filtrat-, Rein- und Beckenwasser, Untersuchungsumfang.",
+ "DIN EN ISO 7393-2":"Photometrische Bestimmung von freiem und Gesamtchlor mit DPD (Feldmethode).",
+ "DIN EN ISO 6222":"Koloniezahl: Gussplatten, 36 °C 44 h und 22 °C 68 h.",
+ "DIN EN ISO/IEC 17025":"Grundlage der DAkkS-Akkreditierung: Kompetenz, Unparteilichkeit, Rückverfolgbarkeit, Messunsicherheit.",
+ "TrinkwV 2023":"Verordnung über die Qualität von Wasser für den menschlichen Gebrauch. Anlage 1–3: Parameter und Grenzwerte.",
+};
+const ALIAS = {"DIN 19643":"DIN 19643-1"};
+const USEKEY = {"TrinkwV 2023":["TrinkwV"],"UBA-Empfehlung Legionellen":["UBA-Empfehlung 13.10.2025","UBA 10/2025"],"UBA-Empfehlung Pb/Cu/Ni":["UBA-Empfehlung 12/2018"],"DIN 19643-1":["DIN 19643"]};
+
 const $ = s=>document.querySelector(s);
 let cat="alle", q="";
 const norm = s => s.toLowerCase().replace(/ä/g,"ae").replace(/ö/g,"oe").replace(/ü/g,"ue").replace(/ß/g,"ss");
 const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
-
 function strip(h){const d=document.createElement("div");d.innerHTML=h;return d.textContent;}
-CARDS.forEach(c=>c.txt=norm(c.t+" "+c.s+" "+strip(c.h)));
-NORMS.forEach(n=>n.txt=norm(n.join(" ")));
 
-function highlight(root,terms){
-  if(!terms.length) return;
-  const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
-  const nodes=[];while(walker.nextNode())nodes.push(walker.currentNode);
-  const re=new RegExp("("+terms.map(esc).join("|")+")","gi");
-  nodes.forEach(n=>{
-    if(!re.test(n.nodeValue))return; re.lastIndex=0;
+CARDS.forEach((c,i)=>{c.id="c"+i;c.raw=c.t+" "+c.s+" "+strip(c.h);c.txt=norm(c.raw+" "+(c.kw||""));});
+NORMS.forEach(n=>n.txt=norm(n.join(" ")+" "+(NOTES[n[0]]||"")));
+const normIdx = k => NORMS.findIndex(n=>n[0]===(ALIAS[k]||k));
+const LINKKEYS = NORMS.map(n=>n[0]).filter(k=>/^(DIN|DVGW|VDI)/.test(k)&&!k.includes(" bis ")).concat(Object.keys(ALIAS)).sort((a,b)=>b.length-a.length);
+const LINKRE = new RegExp("("+LINKKEYS.map(esc).join("|")+")(?![\\d])","g");
+NORMS.forEach(n=>{const keys=USEKEY[n[0]]||[n[0]];n.uses=CARDS.filter(c=>keys.some(k=>c.raw.includes(k)));});
+
+function textNodes(root){const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);const a=[];while(w.nextNode())a.push(w.currentNode);return a;}
+const htmlEsc = s=>s.replace(/[&<>]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[m]));
+function linkify(root){
+  textNodes(root).forEach(n=>{
+    if(n.parentNode.closest("a"))return;
+    LINKRE.lastIndex=0; if(!LINKRE.test(n.nodeValue))return; LINKRE.lastIndex=0;
     const span=document.createElement("span");
-    span.innerHTML=n.nodeValue.replace(/[&<>]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[m])).replace(re,"<mark>$1</mark>");
+    span.innerHTML=htmlEsc(n.nodeValue).replace(LINKRE,(m)=>`<a class="nl" data-n="${normIdx(m)}">${m}</a>`);
     n.parentNode.replaceChild(span,n);
   });
 }
+function highlight(root,terms){
+  if(!terms.length) return;
+  const re=new RegExp("("+terms.map(esc).join("|")+")","gi");
+  textNodes(root).forEach(n=>{
+    re.lastIndex=0; if(!re.test(n.nodeValue))return; re.lastIndex=0;
+    const span=document.createElement("span");
+    span.innerHTML=htmlEsc(n.nodeValue).replace(re,"<mark>$1</mark>");
+    n.parentNode.replaceChild(span,n);
+  });
+}
+
+function buildGrid(){
+  $("#grid").innerHTML=CATS.map(([id,label,ic])=>{
+    const n=id==="norm"?NORMS.length:CARDS.filter(c=>c.cat===id).length;
+    const sub=id==="calc"?"Leitungsinhalt":id==="norm"?n+" Normen":n+(n===1?" Eintrag":" Einträge");
+    return `<button class="tile${id==="calc"?" hl":""}" data-cat="${id}"><span class="ic">${ic}</span>${label}<span class="n">${sub}</span></button>`;
+  }).join("");
+}
+function setCat(id){cat=id;render();window.scrollTo({top:0});}
 
 function render(){
   const terms=q.trim().split(/\s+/).filter(Boolean);
   const nterms=terms.map(norm);
   const match=txt=>nterms.every(t=>txt.includes(t));
+  $("#grid").hidden = !(cat==="alle"&&!terms.length);
+  const c=CATS.find(x=>x[0]===cat);
+  $("#fbar").classList.toggle("show",cat!=="alle");
+  $("#cur").textContent = c ? c[2]+" "+c[1] : "";
   const list=$("#list"); list.innerHTML="";
   let n=0;
-  const groups=CATS.filter(c=>c[0]!=="alle"&&c[0]!=="norm");
-  groups.forEach(([id,label])=>{
+  CATS.forEach(([id,label])=>{
+    if(id==="norm")return;
     if(cat!=="alle"&&cat!==id)return;
-    const items=CARDS.filter(c=>c.cat===id&&match(c.txt));
+    const items=CARDS.filter(x=>x.cat===id&&match(x.txt));
     if(!items.length)return;
     const h=document.createElement("div");h.className="sec-title";h.textContent=label;list.appendChild(h);
-    items.forEach(c=>{
-      const d=document.createElement("details");
-      d.innerHTML=`<summary>${c.t}<small>${c.s}</small></summary><div class="body">${c.h}</div>`;
-      if(terms.length)d.open=true;
-      list.appendChild(d); highlight(d,terms); n++;
+    items.forEach(x=>{
+      const d=document.createElement("details");d.id=x.id;
+      d.innerHTML=`<summary>${x.t}<small>${x.s}</small></summary><div class="body">${x.h}</div>`;
+      if(terms.length||(cat==="calc"&&x.cat==="calc"))d.open=true;
+      list.appendChild(d);
+      if(!x.nohl){linkify(d.querySelector(".body"));highlight(d,terms);}
+      n++;
     });
   });
   if(cat==="alle"||cat==="norm"){
-    const items=NORMS.filter(x=>match(x.txt));
+    const items=NORMS.map((x,i)=>[x,i]).filter(([x])=>match(x.txt));
     if(items.length){
       const h=document.createElement("div");h.className="sec-title";h.textContent="Normen / DIN-Verzeichnis";list.appendChild(h);
       const d=document.createElement("details");
       d.open = cat==="norm" || terms.length>0;
-      d.innerHTML=`<summary>Normen &amp; Regelwerke<small>${items.length} Einträge · Nummer, Titel, Bereich</small></summary><div class="body">`+
-        items.map(x=>`<div class="norm"><b>${x[0]}</b><div>${x[1]}<small>${x[2]}</small></div></div>`).join("")+`</div>`;
+      d.innerHTML=`<summary>Normen &amp; Regelwerke<small>${items.length} Einträge · antippen für Details und Fundstellen</small></summary><div class="body">`+
+        items.map(([x,i])=>`<div class="norm" data-n="${i}"><b>${x[0]}</b><div>${x[1]}<small>${x[2]}${x.uses.length?" · "+x.uses.length+"× im Nachschlagewerk":""}</small></div></div>`).join("")+`</div>`;
       list.appendChild(d); highlight(d,terms); n+=items.length;
     }
   }
-  if(!n) list.innerHTML=`<div class="empty">Nichts gefunden für „${q.replace(/</g,"&lt;")}“.<br>Tipp: kürzere Begriffe, z. B. „Chlor“, „7899“, „Zweck“.</div>`;
+  if(!n) list.innerHTML=`<div class="empty">Nichts gefunden für „${htmlEsc(q)}“.<br>Tipp: kürzere Begriffe, z. B. „Chlor“, „7899“, „Zweck“.</div>`;
   $("#count").textContent = terms.length ? `${n} Treffer` : "";
   $("#clr").style.display = q ? "block":"none";
+  if($("#calcRoot")) drawCalc();
 }
 
-const chips=$("#chips");
-CATS.forEach(([id,label])=>{
-  const b=document.createElement("button");b.className="chip"+(id===cat?" on":"");b.textContent=label;
-  b.onclick=()=>{cat=id;[...chips.children].forEach(x=>x.classList.remove("on"));b.classList.add("on");render();window.scrollTo({top:0});};
-  chips.appendChild(b);
+/* ---------- Norm-Modal ---------- */
+function openNorm(i){
+  const x=NORMS[i]; if(!x)return;
+  const uses=x.uses.map(c=>`<button class="goto" data-c="${c.id}">${c.t}<small>${CATS.find(k=>k[0]===c.cat)[1]}</small></button>`).join("");
+  $("#mbody").innerHTML=`<h3>${x[0]}</h3><p>${x[1]}</p><span class="tag">${x[2]}</span>`+
+    (NOTES[x[0]]?`<div class="box tip" style="margin-top:12px">${NOTES[x[0]]}</div>`:"")+
+    `<h4>Kommt vor in</h4>`+(uses||`<p style="color:var(--muted);font-size:14px">Nur im Normenverzeichnis aufgeführt.</p>`);
+  $("#modal").hidden=false;
+}
+function closeModal(){$("#modal").hidden=true;}
+function jump(id){
+  closeModal(); cat="alle"; q=""; $("#q").value=""; render();
+  const d=document.getElementById(id); if(!d)return;
+  d.open=true; d.classList.remove("flash"); void d.offsetWidth; d.classList.add("flash");
+  d.scrollIntoView({behavior:"smooth",block:"start"});
+}
+
+/* ---------- Rechner ---------- */
+const PIPES={
+ st:{n:"Stahl verzinkt (Gewinderohr)",l:[['3/8" · DN 10',12.6],['1/2" · DN 15 (Halbzoll)',16.1],['3/4" · DN 20',21.7],['1" · DN 25',27.3],['1 1/4" · DN 32',36.0],['1 1/2" · DN 40',41.9],['2" · DN 50',53.1]]},
+ cu:{n:"Kupfer (DIN EN 1057)",l:[['12 × 1',10],['15 × 1',13],['18 × 1',16],['22 × 1',20],['28 × 1,5',25],['35 × 1,5',32],['42 × 1,5',39],['54 × 2',50]]},
+ es:{n:"Edelstahl (Pressrohr)",l:[['15 × 1',13],['18 × 1',16],['22 × 1,2',19.6],['28 × 1,2',25.6],['35 × 1,5',32],['42 × 1,5',39],['54 × 1,5',51]]},
+ msv:{n:"Mehrschichtverbund (typisch)",l:[['16 × 2',12],['20 × 2',16],['26 × 3',20],['32 × 3',26],['40 × 3,5',33],['50 × 4',42]]},
+ pex:{n:"PE-X / Kunststoff (typisch)",l:[['16 × 2,2',11.6],['20 × 2,8',14.4],['25 × 3,5',18],['32 × 4,4',23.2]]},
+ own:{n:"Eigener Innendurchmesser",l:[]}
+};
+const C={mat:"st",i:1,own:13,vol:3,segs:[{p:"st:1",len:4},{p:"cu:1",len:12}]};
+const lpm=d=>Math.PI*d*d/4/1000;
+const fmt=(x,d)=>x.toLocaleString("de-DE",{minimumFractionDigits:d,maximumFractionDigits:d});
+const segD=p=>{const [m,i]=p.split(":");return PIPES[m].l[+i][1];};
+const curD=()=>C.mat==="own"?C.own:PIPES[C.mat].l[C.i][1];
+const allOpts=sel=>Object.entries(PIPES).filter(([k])=>k!=="own").map(([k,v])=>`<optgroup label="${v.n}">`+v.l.map((p,i)=>`<option value="${k}:${i}"${sel===k+":"+i?" selected":""}>${k==="st"?p[0].replace(" (Halbzoll)",""):p[0]} (${fmt(p[1],1)} mm)</option>`).join("")+`</optgroup>`).join("");
+
+function drawCalc(){
+  const r=$("#calcRoot"); const P=PIPES[C.mat];
+  r.innerHTML=`
+  <label>Rohrmaterial</label>
+  <select id="cMat">${Object.entries(PIPES).map(([k,v])=>`<option value="${k}"${k===C.mat?" selected":""}>${v.n}</option>`).join("")}</select>
+  ${C.mat==="own"
+    ? `<label>Innendurchmesser (mm)</label><input id="cOwn" type="number" inputmode="decimal" step="0.1" min="1" value="${C.own}">`
+    : `<label>Dimension</label><select id="cDim">${P.l.map((p,i)=>`<option value="${i}"${i===C.i?" selected":""}>${p[0]} · innen ${fmt(p[1],1)} mm</option>`).join("")}</select>`}
+  <label>Gewünschtes Volumen (Liter)</label>
+  <input id="cVol" type="number" inputmode="decimal" step="0.1" min="0.05" value="${C.vol}">
+  <div class="qb"><button data-v="0.25">250 ml</button><button data-v="1">1 L</button><button data-v="3">3 L</button><button data-v="10">10 L</button></div>
+  <div class="res" id="cRes"></div>
+  ${C.mat!=="own"?`<h4>${P.n} – Inhalt pro Meter</h4><div class="tw"><table><tr><th>Dimension</th><th>Innen-Ø</th><th>L/m</th><th>m für 3 L</th></tr>${P.l.map(p=>`<tr><td>${p[0]}</td><td>${fmt(p[1],1)} mm</td><td>${fmt(lpm(p[1]),3)}</td><td class="v">${fmt(3/lpm(p[1]),1)} m</td></tr>`).join("")}</table></div>`:""}
+  <h4>Strang aus mehreren Abschnitten</h4>
+  <p style="font-size:13px;color:var(--muted);margin:0 0 4px">Z. B. Abgang Trinkwassererwärmer bis zur entferntesten Zapfstelle (ohne Zirkulation). Länge in Metern.</p>
+  <div id="cSegs"></div>
+  <button class="addseg" id="cAdd">+ Abschnitt hinzufügen</button>
+  <div class="sum" id="cSum"></div>
+  <div class="box tip"><b>3-Liter-Regel:</b> Eine Großanlage liegt auch bei kleinem Speicher vor, wenn mindestens eine Leitung zwischen Abgang Trinkwassererwärmer und Entnahmestelle mehr als 3 L Inhalt hat. Die Zirkulationsleitung wird nicht mitgerechnet.</div>
+  <div class="box tip"><b>Praxis:</b> Wähle 1 L, dann siehst du, wie viele Meter Leitung der Vorlauf bei der Legionellenprobe ausspült.</div>
+  <div class="box warn">Innendurchmesser sind typische Werte. Bei Mehrschichtverbund und Kunststoff je nach Hersteller abweichend, im Zweifel „Eigener Innendurchmesser“ wählen.</div>`;
+  $("#cMat").onchange=e=>{C.mat=e.target.value;C.i=C.mat==="st"||C.mat==="cu"?1:0;drawCalc();};
+  if($("#cDim"))$("#cDim").onchange=e=>{C.i=+e.target.value;updRes();};
+  if($("#cOwn"))$("#cOwn").oninput=e=>{C.own=parseFloat(String(e.target.value).replace(",","."))||0;updRes();};
+  $("#cVol").oninput=e=>{C.vol=parseFloat(String(e.target.value).replace(",","."))||0;updRes();};
+  r.querySelectorAll(".qb button").forEach(b=>b.onclick=()=>{C.vol=+b.dataset.v;$("#cVol").value=C.vol;updRes();});
+  $("#cAdd").onclick=()=>{C.segs.push({p:C.mat==="own"?"cu:1":C.mat+":"+C.i,len:5});drawSegs();};
+  updRes(); drawSegs();
+}
+function updRes(){
+  const d=curD(), L=lpm(d);
+  if(!(d>0)||!(C.vol>0)){$("#cRes").innerHTML=`<div class="big">—</div><small>Bitte Werte eingeben</small>`;return;}
+  const len=C.vol/L;
+  $("#cRes").innerHTML=`<div class="big">${fmt(len,len<10?2:1)} m</div><small>Rohrlänge, bis ${fmt(C.vol,C.vol<1?2:1)} L Inhalt erreicht sind<br>${fmt(L,3)} L pro Meter · Innen-Ø ${fmt(d,1)} mm</small>`;
+}
+function drawSegs(){
+  const box=$("#cSegs");
+  box.innerHTML=C.segs.map((s,i)=>`<div class="seg"><select data-i="${i}">${allOpts(s.p)}</select><input data-i="${i}" type="number" inputmode="decimal" step="0.1" min="0" value="${s.len}" aria-label="Länge in m"><button data-i="${i}" aria-label="Entfernen">✕</button></div>`).join("");
+  box.querySelectorAll("select").forEach(el=>el.onchange=()=>{C.segs[el.dataset.i].p=el.value;updSum();});
+  box.querySelectorAll("input").forEach(el=>el.oninput=()=>{C.segs[el.dataset.i].len=parseFloat(String(el.value).replace(",","."))||0;updSum();});
+  box.querySelectorAll("button").forEach(el=>el.onclick=()=>{C.segs.splice(+el.dataset.i,1);drawSegs();});
+  updSum();
+}
+function updSum(){
+  const tot=C.segs.reduce((a,s)=>a+lpm(segD(s.p))*s.len,0);
+  const m=C.segs.reduce((a,s)=>a+s.len,0);
+  const el=$("#cSum"); const over=tot>3;
+  el.className="sum "+(over?"bad":"ok");
+  el.innerHTML=C.segs.length?`Gesamt: ${fmt(m,1)} m · <b>${fmt(tot,2)} L</b> Inhalt<br><span style="font-weight:400">${over?"Über 3 L → bei einer Warmwasserleitung ist das Großanlagen-Kriterium erfüllt.":"Bis 3 L → das 3-Liter-Kriterium ist nicht erfüllt."}</span>`:"Keine Abschnitte.";
+}
+
+/* ---------- Events ---------- */
+buildGrid();
+$("#grid").addEventListener("click",e=>{const t=e.target.closest(".tile");if(t)setCat(t.dataset.cat);});
+$("#back").onclick=()=>setCat("alle");
+document.addEventListener("click",e=>{
+  const a=e.target.closest("a.nl,.norm"); if(a&&a.dataset.n!==undefined){e.preventDefault();openNorm(+a.dataset.n);return;}
+  const g=e.target.closest(".goto"); if(g){jump(g.dataset.c);return;}
 });
+$("#modal").addEventListener("click",e=>{if(e.target.id==="modal")closeModal();});
+$("#mx").onclick=closeModal;
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeModal();});
 let tmr;
 $("#q").addEventListener("input",e=>{clearTimeout(tmr);tmr=setTimeout(()=>{q=e.target.value;render();},120);});
 $("#clr").onclick=()=>{$("#q").value="";q="";render();$("#q").focus();};
