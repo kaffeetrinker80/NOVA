@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Probenahme-Nachschlagewerk Trinkwasser</title>
+<style>
+:root{
+  --bg:#f4f6f8;--card:#fff;--ink:#16202a;--muted:#5b6b7a;--line:#dde3e9;
+  --acc:#0a6fb8;--acc-soft:#e3f0fa;--warn:#b45309;--warn-soft:#fdf1e3;--ok:#127a4a;--ok-soft:#e3f5ec;--bad:#b42318;--bad-soft:#fde8e6;
+  --mark:#ffe58a;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0f151b;--card:#18212a;--ink:#e6edf3;--muted:#93a3b3;--line:#2a3642;
+  --acc:#5cb2f0;--acc-soft:#16324a;--warn:#f0a75c;--warn-soft:#3a2a14;--ok:#5fd19a;--ok-soft:#143326;--bad:#ff8a80;--bad-soft:#3d1a18;--mark:#7a6510;
+}}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+header{position:sticky;top:0;z-index:10;background:var(--bg);padding:12px 14px 8px;border-bottom:1px solid var(--line)}
+h1{font-size:17px;margin:0 0 8px;letter-spacing:.2px}
+h1 span{color:var(--muted);font-weight:400;font-size:13px;display:block}
+.search{position:relative}
+.search input{width:100%;font-size:16px;padding:11px 40px 11px 14px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);outline:none}
+.search input:focus{border-color:var(--acc);box-shadow:0 0 0 3px var(--acc-soft)}
+.search button{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--muted);font-size:20px;padding:4px 8px;display:none}
+.chips{display:flex;gap:6px;overflow-x:auto;padding:8px 0 2px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:0 0 auto;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:6px 12px;font-size:14px;white-space:nowrap}
+.chip.on{background:var(--acc);border-color:var(--acc);color:#fff}
+main{padding:12px 12px 80px;max-width:820px;margin:0 auto}
+.note{background:var(--warn-soft);color:var(--ink);border-left:4px solid var(--warn);padding:10px 12px;border-radius:8px;font-size:14px;margin-bottom:12px}
+.count{color:var(--muted);font-size:13px;margin:4px 2px 10px}
+.sec-title{font-size:13px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin:18px 4px 8px;font-weight:600}
+details{background:var(--card);border:1px solid var(--line);border-radius:12px;margin-bottom:8px;overflow:hidden}
+summary{list-style:none;cursor:pointer;padding:13px 40px 13px 14px;font-weight:600;position:relative}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"›";position:absolute;right:16px;top:50%;transform:translateY(-50%) rotate(90deg);color:var(--muted);font-size:22px;transition:transform .15s}
+details[open] summary::after{transform:translateY(-50%) rotate(-90deg)}
+summary small{display:block;font-weight:400;color:var(--muted);font-size:13px;margin-top:2px}
+.body{padding:0 14px 14px;font-size:15px}
+.body h4{margin:14px 0 6px;font-size:14px;color:var(--acc)}
+.body ol,.body ul{padding-left:20px;margin:6px 0}
+.body li{margin:3px 0}
+table{width:100%;border-collapse:collapse;font-size:14px;margin:6px 0}
+th,td{text-align:left;padding:7px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.4px}
+td.v{white-space:nowrap;font-weight:600}
+.tw{overflow-x:auto}
+.box{border-radius:8px;padding:9px 11px;margin:8px 0;font-size:14px}
+.tip{background:var(--acc-soft);border-left:4px solid var(--acc)}
+.warn{background:var(--warn-soft);border-left:4px solid var(--warn)}
+.bad{background:var(--bad-soft);border-left:4px solid var(--bad)}
+.ok{background:var(--ok-soft);border-left:4px solid var(--ok)}
+.tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:999px;background:var(--acc-soft);color:var(--acc);margin-right:4px;font-weight:600}
+mark{background:var(--mark);color:inherit;border-radius:2px;padding:0 1px}
+.norm{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+.norm:last-child{border-bottom:0}
+.norm b{flex:0 0 auto;min-width:118px;font-size:14px}
+.norm div{font-size:14px}
+.norm div small{color:var(--muted);display:block}
+.empty{text-align:center;color:var(--muted);padding:40px 10px}
+footer{color:var(--muted);font-size:12px;text-align:center;padding:10px 16px 30px}
+.top{position:fixed;right:14px;bottom:18px;border:0;background:var(--acc);color:#fff;width:44px;height:44px;border-radius:50%;font-size:20px;box-shadow:0 4px 14px rgba(0,0,0,.25);display:none}
+</style>
+</head>
+<body>
+<header>
+  <h1>Probenahme-Nachschlagewerk <span>Trinkwasser · Legionellen · Mibi · Phys.-chem. · Bad · Normen</span></h1>
+  <div class="search">
+    <input id="q" type="search" placeholder="Suchen: z. B. Enterokokken, 19458, Zweck b, Redox …" autocomplete="off">
+    <button id="clr" aria-label="Suche leeren">×</button>
+  </div>
+  <div class="chips" id="chips"></div>
+</header>
+<main>
+  <div class="note"><b>Spickzettel, keine SOP.</b> Maßgeblich sind eure Prüfanweisungen / das QM-Handbuch und die aktuelle Normfassung. Stand der Recherche: Nov. 2026 (TrinkwV 2023, UBA-Legionellen-Empfehlung vom 13.10.2025, DIN 19643:2023).</div>
+  <div class="count" id="count"></div>
+  <div id="list"></div>
+</main>
+<footer>NOVA Praxis-Hygiene · interner Spickzettel für Probenehmer</footer>
+<button class="top" id="top" aria-label="Nach oben">↑</button>
+
+<script>
+const CATS = [
+  ["alle","Alle"],["basis","Grundlagen"],["leg","Legionellen"],["mibi","Mikrobiologie"],
+  ["chem","Phys.-chem. vor Ort"],["metall","Z-Probe / Metalle"],["bad","Schwimmbad"],
+  ["gw","Grenzwerte"],["norm","Normen / DIN"],["audit","Audit"],["faq","Kunden-FAQ"]
+];
+
+const CARDS = [
+/* ================= GRUNDLAGEN ================= */
+{cat:"basis",t:"Probenahme-Zwecke a / b / c (DIN EN ISO 19458, Tab. 1)",s:"Der Klassiker im Audit – auswendig können",h:`
+<div class="tw"><table>
+<tr><th>Zweck</th><th>Was wird beurteilt?</th><th>Einbauten ab</th><th>Desinfektion</th><th>Ablaufen</th></tr>
+<tr><td class="v">a</td><td>Wasser in der Versorgungsleitung (Versorger / Hausanschluss)</td><td>ja</td><td>ja</td><td>bis Temperaturkonstanz</td></tr>
+<tr><td class="v">b</td><td>Wasser an der Entnahmestelle inkl. Einfluss der Trinkwasser-Installation</td><td>ja</td><td>ja</td><td>nur kurz (Legionellen: 1 Liter)</td></tr>
+<tr><td class="v">c</td><td>Wasser „wie verbraucht“ (inkl. Armatur, Strahlregler, Schlauch)</td><td>nein</td><td>nein</td><td>nein – Sofortentnahme</td></tr>
+</table></div>
+<div class="box tip"><b>Merksatz:</b> a = Versorger, b = Hausinstallation, c = Verbraucher. Legionellen nach TrinkwV immer <b>Zweck b</b>.</div>
+<div class="box warn">Geht ein Strahlregler nicht ab oder ist die Armatur nicht abflammbar → trotzdem nach Vorgabe beproben, Abweichung <b>im Protokoll dokumentieren</b>.</div>`},
+
+{cat:"basis",t:"Allgemeiner Ablauf Mikrobiologie-Probe (Zweck b)",s:"Schritt für Schritt an der Zapfstelle",h:`
+<ol>
+<li>Zapfstelle prüfen und eindeutig benennen (Gebäude, Etage, Raum, Armatur, kalt/warm).</li>
+<li>Hände desinfizieren, Handschuhe an.</li>
+<li>Strahlregler / Perlator, Schlauch, Duschkopf usw. entfernen.</li>
+<li>Auslauf desinfizieren: <b>bevorzugt Abflammen</b> (Gasbrenner, außen und innen); bei Kunststoff oder empfindlichen Armaturen Wischdesinfektion mit Alkohol (z. B. 70 % Isopropanol, Einwirkzeit beachten) → dokumentieren.</li>
+<li>Ablaufen lassen (Menge nach Zweck, Legionellen 1 L in Messbecher).</li>
+<li>Sterile Flasche (mit Natriumthiosulfat) <b>ohne Schließen des Hahns</b> direkt füllen, Deckel nicht ablegen und Innenseite nicht berühren; Flasche nicht ausspülen und nicht überlaufen lassen; kleinen Luftraum lassen.</li>
+<li>Sofort verschließen, beschriften, kühl und dunkel in die Kühlbox.</li>
+<li>Temperatur messen (s. Legionellen: Probenahmetemperatur und konstante Temperatur).</li>
+<li>Vor-Ort-Parameter messen (Chlor, pH, Leitfähigkeit …) – <b>nie aus der Mibi-Flasche</b>, immer separates Gefäß.</li>
+<li>Strahlregler wieder montieren, Protokoll vollständig ausfüllen.</li>
+</ol>`},
+
+{cat:"basis",t:"Natriumthiosulfat in der Flasche – wozu?",s:"Typische Auditfrage",h:`
+<p>Neutralisiert Restchlor/Chlordioxid und andere Oxidationsmittel. Ohne Neutralisation würde das Desinfektionsmittel während des Transports weiter Keime abtöten → <b>falsch niedrige Befunde</b>.</p>
+<ul><li>Flasche daher <b>nicht ausspülen</b> und nicht überlaufen lassen (Thiosulfat wird sonst ausgewaschen).</li>
+<li>Steril-Gefäße nur innerhalb des Verfallsdatums/der Charge verwenden (Rückverfolgbarkeit!).</li></ul>`},
+
+{cat:"basis",t:"Transport & Kühlkette",s:"5 ± 3 °C, dunkel, schnell",h:`
+<ul>
+<li>Mikrobiologie: gekühlt bei <b>(5 ± 3) °C</b>, lichtgeschützt, so schnell wie möglich ins Labor.</li>
+<li>E. coli / coliforme / Enterokokken: Ansatz <b>möglichst innerhalb 12 h</b>, spätestens 18 h (DIN EN ISO 19458, Anhang) – maßgeblich ist die Laborvorgabe.</li>
+<li>Legionellen (UBA 10/2025): möglichst innerhalb eines Tages; gekühlt (5 ± 3) °C; Eingang und Ansatz im Labor <b>innerhalb 48 h</b>. Wird innerhalb 24 h angesetzt, ist auch Transport bei Umgebungstemperatur erlaubt (lichtgeschützt). <b>Warm- und Kaltwasserproben in getrennten Behältern</b> transportieren.</li>
+<li>Kühlbox-Temperatur nachweisen (Datenlogger / Min-Max-Thermometer), Kühlakkus vorkühlen, Proben nicht direkt auf Akkus (Frostgefahr).</li>
+</ul>`},
+
+{cat:"basis",t:"Probenahmeprotokoll – Pflichtangaben",s:"Was muss drinstehen?",h:`
+<ul>
+<li>Auftraggeber / Objekt / Anschrift, Auftragsnummer</li>
+<li>Probenahmestelle eindeutig (Etage, Raum, Armatur, PWC / PWH / PWH-C)</li>
+<li>Datum, Uhrzeit, Name des Probenehmers</li>
+<li>Zweck a / b / c, Art der Desinfektion (Abflammen / Wisch), Ablaufmenge</li>
+<li>Temperaturen: Probenahmetemperatur und konstante Temperatur</li>
+<li>Vor-Ort-Messwerte (Chlor frei/gesamt, pH, Leitfähigkeit, Trübung …) mit Gerät</li>
+<li>Sinnesprüfung: Färbung, Trübung, Geruch, Bodensatz</li>
+<li>Abweichungen (Strahlregler fest, Mischwasser, nicht abflammbar, Ventil zu …)</li>
+<li>Flaschen-/Proben-IDs, Kühlbox-Temperatur bei Übergabe</li>
+<li>Schwimmbad zusätzlich: Becken, Entnahmeort, Badegäste/Belastung, Wetter (Freibad)</li>
+</ul>`},
+
+{cat:"basis",t:"Temperatur-Richtwerte Installation",s:"Kalt ≤ 25 °C · Warm ≥ 60 / 55 °C",h:`
+<div class="tw"><table>
+<tr><th>Stelle</th><th>Soll</th><th>Quelle</th></tr>
+<tr><td>Austritt Trinkwassererwärmer (PWH)</td><td class="v">≥ 60 °C</td><td>DVGW W 551, DIN 1988-200</td></tr>
+<tr><td>Zirkulationsrücklauf (PWH-C)</td><td class="v">≥ 55 °C</td><td>DVGW W 551 (max. 5 K Abfall)</td></tr>
+<tr><td>Kaltwasser (PWC)</td><td class="v">≤ 25 °C</td><td>DIN 1988-200, VDI/DVGW 6023</td></tr>
+</table></div>
+<div class="box tip">Legionellen vermehren sich vor allem zwischen ca. 25 und 45 °C.</div>`},
+
+/* ================= LEGIONELLEN ================= */
+{cat:"leg",t:"Legionellen: Probenahme Zweck b (UBA-Empfehlung 13.10.2025)",s:"Neue Fassung ersetzt die Empfehlungen von 12/2018 und 12/2022",h:`
+<ol>
+<li><b>Normalbetrieb:</b> vorher keine Temperaturerhöhung, kein Spülen, keine Desinfektion der Anlage.</li>
+<li>Strahlregler und sonstige Einbauten entfernen.</li>
+<li>Auslauf desinfizieren – <b>bevorzugt Abflammen</b>.</li>
+<li>Hahn öffnen, <b>1 Liter</b> in Messbecher ablaufen lassen.</li>
+<li>Sterile Flasche <b>direkt anschließend</b> füllen, ohne Hahn zu schließen. Becherinhalt verwerfen.</li>
+<li>Sofort ca. 250 ml in Messbecher → Temperatur = <b>„Probenahmetemperatur“</b>.</li>
+<li>Weiterlaufen lassen bis Temperatur konstant → <b>„konstante Temperatur“</b>.</li>
+</ol>
+<ul>
+<li><b>Mischwasser vermeiden</b>: Absperrung der nicht beprobten Seite schließen, wo möglich; sonst im Protokoll vermerken.</li>
+<li><b>Nicht direkt aus Duschköpfen</b> beproben.</li>
+<li>Alle Proben einer Anlage möglichst am selben Kalendertag.</li>
+<li>Unter der Armatur genug Platz, damit die Flasche die Armatur nicht berührt.</li>
+</ul>
+<div class="box warn">Verbrühschutz/Thermostat: ggf. vor dem Verbrühschutz (z. B. am Eckventil) beproben – situativ entscheiden und dokumentieren.</div>`},
+
+{cat:"leg",t:"Legionellen: Auswahl der Probenahmestellen",s:"Systemische Untersuchung",h:`
+<ul>
+<li><b>Austritt Trinkwassererwärmer</b> (PWH)</li>
+<li><b>Wiedereintritt Zirkulation</b> in den Erwärmer (PWH-C)</li>
+<li><b>Je Steigstrang</b> eine periphere Stelle, mit möglichst kurzer Anbindung an das Strangende. Nicht jeder Strang muss beprobt werden – Auswahl aber <b>dokumentieren und begründen</b>. Horizontale Verteilung entsprechend.</li>
+</ul>
+<div class="box bad">Ungeeignet: Stellen in ungenutzten Räumen/Wohnungen und Zapfstellen, die nicht bestimmungsgemäß genutzt werden.</div>`},
+
+{cat:"leg",t:"Wer muss auf Legionellen untersuchen? (Großanlage)",s:"§ 31 TrinkwV · DVGW W 551",h:`
+<p>Untersuchungspflicht, wenn <b>alle</b> zutreffen:</p>
+<ul>
+<li>Großanlage zur Trinkwassererwärmung: Speicher <b>&gt; 400 L</b> <i>oder</i> <b>&gt; 3 L</b> Inhalt in mindestens einer Leitung zwischen Abgang Erwärmer und Entnahmestelle (Zirkulation nicht mitgerechnet)</li>
+<li>Duschen oder andere Aerosolbildung (Vernebelung)</li>
+<li>Abgabe im Rahmen gewerblicher oder öffentlicher Tätigkeit</li>
+</ul>
+<div class="tw"><table><tr><th>Tätigkeit</th><th>Intervall</th></tr>
+<tr><td>Öffentlich (z. B. Schule, Krankenhaus, Sporthalle)</td><td class="v">jährlich</td></tr>
+<tr><td>Gewerblich (z. B. Vermietung)</td><td class="v">alle 3 Jahre</td></tr></table></div>
+<div class="box tip">Ein- und Zweifamilienhäuser fallen nicht unter die Großanlagen-Definition.</div>`},
+
+{cat:"leg",t:"Legionellen: Bewertung & Maßnahmen",s:"Technischer Maßnahmenwert 100 KBE/100 ml",h:`
+<ul>
+<li><b>Technischer Maßnahmenwert (TMW): 100 KBE/100 ml</b> (Anlage 3 Teil II TrinkwV) – kein Grenzwert, sondern Auslöser für Maßnahmen. Messunsicherheit ist eingerechnet.</li>
+<li>Erreichen des TMW → <b>Meldepflicht der Untersuchungsstelle</b> an das Gesundheitsamt (§ 53 TrinkwV).</li>
+<li>Betreiber: Ursachenklärung, Risikoabschätzung (UBA-Empfehlung Risikoabschätzung, 10/2025), Maßnahmen, Nachuntersuchung.</li>
+</ul>
+<div class="box warn"><b>Ältere Einstufung</b> (DVGW W 551 / UBA 2012), wird noch häufig zitiert: &gt; 100 mittel · &gt; 1.000 hoch · <b>&gt; 10.000 extrem hoch</b> → sofortige Gefahrenabwehr (z. B. Duschverbot, Desinfektion). Die UBA-Empfehlung 10/2025 selbst nennt nur den TMW.</div>`},
+
+{cat:"leg",t:"Legionellen: Analytik im Labor",s:"DIN EN ISO 11731 · Ergebnis in KBE/100 ml",h:`
+<ul>
+<li>Verfahren: DIN EN ISO 11731, Matrix A, Anhang J.</li>
+<li><b>Direktansatz:</b> 2 × 0,5 ml auf BCYE+AB, ohne Vorbehandlung.</li>
+<li><b>Membranfiltration:</b> 50–80 ml mit Säurebehandlung, auf BCYE+AB oder GVPC.</li>
+<li>Angegeben wird der <b>höhere</b> Wert aus Direktansatz und Filtration, umgerechnet auf 100 ml, mit Angabe des Ansatzes.</li>
+<li>Bebrütung bis ca. 10 Tage → Ergebnis dauert entsprechend.</li>
+</ul>`},
+
+/* ================= MIKROBIOLOGIE ================= */
+{cat:"mibi",t:"E. coli",s:"Fäkalindikator · 0/100 ml (Anlage 1 TrinkwV)",h:`
+<ul><li><b>Grenzwert:</b> 0/100 ml (abgefülltes Wasser 0/250 ml).</li>
+<li><b>Bedeutung:</b> Nachweis fäkaler Verunreinigung → mögliche Krankheitserreger.</li>
+<li><b>Verfahren:</b> DIN EN ISO 9308-1 (Membranfiltration) oder DIN EN ISO 9308-2 (MPN, z. B. Colilert/Quanti-Tray).</li>
+<li><b>Dauer:</b> ca. 1–2 Tage inkl. Bestätigung.</li></ul>
+<div class="box bad">Befund positiv → unverzügliche Meldung, meist Abkochgebot.</div>`},
+
+{cat:"mibi",t:"Intestinale Enterokokken",s:"Fäkalindikator · 0/100 ml (Anlage 1 TrinkwV)",h:`
+<ul><li><b>Grenzwert:</b> 0/100 ml (abgefülltes Wasser 0/250 ml).</li>
+<li><b>Bedeutung:</b> Fäkalindikator, umweltstabiler als E. coli → Hinweis auf (auch ältere) fäkale Verunreinigung.</li>
+<li><b>Verfahren:</b> DIN EN ISO 7899-2 (Membranfiltration, Slanetz-Bartley; Bestätigung Galle-Äskulin-Azid).</li>
+<li><b>Dauer:</b> ca. 2–3 Tage.</li></ul>`},
+
+{cat:"mibi",t:"Coliforme Bakterien",s:"Indikator · 0/100 ml (Anlage 3 TrinkwV)",h:`
+<ul><li><b>Grenzwert:</b> 0/100 ml (Indikatorparameter).</li>
+<li><b>Bedeutung:</b> nicht zwingend fäkal; Hinweis auf Verunreinigung, Biofilm, Mängel in Aufbereitung oder Installation (z. B. Stagnation, Fremdeintrag).</li>
+<li><b>Verfahren:</b> DIN EN ISO 9308-1 oder -2 (gemeinsam mit E. coli).</li></ul>`},
+
+{cat:"mibi",t:"Pseudomonas aeruginosa",s:"Opportunistischer Erreger · 0/100 ml (Bad, Klinik, Inbetriebnahme)",h:`
+<ul><li><b>TrinkwV:</b> als Grenzwert nur für Wasser in verschlossenen Behältnissen (0/250 ml). In Installationen auf Anordnung des Gesundheitsamts, in Kliniken / Pflege und bei Inbetriebnahme neuer Installationen üblich (Anforderung 0/100 ml).</li>
+<li><b>Schwimmbad (DIN 19643):</b> Pflichtparameter, nicht nachweisbar in 100 ml.</li>
+<li><b>Bedeutung:</b> Biofilmbildner, Feuchtkeim; gefährlich für Immungeschwächte (Wund-, Ohr-, Lungeninfektionen). Hinweis auf Biofilm, Stagnation, Mängel bei Schläuchen/Dichtungen.</li>
+<li><b>Verfahren:</b> DIN EN ISO 16266 (Membranfiltration, CN-Agar, 36 °C, 44 h).</li></ul>`},
+
+{cat:"mibi",t:"Koloniezahl 22 °C und 36 °C",s:"Allgemeiner Hygiene-/Betriebsindikator",h:`
+<ul><li><b>Anforderung:</b> „ohne anormale Veränderung“.</li>
+<li>Bei Verfahren nach § 43 Abs. 3 TrinkwV: <b>100/ml</b> an der Entnahmestelle (22 °C und 36 °C); 20/ml (22 °C) direkt nach Aufbereitung im desinfizierten Wasser; 1.000/ml (22 °C) bei Eigenversorgung/mobilen Speichern.</li>
+<li><b>Bedeutung:</b> 22 °C ≈ Umwelt-/Wasserkeime; 36 °C ≈ eher Keime menschlicher/tierischer Herkunft. Erhöhte Werte → Stagnation, Biofilm, Verunreinigung.</li>
+<li><b>Verfahren:</b> DIN EN ISO 6222 (Bebrütung 36 °C 44 h, 22 °C 68 h) bzw. Verfahren nach § 43 Abs. 3 TrinkwV.</li></ul>`},
+
+{cat:"mibi",t:"Clostridium perfringens (inkl. Sporen)",s:"0/100 ml · nur bei Oberflächenwassereinfluss",h:`
+<ul><li><b>Grenzwert:</b> 0/100 ml (Anlage 3).</li>
+<li>Nur relevant bei Rohwasser aus Oberflächenwasser oder mit Oberflächenwassereinfluss.</li>
+<li>Sporen sind sehr widerstandsfähig → Indikator für Wirksamkeit der Aufbereitung (Parasiten wie Cryptosporidium).</li>
+<li><b>Verfahren:</b> DIN EN ISO 14189.</li></ul>`},
+
+/* ================= PHYS.-CHEM. ================= */
+{cat:"chem",t:"Freies und gesamtes Chlor (DPD)",s:"DIN EN ISO 7393-2 · photometrisch",h:`
+<ul><li>Separates Gefäß, <b>sofort</b> messen (Chlor zehrt schnell).</li>
+<li>DPD 1 → <b>freies Chlor</b>; DPD 3 (zusätzlich) → <b>Gesamtchlor</b>; <b>gebundenes Chlor = Gesamt − frei</b>.</li>
+<li>Küvette vorher mit Probe spülen, außen trocken und fingerabdruckfrei; Nullabgleich mit Probe ohne Reagenz.</li>
+<li>Störungen: sehr hohe Chlorgehalte bleichen DPD aus (falsch niedrig → verdünnen), Mangan/Oxidationsmittel stören.</li>
+<li>Geräteprüfung: Kontrollstandards / Sekundärstandards regelmäßig, dokumentiert.</li>
+<li>TrinkwV: Chlor nach Aufbereitung max. 0,3 mg/L freies Chlor (Regelfall; § 20-Liste des UBA), Mindestgehalt nach Aufbereitung 0,1 mg/L.</li></ul>`},
+
+{cat:"chem",t:"pH-Wert",s:"DIN EN ISO 10523 · TrinkwV 6,5–9,5",h:`
+<ul><li>Kalibrierung (mind. 2-Punkt, z. B. Puffer 7 und 4 bzw. 10) vor Einsatz, mit Temperaturkompensation; Steilheit/Nullpunkt dokumentieren.</li>
+<li>Elektrode feucht lagern (KCl), nie in dest. Wasser aufbewahren.</li>
+<li>In frischer Probe messen, nicht rühren bis Luftblasen entstehen; Wert stabil abwarten.</li>
+<li>pH &lt; 7,7 am Wasserwerksausgang → Calcitlösekapazität beachten (korrosives Wasser, Metalle!).</li></ul>`},
+
+{cat:"chem",t:"Elektrische Leitfähigkeit",s:"DIN EN 27888 · 2.790 µS/cm bei 25 °C",h:`
+<ul><li>Maß für gelöste Salze/Ionen. Plötzliche Änderung → Hinweis auf Fremdwasser/Vermischung.</li>
+<li>Immer auf <b>25 °C</b> bezogen angeben (Temperaturkompensation).</li>
+<li>Zelle mit Prüflösung (z. B. 1413 µS/cm) kontrollieren.</li></ul>`},
+
+{cat:"chem",t:"Temperatur",s:"DIN 38404-4",h:`
+<ul><li>Kalibriertes/geprüftes Thermometer (Vergleich gegen Referenzthermometer, dokumentiert).</li>
+<li>Im Messbecher bzw. im fließenden Wasser, nicht in der Mibi-Flasche.</li>
+<li>Legionellen: Probenahmetemperatur und konstante Temperatur getrennt angeben.</li></ul>`},
+
+{cat:"chem",t:"Trübung, Färbung, Geruch, Geschmack",s:"Sinnesprüfung & Trübung",h:`
+<ul><li><b>Trübung:</b> DIN EN ISO 7027-1, Grenzwert 1,0 NTU (gilt als eingehalten, wenn am Wasserwerksausgang eingehalten).</li>
+<li><b>Färbung:</b> DIN EN ISO 7887 (SAK 436 nm, 0,5 m⁻¹).</li>
+<li><b>Geruch/Geschmack:</b> DIN EN 1622 – „annehmbar, ohne anormale Veränderung“. Bei Verdacht auf mikrobielle Kontamination keine Geschmacksprobe.</li>
+<li>Vor Ort immer qualitativ notieren: klar / trüb / gefärbt / Geruch.</li></ul>`},
+
+{cat:"chem",t:"Sauerstoff & Redoxspannung",s:"DIN EN ISO 5814 / DIN ISO 17289 · DIN 38404-6",h:`
+<ul><li><b>Sauerstoff:</b> elektrochemisch (DIN EN ISO 5814) oder optisch (DIN ISO 17289); luftblasenfrei messen.</li>
+<li><b>Redox:</b> DIN 38404-6; Elektrode langsam einstellend, Wert stabil abwarten; im Bad v. a. Betriebsanzeige ablesen und dokumentieren.</li></ul>`},
+
+/* ================= METALLE / Z-PROBE ================= */
+{cat:"metall",t:"Zufallsstichprobe (Z-Probe)",s:"Blei, Kupfer, Nickel – UBA-Empfehlung 12/2018",h:`
+<ul>
+<li>Entnahme zu einer <b>zufälligen Tageszeit</b>, ohne vorheriges Ablaufenlassen.</li>
+<li>Kaltwasser an einer Zapfstelle, die zum Trinken/Kochen genutzt wird (meist Küche).</li>
+<li>Strahlregler bleibt dran (Wasser „wie verbraucht“).</li>
+<li>In der Regel <b>1 Liter</b>, in säuregespülte/angesäuerte Kunststoffflasche des Labors.</li>
+<li>Bildet die durchschnittliche Belastung realistisch ab; Ergebnis hängt aber vom Zufall (Stagnationszeit) ab.</li>
+</ul>
+<div class="box warn">Grenzwert in der Z-Probe überschritten → an dieser Zapfstelle <b>gestaffelte Stagnationsbeprobung</b> zur Abklärung.</div>`},
+
+{cat:"metall",t:"Gestaffelte Stagnationsbeprobung (S0 / S1 / S2)",s:"Ursache finden: Armatur oder Installation?",h:`
+<ol>
+<li><b>S0</b>: Wasser ablaufen lassen bis Temperaturkonstanz, dann Probe → Qualität des zugeführten Wassers (Versorger).</li>
+<li>Zapfstelle und Installation <b>4 Stunden</b> nicht benutzen (Stagnation; zur Bewertung exakt 4 h).</li>
+<li><b>S1</b>: erster Liter nach Stagnation → Armatur + Anschlussleitung.</li>
+<li><b>S2</b>: direkt anschließend zweiter Liter → Hausinstallation.</li>
+</ol>
+<div class="box tip">S1 hoch, S2 niedrig → meist Armatur. S2 hoch → Leitungen (z. B. Bleirohre).</div>`},
+
+{cat:"metall",t:"Grenzwerte Metalle & Co. (Anlage 2 TrinkwV)",s:"Blei ab 12.01.2028: 0,005 mg/L",h:`
+<div class="tw"><table>
+<tr><th>Parameter</th><th>Grenzwert</th><th>Hinweis</th></tr>
+<tr><td>Blei</td><td class="v">0,010 mg/L</td><td>ab 12.01.2028: <b>0,005</b></td></tr>
+<tr><td>Kupfer</td><td class="v">2,0 mg/L</td><td></td></tr>
+<tr><td>Nickel</td><td class="v">0,020 mg/L</td><td>Kontaktallergie</td></tr>
+<tr><td>Cadmium</td><td class="v">0,0030 mg/L</td><td></td></tr>
+<tr><td>Arsen</td><td class="v">0,010 mg/L</td><td>später 0,004 (Übergangsfristen 2028/2036)</td></tr>
+<tr><td>Chrom</td><td class="v">0,025 mg/L</td><td>ab 12.01.2030: 0,005</td></tr>
+<tr><td>Uran</td><td class="v">0,010 mg/L</td><td></td></tr>
+<tr><td>Antimon</td><td class="v">0,0050 mg/L</td><td></td></tr>
+</table></div>
+<div class="box warn">Bleileitungen sind nach TrinkwV 2023 bis 12.01.2026 zu entfernen bzw. stillzulegen.</div>`},
+
+/* ================= SCHWIMMBAD ================= */
+{cat:"bad",t:"Schöpfprobe Beckenwasser – Ablauf",s:"DIN 19643-1 · DIN EN ISO 19458",h:`
+<ol>
+<li>Zeitpunkt: möglichst bei <b>Badebetrieb/hoher Belastung</b> (realistische Bedingungen).</li>
+<li>Entnahmestelle festlegen und protokollieren (Becken, Position, z. B. Beckenrand/Beckenmitte, ungünstige Durchströmung).</li>
+<li>Sterile Flasche <b>mit Natriumthiosulfat</b>, Handschuhe; ggf. Schöpfstange/Teleskophalter.</li>
+<li>Flasche mit der <b>Öffnung nach unten</b> eintauchen, in ca. <b>20–30 cm Tiefe</b> drehen und füllen, Öffnung dabei <b>vom Körper weg / gegen die Strömung</b>.</li>
+<li>Nicht von der Oberfläche schöpfen (Oberflächenfilm), Hand nicht vor der Öffnung.</li>
+<li>Kleinen Luftraum lassen, sofort verschließen, kühl und dunkel.</li>
+<li>Vor Ort im separaten Gefäß messen: <b>freies + gebundenes Chlor, pH, Temperatur</b>; Redox an der Betriebsanzeige ablesen; Sichttiefe/Klarheit.</li>
+<li>Proben aus Füllwasser, Filtrat, Reinwasser an den Probenahmehähnen der Technik (desinfizieren, ablaufen lassen).</li>
+</ol>`},
+
+{cat:"bad",t:"Beckenwasser: Hygiene-Hilfsparameter",s:"Freies Chlor 0,3–0,6 mg/L",h:`
+<div class="tw"><table>
+<tr><th>Parameter</th><th>Beckenwasser</th></tr>
+<tr><td>Freies Chlor allgemein</td><td class="v">0,3–0,6 mg/L</td></tr>
+<tr><td>Freies Chlor Warmsprudelbecken</td><td class="v">0,7–1,0 mg/L</td></tr>
+<tr><td>Gebundenes Chlor</td><td class="v">≤ 0,2 mg/L</td></tr>
+<tr><td>pH-Wert</td><td class="v">6,5–7,8*</td></tr>
+<tr><td>Redoxspannung (Mindestwert)</td><td class="v">700–770 mV*</td></tr>
+<tr><td>Trihalogenmethane (THM)</td><td class="v">≤ 0,020 mg/L</td></tr>
+<tr><td>Σ Chlorit + Chlorat</td><td class="v">≤ 30 mg/L</td></tr>
+<tr><td>Nitrat (über Füllwasser)</td><td class="v">≤ 20 mg/L</td></tr>
+</table></div>
+<p style="font-size:13px;color:var(--muted)">* je nach Verfahren, pH-Bereich und Wasserart (DIN 19643:2023). Ältere Merkblätter: pH 6,5–7,2 (Al-Flockung) / 6,5–7,5 (Fe-Flockung), Redox ≥ 750 mV (pH ≤ 7,3) bzw. ≥ 770 mV.</p>
+<div class="box tip">Betreiber misst freies/gebundenes Chlor 3× täglich, pH 1× täglich, Redox 2× täglich (Betriebstagebuch).</div>`},
+
+{cat:"bad",t:"Beckenwasser: Mikrobiologie",s:"P. aeruginosa, E. coli, Legionellen, Koloniezahl 36 °C",h:`
+<div class="tw"><table>
+<tr><th>Parameter</th><th>Anforderung</th></tr>
+<tr><td>Pseudomonas aeruginosa</td><td class="v">n. n. / 100 ml</td></tr>
+<tr><td>E. coli</td><td class="v">n. n. / 100 ml</td></tr>
+<tr><td>Legionella spec. (bei ≥ 23 °C)</td><td class="v">n. n. / 100 ml</td></tr>
+<tr><td>Koloniezahl 36 °C Beckenwasser</td><td class="v">≤ 100 / ml</td></tr>
+<tr><td>Koloniezahl 36 °C Filtrat</td><td class="v">≤ 20 / ml</td></tr>
+</table></div>
+<p style="font-size:13px;color:var(--muted)">Werte mit aktueller Normfassung im QM abgleichen. Laboruntersuchung in der Regel monatlich (Hallenbad), Freibad mind. 3× je Saison; Legionellen bei Wassertemperatur ≥ 23 °C bzw. Aerosolbildung.</p>`},
+
+/* ================= GRENZWERTE ================= */
+{cat:"gw",t:"Mikrobiologie – Grenzwerte Trinkwasser (Übersicht)",s:"TrinkwV 2023 Anlage 1 und 3",h:`
+<div class="tw"><table>
+<tr><th>Parameter</th><th>Wert</th><th>Anlage</th></tr>
+<tr><td>E. coli</td><td class="v">0/100 ml</td><td>1</td></tr>
+<tr><td>Intestinale Enterokokken</td><td class="v">0/100 ml</td><td>1</td></tr>
+<tr><td>Coliforme Bakterien</td><td class="v">0/100 ml</td><td>3 I</td></tr>
+<tr><td>Clostridium perfringens</td><td class="v">0/100 ml</td><td>3 I</td></tr>
+<tr><td>Koloniezahl 22 °C</td><td class="v">100/ml*</td><td>3 I</td></tr>
+<tr><td>Koloniezahl 36 °C</td><td class="v">100/ml*</td><td>3 I</td></tr>
+<tr><td>Legionella spec. (TMW)</td><td class="v">100/100 ml</td><td>3 II</td></tr>
+<tr><td>Somatische Coliphagen (Rohwasser)</td><td class="v">50 PFU/100 ml</td><td>3 III</td></tr>
+</table></div>
+<p style="font-size:13px;color:var(--muted)">* „ohne anormale Veränderung“; 100/ml gilt bei Verfahren nach § 43 Abs. 3 an der Entnahmestelle.</p>`},
+
+{cat:"gw",t:"Chemie / Indikatoren – häufig gefragt",s:"TrinkwV 2023 Anlage 2 und 3",h:`
+<div class="tw"><table>
+<tr><th>Parameter</th><th>Wert</th></tr>
+<tr><td>pH-Wert</td><td class="v">6,5–9,5</td></tr>
+<tr><td>Leitfähigkeit (25 °C)</td><td class="v">2.790 µS/cm</td></tr>
+<tr><td>Trübung</td><td class="v">1,0 NTU</td></tr>
+<tr><td>Nitrat</td><td class="v">50 mg/L</td></tr>
+<tr><td>Nitrit</td><td class="v">0,50 mg/L (WW-Ausgang 0,10)</td></tr>
+<tr><td>Ammonium</td><td class="v">0,50 mg/L</td></tr>
+<tr><td>Eisen</td><td class="v">0,200 mg/L</td></tr>
+<tr><td>Mangan</td><td class="v">0,050 mg/L</td></tr>
+<tr><td>Aluminium</td><td class="v">0,200 mg/L</td></tr>
+<tr><td>Chlorid / Sulfat</td><td class="v">je 250 mg/L</td></tr>
+<tr><td>Natrium</td><td class="v">200 mg/L</td></tr>
+<tr><td>Oxidierbarkeit</td><td class="v">5,0 mg/L O₂</td></tr>
+<tr><td>Calcitlösekapazität</td><td class="v">5 mg/L CaCO₃</td></tr>
+<tr><td>Trihalogenmethane</td><td class="v">0,050 mg/L</td></tr>
+<tr><td>Chlorat / Chlorit</td><td class="v">0,070 / 0,20 mg/L</td></tr>
+<tr><td>Fluorid</td><td class="v">1,5 mg/L</td></tr>
+<tr><td>Summe PFAS-20</td><td class="v">0,00010 mg/L (seit 12.01.2026)</td></tr>
+<tr><td>Summe PFAS-4</td><td class="v">0,000020 mg/L (ab 12.01.2028)</td></tr>
+</table></div>`},
+
+/* ================= AUDIT ================= */
+{cat:"audit",t:"Typische Fragen der Begutachter an Probenehmer",s:"Witness-Audit: Sie schauen dir über die Schulter",h:`
+<ul>
+<li>Nach welcher Anweisung/SOP arbeitest du, und wo liegt sie?</li>
+<li>Welcher Zweck (a/b/c) und warum? Was ist der Unterschied?</li>
+<li>Wie desinfizierst du die Zapfstelle? Was, wenn Abflammen nicht geht?</li>
+<li>Warum Natriumthiosulfat? Warum Flasche nicht ausspülen?</li>
+<li>Wie stellst du die Kühlkette sicher und wie weist du sie nach?</li>
+<li>Wann und wie wurden pH-Meter, Thermometer, Photometer kalibriert/geprüft? Wo dokumentiert?</li>
+<li>Wie ist die Probe rückverfolgbar (Flaschen-ID, Charge, Protokoll)?</li>
+<li>Was machst du bei Abweichungen (Strahlregler fest, Mischwasser, Zapfstelle nicht zugänglich)?</li>
+<li>Was tust du bei auffälligen Vor-Ort-Befunden (z. B. kein Restchlor, Geruch)?</li>
+<li>Wie bist du geschult/qualifiziert, wann zuletzt?</li>
+</ul>`},
+
+{cat:"audit",t:"Checkliste vor dem Termin",s:"Material & Nachweise",h:`
+<ul>
+<li>☐ Sterile Flaschen mit Thiosulfat (Charge, Verfallsdatum), Chemieflaschen, Metallflaschen</li>
+<li>☐ Gasbrenner + Ersatzkartusche, Alkohol-Desinfektion, Handschuhe, Händedesinfektion</li>
+<li>☐ Messbecher (1 L und 250 ml), Werkzeug für Strahlregler</li>
+<li>☐ Thermometer (geprüft), pH-Meter + Puffer, Leitfähigkeit + Prüflösung, Photometer + DPD-Reagenzien + Kontrollstandard</li>
+<li>☐ Kühlbox mit vorgekühlten Akkus + Temperaturlogger</li>
+<li>☐ Probenahmeprotokolle, Etiketten, wasserfester Stift</li>
+<li>☐ Geräte-Prüfnachweise / Kalibrierprotokolle griffbereit</li>
+<li>☐ SOPs / Prüfanweisungen (aktuelle, gelenkte Version)</li>
+<li>☐ Schulungsnachweis Probenehmer</li>
+</ul>
+<div class="box ok"><b>Im Audit:</b> ruhig erklären, was du tust und warum. „Das schaue ich in der SOP nach“ ist eine gute Antwort, Raten ist eine schlechte.</div>`},
+
+{cat:"audit",t:"Häufige Fehler (Abweichungen im Audit)",s:"Vermeiden!",h:`
+<ul>
+<li>Deckel abgelegt oder Innenseite berührt</li>
+<li>Flasche ausgespült oder überlaufen lassen (Thiosulfat weg)</li>
+<li>Hahn zwischen Vorlauf und Füllen geschlossen (Legionellen)</li>
+<li>Vor-Ort-Messung aus der Mibi-Flasche</li>
+<li>Temperatur nur einmal gemessen / falsch dokumentiert</li>
+<li>Mischwasser nicht verhindert oder nicht vermerkt</li>
+<li>Kühlbox ohne Temperaturnachweis, Proben warm transportiert</li>
+<li>Protokoll unvollständig (Zweck, Desinfektionsart, Abweichung fehlt)</li>
+<li>Gerät ohne aktuellen Prüfnachweis eingesetzt</li>
+<li>Probenahme aus Duschkopf / Schlauch bei Zweck b</li>
+</ul>`},
+
+/* ================= KUNDEN-FAQ ================= */
+{cat:"faq",t:"„Warum schrauben Sie den Perlator ab und flammen ab?“",s:"Kunde fragt",h:`<p>Weil wir das Wasser aus Ihrer Leitung beurteilen wollen und nicht Keime, die am Auslauf oder im Perlator sitzen. Das ist so in der Norm (DIN EN ISO 19458, Zweck b) und in der Trinkwasserverordnung vorgeschrieben.</p>`},
+{cat:"faq",t:"„Warum messen Sie zweimal die Temperatur?“",s:"Kunde fragt",h:`<p>Die erste Messung zeigt die Temperatur des Wassers, das in der Probe ist. Die zweite (konstante Temperatur) zeigt, wie warm das Wasser aus der Anlage kommt. Beides zusammen zeigt, ob die Anlage hygienisch richtig läuft (warm ≥ 55–60 °C, kalt ≤ 25 °C).</p>`},
+{cat:"faq",t:"„Was heißt KBE?“",s:"Kunde fragt",h:`<p>Koloniebildende Einheiten. Jede Bakterienkolonie auf dem Nährboden wird gezählt. Bei Legionellen bezogen auf 100 ml.</p>`},
+{cat:"faq",t:"„Kann ich das Wasser bei Legionellen noch trinken?“",s:"Kunde fragt",h:`<p>Legionellen sind vor allem gefährlich, wenn man feine Tröpfchen (Aerosole) einatmet, z. B. beim Duschen. Trinken gilt für gesunde Menschen als weitgehend unbedenklich. Was zu tun ist, entscheiden Gesundheitsamt und Befund. Bei hohen Werten kann es ein Duschverbot geben.</p>`},
+{cat:"faq",t:"„Was ist der technische Maßnahmenwert?“",s:"Kunde fragt",h:`<p>100 KBE Legionellen pro 100 ml. Das ist kein Grenzwert im engeren Sinn. Er bedeutet: Ab hier muss der Betreiber handeln (Ursache suchen, Risikoabschätzung, Maßnahmen). Das Labor muss das Ergebnis dem Gesundheitsamt melden.</p>`},
+{cat:"faq",t:"„Wann bekomme ich das Ergebnis?“",s:"Kunde fragt",h:`<ul><li>E. coli / coliforme: ca. 1–2 Tage</li><li>Enterokokken, Koloniezahl, Pseudomonas: ca. 2–3 Tage</li><li>Legionellen: bis ca. 10 Tage (langsames Wachstum)</li><li>Chemie: je nach Parameter</li></ul><p style="font-size:13px;color:var(--muted)">Genaue Zeiten nach Laborplanung.</p>`},
+{cat:"faq",t:"„Wie oft muss ich untersuchen lassen?“",s:"Kunde fragt (Legionellen)",h:`<p>Großanlage mit Duschen: öffentlich jährlich, gewerblich (z. B. Vermieter) alle 3 Jahre. Das Gesundheitsamt kann andere Intervalle anordnen.</p>`},
+{cat:"faq",t:"„Muss das Wasser vorher laufen? Soll ich vorher spülen?“",s:"Kunde fragt",h:`<p>Nein, bitte vorher <b>nicht</b> spülen, nicht desinfizieren und die Warmwassertemperatur nicht hochdrehen. Wir müssen den normalen Betriebszustand untersuchen, sonst ist das Ergebnis nicht aussagekräftig.</p>`},
+{cat:"faq",t:"„Was passiert, wenn etwas gefunden wird?“",s:"Kunde fragt",h:`<p>Bei Grenzwertüberschreitungen oder Erreichen des Legionellen-Maßnahmenwerts informiert das Labor das Gesundheitsamt (gesetzliche Pflicht). Der Betreiber muss die Ursache klären, Maßnahmen ergreifen und nachuntersuchen lassen. Bei E. coli/Enterokokken gibt es oft ein Abkochgebot.</p>`},
+];
+
+const NORMS = [
+ ["DIN EN ISO 19458","Probenahme für mikrobiologische Untersuchungen","Probenahme · Zweck a/b/c"],
+ ["DIN ISO 5667-5","Probenahme: Trinkwasser aus Aufbereitungsanlagen und Rohrnetzen","Probenahme"],
+ ["DIN EN ISO 5667-1","Probenahme: Planung von Probenahmeprogrammen und -techniken","Probenahme"],
+ ["DIN EN ISO 5667-3","Probenahme: Konservierung und Handhabung von Wasserproben","Probenahme · Transport"],
+ ["DIN EN ISO/IEC 17025","Anforderungen an die Kompetenz von Prüf- und Kalibrierlaboratorien","Akkreditierung"],
+ ["TrinkwV 2023","Trinkwasserverordnung vom 20.06.2023 (gilt seit 24.06.2023)","Recht"],
+ ["UBA-Empfehlung Legionellen","Systemische Untersuchungen von Trinkwasserinstallationen auf Legionellen (13.10.2025)","Legionellen"],
+ ["UBA-Empfehlung Pb/Cu/Ni","Beurteilung der Trinkwasserqualität hinsichtlich Blei, Kupfer und Nickel (12/2018)","Metalle · Z-Probe"],
+ ["DIN EN ISO 11731","Zählung von Legionellen","Legionellen"],
+ ["DVGW W 551","Trinkwassererwärmungs- und Leitungsanlagen; Legionellenwachstum vermeiden","Legionellen · Technik"],
+ ["DVGW W 553","Bemessung von Zirkulationssystemen","Technik"],
+ ["VDI/DVGW 6023","Hygiene in Trinkwasser-Installationen","Technik · Hygiene"],
+ ["DIN 1988-200","Technische Regeln für Trinkwasser-Installationen: Planung, Bauteile (u. a. Temperaturen)","Technik"],
+ ["DIN EN 806","Technische Regeln für Trinkwasser-Installationen (Teil 5: Betrieb und Wartung)","Technik"],
+ ["DIN EN 1717","Schutz des Trinkwassers vor Verunreinigungen (Sicherungseinrichtungen)","Technik"],
+ ["DIN EN ISO 9308-1","E. coli und coliforme Bakterien – Membranfiltration","Mikrobiologie"],
+ ["DIN EN ISO 9308-2","E. coli und coliforme Bakterien – MPN-Verfahren (z. B. Colilert)","Mikrobiologie"],
+ ["DIN EN ISO 7899-2","Intestinale Enterokokken – Membranfiltration","Mikrobiologie"],
+ ["DIN EN ISO 16266","Pseudomonas aeruginosa – Membranfiltration","Mikrobiologie"],
+ ["DIN EN ISO 14189","Clostridium perfringens – Membranfiltration","Mikrobiologie"],
+ ["DIN EN ISO 6222","Koloniezahl (kultivierbare Mikroorganismen) 22 °C / 36 °C","Mikrobiologie"],
+ ["DIN EN ISO 7393-2","Freies und Gesamtchlor – DPD, photometrisch","Phys.-chem."],
+ ["DIN EN ISO 10523","pH-Wert","Phys.-chem."],
+ ["DIN EN 27888","Elektrische Leitfähigkeit","Phys.-chem."],
+ ["DIN 38404-4","Temperatur","Phys.-chem."],
+ ["DIN 38404-6","Redoxspannung","Phys.-chem."],
+ ["DIN EN ISO 7027-1","Trübung","Phys.-chem."],
+ ["DIN EN ISO 7887","Färbung","Phys.-chem."],
+ ["DIN EN 1622","Geruchsschwellenwert / Geschmack","Sensorik"],
+ ["DIN EN ISO 5814","Gelöster Sauerstoff – elektrochemisch","Phys.-chem."],
+ ["DIN ISO 17289","Gelöster Sauerstoff – optisch","Phys.-chem."],
+ ["DIN 38409-7","Säure- und Basekapazität","Phys.-chem. · Bad"],
+ ["DIN 19643-1","Aufbereitung von Schwimm- und Badebeckenwasser – Allgemeine Anforderungen (2023)","Schwimmbad"],
+ ["DIN 19643-2 bis -5","Verfahrenskombinationen (Flockung, Filtration, Ozon, Ozon-Brom …)","Schwimmbad"],
+ ["UBA Hygieneanforderungen an Bäder","Empfehlung zu Bädern und deren Überwachung","Schwimmbad"],
+ ["42. BImSchV","Verdunstungskühlanlagen, Kühltürme, Nassabscheider (Legionellen)","Legionellen · Kühlwasser"],
+ ["VDI 2047-2","Hygiene bei Verdunstungskühlanlagen","Legionellen · Kühlwasser"],
+];
+
+const $ = s=>document.querySelector(s);
+let cat="alle", q="";
+const norm = s => s.toLowerCase().replace(/ä/g,"ae").replace(/ö/g,"oe").replace(/ü/g,"ue").replace(/ß/g,"ss");
+const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+
+function strip(h){const d=document.createElement("div");d.innerHTML=h;return d.textContent;}
+CARDS.forEach(c=>c.txt=norm(c.t+" "+c.s+" "+strip(c.h)));
+NORMS.forEach(n=>n.txt=norm(n.join(" ")));
+
+function highlight(root,terms){
+  if(!terms.length) return;
+  const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
+  const nodes=[];while(walker.nextNode())nodes.push(walker.currentNode);
+  const re=new RegExp("("+terms.map(esc).join("|")+")","gi");
+  nodes.forEach(n=>{
+    if(!re.test(n.nodeValue))return; re.lastIndex=0;
+    const span=document.createElement("span");
+    span.innerHTML=n.nodeValue.replace(/[&<>]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[m])).replace(re,"<mark>$1</mark>");
+    n.parentNode.replaceChild(span,n);
+  });
+}
+
+function render(){
+  const terms=q.trim().split(/\s+/).filter(Boolean);
+  const nterms=terms.map(norm);
+  const match=txt=>nterms.every(t=>txt.includes(t));
+  const list=$("#list"); list.innerHTML="";
+  let n=0;
+  const groups=CATS.filter(c=>c[0]!=="alle"&&c[0]!=="norm");
+  groups.forEach(([id,label])=>{
+    if(cat!=="alle"&&cat!==id)return;
+    const items=CARDS.filter(c=>c.cat===id&&match(c.txt));
+    if(!items.length)return;
+    const h=document.createElement("div");h.className="sec-title";h.textContent=label;list.appendChild(h);
+    items.forEach(c=>{
+      const d=document.createElement("details");
+      d.innerHTML=`<summary>${c.t}<small>${c.s}</small></summary><div class="body">${c.h}</div>`;
+      if(terms.length)d.open=true;
+      list.appendChild(d); highlight(d,terms); n++;
+    });
+  });
+  if(cat==="alle"||cat==="norm"){
+    const items=NORMS.filter(x=>match(x.txt));
+    if(items.length){
+      const h=document.createElement("div");h.className="sec-title";h.textContent="Normen / DIN-Verzeichnis";list.appendChild(h);
+      const d=document.createElement("details");
+      d.open = cat==="norm" || terms.length>0;
+      d.innerHTML=`<summary>Normen &amp; Regelwerke<small>${items.length} Einträge · Nummer, Titel, Bereich</small></summary><div class="body">`+
+        items.map(x=>`<div class="norm"><b>${x[0]}</b><div>${x[1]}<small>${x[2]}</small></div></div>`).join("")+`</div>`;
+      list.appendChild(d); highlight(d,terms); n+=items.length;
+    }
+  }
+  if(!n) list.innerHTML=`<div class="empty">Nichts gefunden für „${q.replace(/</g,"&lt;")}“.<br>Tipp: kürzere Begriffe, z. B. „Chlor“, „7899“, „Zweck“.</div>`;
+  $("#count").textContent = terms.length ? `${n} Treffer` : "";
+  $("#clr").style.display = q ? "block":"none";
+}
+
+const chips=$("#chips");
+CATS.forEach(([id,label])=>{
+  const b=document.createElement("button");b.className="chip"+(id===cat?" on":"");b.textContent=label;
+  b.onclick=()=>{cat=id;[...chips.children].forEach(x=>x.classList.remove("on"));b.classList.add("on");render();window.scrollTo({top:0});};
+  chips.appendChild(b);
+});
+let tmr;
+$("#q").addEventListener("input",e=>{clearTimeout(tmr);tmr=setTimeout(()=>{q=e.target.value;render();},120);});
+$("#clr").onclick=()=>{$("#q").value="";q="";render();$("#q").focus();};
+window.addEventListener("scroll",()=>{$("#top").style.display=scrollY>600?"block":"none";});
+$("#top").onclick=()=>window.scrollTo({top:0,behavior:"smooth"});
+render();
+</script>
+</body>
+</html>
