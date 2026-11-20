@@ -43,6 +43,9 @@ h1{font-size:17px;margin:0 0 8px;letter-spacing:.2px}
 h1 span{color:var(--muted);font-weight:400;font-size:13px;display:block}
 .search{position:relative}
 .search input{width:100%;font-size:16px;padding:11px 40px 11px 14px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);outline:none}
+.search input::-webkit-search-cancel-button,.search input::-webkit-search-decoration,.search input::-webkit-search-results-button{-webkit-appearance:none;appearance:none;display:none}
+.search input::-ms-clear{display:none;width:0;height:0}
+.search input{-webkit-appearance:none;appearance:none}
 .search input:focus{border-color:var(--acc);box-shadow:0 0 0 3px var(--acc-soft)}
 .search button{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--muted);font-size:20px;padding:4px 8px;display:none}
 .chips{display:flex;gap:6px;overflow-x:auto;padding:8px 0 2px;scrollbar-width:none}
