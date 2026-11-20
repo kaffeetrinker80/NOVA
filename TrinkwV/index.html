@@ -254,11 +254,11 @@ const CARDS = [
 <li>Zapfstelle prüfen und eindeutig benennen (Gebäude, Etage, Raum, Armatur, kalt/warm).</li>
 <li>Hände desinfizieren, Handschuhe an.</li>
 <li>Strahlregler / Perlator, Schlauch, Duschkopf usw. entfernen.</li>
-<li>Auslauf desinfizieren: <b>bevorzugt Abflammen</b> (Gasbrenner, außen und innen); bei Kunststoff oder empfindlichen Armaturen Wischdesinfektion mit Alkohol (z. B. 70 % Isopropanol, Einwirkzeit beachten) → dokumentieren.</li>
+<li>Auslauf desinfizieren: <b>bevorzugt Abflammen</b> (Gasbrenner, außen und innen); bei Kunststoff oder empfindlichen Armaturen Wischdesinfektion mit Alkohol (z. B. 70 % Isopropanol, Einwirkzeit beachten) → dokumentieren. <b>Nie direkt nach Alkohol-Wischdesinfektion abflammen</b> – erst vollständig abtrocknen lassen (Brandgefahr).</li>
 <li>Ablaufen lassen (Menge nach Zweck, Legionellen 1 L in Messbecher).</li>
 <li>Sterile Flasche (mit Natriumthiosulfat) <b>ohne Schließen des Hahns</b> direkt füllen, Deckel nicht ablegen und Innenseite nicht berühren; Flasche nicht ausspülen und nicht überlaufen lassen; kleinen Luftraum lassen.</li>
 <li>Sofort verschließen, beschriften, kühl und dunkel in die Kühlbox.</li>
-<li>Temperatur messen (s. Legionellen: Probenahmetemperatur und konstante Temperatur).</li>
+<li>Temperatur <b>im Messbecher</b> messen, nicht im Strahl (bei Legionellen: Probenahmetemperatur und konstante Temperatur, siehe „Temperaturmessung – wo und wie“).</li>
 <li>Vor-Ort-Parameter messen (Chlor, pH, Leitfähigkeit …) – <b>nie aus der Mibi-Flasche</b>, immer separates Gefäß.</li>
 <li>Strahlregler wieder montieren, Protokoll vollständig ausfüllen.</li>
 </ol>`},
@@ -268,12 +268,41 @@ const CARDS = [
 <ul><li>Flasche daher <b>nicht ausspülen</b> und nicht überlaufen lassen (Thiosulfat wird sonst ausgewaschen).</li>
 <li>Steril-Gefäße nur innerhalb des Verfallsdatums/der Charge verwenden (Rückverfolgbarkeit!).</li></ul>`},
 
+{cat:"basis",t:"Desinfektionsmittel & Tücher: Kennzeichnung, Anbruch, Haltbarkeit",s:"Was auf die Dose gehört – und woher die Frist kommt",h:`
+<h4>Was ist offiziell?</h4>
+<ul>
+<li>Eine eigene Norm nur für „Anbruch-Beschriftung“ gibt es nicht. Maßgeblich sind die <b>Herstellerangaben</b> (Etikett / Produktinformation): Haltbarkeit <b>vor</b> Anbruch (Verfalldatum, Sanduhr-Symbol) und Haltbarkeit <b>nach</b> Anbruch.</li>
+<li>Hersteller wie BODE/HARTMANN schreiben ausdrücklich: Die Kennzeichnung der Haltbarkeit nach Anbruch liegt <b>in der Verantwortung des Anwenders</b>.</li>
+<li>Im akkreditierten Labor gehört das zur Lenkung von Verbrauchsmaterial und zur Rückverfolgbarkeit (DIN EN ISO/IEC 17025) – also in die SOP.</li>
+</ul>
+<h4>Beschriftung bei Anbruch</h4>
+<div class="tw"><table class="kv">
+<tr><td class="v">Anbruchdatum</td><td>Datum des Öffnens</td></tr>
+<tr><td class="v">verwendbar bis</td><td>Anbruchdatum + Herstellerfrist nach Anbruch. <b>Ergänzen</b> – das Öffnungsdatum allein reicht nicht, man müsste sonst jedes Mal nachrechnen.</td></tr>
+<tr><td class="v">Kürzel</td><td>Eindeutiges Handzeichen des Probenehmers (z. B. MN)</td></tr>
+</table></div>
+<p style="font-size:13px;color:var(--muted)">Inhalt, Charge, Verfalldatum und Hersteller stehen meist schon auf dem Etikett – dann reichen die drei Angaben oben.</p>
+<h4>Fristen nach Anbruch – produktabhängig!</h4>
+<ul>
+<li>Typisch bei Desinfektionstüchern: z. B. 28 Tage, 42 Tage oder 3 Monate – je nach Produkt und Gebinde (Dose, Flowpack, Spendersystem). <b>Immer auf dem eigenen Produkt nachlesen</b>, nicht von einem anderen übernehmen.</li>
+<li>Vor Gebrauch prüfen: Verfalldatum, „verwendbar bis“, Tücher noch feucht? Ausgetrocknete Tücher nicht verwenden.</li>
+</ul>
+<h4>Praxis</h4>
+<ul>
+<li>Dose / Flowpack nach jeder Entnahme sofort dicht verschließen.</li>
+<li>Nicht umfüllen, keine Restmengen zusammenschütten.</li>
+<li>Nachfüllpackung in Spenderdose: Dose nach Herstellerangabe aufbereiten; neue Anbruch-Beschriftung.</li>
+<li>Einwirkzeit nach Hersteller einhalten, Fläche muss benetzt sein.</li>
+<li>Alkohol ist brennbar: nach Wischdesinfektion vollständig abtrocknen lassen, bevor abgeflammt wird.</li>
+<li>Gleiches Prinzip für Händedesinfektion, Puffer, DPD-Reagenzien, Prüflösungen: Anbruch, verwendbar bis, Kürzel.</li>
+</ul>`},
 {cat:"basis",t:"Transport & Kühlkette",s:"5 ± 3 °C, dunkel, schnell",h:`
 <ul>
 <li>Mikrobiologie: gekühlt bei <b>(5 ± 3) °C</b>, lichtgeschützt, so schnell wie möglich ins Labor.</li>
 <li>E. coli / coliforme / Enterokokken: Ansatz <b>möglichst innerhalb 12 h</b>, spätestens 18 h (DIN EN ISO 19458, Anhang) – maßgeblich ist die Laborvorgabe.</li>
 <li>Legionellen (UBA 10/2025): möglichst innerhalb eines Tages; gekühlt (5 ± 3) °C; Eingang und Ansatz im Labor <b>innerhalb 48 h</b>. Wird innerhalb 24 h angesetzt, ist auch Transport bei Umgebungstemperatur erlaubt (lichtgeschützt). <b>Warm- und Kaltwasserproben in getrennten Behältern</b> transportieren.</li>
-<li>Kühlbox-Temperatur nachweisen (Datenlogger / Min-Max-Thermometer), Kühlakkus vorkühlen, Proben nicht direkt auf Akkus (Frostgefahr).</li>
+<li>Kühlbox-Temperatur nachweisen (Datenlogger / Min-Max-Thermometer), Kühlakkus vorkühlen.</li>
+<li><b>Mikrobiologie: kein direkter Kontakt Flasche ↔ Kühlakku.</b> Proben dürfen nicht gefrieren; ein Kälteschock kann Keime schädigen und zu falsch niedrigen Befunden führen. Praxis: Zwischenlage (Pappe, Gitter, Tuch) oder Flaschenhalter, Akkus seitlich/oben statt unter den Flaschen. Die UBA-Legionellen-Empfehlung nennt dazu nichts Konkretes, maßgeblich sind 5 ± 3 °C und die Laborvorgabe.</li>
 </ul>`},
 
 {cat:"basis",t:"Probenahmeprotokoll – Pflichtangaben",s:"Was muss drinstehen?",h:`
@@ -307,8 +336,8 @@ const CARDS = [
 <li>Auslauf desinfizieren – <b>bevorzugt Abflammen</b>.</li>
 <li>Hahn öffnen, <b>1 Liter</b> in Messbecher ablaufen lassen.</li>
 <li>Sterile Flasche <b>direkt anschließend</b> füllen, ohne Hahn zu schließen. Becherinhalt verwerfen.</li>
-<li>Sofort ca. 250 ml in Messbecher → Temperatur = <b>„Probenahmetemperatur“</b>.</li>
-<li>Weiterlaufen lassen bis Temperatur konstant → <b>„konstante Temperatur“</b>.</li>
+<li>Direkt anschließend weitere ca. 250 ml in einen Messbecher füllen und <b>sofort im Messbecher</b> messen → <b>„Probenahmetemperatur“</b>.</li>
+<li>Wasser weiter <b>in einen Messbecher</b> ablaufen lassen bis zur Temperaturkonstanz, Temperatur <b>im Messbecher</b> messen → <b>„konstante Temperatur“</b>.</li>
 </ol>
 <ul>
 <li><b>Mischwasser vermeiden</b>: Absperrung der nicht beprobten Seite schließen, wo möglich; sonst im Protokoll vermerken.</li>
@@ -318,6 +347,24 @@ const CARDS = [
 </ul>
 <div class="box warn">Verbrühschutz/Thermostat: ggf. vor dem Verbrühschutz (z. B. am Eckventil) beproben – situativ entscheiden und dokumentieren.</div>`},
 
+{cat:"leg",t:"Temperaturmessung – wo und wie",s:"Im Messbecher, nicht im Strahl (UBA 10/2025, Kap. 5.1)",h:`
+<h4>Was die UBA-Empfehlung vorgibt</h4>
+<ul>
+<li><b>Probenahmetemperatur:</b> direkt nach dem Füllen der Probenflasche ca. 250 ml in einen Messbecher, unverzüglich <b>im Messbecher</b> messen.</li>
+<li><b>Konstante Temperatur:</b> Wasser bis zur Temperaturkonstanz <b>in einen Messbecher</b> ablaufen lassen, <b>im Messbecher</b> messen.</li>
+<li>Beide Werte getrennt dokumentieren („Probenahmetemperatur“ / „Konstante Temperatur“).</li>
+<li>Mischwasser vermeiden; wenn nur Mischwasser möglich ist → im Protokoll vermerken.</li>
+</ul>
+<h4>Warum nicht im Strahl?</h4>
+<p>Im freien Strahl ist der Fühler nicht vollständig und gleichmäßig umspült, Luft und Spritzwasser kühlen, der Wert springt. Im Messbecher steht ein definiertes Volumen, der Fühler taucht vollständig ein und kann sich einstellen. Bei der konstanten Temperatur läuft das Wasser laufend in den Becher nach (überläuft), so misst man immer frisches Wasser.</p>
+<h4>Praxis (nicht in der UBA-Empfehlung festgelegt)</h4>
+<ul>
+<li>Die Empfehlung legt <b>nicht</b> fest, ab wann die Temperatur als „konstant“ gilt, und nennt auch keinen Thermometertyp und keine Ablesegenauigkeit. Das gehört in die <b>eigene SOP</b>, z. B.: „konstant, wenn sich der Wert über ca. 30 s um nicht mehr als 0,5 K ändert“ – Beispiel, eure SOP-Festlegung gilt.</li>
+<li>Fühler vollständig eintauchen, nicht am Becherboden/-rand anliegen lassen, Einstellzeit des Thermometers abwarten.</li>
+<li>Becher vorher mit dem Wasser vortemperieren (kurz ausschwenken).</li>
+<li>Thermometer mit gültigem Prüfnachweis (Vergleich gegen Referenzthermometer), Gerät im Protokoll angeben.</li>
+<li>Ablaufzeit bis zur Konstanz notieren, wenn auffällig lang – Hinweis auf Stagnation oder schlechte Zirkulation.</li>
+</ul>`},
 {cat:"leg",t:"Legionellen: Auswahl der Probenahmestellen",s:"Systemische Untersuchung",h:`
 <ul>
 <li><b>Austritt Trinkwassererwärmer</b> (PWH)</li>
@@ -544,6 +591,9 @@ const CARDS = [
 <li>Nach welcher Anweisung/SOP arbeitest du, und wo liegt sie?</li>
 <li>Welcher Zweck (a/b/c) und warum? Was ist der Unterschied?</li>
 <li>Wie desinfizierst du die Zapfstelle? Was, wenn Abflammen nicht geht?</li>
+<li>Wo misst du die konstante Temperatur, und wann ist sie konstant? (Messbecher, SOP-Kriterium)</li>
+<li>Wie ist dein Desinfektionsmittel gekennzeichnet, wie lange ist es nach Anbruch verwendbar?</li>
+<li>Wie verhinderst du, dass Mibi-Proben in der Kühlbox gefrieren?</li>
 <li>Warum Natriumthiosulfat? Warum Flasche nicht ausspülen?</li>
 <li>Wie stellst du die Kühlkette sicher und wie weist du sie nach?</li>
 <li>Wann und wie wurden pH-Meter, Thermometer, Photometer kalibriert/geprüft? Wo dokumentiert?</li>
@@ -557,6 +607,7 @@ const CARDS = [
 <ul>
 <li>☐ Sterile Flaschen mit Thiosulfat (Charge, Verfallsdatum), Chemieflaschen, Metallflaschen</li>
 <li>☐ Gasbrenner + Ersatzkartusche, Alkohol-Desinfektion, Handschuhe, Händedesinfektion</li>
+<li>☐ Desinfektionsmittel beschriftet: Anbruch, verwendbar bis, Kürzel</li>
 <li>☐ Messbecher (1 L und 250 ml), Werkzeug für Strahlregler</li>
 <li>☐ Thermometer (geprüft), pH-Meter + Puffer, Leitfähigkeit + Prüflösung, Photometer + DPD-Reagenzien + Kontrollstandard</li>
 <li>☐ Kühlbox mit vorgekühlten Akkus + Temperaturlogger</li>
@@ -602,9 +653,9 @@ const CARDS = [
 
 /* ================= CHECKLISTEN ================= */
 {cat:"check",t:"Vor der Abfahrt",s:"Material & Nachweise",cl:"abfahrt",items:[
- "Sterile Flaschen mit Thiosulfat – Charge und Verfallsdatum geprüft","Chemie- und Metallflaschen laut Auftrag","Gasbrenner + Ersatzkartusche, Alkohol-Desinfektion","Handschuhe, Händedesinfektion","Messbecher 1 L und 250 ml, Werkzeug für Strahlregler","Thermometer geprüft","pH-Meter kalibriert, Puffer dabei","Leitfähigkeit + Prüflösung","Photometer, DPD-Reagenzien, Kontrollstandard","Kühlbox mit vorgekühlten Akkus + Temperaturlogger","Protokolle, Etiketten, wasserfester Stift","Auftrag / Probenahmeplan / Strangschema"]},
+ "Sterile Flaschen mit Thiosulfat – Charge und Verfallsdatum geprüft","Chemie- und Metallflaschen laut Auftrag","Gasbrenner + Ersatzkartusche, Alkohol-Desinfektion","Desinfektionstücher: Anbruchdatum, „verwendbar bis“ und Kürzel auf der Dose, Frist nicht überschritten","Handschuhe, Händedesinfektion","Messbecher 1 L und 250 ml, Werkzeug für Strahlregler","Thermometer geprüft","pH-Meter kalibriert, Puffer dabei","Leitfähigkeit + Prüflösung","Photometer, DPD-Reagenzien, Kontrollstandard","Kühlbox mit vorgekühlten Akkus + Temperaturlogger, Zwischenlage gegen direkten Akku-Kontakt","Protokolle, Etiketten, wasserfester Stift","Auftrag / Probenahmeplan / Strangschema"]},
 {cat:"check",t:"Legionellenprobe (Zweck b)",s:"UBA-Empfehlung 10/2025",cl:"leg",items:[
- "Zapfstelle eindeutig benannt (Etage, Raum, Strang, PWH / PWH-C)","Normalbetrieb bestätigt – nicht vorher gespült, nicht desinfiziert, Temperatur nicht erhöht","Hände desinfiziert, Handschuhe an","Strahlregler / Einbauten entfernt (sonst Abweichung notieren)","Mischwasser verhindert – Kaltwasser-Absperrung zu (sonst notieren)","Auslauf abgeflammt (oder Wischdesinfektion – notiert)","1 Liter in Messbecher ablaufen lassen","Flasche direkt gefüllt, Hahn nicht geschlossen, Deckel nicht abgelegt","Flasche nicht übergelaufen, kleiner Luftraum, verschlossen, beschriftet","Probenahmetemperatur gemessen (ca. 250 ml im Becher)","Konstante Temperatur gemessen","Kühlbox – warm und kalt getrennt","Strahlregler wieder montiert","Protokoll vollständig inkl. Abweichungen"]},
+ "Zapfstelle eindeutig benannt (Etage, Raum, Strang, PWH / PWH-C)","Normalbetrieb bestätigt – nicht vorher gespült, nicht desinfiziert, Temperatur nicht erhöht","Hände desinfiziert, Handschuhe an","Strahlregler / Einbauten entfernt (sonst Abweichung notieren)","Mischwasser verhindert – Kaltwasser-Absperrung zu (sonst notieren)","Auslauf abgeflammt (oder Wischdesinfektion – notiert)","1 Liter in Messbecher ablaufen lassen","Flasche direkt gefüllt, Hahn nicht geschlossen, Deckel nicht abgelegt","Flasche nicht übergelaufen, kleiner Luftraum, verschlossen, beschriftet","Probenahmetemperatur im Messbecher gemessen (ca. 250 ml, sofort)","Konstante Temperatur im Messbecher gemessen (Wasser läuft nach, nicht im Strahl)","Kühlbox – warm und kalt getrennt, Flaschen ohne direkten Kontakt zum Kühlakku","Strahlregler wieder montiert","Protokoll vollständig inkl. Abweichungen"]},
 {cat:"check",t:"Schöpfprobe Beckenwasser",s:"DIN 19643 · DIN EN ISO 19458",cl:"bad",items:[
  "Becken und Entnahmeort notiert, Badebetrieb / Belastung notiert","Sterile Flasche mit Thiosulfat, Handschuhe","Flasche mit Öffnung nach unten eingetaucht","In ca. 20–30 cm Tiefe gedreht und gefüllt, Öffnung vom Körper weg","Nicht von der Oberfläche geschöpft","Luftraum gelassen, verschlossen, beschriftet, gekühlt","Freies Chlor gemessen (separates Gefäß)","Gesamtchlor gemessen → gebundenes Chlor berechnet","pH-Wert und Wassertemperatur gemessen","Redox an Betriebsanzeige abgelesen","Klarheit / Sichttiefe beurteilt","Filtrat / Reinwasser / Füllwasser an Probenahmehähnen (falls beauftragt)","Protokoll vollständig"]},
 {cat:"check",t:"Z-Probe & gestaffelte Stagnation",s:"Blei · Kupfer · Nickel",cl:"metall",items:[
