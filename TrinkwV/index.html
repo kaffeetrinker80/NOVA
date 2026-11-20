@@ -140,7 +140,18 @@ header::before{content:"";position:absolute;left:0;right:0;top:0;height:3px;back
 /* Umbruch-Fix Mobil */
 th,td{overflow-wrap:anywhere;hyphens:auto}
 td.v{white-space:normal;min-width:4.5em}
-.tw table td:first-child.v{width:38%}
+table.kv td:first-child{width:38%}
+.zw{display:grid;gap:8px;margin:6px 0}
+@media(min-width:700px){.zw{grid-template-columns:repeat(3,1fr)}}
+.zc{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--bg)}
+.zh{display:flex;gap:10px;align-items:center;margin-bottom:6px}
+.zl{flex:0 0 auto;width:32px;height:32px;border-radius:50%;background:var(--acc);color:#fff;font-weight:700;font-size:17px;display:flex;align-items:center;justify-content:center}
+.zh b{display:block;font-size:15px}
+.zh small{display:block;color:var(--muted);font-size:13px;line-height:1.3}
+.zf{list-style:none;padding:0!important;margin:0!important}
+.zf li{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-top:1px solid var(--line);font-size:14px;margin:0!important}
+.zf li span{color:var(--muted)}
+.zf li b{text-align:right}
 @media(max-width:599px){table{font-size:13.5px}th,td{padding:7px 4px}}
 .norm b{flex:0 0 38%;min-width:0;overflow-wrap:anywhere}
 .norm div{min-width:0;overflow-wrap:anywhere}
@@ -192,12 +203,14 @@ const CATS = [
 const CARDS = [
 /* ================= GRUNDLAGEN ================= */
 {cat:"basis",t:"Probenahme-Zwecke a / b / c (DIN EN ISO 19458, Tab. 1)",s:"Der Klassiker im Audit – auswendig können",h:`
-<div class="tw"><table>
-<tr><th>Zweck</th><th>Was wird beurteilt?</th><th>Einbauten ab</th><th>Desinfektion</th><th>Ablaufen</th></tr>
-<tr><td class="v">a</td><td>Wasser in der Versorgungsleitung (Versorger / Hausanschluss)</td><td>ja</td><td>ja</td><td>bis Temperaturkonstanz</td></tr>
-<tr><td class="v">b</td><td>Wasser an der Entnahmestelle inkl. Einfluss der Trinkwasser-Installation</td><td>ja</td><td>ja</td><td>nur kurz (Legionellen: 1 Liter)</td></tr>
-<tr><td class="v">c</td><td>Wasser „wie verbraucht“ (inkl. Armatur, Strahlregler, Schlauch)</td><td>nein</td><td>nein</td><td>nein – Sofortentnahme</td></tr>
-</table></div>
+<div class="zw">
+ <div class="zc"><div class="zh"><span class="zl">a</span><div><b>Versorgungsleitung</b><small>Wasser des Versorgers / am Hausanschluss</small></div></div>
+  <ul class="zf"><li><span>Einbauten ab</span><b>ja</b></li><li><span>Desinfektion</span><b>ja</b></li><li><span>Ablaufen</span><b>bis Temperaturkonstanz</b></li></ul></div>
+ <div class="zc"><div class="zh"><span class="zl">b</span><div><b>Entnahmestelle</b><small>inkl. Einfluss der Trinkwasser-Installation</small></div></div>
+  <ul class="zf"><li><span>Einbauten ab</span><b>ja</b></li><li><span>Desinfektion</span><b>ja</b></li><li><span>Ablaufen</span><b>nur kurz (Legionellen: 1 Liter)</b></li></ul></div>
+ <div class="zc"><div class="zh"><span class="zl">c</span><div><b>Wie verbraucht</b><small>inkl. Armatur, Strahlregler, Schlauch</small></div></div>
+  <ul class="zf"><li><span>Einbauten ab</span><b>nein</b></li><li><span>Desinfektion</span><b>nein</b></li><li><span>Ablaufen</span><b>nein – Sofortentnahme</b></li></ul></div>
+</div>
 <div class="box tip"><b>Merksatz:</b> a = Versorger, b = Hausinstallation, c = Verbraucher. Legionellen nach TrinkwV immer <b>Zweck b</b>.</div>
 <div class="box warn">Geht ein Strahlregler nicht ab oder ist die Armatur nicht abflammbar → trotzdem nach Vorgabe beproben, Abweichung <b>im Protokoll dokumentieren</b>.</div>`},
 
@@ -564,7 +577,7 @@ const CARDS = [
 
 /* ================= GLOSSAR & TOP-10 ================= */
 {cat:"gloss",t:"Top-10-Zahlen für den Probenehmer",s:"Die Werte, die man im Kopf haben sollte",h:`
-<div class="tw"><table>
+<div class="tw"><table class="kv">
 <tr><td class="v">0 / 100 ml</td><td>E. coli, Enterokokken, coliforme Bakterien</td></tr>
 <tr><td class="v">100 KBE / 100 ml</td><td>Legionellen – technischer Maßnahmenwert</td></tr>
 <tr><td class="v">1 Liter</td><td>Vorlauf bei der Legionellenprobe, dann Temperatur zweimal messen</td></tr>
@@ -577,7 +590,7 @@ const CARDS = [
 <tr><td class="v">0,3–0,6 · ≤ 0,2 mg/L</td><td>Bad: freies Chlor · gebundenes Chlor</td></tr>
 </table></div>`},
 {cat:"gloss",t:"Glossar & Abkürzungen",s:"PWC, PWH-C, KBE, TMW, n. n. …",h:`
-<div class="tw"><table>
+<div class="tw"><table class="kv">
 <tr><td class="v">PWC</td><td>Trinkwasser kalt (potable water cold)</td></tr>
 <tr><td class="v">PWH</td><td>Trinkwasser warm (potable water hot)</td></tr>
 <tr><td class="v">PWH-C</td><td>Zirkulationsleitung Warmwasser</td></tr>
