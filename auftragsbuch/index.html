@@ -77,6 +77,7 @@
   tr.storno td{color:var(--muted);text-decoration:line-through}
   tr.storno td.act{text-decoration:none}
   td.nr{font-family:'Outfit',sans-serif;color:var(--accent)}
+  .bez{font:inherit;font-size:11px;padding:1px 6px;margin-left:4px;border-radius:6px;background:rgba(94,234,212,.08);border:1px solid rgba(94,234,212,.35);color:var(--accent);cursor:pointer}
   td.act{text-align:right}
   td.act button{margin-left:4px}
   .src{font-size:11px;padding:2px 6px;border-radius:6px;border:1px solid var(--line);color:var(--muted)}
@@ -274,14 +275,6 @@
 
     <div class="grid3">
       <div><label for="fDate">Datum</label><input type="date" id="fDate"></div>
-      <div id="subWrap">
-        <label class="chk" style="margin-top:34px"><input type="checkbox" id="fSub1"> Unternummer zu bestehendem Auftrag</label>
-      </div>
-    </div>
-    <div class="combo hidden" id="subBaseWrap">
-      <label for="fSubBase">Hauptauftrag</label>
-      <input type="text" id="fSubBase" placeholder="z. B. 27-0012" autocomplete="off">
-      <div class="dd hidden" id="ddSub"></div>
     </div>
 
     <div class="combo">
@@ -297,6 +290,18 @@
       <div class="dd hidden" id="ddObjekt"></div>
     </div>
     <div id="hObjekt"></div>
+
+    <div id="relBox" class="hidden">
+      <div class="hint info" style="margin-top:12px">Weitere Nummer zum Objekt von <b class="relNr"></b> – beide Aufträge werden über „Bezug“ verknüpft.</div>
+      <label for="fZusatz">Zusatz für die neue Nummer</label>
+      <input type="text" id="fZusatz" placeholder="z. B. WWB 2 – Haus 6-10">
+      <label class="chk" style="margin-top:10px"><input type="checkbox" id="fAdjOrig"> Ursprungsauftrag <b class="relNr"></b> ebenfalls ergänzen</label>
+      <div id="adjWrap" class="hidden">
+        <label for="fZusatzOrig">Zusatz für <span class="relNr"></span></label>
+        <input type="text" id="fZusatzOrig" placeholder="z. B. WWB 1 – Haus 2-4">
+      </div>
+      <div class="small muted" id="relPreview" style="margin-top:8px"></div>
+    </div>
 
     <div class="grid3">
       <div><label for="fPlz">PLZ</label><input type="text" id="fPlz" inputmode="numeric" maxlength="5"></div>
@@ -330,7 +335,7 @@
 <script>
 /* ================= Konfiguration ================= */
 const APP_NAME   = 'NOVA Auftragsbuch';
-const APP_VER    = '0.3.0';
+const APP_VER    = '0.4.0';
 const CLIENT_ID  = '5af6d3d4-a161-4306-8af9-cdb6f392d9be';
 const TENANT_ID  = '376241b8-1f44-4ae5-84b1-4d3b67d4c112';
 const REDIRECT   = 'https://kaffeetrinker80.github.io/NOVA/auftragsbuch/';
@@ -589,11 +594,6 @@ function nextNumber(rows){
   let max = 0; rows.forEach(r => { const m = r.nr.match(re); if (m) max = Math.max(max, +m[1]); });
   return `${p}-${String(max + 1).padStart(4, '0')}`;
 }
-function nextSub(rows, base){
-  const re = new RegExp('^' + base.replace(/[-]/g, '\\-') + '-(\\d+)$');
-  let max = 0; rows.forEach(r => { const m = r.nr.match(re); if (m) max = Math.max(max, +m[1]); });
-  return `${base}-${max + 1}`;
-}
 
 function buildIndex(){
   kIndex = new Map(); plzIndex = new Map();
@@ -678,6 +678,7 @@ function renderList(){
     let act = '';
     if (r.cur) {
       if (me.freigeber && s === ST.OFFEN) act += `<button class="sm" data-a="frei" data-nr="${esc(r.nr)}" title="Freigeben">✓ Freigeben</button>`;
+      if (s !== ST.STORNO) act += `<button class="sm" data-a="rel" data-nr="${esc(r.nr)}" title="Weitere Nummer zu diesem Objekt (z. B. 2. Heizkreis / WWB)">➕</button>`;
       if (s !== ST.STORNO) act += `<button class="sm" data-a="edit" data-nr="${esc(r.nr)}" title="Bearbeiten">✎</button>`;
       if (s !== ST.STORNO) act += `<button class="sm danger" data-a="storno" data-nr="${esc(r.nr)}" title="Stornieren (Zeile bleibt stehen)">⊘</button>`;
       act += `<button class="sm danger" data-a="del" data-nr="${esc(r.nr)}" title="Löschen (Zeile wird entfernt)">🗑</button>`;
@@ -685,7 +686,7 @@ function renderList(){
     }
     const tip = [r.erfasst && 'Erfasst: ' + r.erfasst, r.freigabe && (s === ST.STORNO ? 'Storno: ' : 'Freigabe: ') + r.freigabe, r.bemerkung && 'Bemerkung: ' + r.bemerkung].filter(Boolean).join('\n');
     return `<tr class="${s === ST.STORNO ? 'storno' : ''}" title="${esc(tip)}">
-      <td class="nr">${esc(r.nr)}</td><td>${esc(isoToDe(r.datum))}</td><td>${esc(r.kunde)}</td><td class="wrap">${esc(r.objekt)}</td>
+      <td class="nr">${esc(r.nr)}${bezugOf(r).map(b => ` <button class="bez" data-a="bez" data-nr="${esc(b)}" title="Verknüpfter Auftrag – anzeigen">↔ ${esc(b)}</button>`).join('')}</td><td>${esc(isoToDe(r.datum))}</td><td>${esc(r.kunde)}</td><td class="wrap">${esc(r.objekt)}</td>
       <td>${esc(r.plz)}</td><td>${esc(r.ort)}</td>
       <td>${r.cur ? `<span class="st ${stClass(s)}">${esc(s)}</span>` : `<span class="src">${yPrev}</span>`}</td>
       <td class="act">${act}</td></tr>`;
@@ -701,45 +702,62 @@ $('tbody').addEventListener('click', e => {
   if (a === 'frei') doFreigabe([nr]);
   if (a === 'storno') doStorno(nr);
   if (a === 'del') doDelete(nr);
+  if (a === 'rel') openForm(null, nr);
+  if (a === 'bez') { $('q').value = nr; if (statusFilter !== 'alle') setFilter('alle'); else renderList(); }
 });
 
 /* ================= Formular ================= */
 let editNr = null;     // null = neu
+let relNr = null;      // Ursprungsauftrag bei „Weitere Nummer zu diesem Objekt“
 let lastHints = {};
+const BEZUG_RE = /Bezug: (\d{2}-\d{4}(?:-\d+)?)/g;
+const bezugOf = r => [...(r.bemerkung || '').matchAll(BEZUG_RE)].map(m => m[1]);
+const withZusatz = (obj, z) => z ? `${obj} – ${z}` : obj;
+const appendBem = (bem, add) => tidy(`${bem || ''}${bem ? ' | ' : ''}${add}`);
 
-function openForm(nr = null){
+function openForm(nr = null, related = null){
   if (!T) return;
   const missing = COLS.filter(c => T.map[c.key] === undefined);
   if (missing.length) { msg(`Speichern nicht möglich – in der Tabelle fehlen Spalten: ${missing.map(c => c.name).join(', ')}.`, 'warn'); return; }
-  editNr = nr;
-  const r = nr ? T.rows.find(x => x.nr === nr) : null;
-  $('fTitle').textContent = nr ? `Auftrag ${nr} bearbeiten` : 'Neuer Auftrag';
+  editNr = nr; relNr = related;
+  const r = nr ? T.rows.find(x => x.nr === nr) : (related ? T.rows.find(x => x.nr === related) : null);
+  $('fTitle').textContent = nr ? `Auftrag ${nr} bearbeiten` : related ? 'Weitere Nummer zu diesem Objekt' : 'Neuer Auftrag';
   $('fSub').textContent = nr ? 'Die Nummer bleibt unverändert. Die Änderung wird in der Bemerkung vermerkt.' : 'Die Nummer wird beim Speichern endgültig vergeben.';
   $('fSave').textContent = nr ? 'Änderung speichern' : 'Speichern & Nummer vergeben';
-  $('fDate').value = r?.datum || todayIso();
+  $('fDate').value = (nr && r?.datum) || todayIso();
   $('fKunde').value = r?.kunde || '';
   $('fObjekt').value = r?.objekt || '';
   $('fPlz').value = r?.plz || '';
   $('fOrt').value = r?.ort || '';
-  $('fBem').value = r?.bemerkung || '';
-  $('fSub1').checked = false; $('fSubBase').value = '';
-  show($('subWrap'), !nr); show($('subBaseWrap'), false);
+  $('fBem').value = nr ? (r?.bemerkung || '') : '';
+  show($('relBox'), !!related);
+  document.querySelectorAll('#formOv .relNr').forEach(x => x.textContent = related || '');
+  $('fZusatz').value = ''; $('fZusatzOrig').value = ''; $('fAdjOrig').checked = false; show($('adjWrap'), false);
+  updateRelPreview();
   $('fErr').innerHTML = '';
   show($('formOv'), true);
   updateNumPreview(); updateHints();
-  setTimeout(() => $(nr ? 'fObjekt' : 'fKunde').focus(), 50);
+  setTimeout(() => $(related ? 'fZusatz' : nr ? 'fObjekt' : 'fKunde').focus(), 50);
 }
 function closeForm(){ show($('formOv'), false); hideDDs(); }
 
 function updateNumPreview(){
-  if (editNr) { $('fNum').textContent = editNr; return; }
-  const base = tidy($('fSubBase').value);
-  if ($('fSub1').checked) $('fNum').textContent = base && T.rows.some(r => r.nr === base) ? nextSub(T.rows, base) : '–';
-  else $('fNum').textContent = nextNumber(T.rows);
+  $('fNum').textContent = editNr || nextNumber(T.rows);
 }
+function updateRelPreview(){
+  if (!relNr) { $('relPreview').innerHTML = ''; return; }
+  const obj = tidy($('fObjekt').value);
+  const orig = T.rows.find(x => x.nr === relNr);
+  let h = `Neu: <b>${esc(withZusatz(obj, tidy($('fZusatz').value)))}</b> · Bemerkung „Bezug: ${esc(relNr)}“`;
+  if ($('fAdjOrig').checked && orig) h += `<br>${esc(relNr)}: <b>${esc(withZusatz(orig.objekt, tidy($('fZusatzOrig').value)))}</b> · Bemerkung „Bezug: neue Nummer“`;
+  else if (orig) h += `<br>${esc(relNr)}: Objekt bleibt, Bemerkung „Bezug: neue Nummer“`;
+  $('relPreview').innerHTML = h;
+}
+['fZusatz','fZusatzOrig','fObjekt'].forEach(id => $(id).addEventListener('input', updateRelPreview));
+$('fAdjOrig').onchange = () => { show($('adjWrap'), $('fAdjOrig').checked); updateRelPreview(); if ($('fAdjOrig').checked) $('fZusatzOrig').focus(); };
 
 /* ---- Combobox ---- */
-function hideDDs(){ ['ddKunde','ddObjekt','ddSub'].forEach(id => show($(id), false)); }
+function hideDDs(){ ['ddKunde','ddObjekt'].forEach(id => show($(id), false)); }
 function makeCombo(input, dd, source, onPick){
   let items = [], act = -1;
   const render = () => {
@@ -779,15 +797,6 @@ makeCombo($('fObjekt'), $('ddObjekt'), q => {
     .map(o => ({ o, html: `${esc(o.objekt)} <small>· ${esc(o.plz)} ${esc(o.ort)} · zuletzt ${esc(o.last)}</small>` }));
 }, it => { $('fObjekt').value = it.o.objekt; $('fPlz').value = it.o.plz; $('fOrt').value = it.o.ort; updateHints(); });
 
-makeCombo($('fSubBase'), $('ddSub'), q => {
-  const lq = q.trim().toLowerCase(); if (!lq) return [];
-  return T.rows.filter(r => /^\d{2}-\d{4}$/.test(r.nr) && r.status !== ST.STORNO && `${r.nr} ${r.kunde} ${r.objekt}`.toLowerCase().includes(lq))
-    .slice(0, 10).map(r => ({ r, html: `<b>${esc(r.nr)}</b> <small>· ${esc(r.kunde)} · ${esc(r.objekt)}</small>` }));
-}, it => {
-  $('fSubBase').value = it.r.nr; $('fKunde').value = it.r.kunde; $('fObjekt').value = it.r.objekt; $('fPlz').value = it.r.plz; $('fOrt').value = it.r.ort;
-  updateNumPreview(); updateHints();
-});
-
 /* ---- Hinweise (Schreibweise, Dubletten, PLZ) ---- */
 function updateHints(){
   const kunde = tidy($('fKunde').value), objekt = tidy($('fObjekt').value), plz = tidy($('fPlz').value), ort = tidy($('fOrt').value);
@@ -810,7 +819,7 @@ function updateHints(){
   let ho = '';
   if (objekt) {
     const no = normObjekt(objekt), nk = normKunde(kunde);
-    const same = T.rows.filter(r => r.nr !== editNr && r.status !== ST.STORNO && normObjekt(r.objekt) === no && (!plz || !r.plz || r.plz === plz));
+    const same = T.rows.filter(r => r.nr !== editNr && r.nr !== relNr && r.status !== ST.STORNO && normObjekt(r.objekt) === no && (!plz || !r.plz || r.plz === plz));
     const sameK = same.filter(r => normKunde(r.kunde) === nk);
     if (sameK.length) ho += `<div class="hint warn">Dieses Objekt hat im aktuellen Jahr schon: ${sameK.slice(0, 5).map(r => `<b>${esc(r.nr)}</b> (${esc(isoToDe(r.datum) || '–')}, ${esc(statusOf(r))})`).join(', ')}${sameK.length > 5 ? ' …' : ''}. Doppelt angelegt?</div>`;
     const otherK = [...T.rows, ...rowsPrev].filter(r => r.status !== ST.STORNO && normObjekt(r.objekt) === no && (!plz || !r.plz || r.plz === plz) && kunde && normKunde(r.kunde) !== nk);
@@ -836,8 +845,6 @@ document.getElementById('formOv').addEventListener('click', e => {
 });
 ['fKunde','fObjekt','fPlz','fOrt'].forEach(id => $(id).addEventListener('input', updateHints));
 $('fPlz').addEventListener('input', () => { $('fPlz').value = $('fPlz').value.replace(/\D/g, ''); });
-$('fSub1').onchange = () => { show($('subBaseWrap'), $('fSub1').checked); updateNumPreview(); if ($('fSub1').checked) $('fSubBase').focus(); };
-$('fSubBase').addEventListener('input', updateNumPreview);
 $('fCancel').onclick = closeForm;
 
 /* ---- Speichern ---- */
@@ -848,7 +855,7 @@ $('fSave').onclick = async () => {
   if (!d.kunde) errs.push('Auftraggeber fehlt.');
   if (!d.objekt) errs.push('Objekt fehlt.');
   if (d.plz && !/^\d{5}$/.test(d.plz)) errs.push('PLZ muss 5 Ziffern haben.');
-  if (!editNr && $('fSub1').checked && !T.rows.some(r => r.nr === tidy($('fSubBase').value))) errs.push('Hauptauftrag für die Unternummer nicht gefunden.');
+  if (relNr && $('fAdjOrig').checked && !tidy($('fZusatzOrig').value)) errs.push(`Zusatz für ${relNr} fehlt (oder Haken entfernen).`);
   if (errs.length) { $('fErr').innerHTML = `<div class="hint warn" style="margin-top:12px">${errs.join('<br>')}</div>`; return; }
 
   $('fSave').disabled = true; $('fErr').innerHTML = '<div class="status"><span class="spin"></span> Speichere …</div>';
@@ -864,9 +871,9 @@ $('fSave').onclick = async () => {
 
 async function saveNew(d){
   const stamp = `${me.name} · ${nowStamp()}`;
-  const sub = $('fSub1').checked ? tidy($('fSubBase').value) : null;
+  if (relNr) { d.objekt = withZusatz(d.objekt, tidy($('fZusatz').value)); d.bemerkung = appendBem(d.bemerkung, `Bezug: ${relNr}`); }
   let t = await readCurTable();                       // frisch lesen
-  let nr = sub ? nextSub(t.rows, sub) : nextNumber(t.rows);
+  let nr = nextNumber(t.rows);
   const arr = buildRow(t, { nr, kunde:d.kunde, objekt:d.objekt, plz: d.plz ? Number(d.plz) : '', ort:d.ort, datum: isoToSerial(d.datum), status: ST.OFFEN, erfasst: stamp, freigabe:'', bemerkung:d.bemerkung });
   await appendRow(t, arr);
   // Kontrolle: hat jemand gleichzeitig dieselbe Nummer gezogen?
@@ -875,13 +882,24 @@ async function saveNew(d){
     const same = t.rows.filter(r => r.nr === nr);
     const mine = same.find(r => r.erfasst === stamp);
     if (!mine) throw new Error('Eintrag wurde nach dem Speichern nicht gefunden – bitte Liste prüfen.');
-    if (same.length === 1) return nr;
+    if (same.length === 1) break;
     const firstOther = same.find(r => r !== mine);
     if (firstOther._i < mine._i) {                      // der andere war zuerst → wir weichen aus
-      nr = sub ? nextSub(t.rows, sub) : nextNumber(t.rows);
+      nr = nextNumber(t.rows);
       await writeRow(t, mine._i, buildRow(t, { nr }, mine._raw));
       toast(`Nummer war gerade vergeben worden – neue Nummer: <b>${esc(nr)}</b>`, 8000);
-    } else return nr;
+    } else break;
+  }
+  // Ursprungsauftrag verknüpfen (und ggf. Objekt ergänzen)
+  if (relNr) {
+    t = await readCurTable();
+    const o = t.rows.find(x => x.nr === relNr);
+    if (o) {
+      const upd = { bemerkung: appendBem(o.bemerkung, `Bezug: ${nr}`) };
+      const zo = tidy($('fZusatzOrig').value);
+      if ($('fAdjOrig').checked && zo) { upd.objekt = withZusatz(o.objekt, zo); upd.bemerkung = appendBem(upd.bemerkung, `geändert (Objekt) von ${me.name} am ${nowStamp()}`); }
+      await writeRow(t, o._i, buildRow(t, upd, o._raw));
+    }
   }
   return nr;
 }
