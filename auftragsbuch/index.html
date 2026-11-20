@@ -32,6 +32,12 @@
   .badge.role{color:var(--accent);border-color:rgba(94,234,212,.4)}
   .spacer{flex:1}
   .user{font-size:13px;color:var(--muted)}
+  .sync{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;cursor:pointer}
+  .sync::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--ok)}
+  .sync.busy::before{background:var(--accent);animation:pulse 1s infinite}
+  .sync.err::before{background:var(--err)}
+  .sync.paused::before{background:var(--muted)}
+  @keyframes pulse{50%{opacity:.3}}
   button{font:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--text);padding:8px 14px}
   button:hover{border-color:var(--accent)}
   button.primary{background:var(--accent);color:#06221e;border-color:var(--accent);font-weight:700}
@@ -137,6 +143,7 @@
       <span class="badge live hidden" id="liveBadge">LIVE</span>
     </div>
     <div class="spacer"></div>
+    <span class="sync hidden" id="syncInfo" title="Automatische Aktualisierung"></span>
     <span class="user hidden" id="userName"></span>
     <span class="badge role hidden" id="roleBadge"></span>
     <button class="ghost hidden" id="btnList">Liste</button>
@@ -335,7 +342,7 @@
 <script>
 /* ================= Konfiguration ================= */
 const APP_NAME   = 'NOVA Auftragsbuch';
-const APP_VER    = '0.4.0';
+const APP_VER    = '0.5.0';
 const CLIENT_ID  = '5af6d3d4-a161-4306-8af9-cdb6f392d9be';
 const TENANT_ID  = '376241b8-1f44-4ae5-84b1-4d3b67d4c112';
 const REDIRECT   = 'https://kaffeetrinker80.github.io/NOVA/auftragsbuch/';
@@ -471,7 +478,7 @@ async function graph(path, opts = {}){
   const headers = { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json', ...(opts.headers || {}) };
   if (wbSession && path.includes('/workbook')) headers['workbook-session-id'] = wbSession;
   for (let attempt = 0; attempt < 3; attempt++) {
-    const res = await fetch(GRAPH + path, { ...opts, headers });
+    const res = await fetch(GRAPH + path, { cache: 'no-store', ...opts, headers });
     if (res.ok) return res.status === 204 ? null : res.json().catch(() => null);
     if ((res.status === 429 || res.status === 503 || res.status === 504) && attempt < 2) { await new Promise(r => setTimeout(r, 1500 * (attempt + 1))); continue; }
     let code = '', text = res.statusText;
@@ -507,12 +514,21 @@ async function withSession(fn){
     const s = await graph(`${wb(cfg.cur)}/createSession`, { method:'POST', body: JSON.stringify({ persistChanges: true }) });
     wbSession = s?.id || null;
   } catch { wbSession = null; }   // ohne Session geht es auch, nur langsamer
-  try { return await fn(); }
+  try {
+    const result = await fn();
+    // Stand direkt aus derselben Sitzung übernehmen – ein Lesen ohne Sitzung kann
+    // in den ersten Sekunden noch den alten Dateistand liefern.
+    try { T = await readCurTable(); } catch {}
+    noteWrite(typeof result === 'string' ? result : null);
+    return result;
+  }
   finally {
-    if (wbSession) { const id = wbSession; graph(`${wb(cfg.cur)}/closeSession`, { method:'POST', headers:{'workbook-session-id': id} }).catch(()=>{}); }
+    if (wbSession) { const id = wbSession; await graph(`${wb(cfg.cur)}/closeSession`, { method:'POST', headers:{'workbook-session-id': id} }).catch(()=>{}); }
     wbSession = null;
   }
 }
+// Nach dem Schreiben: neu zeichnen aus dem Sitzungsstand, ohne erneut zu laden
+function refreshAfterWrite(){ buildIndex(); renderStats(); renderList(); }
 
 /* ---- Tabelle lesen ---- */
 // Liefert { sheet, startCol, startRow, header[], map{key:idx}, rows[{...,_i,_raw}] }
@@ -635,7 +651,64 @@ async function loadData(){
   buildIndex();
   renderStats();
   renderList();
+  try { knownTag = (await graph(`/drives/${cfg.cur.driveId}/items/${cfg.cur.itemId}?$select=cTag`)).cTag; } catch {}
+  setSync('ok');
 }
+
+/* ================= Automatische Aktualisierung ================= */
+// Alle 30 s wird nur der Änderungsstempel (cTag) der Datei abgefragt – das ist winzig.
+// Nur wenn er sich geändert hat, wird die Tabelle neu gelesen.
+const POLL_MS = 30000, WRITE_GRACE_MS = 20000;
+let knownTag = null, lastWriteAt = 0, polling = false, pollTimer = null;
+const myRecent = new Map();     // selbst vergebene Nummern der letzten 2 Minuten → Zeit
+
+function setSync(state, text){
+  const el = $('syncInfo'); if (!el) return;
+  el.className = 'sync ' + (state === 'ok' ? '' : state);
+  const t = new Date().toLocaleTimeString('de-DE', {hour:'2-digit', minute:'2-digit'});
+  el.textContent = text || (state === 'busy' ? 'aktualisiere …' : state === 'err' ? 'Verbindung gestört' : state === 'paused' ? 'pausiert' : `aktuell · ${t}`);
+  show(el, true);
+}
+function noteWrite(nr){ lastWriteAt = Date.now(); if (nr) myRecent.set(nr, Date.now()); }
+
+async function pollOnce(force = false){
+  if (polling || !cfg.cur || !T || document.hidden) return;
+  if (!force && Date.now() - lastWriteAt < WRITE_GRACE_MS) return;      // eigene Änderung noch frisch
+  if (!$('askOv').classList.contains('hidden')) return;                 // Rückfrage offen
+  polling = true;
+  try {
+    const it = await graph(`/drives/${cfg.cur.driveId}/items/${cfg.cur.itemId}?$select=cTag,lastModifiedBy`);
+    if (!force && it.cTag === knownTag) { setSync('ok'); return; }
+    setSync('busy');
+    const fresh = await readCurTable();
+    // Sicherheitsnetz: fehlt eine eben selbst vergebene Nummer, ist der Stand noch alt → nächstes Mal
+    const now = Date.now();
+    for (const [nr, at] of myRecent) { if (now - at > 120000) myRecent.delete(nr); }
+    if ([...myRecent.keys()].some(nr => !fresh.rows.some(r => r.nr === nr))) { setSync('ok'); return; }
+    const before = new Set((T.rows || []).map(r => r.nr + '|' + r.status));
+    const added = fresh.rows.filter(r => !(T.rows || []).some(x => x.nr === r.nr));
+    const changed = fresh.rows.some(r => !before.has(r.nr + '|' + r.status)) || fresh.rows.length !== T.rows.length;
+    T = fresh; knownTag = it.cTag;
+    if (changed) {
+      buildIndex(); renderStats(); renderList();
+      if (!$('formOv').classList.contains('hidden')) updateNumPreview();
+      const who = it.lastModifiedBy?.user?.displayName;
+      if (added.length && who && who !== me.name) toast(`${added.length === 1 ? 'Neuer Auftrag' : added.length + ' neue Aufträge'} von ${esc(who)}: ${added.slice(0, 3).map(r => `<b>${esc(r.nr)}</b>`).join(', ')}`, 6000);
+    }
+    setSync('ok');
+  } catch (e) {
+    setSync('err', 'Verbindung gestört – versuche erneut');
+  } finally { polling = false; }
+}
+function startPolling(){
+  clearInterval(pollTimer);
+  pollTimer = setInterval(() => pollOnce(), POLL_MS);
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) setSync('paused');
+  else pollOnce(true);                     // zurück im Tab → sofort prüfen
+});
+$('syncInfo').onclick = () => pollOnce(true);
 
 /* ================= Liste ================= */
 let statusFilter = 'alle';
@@ -737,6 +810,7 @@ function openForm(nr = null, related = null){
   $('fErr').innerHTML = '';
   show($('formOv'), true);
   updateNumPreview(); updateHints();
+  if (!nr) pollOnce(true);                 // vor neuer Vergabe frischen Stand holen
   setTimeout(() => $(related ? 'fZusatz' : nr ? 'fObjekt' : 'fKunde').focus(), 50);
 }
 function closeForm(){ show($('formOv'), false); hideDDs(); }
@@ -863,7 +937,7 @@ $('fSave').onclick = async () => {
     const nr = await withSession(() => editNr ? saveEdit(d) : saveNew(d));
     closeForm();
     toast(editNr ? `Auftrag <b>${esc(nr)}</b> geändert` : `Nummer <b style="color:var(--accent);font-size:18px">${esc(nr)}</b> vergeben <button class="sm" onclick="navigator.clipboard&&navigator.clipboard.writeText('${esc(nr)}');this.textContent='kopiert ✓'">Kopieren</button>`, 10000);
-    await loadData();
+    refreshAfterWrite();
   } catch (e) {
     $('fErr').innerHTML = `<div class="hint warn" style="margin-top:12px">${explain(e)}</div>`;
   } finally { $('fSave').disabled = false; }
@@ -945,7 +1019,7 @@ async function doFreigabe(nrs){
     });
     tst.remove(); toast(`${nrs.length > 1 ? nrs.length + ' Aufträge' : esc(nrs[0])} freigegeben ✓`, 3000);
   } catch (e) { tst.remove(); msg(explain(e)); }
-  loadData();
+  refreshAfterWrite();
 }
 
 async function doStorno(nr){
@@ -959,7 +1033,7 @@ async function doStorno(nr){
     });
     toast(`${esc(nr)} storniert`, 3000);
   } catch (e) { msg(explain(e)); }
-  loadData();
+  refreshAfterWrite();
 }
 async function doDelete(nr){
   const rows = T?.rows || [];
@@ -986,9 +1060,10 @@ async function doDelete(nr){
         await graph(`${sheetPath(t)}/range(address='${rowAddr(t, row._i)}')/delete`, { method:'POST', body: JSON.stringify({ shift: 'Up' }) });
       }
     });
+    myRecent.delete(nr);
     toast(`${esc(nr)} gelöscht`, 3000);
   } catch (e) { msg(explain(e)); }
-  loadData();
+  refreshAfterWrite();
 }
 
 $('btnBulk').onclick = () => doFreigabe((T?.rows || []).filter(r => statusOf(r) === ST.OFFEN).map(r => r.nr));
@@ -1120,6 +1195,7 @@ function signedInUI(account){
   renderBadges();
   if (sessionStorage.getItem('ab-setup-done')) { sessionStorage.removeItem('ab-setup-done'); toast('Einrichtung übernommen ✓', 3000); }
   cfg.cur ? openList() : (me.admin ? openAdmin() : openNoSetup());
+  startPolling();
 }
 
 $('btnLogin').onclick = () => msalApp.loginRedirect({ scopes: SCOPES });
