@@ -137,15 +137,17 @@
   .acard .top{display:flex;align-items:center;gap:8px;min-width:0}
   .acard .cnr{font-family:'Outfit',sans-serif;font-size:15px;color:var(--accent);flex:0 0 auto}
   .acard .k{font-weight:700;font-size:15px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .acard .side .st,.acard .side .src{font-size:11px;padding:1px 7px}
+  .acard .top .st,.acard .top .src{flex:0 0 auto;font-size:11px;padding:1px 7px;margin-left:auto}
   .acard .o{margin-top:3px;font-size:14px;line-height:1.3;color:#c9d4de;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
   .acard .o .po{color:var(--muted)}
   .acard .m{color:var(--muted);font-size:12px;margin-top:4px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
   .acard .m .vm{flex:1 1 100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .acard{display:flex;gap:10px;align-items:stretch}
-  .acard .main{flex:1;min-width:0}
-  .acard .side{flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;gap:6px}
-  .acard .side button{min-height:32px;padding:4px 11px;font-size:13px}
+  /* Raster: Zeile 1 (Nummer · Name · Status) über die volle Breite, Knopf rechts neben Zeile 2–3 */
+  .acard{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:10px}
+  .acard .top{grid-column:1 / -1}
+  .acard .o,.acard .m{grid-column:1}
+  .acard .btns{grid-column:2;grid-row:2 / span 2;align-self:end;display:flex;gap:6px;margin-top:4px}
+  .acard .btns button{min-height:32px;padding:4px 11px;font-size:13px}
   .acard.storno{opacity:.6} .acard.storno .k,.acard.storno .o{text-decoration:line-through}
   .acard.prev{border-style:dashed}
 
@@ -450,7 +452,7 @@
 <script>
 /* ================= Konfiguration ================= */
 const APP_NAME   = 'NOVA Auftragsbuch';
-const APP_VER    = '0.7.3';
+const APP_VER    = '0.7.4';
 const CLIENT_ID  = '5af6d3d4-a161-4306-8af9-cdb6f392d9be';
 const TENANT_ID  = '376241b8-1f44-4ae5-84b1-4d3b67d4c112';
 const REDIRECT   = 'https://kaffeetrinker80.github.io/NOVA/auftragsbuch/';
@@ -997,12 +999,10 @@ function renderCards(hits, total, yPrev){
     const vm = r.bemerkung ? `<span class="vm">Vermerk: ${esc(r.bemerkung)}</span>` : '';
     const meta = extra || vm ? `<div class="m">${extra}${vm}</div>` : '';
     return `<div class="acard ${s === ST.STORNO ? 'storno' : ''} ${r.cur ? '' : 'prev'}" data-card="${esc(r.nr)}">
-      <div class="main">
-        <div class="top"><span class="cnr">${esc(r.nr)}</span><span class="k">${esc(r.kunde)}</span></div>
-        <div class="o">${esc(r.objekt)}${po ? ` <span class="po">· ${esc(po)}</span>` : ''}</div>
-        ${meta}
-      </div>
-      <div class="side">${r.cur ? `<span class="st ${stClass(s)}">${esc(s)}</span>` : `<span class="src">${yPrev}</span>`}${acts}</div>
+      <div class="top"><span class="cnr">${esc(r.nr)}</span><span class="k">${esc(r.kunde)}</span>${r.cur ? `<span class="st ${stClass(s)}">${esc(s)}</span>` : `<span class="src">${yPrev}</span>`}</div>
+      <div class="o">${esc(r.objekt)}${po ? ` <span class="po">· ${esc(po)}</span>` : ''}</div>
+      ${meta}
+      ${acts ? `<div class="btns">${acts}</div>` : ''}
     </div>`;
   }).join('') : `<div class="center muted">${total ? 'Keine Treffer.' : 'Noch keine Einträge.'}</div>`;
   if (hits.length > MAX_CARDS) $('cards').insertAdjacentHTML('beforeend', `<div class="center muted small">${hits.length - MAX_CARDS} weitere – Suche verfeinern.</div>`);
