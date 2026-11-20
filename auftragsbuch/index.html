@@ -342,12 +342,13 @@
 <script>
 /* ================= Konfiguration ================= */
 const APP_NAME   = 'NOVA Auftragsbuch';
-const APP_VER    = '0.5.0';
+const APP_VER    = '0.5.1';
 const CLIENT_ID  = '5af6d3d4-a161-4306-8af9-cdb6f392d9be';
 const TENANT_ID  = '376241b8-1f44-4ae5-84b1-4d3b67d4c112';
 const REDIRECT   = 'https://kaffeetrinker80.github.io/NOVA/auftragsbuch/';
-// Testphase: nur eigene Dateien. Für Nicos Freigabe später: 'Files.ReadWrite.All' (Admin-Zustimmung nötig)
-const SCOPES     = ['User.Read', 'Files.ReadWrite'];
+// Files.ReadWrite.All = auch Dateien, die andere mit einem geteilt haben (Freigaben).
+// Braucht einmalig die Admin-Zustimmung für die Firma.
+const SCOPES     = ['User.Read', 'Files.ReadWrite.All'];
 const GRAPH      = 'https://graph.microsoft.com/v1.0';
 const CFG_KEY    = 'nova-auftragsbuch-config-v1';
 const MAX_RENDER = 500;
@@ -490,7 +491,7 @@ async function graph(path, opts = {}){
 function explain(e){
   if (e instanceof GraphError) {
     if (e.status === 404) return 'Datei oder Tabelle nicht gefunden – gelöscht, umbenannt oder in ein anderes Laufwerk verschoben? Bitte im Admin-Bereich neu verknüpfen.';
-    if (e.status === 403 || e.status === 401) return 'Kein Zugriff auf diese Datei. Liegt sie in einer fremden Freigabe? In der Testphase darf das Tool nur Dateien in deinem eigenen OneDrive öffnen.';
+    if (e.status === 403 || e.status === 401) return 'Kein Zugriff auf diese Datei. Wurde sie mit dir geteilt (mit Bearbeitungsrecht)? Öffne zur Kontrolle den Link „In Excel öffnen“ – klappt das, bitte Admin informieren.';
     if (e.status === 423 || e.code === 'resourceLocked') return 'Die Datei ist gerade gesperrt (z. B. in Desktop-Excel ohne AutoSave geöffnet). Bitte kurz warten und erneut versuchen.';
     if (e.status === 409) return 'Gleichzeitige Änderung an der Datei – bitte erneut versuchen.';
     if (e.status === 429 || e.status === 503) return 'Microsoft ist gerade ausgelastet. Bitte in ein paar Sekunden erneut versuchen.';
