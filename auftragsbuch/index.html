@@ -22,52 +22,67 @@
   h1,h2,h3{font-family:'Outfit',sans-serif;margin:0}
   a{color:var(--accent)}
   header{position:sticky;top:0;z-index:20;background:rgba(15,20,25,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
-  .bar{max-width:1200px;margin:0 auto;padding:12px 18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .bar{max-width:1280px;margin:0 auto;padding:12px 18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
   .brand{display:flex;align-items:center;gap:10px}
   .brand h1{font-size:20px;letter-spacing:.2px}
   .brand h1 span{color:var(--accent)}
   .badge{font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
   .badge.test{background:var(--warn);color:#1a1300;border-color:var(--warn)}
   .badge.live{background:rgba(74,222,128,.15);color:var(--ok);border-color:rgba(74,222,128,.4)}
+  .badge.role{color:var(--accent);border-color:rgba(94,234,212,.4)}
   .spacer{flex:1}
   .user{font-size:13px;color:var(--muted)}
-  button,.btn{font:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--text);padding:8px 14px}
+  button{font:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--text);padding:8px 14px}
   button:hover{border-color:var(--accent)}
   button.primary{background:var(--accent);color:#06221e;border-color:var(--accent);font-weight:700}
   button.primary:hover{background:var(--accent2)}
   button.ghost{background:transparent}
+  button.danger{border-color:rgba(248,113,113,.5);color:#fecaca}
+  button.danger:hover{background:rgba(248,113,113,.12)}
+  button.sm{padding:4px 9px;font-size:13px;border-radius:8px}
   button:disabled{opacity:.5;cursor:not-allowed}
-  main{max-width:1200px;margin:0 auto;padding:18px}
+  main{max-width:1280px;margin:0 auto;padding:18px}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin-bottom:16px}
   .card h2{font-size:17px;margin-bottom:12px}
-  .muted{color:var(--muted)}
-  .small{font-size:13px}
+  .muted{color:var(--muted)} .small{font-size:13px}
   label{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px}
-  input[type=text],input[type=search]{width:100%;font:inherit;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:9px 12px}
-  input:focus{outline:none;border-color:var(--accent)}
+  input[type=text],input[type=search],input[type=date],textarea{width:100%;font:inherit;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:9px 12px}
+  input[type=date]{color-scheme:dark}
+  textarea{resize:vertical;min-height:60px}
+  input:focus,textarea:focus{outline:none;border-color:var(--accent)}
   .row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
   .row > .grow{flex:1;min-width:220px}
   .fileinfo{margin-top:12px;padding:12px;border-radius:10px;background:var(--panel2);border:1px solid var(--line);font-size:14px;line-height:1.6}
-  .fileinfo b{color:var(--text)}
   .status{margin-top:8px;font-size:13px}
   .status.ok{color:var(--ok)} .status.err{color:var(--err)} .status.warn{color:var(--warn)}
   .stats{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px}
-  .stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:12px 16px;min-width:160px}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:12px 16px;min-width:150px}
   .stat .v{font-family:'Outfit',sans-serif;font-size:22px;color:var(--accent)}
   .stat .l{font-size:12px;color:var(--muted)}
   .stat.warn .v{color:var(--warn)}
   .tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
   .tools input[type=search]{flex:1;min-width:240px}
   .chk{display:flex;align-items:center;gap:6px;font-size:14px;color:var(--muted);margin:0}
+  .chips{display:flex;gap:6px;flex-wrap:wrap}
+  .chip{font-size:13px;padding:5px 11px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer}
+  .chip.on{background:rgba(94,234,212,.12);border-color:var(--accent);color:var(--accent)}
   .tablewrap{overflow:auto;border:1px solid var(--line);border-radius:var(--radius)}
   table{width:100%;border-collapse:collapse;font-size:14px}
   th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
   td.wrap{white-space:normal;min-width:220px}
   th{position:sticky;top:0;background:var(--panel2);font-weight:600;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.4px}
   tr:hover td{background:rgba(94,234,212,.04)}
+  tr.storno td{color:var(--muted);text-decoration:line-through}
+  tr.storno td.act{text-decoration:none}
   td.nr{font-family:'Outfit',sans-serif;color:var(--accent)}
+  td.act{text-align:right}
+  td.act button{margin-left:4px}
   .src{font-size:11px;padding:2px 6px;border-radius:6px;border:1px solid var(--line);color:var(--muted)}
   .src.cur{color:var(--accent);border-color:rgba(94,234,212,.4)}
+  .st{font-size:12px;padding:2px 8px;border-radius:999px;border:1px solid var(--line)}
+  .st.offen{color:var(--warn);border-color:rgba(251,191,36,.45)}
+  .st.frei{color:var(--ok);border-color:rgba(74,222,128,.45)}
+  .st.storno{color:var(--err);border-color:rgba(248,113,113,.45)}
   .center{text-align:center;padding:40px 18px}
   .hidden{display:none !important}
   .msg{padding:12px 14px;border-radius:10px;margin-bottom:14px;font-size:14px}
@@ -78,7 +93,31 @@
   .pick div{padding:8px 12px;border-bottom:1px solid var(--line);cursor:pointer;font-size:14px}
   .pick div:hover{background:var(--panel2)}
   .pick small{color:var(--muted)}
-  footer{max-width:1200px;margin:10px auto 30px;padding:0 18px;color:var(--muted);font-size:13px;text-align:center}
+  /* Modal */
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:50;display:flex;align-items:flex-start;justify-content:center;padding:40px 14px;overflow:auto}
+  .modal{background:var(--panel);border:1px solid var(--line);border-radius:16px;width:100%;max-width:720px;padding:22px}
+  .modal.narrow{max-width:460px}
+  .modal h2{font-size:19px;margin-bottom:4px}
+  .modal .foot{display:flex;gap:10px;justify-content:flex-end;margin-top:18px;flex-wrap:wrap}
+  .numprev{font-family:'Outfit',sans-serif;font-size:26px;color:var(--accent)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+  .grid3{display:grid;grid-template-columns:140px 1fr;gap:0 14px}
+  @media (max-width:600px){.grid2,.grid3{grid-template-columns:1fr}}
+  /* Combobox */
+  .combo{position:relative}
+  .dd{position:absolute;left:0;right:0;top:100%;margin-top:4px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;max-height:260px;overflow:auto;z-index:60;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+  .dd div{padding:8px 12px;cursor:pointer;font-size:14px;border-bottom:1px solid var(--line)}
+  .dd div.act,.dd div:hover{background:rgba(94,234,212,.1)}
+  .dd small{color:var(--muted)}
+  .hint{font-size:13px;margin-top:6px;padding:7px 10px;border-radius:8px}
+  .hint.ok{background:rgba(74,222,128,.08);color:#bbf7d0}
+  .hint.warn{background:rgba(251,191,36,.1);color:#fde68a}
+  .hint.info{background:rgba(94,234,212,.08);color:#ccfbf1}
+  .hint button{margin-left:6px}
+  .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--accent);color:var(--text);padding:12px 18px;border-radius:12px;z-index:70;display:flex;gap:12px;align-items:center;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+  .grp{padding:10px 12px;border:1px solid var(--line);border-radius:10px;margin-bottom:8px;font-size:14px}
+  .grp b{color:var(--accent)}
+  footer{max-width:1280px;margin:10px auto 30px;padding:0 18px;color:var(--muted);font-size:13px;text-align:center}
   footer a{text-decoration:none}
   .spin{display:inline-block;width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:s .8s linear infinite;vertical-align:-2px}
   @keyframes s{to{transform:rotate(360deg)}}
@@ -96,7 +135,9 @@
     </div>
     <div class="spacer"></div>
     <span class="user hidden" id="userName"></span>
-    <button class="ghost hidden" id="btnSettings">⚙ Einstellungen</button>
+    <span class="badge role hidden" id="roleBadge"></span>
+    <button class="ghost hidden" id="btnList">Liste</button>
+    <button class="ghost hidden" id="btnAdmin">⚙ Admin</button>
     <button class="ghost hidden" id="btnLogout">Abmelden</button>
   </div>
 </header>
@@ -111,44 +152,44 @@
     <button class="primary" id="btnLogin">Mit Microsoft anmelden</button>
   </section>
 
-  <!-- Einstellungen -->
-  <section id="viewSettings" class="hidden">
+  <!-- Nicht eingerichtet (Nicht-Admin) -->
+  <section id="viewNoSetup" class="card center hidden">
+    <h2>Noch nicht eingerichtet</h2>
+    <p class="muted">Auf diesem Gerät ist noch keine Auftragsbuch-Datei verknüpft.<br>Bitte den Einrichtungslink vom Admin einmal öffnen.</p>
+  </section>
+
+  <!-- Admin -->
+  <section id="viewAdmin" class="hidden">
     <div class="card">
       <h2>Datei für das aktuelle Jahr</h2>
       <p class="muted small">In OneDrive/SharePoint auf die Datei → „Link kopieren“ → hier einfügen. Alternativ in deinem OneDrive suchen.</p>
       <div class="row">
-        <div class="grow">
-          <label for="curLink">Freigabelink</label>
-          <input type="text" id="curLink" placeholder="https://…sharepoint.com/…">
-        </div>
+        <div class="grow"><label for="curLink">Freigabelink</label><input type="text" id="curLink" placeholder="https://…sharepoint.com/…"></div>
         <button class="primary" id="btnCurLink">Verknüpfen</button>
         <button id="btnCurSearch">In meinem OneDrive suchen</button>
       </div>
       <div class="pick hidden" id="curPick"></div>
       <div id="curInfo"></div>
-
       <div class="row" style="margin-top:6px">
-        <div style="width:200px">
-          <label for="tblName">Tabellenname</label>
-          <input type="text" id="tblName" placeholder="Auftraege">
-        </div>
-        <div style="width:160px">
-          <label for="prefix">Jahres-Präfix</label>
-          <input type="text" id="prefix" placeholder="27" maxlength="2">
-        </div>
+        <div style="width:200px"><label for="tblName">Tabellenname</label><input type="text" id="tblName" placeholder="Auftraege"></div>
+        <div style="width:140px"><label for="prefix">Jahres-Präfix</label><input type="text" id="prefix" placeholder="27" maxlength="2"></div>
         <label class="chk" style="margin-bottom:10px"><input type="checkbox" id="isTest"> Testbetrieb (Badge anzeigen)</label>
         <button id="btnSaveCfg">Übernehmen</button>
       </div>
     </div>
 
     <div class="card">
+      <h2>Spalten der Tabelle</h2>
+      <p class="muted small">Für Datum, Freigabe und Storno braucht die Tabelle fünf zusätzliche Spalten rechts neben „Ort“. Das Tool kann sie selbst anlegen – bestehende Einträge bleiben unverändert.</p>
+      <div id="colInfo" class="small muted">–</div>
+      <div style="margin-top:10px"><button id="btnAddCols" class="hidden">Fehlende Spalten anlegen</button></div>
+    </div>
+
+    <div class="card">
       <h2>Vorjahr (nur lesen, optional)</h2>
-      <p class="muted small">Für die Kundensuche: alle Auftraggeber und Objekte aus dem Vorjahr. Die Datei wird nicht verändert.</p>
+      <p class="muted small">Für die Kundensuche: Auftraggeber und Objekte aus dem Vorjahr. Die Datei wird nicht verändert.</p>
       <div class="row">
-        <div class="grow">
-          <label for="prevLink">Freigabelink</label>
-          <input type="text" id="prevLink" placeholder="https://…sharepoint.com/…">
-        </div>
+        <div class="grow"><label for="prevLink">Freigabelink</label><input type="text" id="prevLink" placeholder="https://…sharepoint.com/…"></div>
         <button class="primary" id="btnPrevLink">Verknüpfen</button>
         <button id="btnPrevSearch">In meinem OneDrive suchen</button>
         <button class="ghost" id="btnPrevClear">Entfernen</button>
@@ -158,8 +199,25 @@
     </div>
 
     <div class="card">
+      <h2>Rollen</h2>
+      <div class="small" id="roleInfo"></div>
+      <p class="muted small">Rollen stehen fest im Tool (Code). Sie steuern nur, welche Knöpfe man sieht – wer auf die Excel-Freigabe zugreifen darf, regelt weiterhin SharePoint.</p>
+    </div>
+
+    <div class="card">
+      <h2>Einrichtungslink für andere Geräte</h2>
+      <p class="muted small">Diana oder Nico öffnen diesen Link einmal – danach ist auf dem Gerät dieselbe Datei verknüpft. Der Link enthält nur Datei-IDs, keine Daten.</p>
+      <div class="row"><div class="grow"><input type="text" id="setupLink" readonly></div><button id="btnCopySetup">Kopieren</button></div>
+    </div>
+
+    <div class="card">
+      <h2>Schreibweisen der Auftraggeber</h2>
+      <p class="muted small">Gruppen, die vermutlich derselbe Kunde sind (aktuelles Jahr + Vorjahr). Das Formular schlägt künftig automatisch die häufigste Schreibweise vor.</p>
+      <div id="variantList" class="small muted">Wird nach dem Laden der Daten berechnet.</div>
+    </div>
+
+    <div class="card">
       <p class="muted small" style="margin:0">Datenschutz: Im Browser gespeichert wird nur, <i>welche</i> Dateien verknüpft sind. Auftragsdaten bleiben ausschließlich in der Excel in eurem Microsoft-Konto.</p>
-      <div style="margin-top:12px"><button class="primary" id="btnToList">Zur Liste</button></div>
     </div>
   </section>
 
@@ -168,18 +226,29 @@
     <div class="stats">
       <div class="stat"><div class="v" id="stCount">–</div><div class="l">Aufträge aktuelles Jahr</div></div>
       <div class="stat"><div class="v" id="stNext">–</div><div class="l">Nächste freie Nummer</div></div>
-      <div class="stat"><div class="v" id="stPrev">–</div><div class="l">Einträge Vorjahr</div></div>
+      <div class="stat warn"><div class="v" id="stOpen">–</div><div class="l">Offen zur Freigabe</div></div>
       <div class="stat"><div class="v" id="stKunden">–</div><div class="l">Bekannte Auftraggeber</div></div>
       <div class="stat warn hidden" id="stDupBox"><div class="v" id="stDup">0</div><div class="l">Doppelte Nummern</div></div>
     </div>
     <div class="tools">
+      <button class="primary" id="btnNew">+ Neuer Auftrag</button>
       <input type="search" id="q" placeholder="Suchen: Nummer, Auftraggeber, Objekt, PLZ, Ort …">
-      <label class="chk"><input type="checkbox" id="withPrev"> Vorjahr einbeziehen</label>
       <button id="btnReload">↻ Neu laden</button>
+    </div>
+    <div class="tools">
+      <div class="chips" id="statusChips">
+        <button class="chip on" data-f="alle">Alle</button>
+        <button class="chip" data-f="Offen">Offen</button>
+        <button class="chip" data-f="Freigegeben">Freigegeben</button>
+        <button class="chip" data-f="Storniert">Storniert</button>
+      </div>
+      <label class="chk"><input type="checkbox" id="withPrev"> Vorjahr einbeziehen</label>
+      <div class="spacer"></div>
+      <button id="btnBulk" class="hidden">✓ Alle offenen freigeben</button>
     </div>
     <div class="tablewrap">
       <table>
-        <thead><tr><th>Nummer</th><th>Auftraggeber</th><th>Objekt</th><th>PLZ</th><th>Ort</th><th>Jahr</th></tr></thead>
+        <thead><tr><th>Nummer</th><th>Datum</th><th>Auftraggeber</th><th>Objekt</th><th>PLZ</th><th>Ort</th><th>Status</th><th></th></tr></thead>
         <tbody id="tbody"></tbody>
       </table>
     </div>
@@ -187,14 +256,76 @@
   </section>
 </main>
 
-<footer>
-  <span id="footName"></span> · <a id="feedback" href="#">✉ Feedback</a>
-</footer>
+<!-- Auftrag-Formular -->
+<div class="overlay hidden" id="formOv">
+  <div class="modal">
+    <div class="row" style="justify-content:space-between;align-items:flex-start">
+      <div>
+        <h2 id="fTitle">Neuer Auftrag</h2>
+        <div class="muted small" id="fSub">Die Nummer wird beim Speichern endgültig vergeben.</div>
+      </div>
+      <div class="numprev" id="fNum">–</div>
+    </div>
+
+    <div class="grid3">
+      <div><label for="fDate">Datum</label><input type="date" id="fDate"></div>
+      <div id="subWrap">
+        <label class="chk" style="margin-top:34px"><input type="checkbox" id="fSub1"> Unternummer zu bestehendem Auftrag</label>
+      </div>
+    </div>
+    <div class="combo hidden" id="subBaseWrap">
+      <label for="fSubBase">Hauptauftrag</label>
+      <input type="text" id="fSubBase" placeholder="z. B. 27-0012" autocomplete="off">
+      <div class="dd hidden" id="ddSub"></div>
+    </div>
+
+    <div class="combo">
+      <label for="fKunde">Hausverwaltung / Auftraggeber</label>
+      <input type="text" id="fKunde" placeholder="Tippen zum Suchen …" autocomplete="off">
+      <div class="dd hidden" id="ddKunde"></div>
+    </div>
+    <div id="hKunde"></div>
+
+    <div class="combo">
+      <label for="fObjekt">Objekt</label>
+      <input type="text" id="fObjekt" placeholder="Straße Hausnummer / Bezeichnung" autocomplete="off">
+      <div class="dd hidden" id="ddObjekt"></div>
+    </div>
+    <div id="hObjekt"></div>
+
+    <div class="grid3">
+      <div><label for="fPlz">PLZ</label><input type="text" id="fPlz" inputmode="numeric" maxlength="5"></div>
+      <div><label for="fOrt">Ort</label><input type="text" id="fOrt"></div>
+    </div>
+    <div id="hPlz"></div>
+
+    <label for="fBem">Bemerkung (optional)</label>
+    <textarea id="fBem"></textarea>
+
+    <div id="fErr"></div>
+    <div class="foot">
+      <button class="ghost" id="fCancel">Abbrechen</button>
+      <button class="primary" id="fSave">Speichern &amp; Nummer vergeben</button>
+    </div>
+  </div>
+</div>
+
+<!-- Bestätigen / Storno -->
+<div class="overlay hidden" id="askOv">
+  <div class="modal narrow">
+    <h2 id="askTitle"></h2>
+    <p class="muted" id="askText"></p>
+    <div id="askReasonWrap" class="hidden"><label for="askReason">Grund (Pflicht)</label><textarea id="askReason"></textarea></div>
+    <div class="foot"><button class="ghost" id="askNo">Abbrechen</button><button class="primary" id="askYes">OK</button></div>
+  </div>
+</div>
+
+<footer><span id="footName"></span> · <a id="feedback" href="#">✉ Feedback</a></footer>
 
 <script>
 /* ================= Konfiguration ================= */
 const APP_NAME   = 'NOVA Auftragsbuch';
-const APP_VER    = '0.1.0';
+const APP_VER    = '0.2.0';
 const CLIENT_ID  = '5af6d3d4-a161-4306-8af9-cdb6f392d9be';
 const TENANT_ID  = '376241b8-1f44-4ae5-84b1-4d3b67d4c112';
 const REDIRECT   = 'https://kaffeetrinker80.github.io/NOVA/auftragsbuch/';
@@ -204,116 +335,603 @@ const GRAPH      = 'https://graph.microsoft.com/v1.0';
 const CFG_KEY    = 'nova-auftragsbuch-config-v1';
 const MAX_RENDER = 500;
 
+// Rollen (Anmeldename, klein geschrieben)
+const ADMINS    = ['marco.neudecker@nova-praxis.de'];
+const FREIGEBER = ['marco.neudecker@nova-praxis.de'];   // später: 'nico.schmid@nova-praxis.de'
+
+// Spalten der Tabelle: Schlüssel → Erkennung der Überschrift / Name beim Anlegen
+const COLS = [
+  { key:'nr',        re:/auftrags/i,     name:'Auftrags-/Prüfberichtsnummer', base:true },
+  { key:'kunde',     re:/auftraggeber/i, name:'Hausverwaltung / Auftraggeber', base:true },
+  { key:'objekt',    re:/^objekt/i,      name:'Objekt', base:true },
+  { key:'plz',       re:/^plz/i,         name:'PLZ', base:true },
+  { key:'ort',       re:/^ort/i,         name:'Ort', base:true },
+  { key:'datum',     re:/^datum/i,       name:'Datum' },
+  { key:'status',    re:/^status/i,      name:'Status' },
+  { key:'erfasst',   re:/^erfasst/i,     name:'Erfasst' },
+  { key:'freigabe',  re:/^freigabe/i,    name:'Freigabe' },
+  { key:'bemerkung', re:/^bemerkung/i,   name:'Bemerkung' },
+];
+const ST = { OFFEN:'Offen', FREI:'Freigegeben', STORNO:'Storniert' };
+
 /* ================= Hilfen ================= */
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const show = (el, on = true) => el.classList.toggle('hidden', !on);
 const fmtDate = iso => iso ? new Date(iso).toLocaleString('de-DE', {dateStyle:'medium', timeStyle:'short'}) : '–';
+const pad = n => String(n).padStart(2, '0');
+const nowStamp = () => { const d = new Date(); return `${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`; };
+const tidy = s => String(s ?? '').replace(/\s+/g, ' ').trim();
 
-function loadCfg(){
-  try { return Object.assign({tableName:'Auftraege', prefix:'27', isTest:true, cur:null, prev:null}, JSON.parse(localStorage.getItem(CFG_KEY) || '{}')); }
-  catch { return {tableName:'Auftraege', prefix:'27', isTest:true, cur:null, prev:null}; }
+// Excel-Datum (Seriennummer) <-> ISO yyyy-mm-dd
+const isoToSerial = iso => { const [y,m,d] = iso.split('-').map(Number); return Math.round((Date.UTC(y, m-1, d) - Date.UTC(1899, 11, 30)) / 86400000); };
+const serialToIso = n => { const d = new Date(Date.UTC(1899, 11, 30) + Math.round(n) * 86400000); return `${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-${pad(d.getUTCDate())}`; };
+const isoToDe = iso => iso ? iso.split('-').reverse().join('.') : '';
+const todayIso = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; };
+function cellToIso(v){
+  if (typeof v === 'number' && v > 20000) return serialToIso(v);
+  const m = String(v || '').match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+  return m ? `${m[3]}-${pad(m[2])}-${pad(m[1])}` : '';
 }
+
+// Spaltenbuchstaben
+const colLetter = n => { let s = ''; n++; while (n) { const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); } return s; };
+const colIndex = L => [...L].reduce((a, c) => a * 26 + c.charCodeAt(0) - 64, 0) - 1;
+
+/* ---- Schreibweisen / Ähnlichkeit ---- */
+function normKunde(s){
+  return tidy(s).toLowerCase()
+    .replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ü/g,'ue').replace(/ß/g,'ss')
+    .replace(/&/g,' und ')
+    .replace(/\b(gmbh|mbh|co|kg|ag|ug|gbr|e\.?\s?k\.?|ohg|haftungsbeschraenkt)\b/g,' ')
+    .replace(/[^a-z0-9]/g,'');
+}
+function normObjekt(s){
+  return tidy(s).toLowerCase()
+    .replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ü/g,'ue').replace(/ß/g,'ss')
+    .replace(/strasse|str\./g,'str').replace(/[^a-z0-9]/g,'');
+}
+function lev(a, b){
+  if (a === b) return 0;
+  const m = a.length, n = b.length; if (!m || !n) return m || n;
+  let prev = Array.from({length: n + 1}, (_, j) => j), cur = new Array(n + 1);
+  for (let i = 1; i <= m; i++) {
+    cur[0] = i;
+    for (let j = 1; j <= n; j++) cur[j] = Math.min(prev[j] + 1, cur[j-1] + 1, prev[j-1] + (a[i-1] === b[j-1] ? 0 : 1));
+    [prev, cur] = [cur, prev];
+  }
+  return prev[n];
+}
+const sim = (a, b) => (!a || !b) ? 0 : 1 - lev(a, b) / Math.max(a.length, b.length);
+
+/* ================= Config ================= */
+const CFG_DEFAULT = {tableName:'Auftraege', prefix:'27', isTest:true, cur:null, prev:null};
+function loadCfg(){ try { return Object.assign({}, CFG_DEFAULT, JSON.parse(localStorage.getItem(CFG_KEY) || '{}')); } catch { return {...CFG_DEFAULT}; } }
 function saveCfg(){ try { localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); } catch {} }
 let cfg = loadCfg();
 
-function msg(text, type = 'err'){
-  $('globalMsg').innerHTML = text ? `<div class="msg ${type}">${text}</div>` : '';
+// Einrichtungslink (#setup=...) übernehmen
+(function readSetupHash(){
+  const m = location.hash.match(/setup=([^&]+)/);
+  if (!m) return;
+  try {
+    const s = JSON.parse(decodeURIComponent(escape(atob(m[1].replace(/-/g,'+').replace(/_/g,'/')))));
+    cfg = Object.assign({}, CFG_DEFAULT, s); saveCfg();
+    sessionStorage.setItem('ab-setup-done', '1');
+  } catch {}
+  history.replaceState(null, '', location.pathname);
+})();
+function setupLink(){
+  const s = {tableName: cfg.tableName, prefix: cfg.prefix, isTest: cfg.isTest, cur: cfg.cur, prev: cfg.prev};
+  const b = btoa(unescape(encodeURIComponent(JSON.stringify(s)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+  return REDIRECT + '#setup=' + b;
 }
 
-/* ================= Anmeldung (MSAL) ================= */
+function msg(text, type = 'err'){ $('globalMsg').innerHTML = text ? `<div class="msg ${type}">${text}</div>` : ''; }
+function toast(html, ms = 6000){
+  const t = document.createElement('div'); t.className = 'toast'; t.innerHTML = html;
+  document.body.appendChild(t); setTimeout(() => t.remove(), ms); return t;
+}
+
+/* ================= Anmeldung ================= */
 const msalApp = new msal.PublicClientApplication({
   auth: { clientId: CLIENT_ID, authority: `https://login.microsoftonline.com/${TENANT_ID}`, redirectUri: REDIRECT },
   cache: { cacheLocation: 'localStorage' }
 });
+let me = { name:'', mail:'', admin:false, freigeber:false };
 
 async function getToken(){
   const account = msalApp.getActiveAccount();
   if (!account) throw new Error('Nicht angemeldet.');
-  try {
-    const r = await msalApp.acquireTokenSilent({ scopes: SCOPES, account });
-    return r.accessToken;
-  } catch (e) {
-    if (e instanceof msal.InteractionRequiredAuthError) {
-      await msalApp.acquireTokenRedirect({ scopes: SCOPES, account });
-    }
+  try { return (await msalApp.acquireTokenSilent({ scopes: SCOPES, account })).accessToken; }
+  catch (e) {
+    if (e instanceof msal.InteractionRequiredAuthError) await msalApp.acquireTokenRedirect({ scopes: SCOPES, account });
     throw e;
   }
 }
 
 /* ================= Graph ================= */
 class GraphError extends Error { constructor(status, code, message){ super(message); this.status = status; this.code = code; } }
+let wbSession = null;
 
 async function graph(path, opts = {}){
   const token = await getToken();
-  const res = await fetch(GRAPH + path, {
-    ...opts,
-    headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json', ...(opts.headers || {}) }
-  });
-  if (!res.ok) {
+  const headers = { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json', ...(opts.headers || {}) };
+  if (wbSession && path.includes('/workbook')) headers['workbook-session-id'] = wbSession;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const res = await fetch(GRAPH + path, { ...opts, headers });
+    if (res.ok) return res.status === 204 ? null : res.json().catch(() => null);
+    if ((res.status === 429 || res.status === 503 || res.status === 504) && attempt < 2) { await new Promise(r => setTimeout(r, 1500 * (attempt + 1))); continue; }
     let code = '', text = res.statusText;
     try { const j = await res.json(); code = j.error?.code || ''; text = j.error?.message || text; } catch {}
     throw new GraphError(res.status, code, text);
   }
-  return res.status === 204 ? null : res.json();
 }
 
 function explain(e){
   if (e instanceof GraphError) {
-    if (e.status === 404) return 'Datei nicht gefunden – wurde sie gelöscht oder in ein anderes Laufwerk verschoben? Bitte in den Einstellungen neu verknüpfen.';
+    if (e.status === 404) return 'Datei oder Tabelle nicht gefunden – gelöscht, umbenannt oder in ein anderes Laufwerk verschoben? Bitte im Admin-Bereich neu verknüpfen.';
     if (e.status === 403 || e.status === 401) return 'Kein Zugriff auf diese Datei. Liegt sie in einer fremden Freigabe? In der Testphase darf das Tool nur Dateien in deinem eigenen OneDrive öffnen.';
-    if (e.status === 423) return 'Die Datei ist gerade gesperrt (z. B. in Desktop-Excel ohne AutoSave geöffnet). Bitte kurz warten und neu laden.';
-    if (e.status === 429 || e.status === 503) return 'Microsoft ist gerade ausgelastet. Bitte in ein paar Sekunden neu laden.';
+    if (e.status === 423 || e.code === 'resourceLocked') return 'Die Datei ist gerade gesperrt (z. B. in Desktop-Excel ohne AutoSave geöffnet). Bitte kurz warten und erneut versuchen.';
+    if (e.status === 409) return 'Gleichzeitige Änderung an der Datei – bitte erneut versuchen.';
+    if (e.status === 429 || e.status === 503) return 'Microsoft ist gerade ausgelastet. Bitte in ein paar Sekunden erneut versuchen.';
     return `Fehler von Microsoft (${e.status} ${esc(e.code)}): ${esc(e.message)}`;
   }
   return esc(e.message || String(e));
 }
 
-// Freigabelink → driveId + itemId
-function encodeShare(url){
-  const b64 = btoa(unescape(encodeURIComponent(url.trim())));
-  return 'u!' + b64.replace(/=+$/, '').replace(/\//g, '_').replace(/\+/g, '-');
-}
+function encodeShare(url){ return 'u!' + btoa(unescape(encodeURIComponent(url.trim()))).replace(/=+$/, '').replace(/\//g, '_').replace(/\+/g, '-'); }
 const ITEM_SELECT = '$select=id,name,webUrl,parentReference,lastModifiedDateTime,lastModifiedBy';
-
 async function resolveLink(url){
   const it = await graph(`/shares/${encodeShare(url)}/driveItem?${ITEM_SELECT}`);
   return { driveId: it.parentReference.driveId, itemId: it.id, name: it.name };
 }
-async function itemInfo(ref){
-  return graph(`/drives/${ref.driveId}/items/${ref.itemId}?${ITEM_SELECT}`);
-}
+const itemInfo = ref => graph(`/drives/${ref.driveId}/items/${ref.itemId}?${ITEM_SELECT}`);
 const wb = ref => `/drives/${ref.driveId}/items/${ref.itemId}/workbook`;
+const tbl = () => `${wb(cfg.cur)}/tables/${encodeURIComponent(cfg.tableName)}`;
 
-// Zeilen der Tabelle des aktuellen Jahres lesen
-async function readTable(ref, tableName){
-  const r = await graph(`${wb(ref)}/tables/${encodeURIComponent(tableName)}/range?$select=values`);
-  const vals = r.values || [];
-  return vals.slice(1).map(toRow).filter(Boolean);   // erste Zeile = Überschriften
+async function withSession(fn){
+  try {
+    const s = await graph(`${wb(cfg.cur)}/createSession`, { method:'POST', body: JSON.stringify({ persistChanges: true }) });
+    wbSession = s?.id || null;
+  } catch { wbSession = null; }   // ohne Session geht es auch, nur langsamer
+  try { return await fn(); }
+  finally {
+    if (wbSession) { const id = wbSession; graph(`${wb(cfg.cur)}/closeSession`, { method:'POST', headers:{'workbook-session-id': id} }).catch(()=>{}); }
+    wbSession = null;
+  }
 }
 
-// Vorjahr: Tabelle falls vorhanden, sonst benutzter Bereich des ersten Blatts ab der Kopfzeile
+/* ---- Tabelle lesen ---- */
+// Liefert { sheet, startCol, startRow, header[], map{key:idx}, rows[{...,_i,_raw}] }
+async function readCurTable(){
+  const r = await graph(`${tbl()}/range?$select=address,values`);
+  const m = String(r.address).match(/^(?:'((?:[^']|'')+)'|([^!]+))!\$?([A-Z]+)\$?(\d+)(?::\$?([A-Z]+)\$?(\d+))?$/);
+  if (!m) throw new Error('Tabellenadresse nicht lesbar: ' + r.address);
+  const sheet = (m[1] || m[2]).replace(/''/g, "'");
+  const header = (r.values[0] || []).map(v => tidy(v));
+  const map = {};
+  COLS.forEach(c => { const i = header.findIndex(h => c.re.test(h)); if (i >= 0) map[c.key] = i; });
+  const rows = r.values.slice(1).map((v, i) => rowFrom(v, map, i)).filter(x => !x._empty);
+  const emptyIdx = r.values.slice(1).findIndex(v => v.every(x => x === '' || x === null));
+  return { sheet, startCol: colIndex(m[3]), startRow: +m[4], header, map, rows, emptyIdx, dataCount: r.values.length - 1 };
+}
+function rowFrom(v, map, i){
+  const g = k => map[k] === undefined ? '' : v[map[k]];
+  const r = {
+    nr: tidy(g('nr')), kunde: tidy(g('kunde')), objekt: tidy(g('objekt')), plz: tidy(g('plz')), ort: tidy(g('ort')),
+    datum: cellToIso(g('datum')), status: tidy(g('status')), erfasst: tidy(g('erfasst')), freigabe: tidy(g('freigabe')), bemerkung: tidy(g('bemerkung')),
+    _i: i, _raw: v
+  };
+  r._empty = !(r.nr || r.kunde || r.objekt);
+  return r;
+}
+// Vorjahr: Tabelle falls vorhanden, sonst benutzter Bereich ab der Kopfzeile
 async function readAny(ref){
   const t = await graph(`${wb(ref)}/tables?$select=name`);
-  if (t.value && t.value.length) return readTable(ref, t.value[0].name);
-  const ws = await graph(`${wb(ref)}/worksheets?$select=name`);
-  const first = ws.value[0].name;
-  const r = await graph(`${wb(ref)}/worksheets/${encodeURIComponent(first)}/usedRange(valuesOnly=true)?$select=values`);
-  const vals = r.values || [];
-  const h = vals.findIndex(v => String(v[0]).trim().toLowerCase().startsWith('auftrags'));
-  return vals.slice(h + 1).map(toRow).filter(Boolean);
+  let vals;
+  if (t.value && t.value.length) {
+    vals = (await graph(`${wb(ref)}/tables/${encodeURIComponent(t.value[0].name)}/range?$select=values`)).values;
+  } else {
+    const ws = await graph(`${wb(ref)}/worksheets?$select=name`);
+    const r = await graph(`${wb(ref)}/worksheets/${encodeURIComponent(ws.value[0].name)}/usedRange(valuesOnly=true)?$select=values`);
+    const h = r.values.findIndex(v => String(v[0]).trim().toLowerCase().startsWith('auftrags'));
+    vals = r.values.slice(h);
+  }
+  const header = (vals[0] || []).map(v => tidy(v));
+  const map = {}; COLS.forEach(c => { const i = header.findIndex(h => c.re.test(h)); if (i >= 0) map[c.key] = i; });
+  if (map.nr === undefined) Object.assign(map, {nr:0, kunde:1, objekt:2, plz:3, ort:4});
+  return vals.slice(1).map((v, i) => rowFrom(v, map, i)).filter(x => !x._empty);
 }
 
-function toRow(v){
-  const r = { nr: clean(v[0]), kunde: clean(v[1]), objekt: clean(v[2]), plz: clean(v[3]), ort: clean(v[4]) };
-  return (r.nr || r.kunde || r.objekt) ? r : null;
-}
-function clean(x){ return x === null || x === undefined ? '' : String(x).trim(); }
+/* ---- Schreiben ---- */
+const sheetPath = t => `${wb(cfg.cur)}/worksheets/${encodeURIComponent(t.sheet)}`;
+const rowAddr = (t, i) => `${colLetter(t.startCol)}${t.startRow + 1 + i}:${colLetter(t.startCol + t.header.length - 1)}${t.startRow + 1 + i}`;
 
-/* ================= Einstellungen ================= */
+function buildRow(t, data, base){
+  const arr = base ? base.slice() : new Array(t.header.length).fill('');
+  Object.entries(data).forEach(([k, v]) => { if (t.map[k] !== undefined) arr[t.map[k]] = v; });
+  return arr;
+}
+async function writeRow(t, i, arr){
+  await graph(`${sheetPath(t)}/range(address='${rowAddr(t, i)}')`, { method:'PATCH', body: JSON.stringify({ values: [arr] }) });
+  if (t.map.datum !== undefined) {
+    const a = `${colLetter(t.startCol + t.map.datum)}${t.startRow + 1 + i}`;
+    await graph(`${sheetPath(t)}/range(address='${a}')`, { method:'PATCH', body: JSON.stringify({ numberFormat: [['dd.mm.yyyy']] }) }).catch(()=>{});
+  }
+}
+async function appendRow(t, arr){
+  if (t.emptyIdx >= 0) { await writeRow(t, t.emptyIdx, arr); return t.emptyIdx; }
+  const r = await graph(`${tbl()}/rows/add`, { method:'POST', body: JSON.stringify({ index: null, values: [arr] }) });
+  const i = (r && typeof r.index === 'number') ? r.index : t.dataCount;
+  if (t.map.datum !== undefined) {
+    const a = `${colLetter(t.startCol + t.map.datum)}${t.startRow + 1 + i}`;
+    await graph(`${sheetPath(t)}/range(address='${a}')`, { method:'PATCH', body: JSON.stringify({ numberFormat: [['dd.mm.yyyy']] }) }).catch(()=>{});
+  }
+  return i;
+}
+
+/* ================= Daten & Index ================= */
+let T = null;            // aktuelle Tabelle
+let rowsPrev = [];
+let kIndex = new Map();  // normKunde → {name, count, spellings:Map, objects:Map}
+let plzIndex = new Map();// plz → Map(ort→count)
+
+function nextNumber(rows){
+  const p = cfg.prefix; const re = new RegExp('^' + p + '-(\\d{4})$');
+  let max = 0; rows.forEach(r => { const m = r.nr.match(re); if (m) max = Math.max(max, +m[1]); });
+  return `${p}-${String(max + 1).padStart(4, '0')}`;
+}
+function nextSub(rows, base){
+  const re = new RegExp('^' + base.replace(/[-]/g, '\\-') + '-(\\d+)$');
+  let max = 0; rows.forEach(r => { const m = r.nr.match(re); if (m) max = Math.max(max, +m[1]); });
+  return `${base}-${max + 1}`;
+}
+
+function buildIndex(){
+  kIndex = new Map(); plzIndex = new Map();
+  const add = (r, cur) => {
+    if (r.status === ST.STORNO) return;
+    if (r.kunde) {
+      const k = normKunde(r.kunde);
+      if (!kIndex.has(k)) kIndex.set(k, { count:0, spellings:new Map(), objects:new Map() });
+      const e = kIndex.get(k); e.count++;
+      e.spellings.set(r.kunde, (e.spellings.get(r.kunde) || 0) + (cur ? 1.01 : 1)); // aktuelles Jahr leicht bevorzugt
+      if (r.objekt) {
+        const ok = normObjekt(r.objekt);
+        const o = e.objects.get(ok) || { objekt:r.objekt, plz:r.plz, ort:r.ort, count:0, last:'' };
+        o.count++; if (r.nr > o.last) { o.last = r.nr; o.objekt = r.objekt; o.plz = r.plz; o.ort = r.ort; }
+        e.objects.set(ok, o);
+      }
+    }
+    if (/^\d{5}$/.test(r.plz) && r.ort) {
+      const m = plzIndex.get(r.plz) || new Map(); m.set(r.ort, (m.get(r.ort) || 0) + 1); plzIndex.set(r.plz, m);
+    }
+  };
+  rowsPrev.forEach(r => add(r, false));
+  (T?.rows || []).forEach(r => add(r, true));
+  kIndex.forEach(e => { e.name = [...e.spellings.entries()].sort((a, b) => b[1] - a[1])[0][0]; });
+}
+
+async function loadData(){
+  if (!cfg.cur) { me.admin ? openAdmin() : openNoSetup(); return; }
+  msg('');
+  $('tbody').innerHTML = `<tr><td colspan="8" class="center"><span class="spin"></span> Lade Daten …</td></tr>`;
+  const errors = [];
+  try { T = await readCurTable(); } catch (e) { T = null; errors.push('Aktuelles Jahr: ' + explain(e)); }
+  try { rowsPrev = cfg.prev ? await readAny(cfg.prev) : []; } catch (e) { rowsPrev = []; errors.push('Vorjahr: ' + explain(e)); }
+  if (T) {
+    const missing = COLS.filter(c => T.map[c.key] === undefined);
+    if (missing.length) errors.push(`In der Tabelle fehlen Spalten: ${missing.map(c => c.name).join(', ')}.` + (me.admin ? ' → Admin → „Fehlende Spalten anlegen“.' : ' Bitte den Admin informieren.'));
+  }
+  if (errors.length) msg(errors.join('<br>'), T ? 'warn' : 'err');
+  buildIndex();
+  renderStats();
+  renderList();
+}
+
+/* ================= Liste ================= */
+let statusFilter = 'alle';
+
+function renderStats(){
+  const rows = T?.rows || [];
+  $('stCount').textContent = rows.filter(r => r.status !== ST.STORNO).length;
+  $('stNext').textContent = nextNumber(rows);
+  $('stOpen').textContent = rows.filter(r => statusOf(r) === ST.OFFEN).length;
+  $('stKunden').textContent = kIndex.size;
+  const seen = new Map(); rows.forEach(r => { if (r.nr) seen.set(r.nr, (seen.get(r.nr) || 0) + 1); });
+  const dups = [...seen.values()].filter(n => n > 1).length;
+  $('stDup').textContent = dups; show($('stDupBox'), dups > 0);
+  const open = rows.filter(r => statusOf(r) === ST.OFFEN).length;
+  show($('btnBulk'), me.freigeber && open > 0);
+  $('btnBulk').textContent = `✓ Alle offenen freigeben (${open})`;
+}
+const statusOf = r => r.status || (r._prev ? '' : ST.OFFEN);
+const stClass = s => s === ST.FREI ? 'frei' : s === ST.STORNO ? 'storno' : s === ST.OFFEN ? 'offen' : '';
+
+function renderList(){
+  const q = $('q').value.trim().toLowerCase();
+  let all = (T?.rows || []).map(r => ({...r, cur:true}));
+  if ($('withPrev').checked) all = all.concat(rowsPrev.map(r => ({...r, cur:false, _prev:true})));
+  if (statusFilter !== 'alle') all = all.filter(r => r.cur && statusOf(r) === statusFilter);
+  const words = q.split(/\s+/).filter(Boolean);
+  const hits = words.length ? all.filter(r => { const h = `${r.nr} ${r.kunde} ${r.objekt} ${r.plz} ${r.ort} ${r.bemerkung}`.toLowerCase(); return words.every(w => h.includes(w)); }) : all;
+  hits.sort((a, b) => b.nr.localeCompare(a.nr, 'de', {numeric:true}));
+  const yCur = '20' + cfg.prefix, yPrev = String(+yCur - 1);
+  $('tbody').innerHTML = hits.length ? hits.slice(0, MAX_RENDER).map(r => {
+    const s = statusOf(r);
+    let act = '';
+    if (r.cur) {
+      const canEdit = s !== ST.STORNO && (me.admin || (s === ST.OFFEN && (me.freigeber || r.erfasst.startsWith(me.name + ' ·'))));
+      if (canEdit) act += `<button class="sm" data-a="edit" data-nr="${esc(r.nr)}" title="Bearbeiten">✎</button>`;
+      if (me.freigeber && s === ST.OFFEN) act += `<button class="sm" data-a="frei" data-nr="${esc(r.nr)}" title="Freigeben">✓ Freigeben</button>`;
+      if ((me.admin || me.freigeber) && s !== ST.STORNO) act += `<button class="sm danger" data-a="storno" data-nr="${esc(r.nr)}" title="Stornieren">⊘</button>`;
+      act += `<button class="sm ghost" data-a="copy" data-nr="${esc(r.nr)}" title="Nummer kopieren">⧉</button>`;
+    }
+    const tip = [r.erfasst && 'Erfasst: ' + r.erfasst, r.freigabe && (s === ST.STORNO ? 'Storno: ' : 'Freigabe: ') + r.freigabe, r.bemerkung && 'Bemerkung: ' + r.bemerkung].filter(Boolean).join('\n');
+    return `<tr class="${s === ST.STORNO ? 'storno' : ''}" title="${esc(tip)}">
+      <td class="nr">${esc(r.nr)}</td><td>${esc(isoToDe(r.datum))}</td><td>${esc(r.kunde)}</td><td class="wrap">${esc(r.objekt)}</td>
+      <td>${esc(r.plz)}</td><td>${esc(r.ort)}</td>
+      <td>${r.cur ? `<span class="st ${stClass(s)}">${esc(s)}</span>` : `<span class="src">${yPrev}</span>`}</td>
+      <td class="act">${act}</td></tr>`;
+  }).join('') : `<tr><td colspan="8" class="center muted">${all.length ? 'Keine Treffer.' : 'Noch keine Einträge.'}</td></tr>`;
+  $('listNote').textContent = hits.length > MAX_RENDER ? `${hits.length} Treffer – angezeigt werden die ersten ${MAX_RENDER}.` : (hits.length ? `${hits.length} Einträge · Maus über eine Zeile zeigt Erfasst/Freigabe/Bemerkung` : '');
+}
+
+$('tbody').addEventListener('click', e => {
+  const b = e.target.closest('button[data-a]'); if (!b) return;
+  const nr = b.dataset.nr, a = b.dataset.a;
+  if (a === 'copy') { navigator.clipboard?.writeText(nr); toast(`${esc(nr)} kopiert`, 2000); }
+  if (a === 'edit') openForm(nr);
+  if (a === 'frei') doFreigabe([nr]);
+  if (a === 'storno') doStorno(nr);
+});
+
+/* ================= Formular ================= */
+let editNr = null;     // null = neu
+let lastHints = {};
+
+function openForm(nr = null){
+  if (!T) return;
+  const missing = COLS.filter(c => T.map[c.key] === undefined);
+  if (missing.length) { msg(`Speichern nicht möglich – in der Tabelle fehlen Spalten: ${missing.map(c => c.name).join(', ')}.`, 'warn'); return; }
+  editNr = nr;
+  const r = nr ? T.rows.find(x => x.nr === nr) : null;
+  $('fTitle').textContent = nr ? `Auftrag ${nr} bearbeiten` : 'Neuer Auftrag';
+  $('fSub').textContent = nr ? 'Die Nummer bleibt unverändert. Die Änderung wird in der Bemerkung vermerkt.' : 'Die Nummer wird beim Speichern endgültig vergeben.';
+  $('fSave').textContent = nr ? 'Änderung speichern' : 'Speichern & Nummer vergeben';
+  $('fDate').value = r?.datum || todayIso();
+  $('fKunde').value = r?.kunde || '';
+  $('fObjekt').value = r?.objekt || '';
+  $('fPlz').value = r?.plz || '';
+  $('fOrt').value = r?.ort || '';
+  $('fBem').value = r?.bemerkung || '';
+  $('fSub1').checked = false; $('fSubBase').value = '';
+  show($('subWrap'), !nr); show($('subBaseWrap'), false);
+  $('fErr').innerHTML = '';
+  show($('formOv'), true);
+  updateNumPreview(); updateHints();
+  setTimeout(() => $(nr ? 'fObjekt' : 'fKunde').focus(), 50);
+}
+function closeForm(){ show($('formOv'), false); hideDDs(); }
+
+function updateNumPreview(){
+  if (editNr) { $('fNum').textContent = editNr; return; }
+  const base = tidy($('fSubBase').value);
+  if ($('fSub1').checked) $('fNum').textContent = base && T.rows.some(r => r.nr === base) ? nextSub(T.rows, base) : '–';
+  else $('fNum').textContent = nextNumber(T.rows);
+}
+
+/* ---- Combobox ---- */
+function hideDDs(){ ['ddKunde','ddObjekt','ddSub'].forEach(id => show($(id), false)); }
+function makeCombo(input, dd, source, onPick){
+  let items = [], act = -1;
+  const render = () => {
+    items = source(input.value);
+    if (!items.length) { show(dd, false); return; }
+    dd.innerHTML = items.map((it, i) => `<div data-i="${i}" class="${i === act ? 'act' : ''}">${it.html}</div>`).join('');
+    show(dd, true);
+  };
+  input.addEventListener('input', () => { act = -1; render(); });
+  input.addEventListener('focus', () => { act = -1; render(); });
+  input.addEventListener('keydown', e => {
+    if (dd.classList.contains('hidden')) return;
+    if (e.key === 'ArrowDown') { act = Math.min(act + 1, items.length - 1); render(); e.preventDefault(); }
+    else if (e.key === 'ArrowUp') { act = Math.max(act - 1, 0); render(); e.preventDefault(); }
+    else if (e.key === 'Enter' && act >= 0) { onPick(items[act]); show(dd, false); e.preventDefault(); }
+    else if (e.key === 'Escape') { show(dd, false); }
+  });
+  dd.addEventListener('mousedown', e => { const d = e.target.closest('div[data-i]'); if (d) { e.preventDefault(); onPick(items[+d.dataset.i]); show(dd, false); } });
+  input.addEventListener('blur', () => setTimeout(() => show(dd, false), 120));
+}
+
+makeCombo($('fKunde'), $('ddKunde'), q => {
+  const nq = normKunde(q); const lq = q.trim().toLowerCase();
+  if (!lq) return [];
+  return [...kIndex.values()]
+    .map(e => ({ e, s: [...e.spellings.keys()].some(sp => sp.toLowerCase().includes(lq)) || (nq && normKunde(e.name).includes(nq)) ? 2 : sim(nq, normKunde(e.name)) }))
+    .filter(x => x.s >= 0.75).sort((a, b) => b.s - a.s || b.e.count - a.e.count).slice(0, 12)
+    .map(({e}) => ({ value: e.name, html: `${esc(e.name)} <small>· ${Math.round(e.count)} Aufträge · ${e.objects.size} Objekte</small>` }));
+}, it => { $('fKunde').value = it.value; updateHints(); $('fObjekt').focus(); });
+
+makeCombo($('fObjekt'), $('ddObjekt'), q => {
+  const e = kIndex.get(normKunde($('fKunde').value));
+  if (!e) return [];
+  const lq = q.trim().toLowerCase();
+  return [...e.objects.values()].filter(o => !lq || `${o.objekt} ${o.plz} ${o.ort}`.toLowerCase().includes(lq))
+    .sort((a, b) => b.last.localeCompare(a.last, 'de', {numeric:true})).slice(0, 15)
+    .map(o => ({ o, html: `${esc(o.objekt)} <small>· ${esc(o.plz)} ${esc(o.ort)} · zuletzt ${esc(o.last)}</small>` }));
+}, it => { $('fObjekt').value = it.o.objekt; $('fPlz').value = it.o.plz; $('fOrt').value = it.o.ort; updateHints(); });
+
+makeCombo($('fSubBase'), $('ddSub'), q => {
+  const lq = q.trim().toLowerCase(); if (!lq) return [];
+  return T.rows.filter(r => /^\d{2}-\d{4}$/.test(r.nr) && r.status !== ST.STORNO && `${r.nr} ${r.kunde} ${r.objekt}`.toLowerCase().includes(lq))
+    .slice(0, 10).map(r => ({ r, html: `<b>${esc(r.nr)}</b> <small>· ${esc(r.kunde)} · ${esc(r.objekt)}</small>` }));
+}, it => {
+  $('fSubBase').value = it.r.nr; $('fKunde').value = it.r.kunde; $('fObjekt').value = it.r.objekt; $('fPlz').value = it.r.plz; $('fOrt').value = it.r.ort;
+  updateNumPreview(); updateHints();
+});
+
+/* ---- Hinweise (Schreibweise, Dubletten, PLZ) ---- */
+function updateHints(){
+  const kunde = tidy($('fKunde').value), objekt = tidy($('fObjekt').value), plz = tidy($('fPlz').value), ort = tidy($('fOrt').value);
+  lastHints = {};
+  // Auftraggeber
+  let hk = '';
+  if (kunde) {
+    const nk = normKunde(kunde), e = kIndex.get(nk);
+    if (e && e.name === kunde) hk = `<div class="hint ok">✓ Bekannter Auftraggeber · ${Math.round(e.count)} Aufträge</div>`;
+    else if (e) { hk = `<div class="hint warn">Im Bestand geschrieben als <b>${esc(e.name)}</b><button class="sm" data-fix="kunde" data-v="${esc(e.name)}">übernehmen</button></div>`; lastHints.kunde = true; }
+    else {
+      let best = null, bs = 0;
+      kIndex.forEach(x => { const s = sim(nk, normKunde(x.name)); if (s > bs) { bs = s; best = x; } });
+      if (best && bs >= 0.8) { hk = `<div class="hint warn">Neuer Name – meintest du <b>${esc(best.name)}</b>? (${Math.round(best.count)} Aufträge)<button class="sm" data-fix="kunde" data-v="${esc(best.name)}">übernehmen</button></div>`; lastHints.kunde = true; }
+      else hk = `<div class="hint info">Neuer Auftraggeber – wird mit diesem Eintrag angelegt.</div>`;
+    }
+  }
+  $('hKunde').innerHTML = hk;
+  // Objekt: Dubletten im aktuellen Jahr + Wechsel des Auftraggebers
+  let ho = '';
+  if (objekt) {
+    const no = normObjekt(objekt), nk = normKunde(kunde);
+    const same = T.rows.filter(r => r.nr !== editNr && r.status !== ST.STORNO && normObjekt(r.objekt) === no && (!plz || !r.plz || r.plz === plz));
+    const sameK = same.filter(r => normKunde(r.kunde) === nk);
+    if (sameK.length) ho += `<div class="hint warn">Dieses Objekt hat im aktuellen Jahr schon: ${sameK.slice(0, 5).map(r => `<b>${esc(r.nr)}</b> (${esc(isoToDe(r.datum) || '–')}, ${esc(statusOf(r))})`).join(', ')}${sameK.length > 5 ? ' …' : ''}. Doppelt angelegt?</div>`;
+    const otherK = [...T.rows, ...rowsPrev].filter(r => r.status !== ST.STORNO && normObjekt(r.objekt) === no && (!plz || !r.plz || r.plz === plz) && kunde && normKunde(r.kunde) !== nk);
+    if (otherK.length) { const last = otherK.sort((a, b) => b.nr.localeCompare(a.nr, 'de', {numeric:true}))[0]; ho += `<div class="hint info">Objekt war bisher bei <b>${esc(last.kunde)}</b> (${esc(last.nr)}) – Verwalterwechsel?</div>`; }
+  }
+  $('hObjekt').innerHTML = ho;
+  // PLZ / Ort
+  let hp = '';
+  if (plz && !/^\d{5}$/.test(plz)) hp = `<div class="hint warn">PLZ muss 5 Ziffern haben.</div>`;
+  else if (plz) {
+    const m = plzIndex.get(plz);
+    if (m) {
+      const top = [...m.entries()].sort((a, b) => b[1] - a[1])[0][0];
+      if (!ort) hp = `<div class="hint info">PLZ ${esc(plz)} → <b>${esc(top)}</b><button class="sm" data-fix="ort" data-v="${esc(top)}">übernehmen</button></div>`;
+      else if (![...m.keys()].some(o => o.toLowerCase() === ort.toLowerCase())) hp = `<div class="hint warn">PLZ ${esc(plz)} gehörte bisher zu <b>${esc(top)}</b><button class="sm" data-fix="ort" data-v="${esc(top)}">übernehmen</button></div>`;
+    }
+  }
+  $('hPlz').innerHTML = hp;
+}
+document.getElementById('formOv').addEventListener('click', e => {
+  const b = e.target.closest('button[data-fix]'); if (!b) return;
+  $(b.dataset.fix === 'kunde' ? 'fKunde' : 'fOrt').value = b.dataset.v; updateHints();
+});
+['fKunde','fObjekt','fPlz','fOrt'].forEach(id => $(id).addEventListener('input', updateHints));
+$('fPlz').addEventListener('input', () => { $('fPlz').value = $('fPlz').value.replace(/\D/g, ''); });
+$('fSub1').onchange = () => { show($('subBaseWrap'), $('fSub1').checked); updateNumPreview(); if ($('fSub1').checked) $('fSubBase').focus(); };
+$('fSubBase').addEventListener('input', updateNumPreview);
+$('fCancel').onclick = closeForm;
+
+/* ---- Speichern ---- */
+$('fSave').onclick = async () => {
+  const d = { datum: $('fDate').value, kunde: tidy($('fKunde').value), objekt: tidy($('fObjekt').value), plz: tidy($('fPlz').value), ort: tidy($('fOrt').value), bemerkung: tidy($('fBem').value) };
+  const errs = [];
+  if (!d.datum) errs.push('Datum fehlt.');
+  if (!d.kunde) errs.push('Auftraggeber fehlt.');
+  if (!d.objekt) errs.push('Objekt fehlt.');
+  if (d.plz && !/^\d{5}$/.test(d.plz)) errs.push('PLZ muss 5 Ziffern haben.');
+  if (!editNr && $('fSub1').checked && !T.rows.some(r => r.nr === tidy($('fSubBase').value))) errs.push('Hauptauftrag für die Unternummer nicht gefunden.');
+  if (errs.length) { $('fErr').innerHTML = `<div class="hint warn" style="margin-top:12px">${errs.join('<br>')}</div>`; return; }
+
+  $('fSave').disabled = true; $('fErr').innerHTML = '<div class="status"><span class="spin"></span> Speichere …</div>';
+  try {
+    const nr = await withSession(() => editNr ? saveEdit(d) : saveNew(d));
+    closeForm();
+    toast(editNr ? `Auftrag <b>${esc(nr)}</b> geändert` : `Nummer <b style="color:var(--accent);font-size:18px">${esc(nr)}</b> vergeben <button class="sm" onclick="navigator.clipboard&&navigator.clipboard.writeText('${esc(nr)}');this.textContent='kopiert ✓'">Kopieren</button>`, 10000);
+    await loadData();
+  } catch (e) {
+    $('fErr').innerHTML = `<div class="hint warn" style="margin-top:12px">${explain(e)}</div>`;
+  } finally { $('fSave').disabled = false; }
+};
+
+async function saveNew(d){
+  const stamp = `${me.name} · ${nowStamp()}`;
+  const sub = $('fSub1').checked ? tidy($('fSubBase').value) : null;
+  let t = await readCurTable();                       // frisch lesen
+  let nr = sub ? nextSub(t.rows, sub) : nextNumber(t.rows);
+  const arr = buildRow(t, { nr, kunde:d.kunde, objekt:d.objekt, plz: d.plz ? Number(d.plz) : '', ort:d.ort, datum: isoToSerial(d.datum), status: ST.OFFEN, erfasst: stamp, freigabe:'', bemerkung:d.bemerkung });
+  await appendRow(t, arr);
+  // Kontrolle: hat jemand gleichzeitig dieselbe Nummer gezogen?
+  for (let i = 0; i < 3; i++) {
+    t = await readCurTable();
+    const same = t.rows.filter(r => r.nr === nr);
+    const mine = same.find(r => r.erfasst === stamp);
+    if (!mine) throw new Error('Eintrag wurde nach dem Speichern nicht gefunden – bitte Liste prüfen.');
+    if (same.length === 1) return nr;
+    const firstOther = same.find(r => r !== mine);
+    if (firstOther._i < mine._i) {                      // der andere war zuerst → wir weichen aus
+      nr = sub ? nextSub(t.rows, sub) : nextNumber(t.rows);
+      await writeRow(t, mine._i, buildRow(t, { nr }, mine._raw));
+      toast(`Nummer war gerade vergeben worden – neue Nummer: <b>${esc(nr)}</b>`, 8000);
+    } else return nr;
+  }
+  return nr;
+}
+
+async function saveEdit(d){
+  const t = await readCurTable();
+  const r = t.rows.find(x => x.nr === editNr);
+  if (!r) throw new Error('Auftrag nicht mehr gefunden.');
+  const changes = [];
+  if (r.kunde !== d.kunde) changes.push('Auftraggeber'); if (r.objekt !== d.objekt) changes.push('Objekt');
+  if (r.plz !== d.plz) changes.push('PLZ'); if (r.ort !== d.ort) changes.push('Ort'); if (r.datum !== d.datum) changes.push('Datum');
+  let bem = d.bemerkung;
+  if (changes.length) bem = tidy(`${bem}${bem ? ' | ' : ''}geändert (${changes.join(', ')}) von ${me.name} am ${nowStamp()}`);
+  await writeRow(t, r._i, buildRow(t, { kunde:d.kunde, objekt:d.objekt, plz: d.plz ? Number(d.plz) : '', ort:d.ort, datum: isoToSerial(d.datum), bemerkung: bem }, r._raw));
+  return editNr;
+}
+
+/* ================= Freigabe / Storno ================= */
+function ask({ title, text, okText = 'OK', danger = false, reason = false }){
+  return new Promise(resolve => {
+    $('askTitle').textContent = title; $('askText').innerHTML = text;
+    $('askYes').textContent = okText; $('askYes').className = danger ? 'danger' : 'primary';
+    show($('askReasonWrap'), reason); $('askReason').value = '';
+    show($('askOv'), true);
+    if (reason) setTimeout(() => $('askReason').focus(), 50);
+    const done = v => { show($('askOv'), false); $('askYes').onclick = $('askNo').onclick = null; resolve(v); };
+    $('askNo').onclick = () => done(null);
+    $('askYes').onclick = () => { if (reason && !tidy($('askReason').value)) { $('askReason').focus(); return; } done(reason ? tidy($('askReason').value) : true); };
+  });
+}
+
+async function doFreigabe(nrs){
+  const ok = await ask({ title: nrs.length > 1 ? `${nrs.length} Aufträge freigeben?` : `Auftrag ${nrs[0]} freigeben?`, text: nrs.length > 1 ? nrs.map(esc).join(', ') : 'Freigegeben mit deinem Namen und Zeitstempel.', okText: 'Freigeben' });
+  if (!ok) return;
+  const tst = toast('<span class="spin"></span> Gebe frei …', 60000);
+  try {
+    await withSession(async () => {
+      const t = await readCurTable(); const stamp = `${me.name} · ${nowStamp()}`;
+      for (const nr of nrs) {
+        const r = t.rows.find(x => x.nr === nr && statusOf(x) === ST.OFFEN); if (!r) continue;
+        await writeRow(t, r._i, buildRow(t, { status: ST.FREI, freigabe: stamp }, r._raw));
+      }
+    });
+    tst.remove(); toast(`${nrs.length > 1 ? nrs.length + ' Aufträge' : esc(nrs[0])} freigegeben ✓`, 3000);
+  } catch (e) { tst.remove(); msg(explain(e)); }
+  loadData();
+}
+
+async function doStorno(nr){
+  const reason = await ask({ title: `Auftrag ${nr} stornieren?`, text: 'Die Zeile bleibt im Auftragsbuch stehen (Nachvollziehbarkeit), wird als „Storniert“ markiert und die Nummer wird nicht erneut vergeben.', okText: 'Stornieren', danger: true, reason: true });
+  if (!reason) return;
+  try {
+    await withSession(async () => {
+      const t = await readCurTable(); const r = t.rows.find(x => x.nr === nr); if (!r) throw new Error('Auftrag nicht gefunden.');
+      const bem = tidy(`${r.bemerkung}${r.bemerkung ? ' | ' : ''}Storno: ${reason}`);
+      await writeRow(t, r._i, buildRow(t, { status: ST.STORNO, freigabe: `${me.name} · ${nowStamp()}`, bemerkung: bem }, r._raw));
+    });
+    toast(`${esc(nr)} storniert`, 3000);
+  } catch (e) { msg(explain(e)); }
+  loadData();
+}
+$('btnBulk').onclick = () => doFreigabe((T?.rows || []).filter(r => statusOf(r) === ST.OFFEN).map(r => r.nr));
+
+/* ================= Admin ================= */
 async function renderInfo(which){
-  const box = $(which + 'Info');
-  const ref = cfg[which];
+  const box = $(which + 'Info'); const ref = cfg[which];
   if (!ref) { box.innerHTML = '<div class="status muted">Noch keine Datei verknüpft.</div>'; return; }
   box.innerHTML = '<div class="status"><span class="spin"></span> Prüfe Datei …</div>';
   try {
@@ -322,194 +940,156 @@ async function renderInfo(which){
     let tableLine = '';
     if (which === 'cur') {
       try {
-        const t = await graph(`${wb(ref)}/tables?$select=name`);
-        const names = (t.value || []).map(x => x.name);
-        tableLine = names.includes(cfg.tableName)
-          ? `<div class="status ok">✓ Tabelle „${esc(cfg.tableName)}“ gefunden.</div>`
-          : `<div class="status err">✗ Tabelle „${esc(cfg.tableName)}“ nicht gefunden. Vorhanden: ${names.length ? names.map(esc).join(', ') : 'keine'}.</div>`;
+        const t = await graph(`${wb(ref)}/tables?$select=name`); const names = (t.value || []).map(x => x.name);
+        tableLine = names.includes(cfg.tableName) ? `<div class="status ok">✓ Tabelle „${esc(cfg.tableName)}“ gefunden.</div>` : `<div class="status err">✗ Tabelle „${esc(cfg.tableName)}“ nicht gefunden. Vorhanden: ${names.length ? names.map(esc).join(', ') : 'keine'}.</div>`;
       } catch (e) { tableLine = `<div class="status err">${explain(e)}</div>`; }
     }
-    box.innerHTML = `<div class="fileinfo">
-        <b>${esc(it.name)}</b><br>
-        <span class="muted">Ordner:</span> ${esc(decodeURIComponent(folder))}<br>
-        <span class="muted">Zuletzt geändert:</span> ${fmtDate(it.lastModifiedDateTime)} von ${esc(it.lastModifiedBy?.user?.displayName || '–')}<br>
-        <a href="${esc(it.webUrl)}" target="_blank" rel="noopener">In Excel öffnen ↗</a>
-      </div>${tableLine}`;
-  } catch (e) {
-    box.innerHTML = `<div class="status err">${explain(e)}</div>`;
-  }
+    box.innerHTML = `<div class="fileinfo"><b>${esc(it.name)}</b><br><span class="muted">Ordner:</span> ${esc(decodeURIComponent(folder))}<br>
+      <span class="muted">Zuletzt geändert:</span> ${fmtDate(it.lastModifiedDateTime)} von ${esc(it.lastModifiedBy?.user?.displayName || '–')}<br>
+      <a href="${esc(it.webUrl)}" target="_blank" rel="noopener">In Excel öffnen ↗</a></div>${tableLine}`;
+  } catch (e) { box.innerHTML = `<div class="status err">${explain(e)}</div>`; }
 }
+async function renderCols(){
+  const box = $('colInfo'); show($('btnAddCols'), false);
+  if (!cfg.cur) { box.textContent = 'Erst eine Datei verknüpfen.'; return; }
+  box.innerHTML = '<span class="spin"></span> Prüfe Spalten …';
+  try {
+    const t = await readCurTable();
+    const missing = COLS.filter(c => t.map[c.key] === undefined);
+    box.innerHTML = COLS.map(c => t.map[c.key] !== undefined ? `<span class="status ok">✓ ${esc(c.name)}</span>` : `<span class="status err">✗ ${esc(c.name)}</span>`).join(' &nbsp; ');
+    const baseMissing = missing.filter(c => c.base);
+    if (baseMissing.length) box.innerHTML += `<div class="status err">Grundspalten fehlen (${baseMissing.map(c => esc(c.name)).join(', ')}) – bitte Überschriften in Excel prüfen.</div>`;
+    else show($('btnAddCols'), missing.length > 0);
+  } catch (e) { box.innerHTML = `<span class="status err">${explain(e)}</span>`; }
+}
+$('btnAddCols').onclick = async () => {
+  $('btnAddCols').disabled = true;
+  try {
+    await withSession(async () => {
+      const t = await readCurTable();
+      for (const c of COLS.filter(c => t.map[c.key] === undefined)) {
+        const values = [[c.name], ...Array.from({length: t.dataCount}, () => [''])];
+        await graph(`${tbl()}/columns/add`, { method:'POST', body: JSON.stringify({ index: null, values }) });
+      }
+    });
+    toast('Spalten angelegt ✓', 3000);
+  } catch (e) { msg(explain(e)); }
+  $('btnAddCols').disabled = false; renderCols(); loadData();
+};
 
 async function linkFile(which){
-  const url = $(which + 'Link').value.trim();
-  if (!url) return;
-  const box = $(which + 'Info');
-  box.innerHTML = '<div class="status"><span class="spin"></span> Löse Link auf …</div>';
+  const url = $(which + 'Link').value.trim(); if (!url) return;
+  $(which + 'Info').innerHTML = '<div class="status"><span class="spin"></span> Löse Link auf …</div>';
   try {
-    cfg[which] = await resolveLink(url);
-    if (which === 'cur') autoTestFlag(cfg.cur.name);
-    saveCfg();
-    $(which + 'Link').value = '';
-    renderBadges();
-    renderInfo(which);
-  } catch (e) {
-    box.innerHTML = `<div class="status err">${explain(e)}</div>`;
-  }
+    cfg[which] = await resolveLink(url); if (which === 'cur') autoTestFlag(cfg.cur.name);
+    saveCfg(); $(which + 'Link').value = ''; afterCfgChange(which);
+  } catch (e) { $(which + 'Info').innerHTML = `<div class="status err">${explain(e)}</div>`; }
 }
-
 async function searchOwn(which){
-  const pick = $(which + 'Pick');
-  show(pick, true);
+  const pick = $(which + 'Pick'); show(pick, true);
   pick.innerHTML = '<div><span class="spin"></span> Suche .xlsx-Dateien …</div>';
   try {
     const r = await graph(`/me/drive/root/search(q='Auftragsbuch')?$select=id,name,parentReference,lastModifiedDateTime&$top=50`);
     const files = (r.value || []).filter(f => /\.xlsx$/i.test(f.name));
     if (!files.length) { pick.innerHTML = '<div class="muted">Keine Datei mit „Auftragsbuch“ im Namen gefunden.</div>'; return; }
-    pick.innerHTML = files.map((f, i) =>
-      `<div data-i="${i}"><b>${esc(f.name)}</b><br><small>${esc(decodeURIComponent((f.parentReference?.path || '').replace(/^\/drive\/root:?/, '') || '/'))} · ${fmtDate(f.lastModifiedDateTime)}</small></div>`
-    ).join('');
+    pick.innerHTML = files.map((f, i) => `<div data-i="${i}"><b>${esc(f.name)}</b><br><small>${esc(decodeURIComponent((f.parentReference?.path || '').replace(/^\/drive\/root:?/, '') || '/'))} · ${fmtDate(f.lastModifiedDateTime)}</small></div>`).join('');
     pick.querySelectorAll('div[data-i]').forEach(d => d.onclick = () => {
       const f = files[+d.dataset.i];
       cfg[which] = { driveId: f.parentReference.driveId, itemId: f.id, name: f.name };
       if (which === 'cur') autoTestFlag(f.name);
-      saveCfg(); show(pick, false); renderBadges(); renderInfo(which);
+      saveCfg(); show(pick, false); afterCfgChange(which);
     });
-  } catch (e) {
-    pick.innerHTML = `<div class="status err">${explain(e)}</div>`;
+  } catch (e) { pick.innerHTML = `<div class="status err">${explain(e)}</div>`; }
+}
+function afterCfgChange(which){ renderBadges(); renderInfo(which); if (which === 'cur') renderCols(); $('setupLink').value = setupLink(); }
+function autoTestFlag(name){ if (/test/i.test(name)) { cfg.isTest = true; $('isTest').checked = true; } }
+
+function renderVariants(){
+  const box = $('variantList');
+  const entries = [...kIndex.values()];
+  const groups = [];
+  entries.forEach(e => { if (e.spellings.size > 1) groups.push([...e.spellings.entries()]); });
+  // ähnliche, aber nicht gleich normalisierte Namen
+  const keys = [...kIndex.keys()];
+  for (let i = 0; i < keys.length; i++) for (let j = i + 1; j < keys.length; j++) {
+    if (Math.abs(keys[i].length - keys[j].length) > 4) continue;
+    if (sim(keys[i], keys[j]) >= 0.88) groups.push([[kIndex.get(keys[i]).name, kIndex.get(keys[i]).count], [kIndex.get(keys[j]).name, kIndex.get(keys[j]).count]]);
   }
+  box.innerHTML = groups.length ? groups.map(g => `<div class="grp">${g.sort((a, b) => b[1] - a[1]).map(([n, c], i) => `${i ? '' : ''}<span${i ? ' class="muted"' : ''}>${i ? '' : '<b>'}${esc(n)}${i ? '' : '</b>'} (${Math.round(c)}×)</span>`).join(' · ')}</div>`).join('') + `<p class="muted small">${groups.length} Gruppen. Fett = Schreibweise, die das Formular vorschlägt. Nicht jede Gruppe ist zwingend derselbe Kunde (z. B. ähnliche Familiennamen).</p>` : 'Keine auffälligen Schreibweisen gefunden.';
 }
 
-function autoTestFlag(name){
-  if (/test/i.test(name)) { cfg.isTest = true; $('isTest').checked = true; }
-}
-
-function fillSettingsForm(){
-  $('tblName').value = cfg.tableName;
-  $('prefix').value = cfg.prefix;
-  $('isTest').checked = !!cfg.isTest;
-}
-
-/* ================= Liste ================= */
-let rowsCur = [], rowsPrev = [];
-
-async function loadData(){
-  if (!cfg.cur) { openSettings(); msg('Bitte zuerst die Datei für das aktuelle Jahr verknüpfen.', 'info'); return; }
-  msg('');
-  $('tbody').innerHTML = `<tr><td colspan="6" class="center"><span class="spin"></span> Lade Daten …</td></tr>`;
-  const errors = [];
-  try { rowsCur = await readTable(cfg.cur, cfg.tableName); }
-  catch (e) { rowsCur = []; errors.push('Aktuelles Jahr: ' + explain(e)); }
-  try { rowsPrev = cfg.prev ? await readAny(cfg.prev) : []; }
-  catch (e) { rowsPrev = []; errors.push('Vorjahr: ' + explain(e)); }
-  if (errors.length) msg(errors.join('<br>'));
-  renderStats();
-  renderList();
-}
-
-function nextNumber(){
-  const p = (cfg.prefix || '').trim();
-  const re = new RegExp('^' + p + '-(\\d{4})');
-  let max = 0;
-  rowsCur.forEach(r => { const m = r.nr.match(re); if (m) max = Math.max(max, +m[1]); });
-  return `${p}-${String(max + 1).padStart(4, '0')}`;
-}
-
-function renderStats(){
-  $('stCount').textContent = rowsCur.length;
-  $('stNext').textContent = nextNumber();
-  $('stPrev').textContent = cfg.prev ? rowsPrev.length : '–';
-  const kunden = new Set([...rowsCur, ...rowsPrev].map(r => r.kunde.toLowerCase()).filter(Boolean));
-  $('stKunden').textContent = kunden.size;
-  const seen = new Map();
-  rowsCur.forEach(r => { if (r.nr) seen.set(r.nr, (seen.get(r.nr) || 0) + 1); });
-  const dups = [...seen.values()].filter(n => n > 1).length;
-  $('stDup').textContent = dups;
-  show($('stDupBox'), dups > 0);
-}
-
-function renderList(){
-  const q = $('q').value.trim().toLowerCase();
-  const withPrev = $('withPrev').checked;
-  let all = rowsCur.map(r => ({...r, cur: true}));
-  if (withPrev) all = all.concat(rowsPrev.map(r => ({...r, cur: false})));
-  const words = q.split(/\s+/).filter(Boolean);
-  const hits = words.length
-    ? all.filter(r => { const hay = `${r.nr} ${r.kunde} ${r.objekt} ${r.plz} ${r.ort}`.toLowerCase(); return words.every(w => hay.includes(w)); })
-    : all;
-  hits.sort((a, b) => b.nr.localeCompare(a.nr, 'de', {numeric: true}));
-  const yCur = '20' + cfg.prefix, yPrev = String(+yCur - 1);
-  $('tbody').innerHTML = hits.length
-    ? hits.slice(0, MAX_RENDER).map(r => `<tr>
-        <td class="nr">${esc(r.nr)}</td><td>${esc(r.kunde)}</td><td class="wrap">${esc(r.objekt)}</td>
-        <td>${esc(r.plz)}</td><td>${esc(r.ort)}</td>
-        <td><span class="src ${r.cur ? 'cur' : ''}">${r.cur ? yCur : yPrev}</span></td></tr>`).join('')
-    : `<tr><td colspan="6" class="center muted">${all.length ? 'Keine Treffer.' : 'Noch keine Einträge in der Tabelle.'}</td></tr>`;
-  $('listNote').textContent = hits.length > MAX_RENDER ? `${hits.length} Treffer – angezeigt werden die ersten ${MAX_RENDER}. Suche verfeinern.` : (hits.length ? `${hits.length} Einträge` : '');
-}
-
-/* ================= Ansichten ================= */
-function renderBadges(){
-  const on = !!cfg.cur;
-  show($('testBadge'), on && cfg.isTest);
-  show($('liveBadge'), on && !cfg.isTest);
-}
-function openSettings(){
-  show($('viewList'), false); show($('viewSettings'), true);
-  fillSettingsForm(); renderInfo('cur'); renderInfo('prev');
-}
-function openList(){
-  show($('viewSettings'), false); show($('viewList'), true);
-  loadData();
-}
-function signedInUI(account){
-  show($('viewLogin'), false);
-  $('userName').textContent = account.name || account.username;
-  ['userName', 'btnSettings', 'btnLogout'].forEach(id => show($(id), true));
-  renderBadges();
-  cfg.cur ? openList() : openSettings();
-}
-
-/* ================= Events ================= */
-$('btnLogin').onclick = () => msalApp.loginRedirect({ scopes: SCOPES });
-$('btnLogout').onclick = () => msalApp.logoutRedirect({ account: msalApp.getActiveAccount(), postLogoutRedirectUri: REDIRECT });
-$('btnSettings').onclick = openSettings;
-$('btnToList').onclick = openList;
 $('btnCurLink').onclick = () => linkFile('cur');
 $('btnPrevLink').onclick = () => linkFile('prev');
 $('btnCurSearch').onclick = () => searchOwn('cur');
 $('btnPrevSearch').onclick = () => searchOwn('prev');
-$('btnPrevClear').onclick = () => { cfg.prev = null; saveCfg(); renderInfo('prev'); };
+$('btnPrevClear').onclick = () => { cfg.prev = null; saveCfg(); afterCfgChange('prev'); };
 $('btnSaveCfg').onclick = () => {
   cfg.tableName = $('tblName').value.trim() || 'Auftraege';
-  cfg.prefix = ($('prefix').value.trim() || '27').slice(0, 2);
-  cfg.isTest = $('isTest').checked;
-  saveCfg(); renderBadges(); renderInfo('cur');
+  cfg.prefix = ($('prefix').value.trim() || '27').replace(/\D/g, '').slice(0, 2) || '27';
+  cfg.isTest = $('isTest').checked; saveCfg(); afterCfgChange('cur');
 };
+$('btnCopySetup').onclick = () => { navigator.clipboard?.writeText($('setupLink').value); toast('Einrichtungslink kopiert', 2000); };
+
+/* ================= Ansichten ================= */
+function renderBadges(){ const on = !!cfg.cur; show($('testBadge'), on && cfg.isTest); show($('liveBadge'), on && !cfg.isTest); }
+function hideViews(){ ['viewList','viewAdmin','viewNoSetup','viewLogin'].forEach(id => show($(id), false)); }
+function openAdmin(){
+  if (!me.admin) return;
+  hideViews(); show($('viewAdmin'), true);
+  $('tblName').value = cfg.tableName; $('prefix').value = cfg.prefix; $('isTest').checked = !!cfg.isTest;
+  $('setupLink').value = setupLink();
+  $('roleInfo').innerHTML = `Angemeldet als <b>${esc(me.mail)}</b><br>Admin: ${ADMINS.map(esc).join(', ')}<br>Freigabe: ${FREIGEBER.map(esc).join(', ')}`;
+  renderInfo('cur'); renderInfo('prev'); renderCols();
+  if (T) renderVariants();
+}
+function openList(){ hideViews(); show($('viewList'), true); loadData(); }
+function openNoSetup(){ hideViews(); show($('viewNoSetup'), true); }
+
+function signedInUI(account){
+  const mail = (account.username || '').toLowerCase();
+  me = { name: account.name || account.username, mail, admin: ADMINS.includes(mail), freigeber: FREIGEBER.includes(mail) };
+  $('userName').textContent = me.name;
+  const roles = [me.admin && 'Admin', me.freigeber && 'Freigabe'].filter(Boolean);
+  $('roleBadge').textContent = roles.join(' · '); show($('roleBadge'), roles.length > 0);
+  ['userName','btnLogout','btnList'].forEach(id => show($(id), true));
+  show($('btnAdmin'), me.admin);
+  renderBadges();
+  if (sessionStorage.getItem('ab-setup-done')) { sessionStorage.removeItem('ab-setup-done'); toast('Einrichtung übernommen ✓', 3000); }
+  cfg.cur ? openList() : (me.admin ? openAdmin() : openNoSetup());
+}
+
+$('btnLogin').onclick = () => msalApp.loginRedirect({ scopes: SCOPES });
+$('btnLogout').onclick = () => msalApp.logoutRedirect({ account: msalApp.getActiveAccount(), postLogoutRedirectUri: REDIRECT });
+$('btnAdmin').onclick = openAdmin;
+$('btnList').onclick = openList;
+$('btnNew').onclick = () => openForm(null);
 $('btnReload').onclick = loadData;
 $('q').oninput = renderList;
 $('withPrev').onchange = renderList;
+$('statusChips').addEventListener('click', e => {
+  const c = e.target.closest('.chip'); if (!c) return;
+  statusFilter = c.dataset.f; document.querySelectorAll('#statusChips .chip').forEach(x => x.classList.toggle('on', x === c)); renderList();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && !$('formOv').classList.contains('hidden') && $('ddKunde').classList.contains('hidden') && $('ddObjekt').classList.contains('hidden')) closeForm();
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && !$('formOv').classList.contains('hidden')) $('fSave').click();
+});
 
 /* ================= Start ================= */
 (async function init(){
   $('verBadge').textContent = 'V' + APP_VER;
   $('footName').textContent = `${APP_NAME} · V${APP_VER} · Made with Love ©`;
   $('feedback').href = `mailto:cryptopower@outlook.de?subject=${encodeURIComponent(`Feedback: ${APP_NAME} V${APP_VER}`)}`;
-
-  if (!location.href.startsWith('https://kaffeetrinker80.github.io/')) {
-    msg('Hinweis: Die Anmeldung funktioniert nur unter <b>kaffeetrinker80.github.io/NOVA/auftragsbuch/</b> – nicht als lokal geöffnete Datei.', 'warn');
-  }
+  if (!location.href.startsWith('https://kaffeetrinker80.github.io/')) msg('Hinweis: Die Anmeldung funktioniert nur unter <b>kaffeetrinker80.github.io/NOVA/auftragsbuch/</b> – nicht als lokal geöffnete Datei.', 'warn');
   try {
     await msalApp.initialize();
     const res = await msalApp.handleRedirectPromise();
     if (res?.account) msalApp.setActiveAccount(res.account);
-    if (!msalApp.getActiveAccount()) {
-      const accs = msalApp.getAllAccounts();
-      if (accs.length) msalApp.setActiveAccount(accs[0]);
-    }
+    if (!msalApp.getActiveAccount()) { const accs = msalApp.getAllAccounts(); if (accs.length) msalApp.setActiveAccount(accs[0]); }
     const acc = msalApp.getActiveAccount();
-    acc ? signedInUI(acc) : show($('viewLogin'), true);
+    acc ? signedInUI(acc) : (hideViews(), show($('viewLogin'), true));
   } catch (e) {
-    show($('viewLogin'), true);
+    hideViews(); show($('viewLogin'), true);
     msg('Anmeldung fehlgeschlagen: ' + esc(e.errorMessage || e.message || e));
   }
 })();
