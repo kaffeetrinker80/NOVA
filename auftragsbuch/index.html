@@ -438,6 +438,15 @@
   <div class="modal sheet" id="sheet"></div>
 </div>
 
+<!-- Alle Kunden-Zuordnungen -->
+<div class="overlay hidden" id="mapOv">
+  <div class="modal">
+    <div class="row" style="justify-content:space-between;align-items:center"><h2>Alle Zuordnungen</h2><button class="ghost" id="mapClose">Schließen</button></div>
+    <input type="search" id="mapQ" placeholder="Filtern: Name, Person …" style="margin-top:12px">
+    <div id="mapAll" class="small" style="margin-top:10px"></div>
+  </div>
+</div>
+
 <!-- Bestätigen / Storno -->
 <div class="overlay hidden" id="askOv">
   <div class="modal narrow">
@@ -453,7 +462,7 @@
 <script>
 /* ================= Konfiguration ================= */
 const APP_NAME   = 'NOVA Auftragsbuch';
-const APP_VER    = '0.7.6';
+const APP_VER    = '0.7.7';
 const CLIENT_ID  = '5af6d3d4-a161-4306-8af9-cdb6f392d9be';
 const TENANT_ID  = '376241b8-1f44-4ae5-84b1-4d3b67d4c112';
 const REDIRECT   = 'https://kaffeetrinker80.github.io/NOVA/auftragsbuch/';
@@ -1604,14 +1613,29 @@ function renderClean(){
     : '<span class="status ok">✓ Keine Duplikate gefunden.</span>';
   renderMaps(); renderMan();
 }
-function renderMaps(){
-  const box = $('mapList');
-  const rows = (KT?.rows || []);
-  box.innerHTML = rows.length ? rows.map(r => `<div style="display:flex;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid var(--line)">
+const MAP_SHOW = 10;
+const fmtAm = v => typeof v === 'number' ? (() => { const d = new Date(Date.UTC(1899, 11, 30) + v * 86400000); return `${pad(d.getUTCDate())}.${pad(d.getUTCMonth()+1)}.${d.getUTCFullYear()}`; })() : esc(v || '');
+const mapRowHtml = r => `<div style="display:flex;gap:8px;align-items:center;padding:5px 0;border-bottom:1px solid var(--line);flex-wrap:wrap">
       <span>${esc(r['Variante'])}</span> <span class="muted">${tidy(r['Typ']).toLowerCase().startsWith('kein') ? '≠' : '→'}</span> <b>${esc(r['Hauptname'])}</b>
-      <span class="muted">· ${esc(r['Von'] || '')} ${esc(r['Am'] || '')}</span><span class="spacer"></span>
-      <button class="sm ghost" data-unmap="${r._i}" title="Zuordnung aufheben">✕</button></div>`).join('') : 'Noch keine Zuordnungen.';
+      <span class="muted">· ${esc(r['Von'] || '')} ${fmtAm(r['Am'])}</span><span class="spacer"></span>
+      <button class="sm ghost" data-unmap="${r._i}" title="Zuordnung aufheben">✕</button></div>`;
+function renderMaps(){
+  const rows = (KT?.rows || []).slice().reverse();          // neueste zuerst
+  $('mapList').innerHTML = rows.length
+    ? rows.slice(0, MAP_SHOW).map(mapRowHtml).join('') + (rows.length > MAP_SHOW ? `<div style="margin-top:10px"><button class="sm" id="btnMapAll">Alle ${rows.length} Zuordnungen anzeigen …</button></div>` : '')
+    : 'Noch keine Zuordnungen.';
+  if ($('btnMapAll')) $('btnMapAll').onclick = openMapAll;
+  if (!$('mapOv').classList.contains('hidden')) renderMapAll();
 }
+function openMapAll(){ $('mapQ').value = ''; show($('mapOv'), true); renderMapAll(); setTimeout(() => $('mapQ').focus(), 50); }
+function renderMapAll(){
+  const q = $('mapQ').value.trim().toLowerCase();
+  const rows = (KT?.rows || []).slice().reverse().filter(r => !q || `${r['Variante']} ${r['Hauptname']} ${r['Von']} ${r['Typ']}`.toLowerCase().includes(q));
+  $('mapAll').innerHTML = rows.length ? rows.map(mapRowHtml).join('') + `<p class="muted small">${rows.length} Einträge · neueste zuerst</p>` : '<span class="muted">Keine Treffer.</span>';
+}
+$('mapQ').oninput = renderMapAll;
+$('mapClose').onclick = () => show($('mapOv'), false);
+$('mapOv').addEventListener('click', e => { if (e.target.id === 'mapOv') show($('mapOv'), false); });
 $('cleanList').addEventListener('click', async e => {
   const b = e.target.closest('button[data-ca]'); if (!b) return;
   const box = b.closest('[data-g]'); const g = groups[+box.dataset.g];
@@ -1713,7 +1737,9 @@ $('btnManMerge').onclick = async () => {
   await mergeNames(main, variants);
   manSel.clear(); $('manMain').value = ''; $('manQ').value = ''; renderMan();
 };
-$('mapList').addEventListener('click', async e => {
+$('mapAll').addEventListener('click', e => { const b = e.target.closest('button[data-unmap]'); if (b) unmapHandler(e); });
+$('mapList').addEventListener('click', e => unmapHandler(e));
+async function unmapHandler(e){
   const b = e.target.closest('button[data-unmap]'); if (!b) return;
   const r = KT.rows.find(x => x._i === +b.dataset.unmap); if (!r) return;
   const ok = await ask({ title: 'Zuordnung aufheben?', text: `${esc(r['Variante'])} ${tidy(r['Typ']).toLowerCase().startsWith('kein') ? '≠' : '→'} ${esc(r['Hauptname'])}<br><br>Bereits umbenannte Einträge im aktiven Jahr bleiben so.`, okText: 'Aufheben', danger: true });
@@ -1730,7 +1756,7 @@ $('mapList').addEventListener('click', async e => {
     });
   } catch (err) { msg(explain(err)); }
   loadAdminData();
-});
+}
 
 /* ================= Admin: Rollen & Protokoll ================= */
 function renderRole(){
@@ -1755,19 +1781,21 @@ $('btnSaveFrei').onclick = async () => {
   } catch (e) { msg(explain(e)); }
   loadAdminData();
 };
-let logRows = [];
+let logRows = [], logShow = 25;
 async function loadLog(){
   const box = $('logList'); box.innerHTML = '<span class="spin"></span> Lade Protokoll …';
-  try { logRows = (await readTbl(C, CT.protokoll.table)).rows.slice().reverse(); renderLog(); }
+  try { logRows = (await readTbl(C, CT.protokoll.table)).rows.slice().reverse(); logShow = 25; renderLog(); }
   catch (e) { box.innerHTML = `<span class="status err">${explain(e)}</span>`; }
 }
 function renderLog(){
   const q = $('logQ').value.trim().toLowerCase();
-  const hits = logRows.filter(r => !q || `${r['Zeitpunkt']} ${r['Wer']} ${r['Aktion']} ${r['Nummer']} ${r['Details']}`.toLowerCase().includes(q)).slice(0, 200);
-  $('logList').innerHTML = hits.length ? `<div class="tablewrap" style="display:block"><table><thead><tr><th>Zeit</th><th>Wer</th><th>Aktion</th><th>Nummer</th><th>Details</th></tr></thead><tbody>${hits.map(r => `<tr><td>${esc(r['Zeitpunkt'])}</td><td>${esc(r['Wer'])}</td><td>${esc(r['Aktion'])}</td><td class="nr">${esc(r['Nummer'])}</td><td class="wrap">${esc(r['Details'])}</td></tr>`).join('')}</tbody></table></div><p class="muted small">${logRows.length} Einträge gesamt · neueste zuerst${hits.length === 200 ? ' · max. 200 angezeigt' : ''}</p>` : '<span class="muted">Keine Einträge.</span>';
+  const all = logRows.filter(r => !q || `${r['Zeitpunkt']} ${r['Wer']} ${r['Aktion']} ${r['Nummer']} ${r['Details']}`.toLowerCase().includes(q));
+  const hits = all.slice(0, logShow);
+  $('logList').innerHTML = hits.length ? `<div class="tablewrap" style="display:block"><table><thead><tr><th>Zeit</th><th>Wer</th><th>Aktion</th><th>Nummer</th><th>Details</th></tr></thead><tbody>${hits.map(r => `<tr><td>${esc(r['Zeitpunkt'])}</td><td>${esc(r['Wer'])}</td><td>${esc(r['Aktion'])}</td><td class="nr">${esc(r['Nummer'])}</td><td class="wrap">${esc(r['Details'])}</td></tr>`).join('')}</tbody></table></div><p class="muted small">${hits.length} von ${all.length} angezeigt · neueste zuerst${all.length > hits.length ? ` <button class="sm" id="btnLogMore">Weitere 50 anzeigen</button>` : ''}</p>` : '<span class="muted">Keine Einträge.</span>';
+  if ($('btnLogMore')) $('btnLogMore').onclick = () => { logShow += 50; renderLog(); };
 }
 $('btnLog').onclick = loadLog;
-$('logQ').oninput = renderLog;
+$('logQ').oninput = () => { logShow = 25; renderLog(); };
 
 /* ---- Datei-Suche im eigenen OneDrive ---- */
 async function searchOwn(pickId, q, onPick){
@@ -1834,6 +1862,7 @@ $('withPrev').onchange = renderList;
 $('statusChips').addEventListener('click', e => { const c = e.target.closest('.chip'); if (c) setFilter(c.dataset.f); });
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && !$('sheetOv').classList.contains('hidden')) closeSheet();
+  if (e.key === 'Escape' && !$('mapOv').classList.contains('hidden')) show($('mapOv'), false);
   const typing = /INPUT|TEXTAREA/.test(document.activeElement?.tagName || '');
   if (e.key === '/' && !typing && !$('viewList').classList.contains('hidden')) { e.preventDefault(); $('q').focus(); }
   if (e.key === 'Escape' && !$('formOv').classList.contains('hidden') && $('ddKunde').classList.contains('hidden') && $('ddObjekt').classList.contains('hidden')) closeForm();
