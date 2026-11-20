@@ -167,6 +167,9 @@ header::before{content:"";position:absolute;left:0;right:0;top:0;height:3px;back
 th,td{overflow-wrap:anywhere;hyphens:auto}
 td.v{white-space:normal;min-width:4.5em}
 table.kv td:first-child{width:38%}
+.flow{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;margin:6px 0 10px}
+.flow span{background:var(--acc-soft);color:var(--acc);font-weight:600;font-size:13px;padding:4px 10px;border-radius:999px}
+.flow i{font-style:normal;color:var(--muted)}
 .zw{display:grid;gap:8px;margin:6px 0}
 @media(min-width:700px){.zw{grid-template-columns:repeat(3,1fr)}}
 .zc{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--bg)}
@@ -642,13 +645,42 @@ const CARDS = [
 <tr><td class="v">Risikoabschätzung</td><td>Ursachenanalyse nach Erreichen des TMW (früher „Gefährdungsanalyse“)</td></tr>
 <tr><td class="v">Aerosol</td><td>feinste Tröpfchen (z. B. Dusche) – Übertragungsweg für Legionellen</td></tr>
 <tr><td class="v">Biofilm</td><td>Schleimschicht aus Mikroorganismen an Rohr-/Armaturenoberflächen</td></tr>
-<tr><td class="v">Füll-/Roh-/Filtrat-/Reinwasser</td><td>Bad: Zulauf / vor Aufbereitung / nach Filter / ins Becken zurück</td></tr>
+<tr><td class="v">Roh-/Reinwasser</td><td>Wasserwerk und Bad meinen etwas anderes, siehe Eintrag „Wasserarten“</td></tr>
 <tr><td class="v">Natriumthiosulfat</td><td>Neutralisiert Restchlor in der Mibi-Flasche</td></tr>
 <tr><td class="v">Messunsicherheit</td><td>Streubereich eines Messergebnisses; beim TMW bereits eingerechnet</td></tr>
 <tr><td class="v">UsI</td><td>Unternehmer oder sonstiger Inhaber einer Wasserversorgungsanlage (Betreiber)</td></tr>
 <tr><td class="v">GA</td><td>Gesundheitsamt</td></tr>
 <tr><td class="v">DAkkS</td><td>Deutsche Akkreditierungsstelle</td></tr>
 <tr><td class="v">Witness-Audit</td><td>Begutachter beobachtet die Tätigkeit vor Ort (z. B. Probenahme)</td></tr>
+</table></div>`},
+{cat:"gloss",t:"Wasserarten: Rohwasser, Reinwasser, Füllwasser …",s:"Wann sagt man was? Trinkwasser-Versorgung und Schwimmbad",h:`
+<h4>Trinkwasser-Versorgung (Wasserwerk → Zapfstelle)</h4>
+<div class="flow"><span>Rohwasser</span><i>→</i><span>Aufbereitung</span><i>→</i><span>Reinwasser</span><i>→</i><span>Verteilungsnetz</span><i>→</i><span>Trinkwasser-Installation</span></div>
+<div class="tw"><table class="kv">
+<tr><td class="v">Rohwasser</td><td>Wasser aus der Gewinnung (Brunnen, Quelle, See, Talsperre, Uferfiltrat) <b>vor</b> jeder Aufbereitung. Noch kein Trinkwasser. Herkunft bestimmt das Risiko: Grundwasser meist gut geschützt, Oberflächenwasser oder oberflächenbeeinflusstes Wasser kritischer.</td></tr>
+<tr><td class="v">Reinwasser</td><td>Fertig aufbereitetes Wasser am Wasserwerksausgang bzw. im Reinwasserbehälter, bevor es ins Netz geht.</td></tr>
+<tr><td class="v">Trinkwasser</td><td>„Wasser für den menschlichen Gebrauch“: Trinken, Kochen, Körperpflege, Spülen von Geschirr. Gilt ab der Übergabe ins Netz bis zur Zapfstelle. Hier gelten die Grenzwerte der TrinkwV.</td></tr>
+<tr><td class="v">PWC / PWH</td><td>Trinkwasser kalt / warm in der Hausinstallation (ab Wasserzähler). Zuständig ist der Betreiber, nicht mehr der Versorger.</td></tr>
+</table></div>
+<div class="box tip"><b>Warum wichtig?</b> Manche Parameter beziehen sich ausdrücklich auf das Rohwasser oder seine Herkunft: Somatische Coliphagen haben einen Referenzwert für das Rohwasser, Clostridium perfringens ist nur bei Oberflächenwasser oder Oberflächenwassereinfluss zu untersuchen.</div>
+
+<h4>Schwimmbad (DIN 19643, Kreislauf)</h4>
+<div class="flow"><span>Beckenwasser</span><i>→</i><span>Rohwasser</span><i>→</i><span>Filtrat</span><i>→</i><span>Reinwasser</span><i>→</i><span>Beckenwasser</span></div>
+<div class="tw"><table class="kv">
+<tr><td class="v">Füllwasser</td><td>Wasser zum Befüllen und Nachspeisen, in der Regel Trinkwasser.</td></tr>
+<tr><td class="v">Beckenwasser</td><td>Wasser im Becken, also das, worin gebadet wird. Hier wird die Schöpfprobe genommen.</td></tr>
+<tr><td class="v">Rohwasser (Bad)</td><td>Aus dem Becken abgeführtes Wasser (Überlaufrinne, Schwallwasserbehälter) <b>vor</b> der Aufbereitung.</td></tr>
+<tr><td class="v">Filtrat</td><td>Wasser direkt nach dem Filter.</td></tr>
+<tr><td class="v">Reinwasser (Bad)</td><td>Fertig aufbereitetes Wasser nach Desinfektionsmittel-Zugabe, das zurück ins Becken fließt.</td></tr>
+</table></div>
+<div class="box warn"><b>Achtung Doppelbedeutung:</b> „Rohwasser“ und „Reinwasser“ bedeuten im Bad etwas anderes als im Wasserwerk. Im Bad ist Rohwasser benutztes Beckenwasser, im Wasserwerk unbehandeltes Wasser aus der Gewinnung. Im Protokoll immer dazuschreiben, welches gemeint ist.</div>
+
+<h4>Abgrenzung: kein Trinkwasser im Sinne der TrinkwV</h4>
+<div class="tw"><table class="kv">
+<tr><td class="v">Nichttrinkwasser / Betriebswasser</td><td>z. B. Regenwasser für WC oder Garten. Getrenntes Leitungsnetz, gekennzeichnet, keine Verbindung zum Trinkwasser (DIN EN 1717).</td></tr>
+<tr><td class="v">Kühlwasser</td><td>Verdunstungskühlanlagen und Kühltürme: Legionellen nach 42. BImSchV, nicht nach TrinkwV.</td></tr>
+<tr><td class="v">Badegewässer</td><td>Natürliche Seen, Flüsse und Meer: eigene Badegewässerverordnungen der Länder, nicht DIN 19643.</td></tr>
+<tr><td class="v">Mineral-, Quell-, Tafelwasser</td><td>Abgefüllte Wässer: Mineral- und Tafelwasser-Verordnung.</td></tr>
 </table></div>`},
 ];
 
