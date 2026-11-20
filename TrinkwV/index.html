@@ -118,7 +118,8 @@ details.flash{animation:fl 1.8s}
 .clitem input{width:22px;height:22px;flex:0 0 auto;margin:1px 0 0;accent-color:var(--ok)}
 .clitem.done span{color:var(--muted);text-decoration:line-through}
 header{background:var(--card);box-shadow:0 1px 0 var(--line)}
-header::before{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:linear-gradient(90deg,#01568F 0 62%,#7f7f7f 62% 100%)}
+header::before{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:var(--line)}
+#prog{position:absolute;left:0;top:0;height:3px;width:0;background:var(--acc);transition:width .08s linear;z-index:1}
 .brand{display:flex;align-items:center;gap:10px;margin:2px 0 10px}
 .bicon{flex:0 0 auto;width:42px;height:42px;border-radius:12px;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(1,86,143,.18)}
 .bicon img{width:34px;height:34px;object-fit:contain}
@@ -136,11 +137,19 @@ header::before{content:"";position:absolute;left:0;right:0;top:0;height:3px;back
 .wave{position:absolute;left:0;right:0;bottom:0;width:100%;height:34px}
 .tile .ic{filter:saturate(.9)}
 .top{background:#01568F}
+/* Umbruch-Fix Mobil */
+th,td{overflow-wrap:anywhere;hyphens:auto}
+td.v{white-space:normal;min-width:4.5em}
+.tw table td:first-child.v{width:38%}
+@media(max-width:599px){table{font-size:13.5px}th,td{padding:7px 4px}}
+.norm b{flex:0 0 38%;min-width:0;overflow-wrap:anywhere}
+.norm div{min-width:0;overflow-wrap:anywhere}
 .top{position:fixed;right:14px;bottom:18px;border:0;background:var(--acc);color:#fff;width:44px;height:44px;border-radius:50%;font-size:20px;box-shadow:0 4px 14px rgba(0,0,0,.25);display:none}
 </style>
 </head>
 <body>
 <header>
+  <div id="prog" aria-hidden="true"></div>
   <div class="brand">
     <span class="bicon"><img src="data:image/png;base64,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" alt="NOVA"></span>
     <div class="btxt"><h1>Probenahme-Nachschlagewerk</h1><span>NOVA Praxis-Hygiene · für Probenehmer</span></div>
@@ -953,7 +962,10 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape")closeModal();});
 let tmr;
 $("#q").addEventListener("input",e=>{clearTimeout(tmr);tmr=setTimeout(()=>{q=e.target.value;if(q.trim())cat="alle";render();},120);});
 $("#clr").onclick=()=>{$("#q").value="";q="";render();$("#q").focus();};
-window.addEventListener("scroll",()=>{$("#top").style.display=scrollY>600?"block":"none";});
+function updProg(){const m=document.documentElement.scrollHeight-innerHeight;$("#prog").style.width=(m>0?Math.min(100,scrollY/m*100):0)+"%";}
+window.addEventListener("scroll",()=>{$("#top").style.display=scrollY>600?"block":"none";updProg();},{passive:true});
+window.addEventListener("resize",updProg);
+new MutationObserver(updProg).observe(document.getElementById("list"),{childList:true,subtree:true,attributes:true,attributeFilter:["open"]});
 $("#top").onclick=()=>window.scrollTo({top:0,behavior:"smooth"});
 render();
 </script>
