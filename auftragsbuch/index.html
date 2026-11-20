@@ -453,7 +453,7 @@
 <script>
 /* ================= Konfiguration ================= */
 const APP_NAME   = 'NOVA Auftragsbuch';
-const APP_VER    = '0.7.5';
+const APP_VER    = '0.7.6';
 const CLIENT_ID  = '5af6d3d4-a161-4306-8af9-cdb6f392d9be';
 const TENANT_ID  = '376241b8-1f44-4ae5-84b1-4d3b67d4c112';
 const REDIRECT   = 'https://kaffeetrinker80.github.io/NOVA/auftragsbuch/';
@@ -1673,21 +1673,30 @@ async function mergeNames(main, variants){
 }
 
 // Liste aller Auftraggeber (Rohnamen) für die manuelle Auswahl
-function allNames(){
-  const m = new Map();
-  (T?.rows || []).forEach(r => { if (r.kundeRaw) { const e = m.get(r.kundeRaw) || {cur:0, prev:0}; e.cur++; m.set(r.kundeRaw, e); } });
-  rowsPrev.forEach(r => { if (r.kundeRaw) { const e = m.get(r.kundeRaw) || {cur:0, prev:0}; e.prev++; m.set(r.kundeRaw, e); } });
-  return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0], 'de'));
+// Auftraggeber nach dem gültigen Namen gruppiert – Zusammengeführtes erscheint als EIN Eintrag
+function allGroups(){
+  const g = new Map();
+  const add = (raw, key) => {
+    if (!raw) return;
+    const t = canon(raw);
+    const e = g.get(t) || { target: t, members: new Set(), cur: 0, prev: 0 };
+    e.members.add(raw); e[key]++; g.set(t, e);
+  };
+  (T?.rows || []).forEach(r => add(r.kundeRaw, 'cur'));
+  rowsPrev.forEach(r => add(r.kundeRaw, 'prev'));
+  return [...g.values()].sort((a, b) => a.target.localeCompare(b.target, 'de'));
 }
-const manSel = new Set();
+const manSel = new Set();      // gewählte Zielnamen (Gruppen)
 function renderMan(){
   const q = $('manQ').value.trim().toLowerCase();
-  const list = allNames().filter(([n]) => manSel.has(n) || (q && (n.toLowerCase().includes(q) || canon(n).toLowerCase().includes(q))));
-  $('manList').innerHTML = list.length ? list.map(([n, c]) => `<div data-n="${esc(n)}" style="display:flex;gap:8px;align-items:center">
-      <input type="checkbox" ${manSel.has(n) ? 'checked' : ''} style="pointer-events:none">
-      <span>${esc(n)}${canon(n) !== n ? ` <span class="muted">→ ${esc(canon(n))}</span>` : ''}</span>
-      <small style="margin-left:auto">${c.cur ? `${esc(Y?.jahr || '')}: ${c.cur}` : ''}${c.cur && c.prev ? ' · ' : ''}${c.prev ? `${esc(P?.jahr || '')}: ${c.prev}` : ''}</small></div>`).join('')
-    : `<div class="muted">${q ? 'Kein Auftraggeber gefunden.' : 'Suchbegriff eingeben …'}</div>`;
+  const list = allGroups().filter(e => manSel.has(e.target) || (q && (e.target.toLowerCase().includes(q) || [...e.members].some(m => m.toLowerCase().includes(q)))));
+  $('manList').innerHTML = list.length ? list.map(e => {
+    const others = [...e.members].filter(m => m !== e.target);
+    return `<div data-n="${esc(e.target)}" style="display:flex;gap:8px;align-items:flex-start">
+      <input type="checkbox" ${manSel.has(e.target) ? 'checked' : ''} style="pointer-events:none;margin-top:3px">
+      <span><b style="font-weight:600">${esc(e.target)}</b>${others.length ? `<br><small>✓ zusammengeführt: ${others.map(esc).join(', ')}</small>` : ''}</span>
+      <small style="margin-left:auto;white-space:nowrap">${e.cur ? `${esc(Y?.jahr || '')}: ${e.cur}` : ''}${e.cur && e.prev ? ' · ' : ''}${e.prev ? `${esc(P?.jahr || '')}: ${e.prev}` : ''}</small></div>`;
+  }).join('') : `<div class="muted">${q ? 'Kein Auftraggeber gefunden.' : 'Suchbegriff eingeben …'}</div>`;
 }
 $('manQ').oninput = renderMan;
 $('manList').addEventListener('click', e => {
@@ -1698,7 +1707,9 @@ $('manList').addEventListener('click', e => {
 });
 $('btnManMerge').onclick = async () => {
   const main = tidy($('manMain').value);
-  const variants = [...manSel].filter(n => n !== main);
+  const groupsSel = allGroups().filter(e => manSel.has(e.target));
+  // alle Schreibweisen der gewählten Gruppen + deren bisherige Zielnamen
+  const variants = [...new Set(groupsSel.flatMap(e => [e.target, ...e.members]))].filter(n => n && n !== main);
   await mergeNames(main, variants);
   manSel.clear(); $('manMain').value = ''; $('manQ').value = ''; renderMan();
 };
