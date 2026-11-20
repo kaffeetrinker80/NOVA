@@ -81,11 +81,12 @@ mark{background:var(--mark);color:inherit;border-radius:2px;padding:0 1px}
 .norm div{font-size:14px}
 .norm div small{color:var(--muted);display:block}
 .empty{text-align:center;color:var(--muted);padding:40px 10px}
-footer{color:var(--muted);font-size:12.5px;text-align:center;padding:18px 16px 36px;line-height:1.55;border-top:1px solid var(--line);margin-top:10px}
-footer .flogo{display:block;margin:0 auto 6px;background:#fff;border-radius:8px;padding:3px}
-footer .fl1{font-weight:700;color:var(--acc);font-size:14px}
-footer .fl2{margin-bottom:6px}
-footer .fl3{font-weight:600;color:var(--ink);margin-bottom:6px}
+footer{color:var(--muted);font-size:12px;text-align:center;padding:12px 14px 26px;line-height:1.4;border-top:1px solid var(--line);margin-top:8px}
+.fbrand{display:inline-flex;align-items:center;gap:8px;text-align:left;margin-bottom:5px}
+.fbrand img{background:#fff;border-radius:6px;padding:2px;flex:0 0 auto}
+.fbrand b{display:block;color:var(--acc);font-size:12.5px;line-height:1.2}
+.fbrand span{display:block;font-size:11.5px;line-height:1.2}
+.faddr span{white-space:nowrap}
 footer a{color:var(--acc);text-decoration:none}
 .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
 @media(min-width:600px){.grid{grid-template-columns:repeat(4,1fr)}}
@@ -212,12 +213,8 @@ table.kv td:first-child{width:38%}
   <div id="list"></div>
 </main>
 <footer>
-  <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAMAAACdt4HsAAAAwFBMVEUAAACFio4KW5WOk5gLYJ0RFRgJYqION1Roa28JSXcOSXMSRmtucXQQIi82ODlydnlRU1VLTU99gYUOVYhDRUZ6fYIQHCUQMkkwMTOBhYphY2YmJyh0eXxWWVsTUHsUU4EQJzgNO1sYUXleYWQJKkMPP2FcXmJsb3OVm6ATQF8IToEIX6A+P0E/QEIhZ5p9f4MAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAib0E8AAAAQHRSTlMA+/v+/gb/UJOplniaFiWxVlHQyzjJDTgc2HoSwmaoriFlmnQ6ZWui/161/zUv9bUAAAAAAAAAAAAAAAAAAAAAZac9kAAAAuVJREFUeNrNVoly4jAMTXzEIWACCUeBttBr273//+/WluScdiDpdGY1LYTYetb55Cj6WpF/Pwnwzhef0l/wmB8/ob/icRzz1WT9tdU3CL8m6i9jEr6cpH/icSVygv7uUOvHhwkIBQUAP/MpCbSK2+UWEcaWwwN3zmsK5Gp8ARitO5sMet6MTyClz6XzbmwCqzPXfFwy5aHrNXlU3AiQYgIeGq+O+CodE8D25gUatb5B/w4Pu++8JrdO1wMQqH55a01TAPopW94Whg0P+oqxudLaaGjgGGyP4WpIh/YQ+vF6BkI1S2EYyAS0Lv8WXId6GuAGjOBApuQVitxSC+m5E+34jX7hEfmgi2b1nAgjif0ja1TCBEue3BmBIOVuMRPMySMB2Geh6JBAmk+xMy+r9FmyRwBBAFEBp8jwHNu0ARiTlQVMuUD76S3nroYeE3OcsP/G8TPFgEEMMBHeTMrCyAFY5G3WkB8X8+YVHl/t4sthWxTbKaPqy0VlVsC01SJN08UqWr6nIMtobb8WUIE72Kf6AKWNGqNwWslNwOCBx/Llw3x9QIAkZHfWB/hjF8qaQW21nGjAvBwbNAMZ9QBg9dXMAeX20LgjuEERApjVZYMAMI+LHsAOijLrA0ADCN22wE3WxlTQYOpzH2AOAPsOAM2kBgC2xVMfYA/IWRdAdi2ARsGDOnciVkWxCRD95i0Aidt2nkoqq/ZtATimJgDwwNFEpxSZqwRbSPWtSLYswGOU914n3Npxm9/nRUXOG/PTSF5sqK+Z8DfjrMEgocsj7PBVQZ1hdh4AKBFAB5azQXxLVejlPLiBaDALzMYzq1Ptl0uCVFz6bNQlupjoIVZBBMPgvRuKEm5pkJfmhJCwFoRUzC2oK8w2r0YKmymtZSS1VjOnfl2/9sJaKxJWwmf1Zn8Du+oyYX7xB9cj35nwqP8U6maKl/MuhHHjbdQ0kvtnHI+ElO3HDzN5Uc+ZmYhmiuj/chQ6+QdbZx+og6MqswAAAABJRU5ErkJggg==" alt="" width="28" height="28" class="flogo">
-  <div class="fl1">NOVA Praxis-Hygiene GmbH</div>
-  <div class="fl2">Experten für Trinkwasserhygiene</div>
-  <div class="fl3">Probenahme-Nachschlagewerk v1.0</div>
-  <div class="fl4">Ammannstr. 12 · 86167 Augsburg</div>
-  <div class="fl4">Tel. <a href="tel:+4982165083088">0821-65083088</a></div>
+  <div class="fbrand"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAMAAACdt4HsAAAAwFBMVEUAAACFio4KW5WOk5gLYJ0RFRgJYqION1Roa28JSXcOSXMSRmtucXQQIi82ODlydnlRU1VLTU99gYUOVYhDRUZ6fYIQHCUQMkkwMTOBhYphY2YmJyh0eXxWWVsTUHsUU4EQJzgNO1sYUXleYWQJKkMPP2FcXmJsb3OVm6ATQF8IToEIX6A+P0E/QEIhZ5p9f4MAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAib0E8AAAAQHRSTlMA+/v+/gb/UJOplniaFiWxVlHQyzjJDTgc2HoSwmaoriFlmnQ6ZWui/161/zUv9bUAAAAAAAAAAAAAAAAAAAAAZac9kAAAAuVJREFUeNrNVoly4jAMTXzEIWACCUeBttBr273//+/WluScdiDpdGY1LYTYetb55Cj6WpF/Pwnwzhef0l/wmB8/ob/icRzz1WT9tdU3CL8m6i9jEr6cpH/icSVygv7uUOvHhwkIBQUAP/MpCbSK2+UWEcaWwwN3zmsK5Gp8ARitO5sMet6MTyClz6XzbmwCqzPXfFwy5aHrNXlU3AiQYgIeGq+O+CodE8D25gUatb5B/w4Pu++8JrdO1wMQqH55a01TAPopW94Whg0P+oqxudLaaGjgGGyP4WpIh/YQ+vF6BkI1S2EYyAS0Lv8WXId6GuAGjOBApuQVitxSC+m5E+34jX7hEfmgi2b1nAgjif0ja1TCBEue3BmBIOVuMRPMySMB2Geh6JBAmk+xMy+r9FmyRwBBAFEBp8jwHNu0ARiTlQVMuUD76S3nroYeE3OcsP/G8TPFgEEMMBHeTMrCyAFY5G3WkB8X8+YVHl/t4sthWxTbKaPqy0VlVsC01SJN08UqWr6nIMtobb8WUIE72Kf6AKWNGqNwWslNwOCBx/Llw3x9QIAkZHfWB/hjF8qaQW21nGjAvBwbNAMZ9QBg9dXMAeX20LgjuEERApjVZYMAMI+LHsAOijLrA0ADCN22wE3WxlTQYOpzH2AOAPsOAM2kBgC2xVMfYA/IWRdAdi2ARsGDOnciVkWxCRD95i0Aidt2nkoqq/ZtATimJgDwwNFEpxSZqwRbSPWtSLYswGOU914n3Npxm9/nRUXOG/PTSF5sqK+Z8DfjrMEgocsj7PBVQZ1hdh4AKBFAB5azQXxLVejlPLiBaDALzMYzq1Ptl0uCVFz6bNQlupjoIVZBBMPgvRuKEm5pkJfmhJCwFoRUzC2oK8w2r0YKmymtZSS1VjOnfl2/9sJaKxJWwmf1Zn8Du+oyYX7xB9cj35nwqP8U6maKl/MuhHHjbdQ0kvtnHI+ElO3HDzN5Uc+ZmYhmiuj/chQ6+QdbZx+og6MqswAAAABJRU5ErkJggg==" alt="" width="22" height="22"><div><b>NOVA Praxis-Hygiene GmbH</b><span>Experten für Trinkwasserhygiene</span></div></div>
+  <div class="faddr"><span>Ammannstr. 12 · 86167 Augsburg</span> · <span>Tel. <a href="tel:+4982165083088">0821-65083088</a></span> · <span>Nachschlagewerk v1.0</span></div>
 </footer>
 <div class="modal" id="modal" hidden><div class="sheet"><button class="x" id="mx" aria-label="Schließen">×</button><div id="mbody"></div></div></div>
 <button class="top" id="top" aria-label="Nach oben">↑</button>
@@ -1006,7 +1003,7 @@ let tmr;
 $("#q").addEventListener("input",e=>{clearTimeout(tmr);tmr=setTimeout(()=>{q=e.target.value;if(q.trim())cat="alle";render();},120);});
 $("#clr").onclick=()=>{$("#q").value="";q="";render();$("#q").focus();};
 function updProg(){const m=document.documentElement.scrollHeight-innerHeight;$("#prog").style.width=(m>0?Math.min(100,scrollY/m*100):0)+"%";}
-window.addEventListener("scroll",()=>{$("#top").style.display=scrollY>600?"block":"none";updProg();},{passive:true});
+window.addEventListener("scroll",()=>{const nearEnd=scrollY+innerHeight>document.documentElement.scrollHeight-110;$("#top").style.display=scrollY>600&&!nearEnd?"block":"none";updProg();},{passive:true});
 window.addEventListener("resize",updProg);
 new MutationObserver(updProg).observe(document.getElementById("list"),{childList:true,subtree:true,attributes:true,attributeFilter:["open"]});
 $("#top").onclick=()=>window.scrollTo({top:0,behavior:"smooth"});
