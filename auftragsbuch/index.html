@@ -84,6 +84,7 @@
   td.wrap{white-space:normal;min-width:220px}
   th{position:sticky;top:0;background:var(--panel2);font-weight:600;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.4px}
   tr:hover td{background:rgba(94,234,212,.04)}
+  tr[data-row]{cursor:pointer}
   tr.storno td{color:var(--muted);text-decoration:line-through}
   tr.storno td.act{text-decoration:none}
   td.nr{font-family:'Outfit',sans-serif;color:var(--accent)}
@@ -452,7 +453,7 @@
 <script>
 /* ================= Konfiguration ================= */
 const APP_NAME   = 'NOVA Auftragsbuch';
-const APP_VER    = '0.7.4';
+const APP_VER    = '0.7.5';
 const CLIENT_ID  = '5af6d3d4-a161-4306-8af9-cdb6f392d9be';
 const TENANT_ID  = '376241b8-1f44-4ae5-84b1-4d3b67d4c112';
 const REDIRECT   = 'https://kaffeetrinker80.github.io/NOVA/auftragsbuch/';
@@ -637,7 +638,7 @@ async function withSessions(refs, fn){
     const result = await fn();
     // Stand direkt aus derselben Sitzung übernehmen – ohne Sitzung kommt kurz noch der alte Stand
     try { await loadCore(); } catch {}
-    noteWrite(typeof result === 'string' ? result : null);
+    noteWrite();
     return result;
   } finally {
     for (const ref of opened) {
@@ -803,7 +804,7 @@ async function loadData(){
   msg('');
   $('tbody').innerHTML = `<tr><td colspan="8" class="center"><span class="spin"></span> Lade Daten …</td></tr>`;
   const errors = [];
-  try { await loadCore(); }
+  try { if (!(await loadCoreFresh())) setTimeout(() => pollOnce(true), 5000); }
   catch (e) {
     T = null;
     if (e instanceof GraphError && e.status === 404 && /tbl/i.test(e.message || '')) errors.push('Die Steuerungsdatei hat noch nicht alle Tabellen.' + (me.admin ? ' → Admin → „Struktur prüfen &amp; ergänzen“.' : ' Bitte Admin informieren.'));
@@ -865,7 +866,23 @@ function buildIndex(){
 /* ================= Automatische Aktualisierung ================= */
 const POLL_MS = 30000, WRITE_GRACE_MS = 20000;
 let knownTags = {}, lastWriteAt = 0, polling = false, pollTimer = null;
-const myRecent = new Map();
+// Nach eigenen Änderungen liefert Microsoft ohne Sitzung manchmal noch kurz den alten Stand.
+// Jede Änderung hinterlegt, was danach gelten muss; ein Stand, der das nicht erfüllt, wird verworfen.
+const expects = [];
+function expect(test){ expects.push({ until: Date.now() + 180000, test }); }
+function snapshot(){ return { ABT, MT, KT, ET, T, years, Y, P, KMAP, NODUP, freigeber, fr: me.freigeber }; }
+function restore(x){ ({ ABT, MT, KT, ET, T, years, Y, P, KMAP, NODUP, freigeber } = x); me.freigeber = x.fr; }
+function expectationsOk(){
+  const now = Date.now();
+  for (let i = expects.length - 1; i >= 0; i--) if (expects[i].until < now) expects.splice(i, 1);
+  return expects.every(e => { try { return e.test(); } catch { return false; } });
+}
+async function loadCoreFresh(){
+  const snap = T ? snapshot() : null;
+  await loadCore();
+  if (snap && !expectationsOk()) { restore(snap); return false; }
+  return true;
+}
 
 function setSync(state, text){
   const el = $('syncInfo'); if (!el) return;
@@ -875,7 +892,7 @@ function setSync(state, text){
   el.querySelector('.synctxt').textContent = text || (state === 'busy' ? 'aktualisiere …' : state === 'err' ? 'Verbindung gestört' : state === 'paused' ? 'pausiert' : `aktuell · ${t}`);
   show(el, true);
 }
-function noteWrite(nr){ lastWriteAt = Date.now(); if (nr) myRecent.set(nr, Date.now()); }
+function noteWrite(){ lastWriteAt = Date.now(); }
 async function fetchTags(){
   const refs = [C, Y?.ref].filter(Boolean);
   const res = await Promise.all(refs.map(r => graph(`/drives/${r.driveId}/items/${r.itemId}?$select=cTag,lastModifiedBy`)));
@@ -896,13 +913,7 @@ async function pollOnce(force = false){
     if (!force && !changed) { setSync('ok'); return; }
     setSync('busy');
     const before = new Map((T.rows || []).map(r => [r.nr, r.status]));
-    const keep = { ABT, MT, KT, ET, T, years, Y, P, KMAP, NODUP, freigeber };
-    await loadCore();
-    const now = Date.now();
-    for (const [nr, at] of myRecent) { if (now - at > 120000) myRecent.delete(nr); }
-    if ([...myRecent.keys()].some(nr => !T.rows.some(r => r.nr === nr))) {    // Stand noch alt → verwerfen
-      ({ ABT, MT, KT, ET, T, years, Y, P, KMAP, NODUP, freigeber } = keep); setSync('ok'); return;
-    }
+    if (!(await loadCoreFresh())) { setSync('ok'); return; }    // noch alter Stand → beim nächsten Mal
     knownTags = tags;
     const added = T.rows.filter(r => !before.has(r.nr));
     const diff = added.length || T.rows.length !== before.size || T.rows.some(r => before.get(r.nr) !== r.status);
@@ -962,22 +973,18 @@ function renderList(){
     let act = '';
     if (r.cur) {
       if (me.freigeber && s === ST.OFFEN) act += `<button class="sm" data-a="frei" data-nr="${esc(r.nr)}" title="Freigeben">✓ Freigeben</button>`;
-      if (s !== ST.STORNO) act += `<button class="sm" data-a="rel" data-nr="${esc(r.nr)}" title="Weitere Nummer zu diesem Objekt (z. B. 2. Heizkreis / WWB)">➕</button>`;
-      if (s !== ST.STORNO) act += `<button class="sm" data-a="edit" data-nr="${esc(r.nr)}" title="Bearbeiten">✎</button>`;
-      if (s !== ST.STORNO) act += `<button class="sm danger" data-a="storno" data-nr="${esc(r.nr)}" title="Stornieren (Zeile bleibt stehen)">⊘</button>`;
-      act += `<button class="sm danger" data-a="del" data-nr="${esc(r.nr)}" title="Löschen (Zeile wird entfernt)">🗑</button>`;
-      act += `<button class="sm ghost" data-a="copy" data-nr="${esc(r.nr)}" title="Nummer kopieren">⧉</button>`;
+      act += `<button class="sm ghost" data-a="more" data-nr="${esc(r.nr)}" title="Details & Aktionen (Bearbeiten, weitere Nummer, Storno, Löschen …)">⋯</button>`;
     } else if (Y) {
-      act += `<button class="sm" data-a="take" data-nr="${esc(r.nr)}" title="Als neuen Auftrag für ${yCur} übernehmen">➕ Übernehmen</button>`;
+      act += `<button class="sm" data-a="take" data-nr="${esc(r.nr)}" title="Als neuen Auftrag für ${yCur} übernehmen">➕ Neu</button>`;
     }
     const tip = [r.kundeRaw && r.kundeRaw !== r.kunde && 'Im Auftragsbuch: ' + r.kundeRaw, r.erfasst && 'Erfasst: ' + r.erfasst, r.freigabe && (s === ST.STORNO ? 'Storniert: ' : 'Freigabe: ') + r.freigabe, r.bemerkung && 'Bemerkung: ' + r.bemerkung].filter(Boolean).join('\n');
-    return `<tr class="${s === ST.STORNO ? 'storno' : ''}" title="${esc(tip)}">
+    return `<tr class="${s === ST.STORNO ? 'storno' : ''}" data-row="${esc(r.nr)}" title="${esc(tip)}">
       <td class="nr">${esc(r.nr)}${bezugOf(r).map(b => ` <button class="bez" data-a="bez" data-nr="${esc(b)}" title="Verknüpfter Auftrag – anzeigen">↔ ${esc(b)}</button>`).join('')}</td><td>${esc(isoToDe(r.datum))}</td><td>${esc(r.kunde)}</td><td class="wrap">${esc(r.objekt)}</td>
       <td>${esc(r.plz)}</td><td>${esc(r.ort)}</td>
       <td>${r.cur ? `<span class="st ${stClass(s)}">${esc(s)}</span>` : `<span class="src">${yPrev}</span>`}</td>
       <td class="act">${act}</td></tr>`;
   }).join('') : `<tr><td colspan="8" class="center muted">${all.length ? 'Keine Treffer.' : 'Noch keine Einträge.'}</td></tr>`;
-  $('listNote').textContent = hits.length > MAX_RENDER ? `${hits.length} Treffer – angezeigt werden die ersten ${MAX_RENDER}.` : (hits.length ? `${hits.length} Einträge` + (isMobile() ? ' · Karte antippen für Details' : ' · Maus über eine Zeile zeigt Details') : '');
+  $('listNote').textContent = hits.length > MAX_RENDER ? `${hits.length} Treffer – angezeigt werden die ersten ${MAX_RENDER}.` : (hits.length ? `${hits.length} Einträge` + (isMobile() ? ' · Karte antippen für Details' : ' · Zeile anklicken für Details und alle Aktionen') : '');
   renderCards(hits, all.length, yPrev);
 }
 
@@ -1045,10 +1052,14 @@ $('cards').addEventListener('click', e => {
   const c = e.target.closest('[data-card]'); if (c) openSheet(c.dataset.card);
 });
 mq.addEventListener('change', () => { if (T) renderList(); });
-$('tbody').addEventListener('click', e => { const b = e.target.closest('button[data-a]'); if (b) handleAction(b.dataset.a, b.dataset.nr); });
+$('tbody').addEventListener('click', e => {
+  const b = e.target.closest('button[data-a]'); if (b) return handleAction(b.dataset.a, b.dataset.nr);
+  const tr = e.target.closest('tr[data-row]'); if (tr && !getSelection().toString()) openSheet(tr.dataset.row);
+});
 
 function handleAction(a, nr){
   if (a === 'take') { const r = rowsPrev.find(x => x.nr === nr); if (r) openForm(null, null, r); return; }
+  if (a === 'more') return openSheet(nr);
   if (a === 'copy') { navigator.clipboard?.writeText(nr); toast(`${esc(nr)} kopiert`, 2000); }
   if (a === 'edit') openForm(nr);
   if (a === 'frei') doFreigabe([nr]);
@@ -1271,6 +1282,7 @@ async function saveNew(d){
     }
   }
   await log(logs);
+  expect(() => T.rows.some(r => r.nr === nr && r.hasMeta));
   return nr;
 }
 
@@ -1286,6 +1298,8 @@ async function saveEdit(d){
   await writeRow(t, a._i, abArr(t, { kunde: d.kunde, objekt: (a.abStorno ? STORNO_PREFIX : '') + d.objekt, plz: d.plz ? Number(d.plz) : '', ort: d.ort }, a._raw));
   await metaUpsert(await freshMeta(), Y.jahr, editNr, { 'Datum': isoToSerial(d.datum), 'Bemerkung': d.bemerkung });
   await log([['Geändert', editNr, ch.join('; ')]]);
+  const en = editNr, dk = d.kunde, dobj = d.objekt;
+  expect(() => { const x = T.rows.find(q => q.nr === en); return !x || (x.kundeRaw === dk && x.objekt === dobj); });
   return editNr;
 }
 
@@ -1314,6 +1328,7 @@ async function doFreigabe(nrs){
         const r = T.rows.find(x => x.nr === nr); if (!r || statusOf(r) !== ST.OFFEN) continue;
         await metaUpsert(mt, Y.jahr, nr, { 'Status': ST.FREI, 'Freigabe': stamp });
         logs.push(['Freigegeben', nr, '']);
+        expect(() => { const x = T.rows.find(q => q.nr === nr); return !x || x.status !== ST.OFFEN; });
       }
       if (logs.length) await log(logs);
     });
@@ -1332,6 +1347,7 @@ async function doStorno(nr){
       const r = T.rows.find(x => x.nr === nr) || {};
       await metaUpsert(await freshMeta(), Y.jahr, nr, { 'Status': ST.STORNO, 'Freigabe': stampMe(), 'Bemerkung': tidy(`${r.bemerkung || ''}${r.bemerkung ? ' | ' : ''}Storno: ${reason}`) });
       await log([['Storniert', nr, reason]]);
+      expect(() => { const x = T.rows.find(q => q.nr === nr); return !x || x.status === ST.STORNO; });
     });
     toast(`${esc(nr)} storniert`, 3000);
   } catch (e) { msg(explain(e)); }
@@ -1358,10 +1374,10 @@ async function doDelete(nr){
       const t = await readAB(Y);
       const a = t.ab.find(x => x.nr === nr); if (!a) throw new Error('Auftrag nicht mehr gefunden – wurde er schon gelöscht?');
       await deleteRow(t, a._i);
+      expect(() => !T.rows.some(q => q.nr === nr));
       await metaDelete(await freshMeta(), Y.jahr, nr);
       await log([['Gelöscht', nr, `${a.kundeRaw} · ${a.objektRaw}${a.plz || a.ort ? ' · ' + [a.plz, a.ort].filter(Boolean).join(' ') : ''}`]]);
     });
-    myRecent.delete(nr);
     toast(`${esc(nr)} gelöscht`, 3000);
   } catch (e) { msg(explain(e)); }
   refreshAfterWrite();
@@ -1444,7 +1460,7 @@ $('btnMigrate').onclick = async () => {
       add.push(rowArr(jt, { 'Jahr': y, 'Präfix': String(y).slice(-2), 'DriveId': oldCfg.cur.driveId, 'ItemId': oldCfg.cur.itemId, 'Datei': oldCfg.cur.name, 'Tabelle': oldCfg.tableName || 'Auftraege', 'Aktiv': 'ja', 'Testbetrieb': oldCfg.isTest ? 'ja' : '' }));
     if (oldCfg.prev && !jt.rows.some(r => String(r['Jahr']) === String(y - 1)))
       add.push(rowArr(jt, { 'Jahr': y - 1, 'Präfix': String(y - 1).slice(-2), 'DriveId': oldCfg.prev.driveId, 'ItemId': oldCfg.prev.itemId, 'Datei': oldCfg.prev.name, 'Tabelle': '', 'Aktiv': '', 'Testbetrieb': '' }));
-    if (add.length) await withSessions([C], () => appendRows(jt, add));
+    if (add.length) { expect(() => years.length > 0); await withSessions([C], () => appendRows(jt, add)); }
     toast(add.length ? `${add.length} Jahr(e) übernommen ✓` : 'Schon übernommen', 3000);
   } catch (e) { msg(explain(e)); }
   loadAdminData();
@@ -1503,6 +1519,7 @@ async function saveYear(y){
       const ex = jt.rows.find(r => String(r['Jahr']).trim() === y.jahr);
       if (ex) await writeRow(jt, ex._i, rowArr(jt, vals, ex._raw)); else await appendRows(jt, [rowArr(jt, vals)]);
       if (y.aktiv) for (const r of jt.rows) if (String(r['Jahr']).trim() !== y.jahr && yes(r['Aktiv'])) await writeRow(jt, r._i, rowArr(jt, { 'Aktiv': '' }, r._raw));
+      expect(() => years.some(q => q.jahr === y.jahr && q.aktiv === !!y.aktiv && q.ref.itemId === y.ref.itemId));
       PT = await readTbl(C, CT.protokoll.table);
       await appendRows(PT, [rowArr(PT, { 'Zeitpunkt': nowIsoTime(), 'Wer': me.name, 'Aktion': 'Jahr gespeichert', 'Jahr': Number(y.jahr), 'Nummer': '', 'Details': `${y.ref.name}${y.aktiv ? ' · aktiv' : ''}${y.test ? ' · Test' : ''}` })]);
     });
@@ -1527,6 +1544,8 @@ function renderExtraCols(){
     try {
       await withSessions([Y.ref, C], async () => {
         for (const x of extra) await graph(`${wb(Y.ref)}/tables/${encodeURIComponent(Y.table)}/columns/${encodeURIComponent(x.h)}`, { method:'DELETE' });
+        const gone = extra.map(x => x.h);
+        expect(() => !ABT || !ABT.header.some(h => gone.includes(h)));
         await log([['Spalten entfernt', '', `${Y.file}: ${extra.map(x => x.h).join(', ')}`]]);
       });
       toast('Zusatzspalten entfernt ✓', 3000);
@@ -1610,6 +1629,7 @@ $('cleanList').addEventListener('click', async e => {
         await appendRows(kt, add);
         PT = await readTbl(C, CT.protokoll.table);
         await appendRows(PT, [rowArr(PT, { 'Zeitpunkt': nowIsoTime(), 'Wer': me.name, 'Aktion': 'Kein Duplikat', 'Jahr': Number(Y?.jahr || 0), 'Nummer': '', 'Details': chosen.join(' ≠ ') })]);
+        expect(() => NODUP.has(pairKey(chosen[0], chosen[1])));
       });
       toast('Gespeichert ✓', 2500);
     } catch (err) { msg(explain(err)); }
@@ -1644,6 +1664,7 @@ async function mergeNames(main, variants){
         for (const a of t.ab) if (variants.includes(a.kundeRaw)) { await writeRow(t, a._i, abArr(t, { kunde: main }, a._raw)); n++; }
       }
       PT = await readTbl(C, CT.protokoll.table);
+      expect(() => variants.every(v => canon(v) === main));
       await appendRows(PT, [rowArr(PT, { 'Zeitpunkt': nowIsoTime(), 'Wer': me.name, 'Aktion': 'Kunde zusammengeführt', 'Jahr': Number(Y?.jahr || 0), 'Nummer': '', 'Details': `${variants.join(', ')} → ${main}${n ? ` (${n} Einträge umbenannt)` : ''}` })]);
     });
     tst.remove(); toast('Zusammengeführt ✓', 3000);
@@ -1691,6 +1712,8 @@ $('mapList').addEventListener('click', async e => {
       const kt = await readTbl(C, CT.kunden.table);
       const x = kt.rows.find(q => tidy(q['Variante']) === tidy(r['Variante']) && tidy(q['Hauptname']) === tidy(r['Hauptname']));
       if (x) await deleteRow(kt, x._i);
+      const vv = tidy(r['Variante']), hh = tidy(r['Hauptname']);
+      expect(() => !KT.rows.some(q => tidy(q['Variante']) === vv && tidy(q['Hauptname']) === hh));
       PT = await readTbl(C, CT.protokoll.table);
       await appendRows(PT, [rowArr(PT, { 'Zeitpunkt': nowIsoTime(), 'Wer': me.name, 'Aktion': 'Zuordnung aufgehoben', 'Jahr': Number(Y?.jahr || 0), 'Nummer': '', 'Details': `${r['Variante']} / ${r['Hauptname']}` })]);
     });
@@ -1713,6 +1736,7 @@ $('btnSaveFrei').onclick = async () => {
       const ex = et.rows.find(r => tidy(r['Schlüssel']).toLowerCase() === 'freigabe');
       const vals = { 'Schlüssel':'Freigabe', 'Wert': list.join(', '), 'Hinweis':'E-Mail-Adressen, die freigeben dürfen' };
       if (ex) await writeRow(et, ex._i, rowArr(et, vals, ex._raw)); else await appendRows(et, [rowArr(et, vals)]);
+      expect(() => freigeber.join(',') === list.join(','));
       PT = await readTbl(C, CT.protokoll.table);
       await appendRows(PT, [rowArr(PT, { 'Zeitpunkt': nowIsoTime(), 'Wer': me.name, 'Aktion': 'Rollen geändert', 'Jahr': Number(Y?.jahr || 0), 'Nummer': '', 'Details': 'Freigabe: ' + list.join(', ') })]);
     });
@@ -1756,7 +1780,8 @@ async function loadAdminData(){
   if (!C) { renderYears(); return; }
   const ok = await ensureStructure(true);
   if (ok) {
-    try { await loadCore(); } catch (e) { msg(explain(e)); }
+    try { if (!(await loadCoreFresh())) setTimeout(() => { if (!$('viewAdmin').classList.contains('hidden')) loadAdminData(); }, 5000); }
+    catch (e) { msg(explain(e)); }
     if (P && !rowsPrev.length) { try { rowsPrev = mergeRows(await readAny(P.ref), P.jahr, T.metaMap); } catch {} }
     buildIndex(); renderBadges();
   }
