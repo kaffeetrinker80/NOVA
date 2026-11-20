@@ -94,6 +94,8 @@ footer a{color:var(--acc);text-decoration:none}
 .tile{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 6px 10px;text-align:center;color:var(--ink);font-size:13px;font-weight:600;line-height:1.2;min-height:88px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer}
 .tile:active{background:var(--acc-soft)}
 .tile .ic{font-size:26px;line-height:1}
+.tile:focus{outline:none}.tile:focus-visible{outline:2px solid var(--acc)}
+.brand{cursor:pointer;-webkit-tap-highlight-color:transparent}.brand:active .bicon{transform:scale(.94)}
 .tile .n{font-size:11px;color:var(--muted);font-weight:400}
 .tile.hl{border-color:var(--acc)}
 .fbar{display:none;align-items:center;gap:10px;margin-top:8px}
@@ -745,10 +747,22 @@ function buildGrid(){
   $("#grid").innerHTML=CATS.map(([id,label,ic])=>{
     const n=id==="norm"?NORMS.length:CARDS.filter(c=>c.cat===id).length;
     const sub=id==="calc"?"Leitung · Messwerte":id==="check"?n+" Listen":id==="norm"?n+" Normen":n+(n===1?" Eintrag":" Einträge");
-    return `<button class="tile${id==="calc"?" hl":""}" data-cat="${id}"><span class="ic">${ic}</span>${label}<span class="n">${sub}</span></button>`;
+    return `<button class="tile" data-cat="${id}"><span class="ic">${ic}</span>${label}<span class="n">${sub}</span></button>`;
   }).join("");
 }
-function setCat(id){cat=id;render();window.scrollTo({top:0});}
+let pushedHash=false;
+const validCat=id=>CATS.some(c=>c[0]===id);
+function show(id){cat=id;render();const a=document.activeElement;if(a&&a.blur&&a!==$("#q"))a.blur();requestAnimationFrame(()=>window.scrollTo(0,0));}
+function clearHash(){if(location.hash){try{history.replaceState(null,"",location.pathname+location.search);}catch(e){}}pushedHash=false;}
+function setCat(id){
+  if(id==="alle"){clearHash();show("alle");return;}
+  if(location.hash!=="#"+id){pushedHash=true;location.hash=id;} else show(id);
+}
+function goHome(){
+  q="";$("#q").value="";
+  if(pushedHash&&location.hash){history.back();} else {clearHash();show("alle");}
+}
+window.addEventListener("hashchange",()=>{const id=location.hash.slice(1);show(validCat(id)?id:"alle");});
 
 function render(){
   const terms=q.trim().split(/\s+/).filter(Boolean);
@@ -807,7 +821,7 @@ function openNorm(i){
 }
 function closeModal(){$("#modal").hidden=true;}
 function jump(id){
-  closeModal(); cat="alle"; q=""; $("#q").value=""; render();
+  closeModal(); clearHash(); cat="alle"; q=""; $("#q").value=""; render();
   const d=document.getElementById(id); if(!d)return;
   d.open=true; d.classList.remove("flash"); void d.offsetWidth; d.classList.add("flash");
   d.scrollIntoView({behavior:"smooth",block:"start"});
@@ -991,7 +1005,9 @@ function drawCL(box){
 /* ---------- Events ---------- */
 buildGrid();
 $("#grid").addEventListener("click",e=>{const t=e.target.closest(".tile");if(t)setCat(t.dataset.cat);});
-$("#back").onclick=()=>setCat("alle");
+$("#back").onclick=goHome;
+document.querySelector(".brand").addEventListener("click",goHome);
+document.querySelector(".brand").setAttribute("title","Zur Startansicht");
 document.addEventListener("click",e=>{
   const a=e.target.closest("a.nl,.norm"); if(a&&a.dataset.n!==undefined){e.preventDefault();openNorm(+a.dataset.n);return;}
   const g=e.target.closest(".goto"); if(g){jump(g.dataset.c);return;}
@@ -1000,13 +1016,14 @@ $("#modal").addEventListener("click",e=>{if(e.target.id==="modal")closeModal();}
 $("#mx").onclick=closeModal;
 document.addEventListener("keydown",e=>{if(e.key==="Escape")closeModal();});
 let tmr;
-$("#q").addEventListener("input",e=>{clearTimeout(tmr);tmr=setTimeout(()=>{q=e.target.value;if(q.trim())cat="alle";render();},120);});
+$("#q").addEventListener("input",e=>{clearTimeout(tmr);tmr=setTimeout(()=>{q=e.target.value;if(q.trim()&&cat!=="alle"){clearHash();cat="alle";}render();},120);});
 $("#clr").onclick=()=>{$("#q").value="";q="";render();$("#q").focus();};
 function updProg(){const m=document.documentElement.scrollHeight-innerHeight;$("#prog").style.width=(m>0?Math.min(100,scrollY/m*100):0)+"%";}
 window.addEventListener("scroll",()=>{const nearEnd=scrollY+innerHeight>document.documentElement.scrollHeight-110;$("#top").style.display=scrollY>600&&!nearEnd?"block":"none";updProg();},{passive:true});
 window.addEventListener("resize",updProg);
 new MutationObserver(updProg).observe(document.getElementById("list"),{childList:true,subtree:true,attributes:true,attributeFilter:["open"]});
 $("#top").onclick=()=>window.scrollTo({top:0,behavior:"smooth"});
+{const id=location.hash.slice(1);if(validCat(id))cat=id;}
 render();
 </script>
 </body>
