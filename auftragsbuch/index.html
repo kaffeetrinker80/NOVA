@@ -132,17 +132,23 @@
   .grp b{color:var(--accent)}
   /* Karten (Mobil) */
   .cards{display:none}
-  .acard{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .acard{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:9px 12px;cursor:pointer;-webkit-tap-highlight-color:transparent}
   .acard:active{border-color:var(--accent)}
-  .acard .top{display:flex;justify-content:space-between;align-items:center;gap:8px}
-  .acard .cnr{font-family:'Outfit',sans-serif;font-size:19px;color:var(--accent)}
-  .acard .k{font-weight:700;margin-top:6px;line-height:1.3}
-  .acard .o{margin-top:2px;line-height:1.35}
-  .acard .m{color:var(--muted);font-size:13px;margin-top:6px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .acard .top{display:flex;align-items:center;gap:8px;min-width:0}
+  .acard .cnr{font-family:'Outfit',sans-serif;font-size:15px;color:var(--accent);flex:0 0 auto}
+  .acard .k{font-weight:700;font-size:15px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .acard .side .st,.acard .side .src{font-size:11px;padding:1px 7px}
+  .acard .o{margin-top:3px;font-size:14px;line-height:1.3;color:#c9d4de;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .acard .o .po{color:var(--muted)}
+  .acard .m{color:var(--muted);font-size:12px;margin-top:4px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .acard .m .vm{flex:1 1 100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .acard{display:flex;gap:10px;align-items:stretch}
+  .acard .main{flex:1;min-width:0}
+  .acard .side{flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;gap:6px}
+  .acard .side button{min-height:32px;padding:4px 11px;font-size:13px}
   .acard.storno{opacity:.6} .acard.storno .k,.acard.storno .o{text-decoration:line-through}
   .acard.prev{border-style:dashed}
-  .acard .acts{display:flex;gap:8px;margin-top:10px}
-  .acard .acts button{flex:1;min-height:42px}
+
   .fab{position:fixed;right:18px;bottom:calc(20px + env(safe-area-inset-bottom));width:60px;height:60px;border-radius:50%;background:var(--accent);color:#06221e;border:none;font-size:32px;font-weight:700;line-height:1;box-shadow:0 8px 24px rgba(0,0,0,.5);z-index:30;padding:0}
   .sheet h2{display:flex;justify-content:space-between;align-items:center;gap:10px}
   .sheet dl{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:14px 0;font-size:14px}
@@ -180,7 +186,7 @@
     .grid3{grid-template-columns:104px 1fr}
     .modal .foot button.primary{flex:2;font-size:15px}
     .tablewrap{display:none}
-    .cards{display:flex;flex-direction:column;gap:10px}
+    .cards{display:flex;flex-direction:column;gap:7px}
     #listNote{text-align:center}
     .card{padding:14px}
     .row > div[style]{width:100% !important}
@@ -439,12 +445,12 @@
   </div>
 </div>
 
-<footer><span id="footName"></span> · <a id="feedback" href="#">✉ Feedback</a><div class="testnote" id="testNote"></div></footer>
+<footer><span id="footName"></span><div class="testnote" id="testNote"></div></footer>
 
 <script>
 /* ================= Konfiguration ================= */
 const APP_NAME   = 'NOVA Auftragsbuch';
-const APP_VER    = '0.7.2';
+const APP_VER    = '0.7.3';
 const CLIENT_ID  = '5af6d3d4-a161-4306-8af9-cdb6f392d9be';
 const TENANT_ID  = '376241b8-1f44-4ae5-84b1-4d3b67d4c112';
 const REDIRECT   = 'https://kaffeetrinker80.github.io/NOVA/auftragsbuch/';
@@ -722,6 +728,9 @@ async function readAny(ref){
   const header = (vals[0] || []).map(v => tidy(v));
   const map = abMap(header);
   if (map.nr === undefined) Object.assign(map, {nr:0, kunde:1, objekt:2, plz:3, ort:4});
+  // alte Dateien (z. B. 2026): PLZ und Ort ohne Überschrift direkt rechts neben „Objekt“
+  if (map.plz === undefined && map.objekt !== undefined) map.plz = map.objekt + 1;
+  if (map.ort === undefined && map.objekt !== undefined) map.ort = map.objekt + 2;
   return vals.slice(1).map((v, i) => abRowFrom(v, map, i)).filter(r => r.nr || r.kundeRaw || r.objektRaw);
 }
 
@@ -982,13 +991,18 @@ function renderCards(hits, total, yPrev){
     const bez = bezugOf(r).map(b => `<button class="bez" data-a="bez" data-nr="${esc(b)}">↔ ${esc(b)}</button>`).join('');
     let acts = '';
     if (r.cur && me.freigeber && s === ST.OFFEN) acts += `<button class="primary" data-a="frei" data-nr="${esc(r.nr)}">✓ Freigeben</button>`;
-    if (!r.cur && Y) acts += `<button data-a="take" data-nr="${esc(r.nr)}">➕ Für ${Y.jahr} übernehmen</button>`;
+    if (!r.cur && Y) acts += `<button data-a="take" data-nr="${esc(r.nr)}" title="Als neuen Auftrag übernehmen">➕ Neu</button>`;
+    const po = [r.plz, r.ort].filter(Boolean).join(' ');
+    const extra = [r.datum ? esc(isoToDe(r.datum)) : '', bez].filter(Boolean).join(' ');
+    const vm = r.bemerkung ? `<span class="vm">Vermerk: ${esc(r.bemerkung)}</span>` : '';
+    const meta = extra || vm ? `<div class="m">${extra}${vm}</div>` : '';
     return `<div class="acard ${s === ST.STORNO ? 'storno' : ''} ${r.cur ? '' : 'prev'}" data-card="${esc(r.nr)}">
-      <div class="top"><span class="cnr">${esc(r.nr)}</span>${r.cur ? `<span class="st ${stClass(s)}">${esc(s)}</span>` : `<span class="src">${yPrev}</span>`}</div>
-      <div class="k">${esc(r.kunde)}</div>
-      <div class="o">${esc(r.objekt)}</div>
-      <div class="m">${esc([r.plz, r.ort].filter(Boolean).join(' '))}${r.datum ? `<span>· ${esc(isoToDe(r.datum))}</span>` : ''}${bez}</div>
-      ${acts ? `<div class="acts">${acts}</div>` : ''}
+      <div class="main">
+        <div class="top"><span class="cnr">${esc(r.nr)}</span><span class="k">${esc(r.kunde)}</span></div>
+        <div class="o">${esc(r.objekt)}${po ? ` <span class="po">· ${esc(po)}</span>` : ''}</div>
+        ${meta}
+      </div>
+      <div class="side">${r.cur ? `<span class="st ${stClass(s)}">${esc(s)}</span>` : `<span class="src">${yPrev}</span>`}${acts}</div>
     </div>`;
   }).join('') : `<div class="center muted">${total ? 'Keine Treffer.' : 'Noch keine Einträge.'}</div>`;
   if (hits.length > MAX_CARDS) $('cards').insertAdjacentHTML('beforeend', `<div class="center muted small">${hits.length - MAX_CARDS} weitere – Suche verfeinern.</div>`);
@@ -1794,7 +1808,6 @@ document.addEventListener('keydown', e => {
 (async function init(){
   $('verBadge').textContent = 'V' + APP_VER;
   $('footName').textContent = `${APP_NAME} · V${APP_VER} · Made with Love ©`;
-  $('feedback').href = `mailto:cryptopower@outlook.de?subject=${encodeURIComponent(`Feedback: ${APP_NAME} V${APP_VER}`)}`;
   if (!location.href.startsWith('https://kaffeetrinker80.github.io/')) msg('Hinweis: Die Anmeldung funktioniert nur unter <b>kaffeetrinker80.github.io/NOVA/auftragsbuch/</b> – nicht als lokal geöffnete Datei.', 'warn');
   try {
     await msalApp.initialize();
