@@ -237,69 +237,82 @@
   <!-- Nicht eingerichtet (Nicht-Admin) -->
   <section id="viewNoSetup" class="card center hidden">
     <h2>Noch nicht eingerichtet</h2>
-    <p class="muted">Auf diesem Gerät ist noch keine Auftragsbuch-Datei verknüpft.<br>Bitte den Einrichtungslink vom Admin einmal öffnen.</p>
+    <p class="muted">Auf diesem Gerät ist noch keine Steuerungsdatei verknüpft.<br>Bitte den Einrichtungslink vom Admin einmal öffnen.</p>
   </section>
 
   <!-- Admin -->
   <section id="viewAdmin" class="hidden">
     <div class="card">
-      <h2>Datei für das aktuelle Jahr</h2>
-      <p class="muted small">In OneDrive/SharePoint auf die Datei → „Link kopieren“ → hier einfügen. Alternativ in deinem OneDrive suchen.</p>
-      <div class="row">
-        <div class="grow"><label for="curLink">Freigabelink</label><input type="text" id="curLink" placeholder="https://…sharepoint.com/…"></div>
-        <button class="primary" id="btnCurLink">Verknüpfen</button>
-        <button id="btnCurSearch">In meinem OneDrive suchen</button>
+      <h2>Steuerungsdatei</h2>
+      <p class="muted small">„Auftragsbuch-Steuerung.xlsx“ enthält alles, was <b>nicht</b> ins offizielle Auftragsbuch (L 015) gehört: Jahre, Status &amp; Freigaben, Protokoll, Kunden-Zuordnungen, Einstellungen – über alle Jahre in einer Datei.</p>
+      <div id="cfgFixed" class="small"></div>
+      <div id="cfgLinkWrap">
+        <div class="row">
+          <div class="grow"><label for="cfgLink">Freigabelink der Steuerungsdatei</label><input type="text" id="cfgLink" placeholder="https://…sharepoint.com/…"></div>
+          <button class="primary" id="btnCfgLink">Verknüpfen</button>
+          <button id="btnCfgSearch">In meinem OneDrive suchen</button>
+        </div>
+        <div class="pick hidden" id="cfgPick"></div>
       </div>
-      <div class="pick hidden" id="curPick"></div>
-      <div id="curInfo"></div>
-      <div class="row" style="margin-top:6px">
-        <div style="width:200px"><label for="tblName">Tabellenname</label><input type="text" id="tblName" placeholder="Auftraege"></div>
-        <div style="width:140px"><label for="prefix">Jahres-Präfix</label><input type="text" id="prefix" placeholder="27" maxlength="2"></div>
-        <label class="chk" style="margin-bottom:10px"><input type="checkbox" id="isTest"> Testbetrieb (Badge anzeigen)</label>
-        <button id="btnSaveCfg">Übernehmen</button>
+      <div id="cfgInfo"></div>
+      <div class="row" style="margin-top:12px">
+        <button id="btnEnsure">Struktur prüfen &amp; ergänzen</button>
+        <button id="btnMigrate" class="hidden">Bisherige Einrichtung (v0.6) übernehmen</button>
       </div>
+      <div id="ensureInfo" class="small" style="margin-top:8px"></div>
     </div>
 
     <div class="card">
-      <h2>Spalten der Tabelle</h2>
-      <p class="muted small">Für Datum, Freigabe und Storno braucht die Tabelle fünf zusätzliche Spalten rechts neben „Ort“. Das Tool kann sie selbst anlegen – bestehende Einträge bleiben unverändert.</p>
-      <div id="colInfo" class="small muted">–</div>
-      <div style="margin-top:10px"><button id="btnAddCols" class="hidden">Fehlende Spalten anlegen</button></div>
+      <h2>Jahre &amp; Auftragsbuch-Dateien</h2>
+      <div id="yearList" class="small muted">–</div>
+      <h3 style="font-size:15px;margin:18px 0 0">Datei für ein Jahr verknüpfen</h3>
+      <div class="row">
+        <div style="width:110px"><label for="yJahr">Jahr</label><input type="text" id="yJahr" inputmode="numeric" maxlength="4" placeholder="2027"></div>
+        <div class="grow"><label for="yLink">Freigabelink der Auftragsbuch-Datei</label><input type="text" id="yLink" placeholder="https://…sharepoint.com/…"></div>
+        <button id="btnYSearch">In meinem OneDrive suchen</button>
+      </div>
+      <div class="pick hidden" id="yPick"></div>
+      <div id="yChosen" class="small" style="margin-top:6px"></div>
+      <div class="row" style="margin-top:4px">
+        <div style="width:180px"><label for="yTable">Tabellenname</label><input type="text" id="yTable" placeholder="Auftraege"></div>
+        <label class="chk" style="margin-bottom:10px"><input type="checkbox" id="yAktiv"> aktives Jahr</label>
+        <label class="chk" style="margin-bottom:10px"><input type="checkbox" id="yTest"> Testbetrieb</label>
+        <button class="primary" id="btnYSave">Jahr speichern</button>
+      </div>
+      <div id="extraCols" class="small" style="margin-top:10px"></div>
+      <p class="muted small">Das <b>aktive Jahr</b> bekommt neue Nummern. Das Jahr davor wird automatisch als Vorjahr (nur lesen) für Kundensuche und „Übernehmen“ verwendet.</p>
     </div>
 
     <div class="card">
-      <h2>Vorjahr (nur lesen, optional)</h2>
-      <p class="muted small">Für die Kundensuche: Auftraggeber und Objekte aus dem Vorjahr. Die Datei wird nicht verändert.</p>
-      <div class="row">
-        <div class="grow"><label for="prevLink">Freigabelink</label><input type="text" id="prevLink" placeholder="https://…sharepoint.com/…"></div>
-        <button class="primary" id="btnPrevLink">Verknüpfen</button>
-        <button id="btnPrevSearch">In meinem OneDrive suchen</button>
-        <button class="ghost" id="btnPrevClear">Entfernen</button>
-      </div>
-      <div class="pick hidden" id="prevPick"></div>
-      <div id="prevInfo"></div>
+      <h2>Kunden aufräumen</h2>
+      <p class="muted small">Gruppen, die vermutlich derselbe Auftraggeber sind – über alle geladenen Jahre. <b>Zusammenführen</b>: die gewählte Schreibweise gilt künftig überall. Im aktiven Jahr werden die Einträge direkt umbenannt; ältere Jahre bleiben unverändert und werden nur in der Anzeige vereinheitlicht.</p>
+      <div id="cleanList" class="small muted">Wird nach dem Laden der Daten berechnet.</div>
+      <h3 style="font-size:15px;margin:18px 0 8px">Bestehende Zuordnungen</h3>
+      <div id="mapList" class="small muted">–</div>
     </div>
 
     <div class="card">
       <h2>Rollen</h2>
       <div class="small" id="roleInfo"></div>
-      <p class="muted small">Rollen stehen fest im Tool (Code). Sie steuern nur, welche Knöpfe man sieht – wer auf die Excel-Freigabe zugreifen darf, regelt weiterhin SharePoint.</p>
+      <label for="freiList">Freigabe – E-Mail-Adressen, mit Komma getrennt</label>
+      <div class="row"><div class="grow"><input type="text" id="freiList"></div><button id="btnSaveFrei">Speichern</button></div>
+      <p class="muted small">Admin steht fest im Code. Rollen steuern nur, welche Knöpfe man sieht – wer an die Dateien kommt, regelt SharePoint.</p>
     </div>
 
-    <div class="card">
+    <div class="card" id="cardSetup">
       <h2>Einrichtungslink für andere Geräte</h2>
-      <p class="muted small">Diana oder Nico öffnen diesen Link einmal – danach ist auf dem Gerät dieselbe Datei verknüpft. Der Link enthält nur Datei-IDs, keine Daten.</p>
+      <p class="muted small">Solange der Ort der Steuerungsdatei nicht fest im Code steht: Diana oder Nico öffnen diesen Link einmal. Er enthält nur die Datei-ID, keine Daten.</p>
       <div class="row"><div class="grow"><input type="text" id="setupLink" readonly></div><button id="btnCopySetup">Kopieren</button></div>
     </div>
 
     <div class="card">
-      <h2>Schreibweisen der Auftraggeber</h2>
-      <p class="muted small">Gruppen, die vermutlich derselbe Kunde sind (aktuelles Jahr + Vorjahr). Das Formular schlägt künftig automatisch die häufigste Schreibweise vor.</p>
-      <div id="variantList" class="small muted">Wird nach dem Laden der Daten berechnet.</div>
+      <h2>Protokoll</h2>
+      <div class="row"><div class="grow"><input type="search" id="logQ" placeholder="Filtern: Nummer, Name, Aktion …"></div><button id="btnLog">Laden</button></div>
+      <div id="logList" class="small" style="margin-top:10px"></div>
     </div>
 
     <div class="card">
-      <p class="muted small" style="margin:0">Datenschutz: Im Browser gespeichert wird nur, <i>welche</i> Dateien verknüpft sind. Auftragsdaten bleiben ausschließlich in der Excel in eurem Microsoft-Konto.</p>
+      <p class="muted small" style="margin:0">Datenschutz: Im Browser gespeichert wird nur, wo die Steuerungsdatei liegt. Alle Daten bleiben in den Excel-Dateien in eurem Microsoft-Konto.</p>
     </div>
   </section>
 
@@ -327,7 +340,7 @@
         <button class="chip" data-f="Freigegeben">Freigegeben</button>
         <button class="chip" data-f="Storniert">Storniert</button>
       </div>
-      <label class="chk"><input type="checkbox" id="withPrev"> Vorjahr einbeziehen</label>
+      <label class="chk"><input type="checkbox" id="withPrev"> <span id="withPrevLbl">Vorjahr einbeziehen</span></label>
       <div class="spacer"></div>
       <button id="btnBulk" class="hidden">✓ Alle offenen freigeben</button>
     </div>
@@ -420,7 +433,7 @@
 <script>
 /* ================= Konfiguration ================= */
 const APP_NAME   = 'NOVA Auftragsbuch';
-const APP_VER    = '0.6.0';
+const APP_VER    = '0.7.1';
 const CLIENT_ID  = '5af6d3d4-a161-4306-8af9-cdb6f392d9be';
 const TENANT_ID  = '376241b8-1f44-4ae5-84b1-4d3b67d4c112';
 const REDIRECT   = 'https://kaffeetrinker80.github.io/NOVA/auftragsbuch/';
@@ -428,29 +441,36 @@ const REDIRECT   = 'https://kaffeetrinker80.github.io/NOVA/auftragsbuch/';
 // Braucht einmalig die Admin-Zustimmung (Nico). Bis dahin false = nur eigenes OneDrive.
 const SHARED_ACCESS = false;
 const SCOPES     = ['User.Read', SHARED_ACCESS ? 'Files.ReadWrite.All' : 'Files.ReadWrite'];
+// Ort der Steuerungsdatei für ALLE Geräte: hier den Freigabelink eintragen, sobald es offiziell wird.
+// Leer = jedes Gerät verknüpft sie selbst (Admin-Bereich bzw. Einrichtungslink).
+const CONFIG_LINK = '';
 const GRAPH      = 'https://graph.microsoft.com/v1.0';
-const CFG_KEY    = 'nova-auftragsbuch-config-v1';
+const LS_KEY     = 'nova-auftragsbuch-v7';
+const LS_OLD     = 'nova-auftragsbuch-config-v1';
 const MAX_RENDER = 500;
 
-// Rollen (Anmeldename, klein geschrieben)
-// Alle Angemeldeten mit Zugriff auf die Excel: anlegen, bearbeiten, stornieren, löschen.
-// Freigabe: zusätzlich freigeben. Admin: zusätzlich Einstellungen (Dateien, Spalten, Einrichtungslink).
-const ADMINS    = ['marco.neudecker@nova-praxis.de'];
-const FREIGEBER = ['marco.neudecker@nova-praxis.de', 'nico.schmid@nova-praxis.de'];
+// Rollen: Admin fest im Code. Freigabe kommt aus der Steuerungsdatei (Einstellungen), sonst diese Vorgabe.
+const ADMINS         = ['marco.neudecker@nova-praxis.de'];
+const FREIGEBER_INIT = ['marco.neudecker@nova-praxis.de', 'nico.schmid@nova-praxis.de'];
 
-// Spalten der Tabelle: Schlüssel → Erkennung der Überschrift / Name beim Anlegen
-const COLS = [
-  { key:'nr',        re:/auftrags/i,     name:'Auftrags-/Prüfberichtsnummer', base:true },
-  { key:'kunde',     re:/auftraggeber/i, name:'Hausverwaltung / Auftraggeber', base:true },
-  { key:'objekt',    re:/^objekt/i,      name:'Objekt', base:true },
-  { key:'plz',       re:/^plz/i,         name:'PLZ', base:true },
-  { key:'ort',       re:/^ort/i,         name:'Ort', base:true },
-  { key:'datum',     re:/^datum/i,       name:'Datum' },
-  { key:'status',    re:/^status/i,      name:'Status' },
-  { key:'erfasst',   re:/^erfasst/i,     name:'Erfasst' },
-  { key:'freigabe',  re:/^freigabe/i,    name:'Freigabe' },
-  { key:'bemerkung', re:/^bemerkung/i,   name:'Bemerkung' },
+// Offizielles Auftragsbuch: nur diese 5 Spalten werden beschrieben
+const AB_COLS = [
+  { key:'nr',     re:/auftrags/i },
+  { key:'kunde',  re:/auftraggeber/i },
+  { key:'objekt', re:/^objekt/i },
+  { key:'plz',    re:/^plz/i },
+  { key:'ort',    re:/^ort/i },
 ];
+const STORNO_PREFIX = 'STORNIERT – ';
+
+// Steuerungsdatei: Blätter, Tabellen, Spalten
+const CT = {
+  jahre:         { sheet:'Jahre',         table:'tblJahre',         cols:['Jahr','Präfix','DriveId','ItemId','Datei','Tabelle','Aktiv','Testbetrieb'] },
+  auftraege:     { sheet:'Auftraege',     table:'tblAuftraege',     cols:['Jahr','Nummer','Datum','Status','Erfasst','Freigabe','Bezug','Bemerkung'] },
+  protokoll:     { sheet:'Protokoll',     table:'tblProtokoll',     cols:['Zeitpunkt','Wer','Aktion','Jahr','Nummer','Details'] },
+  kunden:        { sheet:'Kunden',        table:'tblKunden',        cols:['Variante','Hauptname','Typ','Von','Am'] },
+  einstellungen: { sheet:'Einstellungen', table:'tblEinstellungen', cols:['Schlüssel','Wert','Hinweis'] },
+};
 const ST = { OFFEN:'Offen', FREI:'Freigegeben', STORNO:'Storniert' };
 
 /* ================= Hilfen ================= */
@@ -459,10 +479,11 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt
 const show = (el, on = true) => el.classList.toggle('hidden', !on);
 const fmtDate = iso => iso ? new Date(iso).toLocaleString('de-DE', {dateStyle:'medium', timeStyle:'short'}) : '–';
 const pad = n => String(n).padStart(2, '0');
-const nowStamp = () => { const d = new Date(); return `${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`; };
+const nowStamp = () => { const d = new Date(); return `${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+const nowIsoTime = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`; };
 const tidy = s => String(s ?? '').replace(/\s+/g, ' ').trim();
+const yes = v => /^(ja|x|1|true|wahr)$/i.test(String(v ?? '').trim());
 
-// Excel-Datum (Seriennummer) <-> ISO yyyy-mm-dd
 const isoToSerial = iso => { const [y,m,d] = iso.split('-').map(Number); return Math.round((Date.UTC(y, m-1, d) - Date.UTC(1899, 11, 30)) / 86400000); };
 const serialToIso = n => { const d = new Date(Date.UTC(1899, 11, 30) + Math.round(n) * 86400000); return `${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-${pad(d.getUTCDate())}`; };
 const isoToDe = iso => iso ? iso.split('-').reverse().join('.') : '';
@@ -472,8 +493,6 @@ function cellToIso(v){
   const m = String(v || '').match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})/);
   return m ? `${m[3]}-${pad(m[2])}-${pad(m[1])}` : '';
 }
-
-// Spaltenbuchstaben
 const colLetter = n => { let s = ''; n++; while (n) { const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); } return s; };
 const colIndex = L => [...L].reduce((a, c) => a * 26 + c.charCodeAt(0) - 64, 0) - 1;
 
@@ -503,27 +522,24 @@ function lev(a, b){
 }
 const sim = (a, b) => (!a || !b) ? 0 : 1 - lev(a, b) / Math.max(a.length, b.length);
 
-/* ================= Config ================= */
-const CFG_DEFAULT = {tableName:'Auftraege', prefix:'27', isTest:true, cur:null, prev:null};
-function loadCfg(){ try { return Object.assign({}, CFG_DEFAULT, JSON.parse(localStorage.getItem(CFG_KEY) || '{}')); } catch { return {...CFG_DEFAULT}; } }
-function saveCfg(){ try { localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); } catch {} }
-let cfg = loadCfg();
+/* ================= Lokale Einstellung (nur Ort der Steuerungsdatei) ================= */
+let local = (() => { try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}'); } catch { return {}; } })();
+const saveLocal = () => { try { localStorage.setItem(LS_KEY, JSON.stringify(local)); } catch {} };
+const oldCfg = (() => { try { return JSON.parse(localStorage.getItem(LS_OLD) || 'null'); } catch { return null; } })();
 
-// Einrichtungslink (#setup=...) übernehmen
 (function readSetupHash(){
-  const m = location.hash.match(/setup=([^&]+)/);
+  const m = location.hash.match(/cfg=([^&]+)/);
   if (!m) return;
   try {
-    const s = JSON.parse(decodeURIComponent(escape(atob(m[1].replace(/-/g,'+').replace(/_/g,'/')))));
-    cfg = Object.assign({}, CFG_DEFAULT, s); saveCfg();
-    sessionStorage.setItem('ab-setup-done', '1');
+    local.configRef = JSON.parse(decodeURIComponent(escape(atob(m[1].replace(/-/g,'+').replace(/_/g,'/')))));
+    saveLocal(); sessionStorage.setItem('ab-setup-done', '1');
   } catch {}
   history.replaceState(null, '', location.pathname);
 })();
 function setupLink(){
-  const s = {tableName: cfg.tableName, prefix: cfg.prefix, isTest: cfg.isTest, cur: cfg.cur, prev: cfg.prev};
-  const b = btoa(unescape(encodeURIComponent(JSON.stringify(s)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
-  return REDIRECT + '#setup=' + b;
+  if (!C) return '';
+  const b = btoa(unescape(encodeURIComponent(JSON.stringify({driveId:C.driveId, itemId:C.itemId, name:C.name})))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+  return REDIRECT + '#cfg=' + b;
 }
 
 function msg(text, type = 'err'){ $('globalMsg').innerHTML = text ? `<div class="msg ${type}">${text}</div>` : ''; }
@@ -551,12 +567,13 @@ async function getToken(){
 
 /* ================= Graph ================= */
 class GraphError extends Error { constructor(status, code, message){ super(message); this.status = status; this.code = code; } }
-let wbSession = null;
+const sessions = {};     // itemId → Excel-Sitzung
 
 async function graph(path, opts = {}){
   const token = await getToken();
   const headers = { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json', ...(opts.headers || {}) };
-  if (wbSession && path.includes('/workbook')) headers['workbook-session-id'] = wbSession;
+  const m = path.match(/\/items\/([^/?]+)\/workbook/);
+  if (m && sessions[m[1]] && !headers['workbook-session-id']) headers['workbook-session-id'] = sessions[m[1]];
   for (let attempt = 0; attempt < 3; attempt++) {
     const res = await fetch(GRAPH + path, { cache: 'no-store', ...opts, headers });
     if (res.ok) return res.status === 204 ? null : res.json().catch(() => null);
@@ -569,8 +586,8 @@ async function graph(path, opts = {}){
 
 function explain(e){
   if (e instanceof GraphError) {
-    if (e.status === 404) return 'Datei oder Tabelle nicht gefunden – gelöscht, umbenannt oder in ein anderes Laufwerk verschoben? Bitte im Admin-Bereich neu verknüpfen.';
-    if (e.status === 403 || e.status === 401) return 'Kein Zugriff auf diese Datei. Wurde sie mit dir geteilt (mit Bearbeitungsrecht)? Öffne zur Kontrolle den Link „In Excel öffnen“ – klappt das, bitte Admin informieren.';
+    if (e.status === 404) return 'Datei oder Tabelle nicht gefunden – gelöscht, umbenannt oder in ein anderes Laufwerk verschoben? Bitte im Admin-Bereich prüfen.';
+    if (e.status === 403 || e.status === 401) return 'Kein Zugriff auf diese Datei. Wurde sie mit dir geteilt (mit Bearbeitungsrecht)? ' + (SHARED_ACCESS ? '' : 'Im Moment darf das Tool nur Dateien im eigenen OneDrive öffnen (SHARED_ACCESS = false).');
     if (e.status === 423 || e.code === 'resourceLocked') return 'Die Datei ist gerade gesperrt (z. B. in Desktop-Excel ohne AutoSave geöffnet). Bitte kurz warten und erneut versuchen.';
     if (e.status === 409) return 'Gleichzeitige Änderung an der Datei – bitte erneut versuchen.';
     if (e.status === 429 || e.status === 503) return 'Microsoft ist gerade ausgelastet. Bitte in ein paar Sekunden erneut versuchen.';
@@ -587,110 +604,219 @@ async function resolveLink(url){
 }
 const itemInfo = ref => graph(`/drives/${ref.driveId}/items/${ref.itemId}?${ITEM_SELECT}`);
 const wb = ref => `/drives/${ref.driveId}/items/${ref.itemId}/workbook`;
-const tbl = () => `${wb(cfg.cur)}/tables/${encodeURIComponent(cfg.tableName)}`;
 
-async function withSession(fn){
-  try {
-    const s = await graph(`${wb(cfg.cur)}/createSession`, { method:'POST', body: JSON.stringify({ persistChanges: true }) });
-    wbSession = s?.id || null;
-  } catch { wbSession = null; }   // ohne Session geht es auch, nur langsamer
+async function withSessions(refs, fn){
+  const opened = [];
+  for (const ref of refs.filter(Boolean)) {
+    if (sessions[ref.itemId]) continue;
+    try {
+      const s = await graph(`${wb(ref)}/createSession`, { method:'POST', body: JSON.stringify({ persistChanges: true }) });
+      if (s?.id) { sessions[ref.itemId] = s.id; opened.push(ref); }
+    } catch {}   // ohne Sitzung geht es auch, nur langsamer
+  }
   try {
     const result = await fn();
-    // Stand direkt aus derselben Sitzung übernehmen – ein Lesen ohne Sitzung kann
-    // in den ersten Sekunden noch den alten Dateistand liefern.
-    try { T = await readCurTable(); } catch {}
+    // Stand direkt aus derselben Sitzung übernehmen – ohne Sitzung kommt kurz noch der alte Stand
+    try { await loadCore(); } catch {}
     noteWrite(typeof result === 'string' ? result : null);
     return result;
-  }
-  finally {
-    if (wbSession) { const id = wbSession; await graph(`${wb(cfg.cur)}/closeSession`, { method:'POST', headers:{'workbook-session-id': id} }).catch(()=>{}); }
-    wbSession = null;
+  } finally {
+    for (const ref of opened) {
+      const id = sessions[ref.itemId]; delete sessions[ref.itemId];
+      await graph(`${wb(ref)}/closeSession`, { method:'POST', headers:{'workbook-session-id': id} }).catch(()=>{});
+    }
   }
 }
-// Nach dem Schreiben: neu zeichnen aus dem Sitzungsstand, ohne erneut zu laden
-function refreshAfterWrite(){ buildIndex(); renderStats(); renderList(); }
 
-/* ---- Tabelle lesen ---- */
-// Liefert { sheet, startCol, startRow, header[], map{key:idx}, rows[{...,_i,_raw}] }
-async function readCurTable(){
-  const r = await graph(`${tbl()}/range?$select=address,values`);
+/* ---- Tabellen allgemein ---- */
+// → { ref, table, sheet, startCol, startRow, header[], rows[{_i,_raw,[Spalte]:Wert}], emptyIdx, dataCount }
+async function readTbl(ref, table){
+  const r = await graph(`${wb(ref)}/tables/${encodeURIComponent(table)}/range?$select=address,values`);
   const m = String(r.address).match(/^(?:'((?:[^']|'')+)'|([^!]+))!\$?([A-Z]+)\$?(\d+)(?::\$?([A-Z]+)\$?(\d+))?$/);
   if (!m) throw new Error('Tabellenadresse nicht lesbar: ' + r.address);
-  const sheet = (m[1] || m[2]).replace(/''/g, "'");
   const header = (r.values[0] || []).map(v => tidy(v));
-  const map = {};
-  COLS.forEach(c => { const i = header.findIndex(h => c.re.test(h)); if (i >= 0) map[c.key] = i; });
-  const rows = r.values.slice(1).map((v, i) => rowFrom(v, map, i)).filter(x => !x._empty);
-  const emptyIdx = r.values.slice(1).findIndex(v => v.every(x => x === '' || x === null));
-  return { sheet, startCol: colIndex(m[3]), startRow: +m[4], header, map, rows, emptyIdx, dataCount: r.values.length - 1 };
+  const data = r.values.slice(1);
+  const rows = data.map((v, i) => { const o = { _i:i, _raw:v }; header.forEach((h, j) => o[h] = v[j]); o._empty = v.every(x => x === '' || x === null); return o; });
+  return { ref, table, sheet: (m[1] || m[2]).replace(/''/g, "'"), startCol: colIndex(m[3]), startRow: +m[4], header,
+           rows: rows.filter(x => !x._empty), emptyIdx: rows.findIndex(x => x._empty), dataCount: data.length };
 }
-function rowFrom(v, map, i){
+const sheetPath = t => `${wb(t.ref)}/worksheets/${encodeURIComponent(t.sheet)}`;
+const rowAddr = (t, i) => `${colLetter(t.startCol)}${t.startRow + 1 + i}:${colLetter(t.startCol + t.header.length - 1)}${t.startRow + 1 + i}`;
+const cellAddr = (t, i, col) => `${colLetter(t.startCol + col)}${t.startRow + 1 + i}`;
+function rowArr(t, obj, base){
+  const arr = base ? base.slice() : new Array(t.header.length).fill('');
+  Object.entries(obj).forEach(([k, v]) => { const j = t.header.indexOf(k); if (j >= 0) arr[j] = v; });
+  return arr;
+}
+async function writeRow(t, i, arr){
+  await graph(`${sheetPath(t)}/range(address='${rowAddr(t, i)}')`, { method:'PATCH', body: JSON.stringify({ values: [arr] }) });
+}
+async function appendRows(t, arrs){
+  if (!arrs.length) return -1;
+  let first = -1;
+  if (t.emptyIdx >= 0) { await writeRow(t, t.emptyIdx, arrs[0]); first = t.emptyIdx; arrs = arrs.slice(1); t.emptyIdx = -1; }
+  if (arrs.length) {
+    const r = await graph(`${wb(t.ref)}/tables/${encodeURIComponent(t.table)}/rows/add`, { method:'POST', body: JSON.stringify({ index: null, values: arrs }) });
+    const i = (r && typeof r.index === 'number') ? r.index : t.dataCount;
+    if (first < 0) first = i;
+    t.dataCount += arrs.length;
+  }
+  return first;
+}
+async function deleteRow(t, i){
+  if (t.dataCount <= 1) await writeRow(t, i, new Array(t.header.length).fill(''));   // letzte Zeile nur leeren
+  else await graph(`${sheetPath(t)}/range(address='${rowAddr(t, i)}')/delete`, { method:'POST', body: JSON.stringify({ shift: 'Up' }) });
+}
+async function setDateFormat(t, i, colName){
+  const j = t.header.indexOf(colName); if (j < 0) return;
+  await graph(`${sheetPath(t)}/range(address='${cellAddr(t, i, j)}')`, { method:'PATCH', body: JSON.stringify({ numberFormat: [['dd.mm.yyyy']] }) }).catch(()=>{});
+}
+
+/* ---- Auftragsbuch (offiziell) ---- */
+function abMap(header){
+  const map = {}; AB_COLS.forEach(c => { const i = header.findIndex(h => c.re.test(h)); if (i >= 0) map[c.key] = i; });
+  return map;
+}
+function abRowFrom(v, map, i){
   const g = k => map[k] === undefined ? '' : v[map[k]];
-  const r = {
-    nr: tidy(g('nr')), kunde: tidy(g('kunde')), objekt: tidy(g('objekt')), plz: tidy(g('plz')), ort: tidy(g('ort')),
-    datum: cellToIso(g('datum')), status: tidy(g('status')), erfasst: tidy(g('erfasst')), freigabe: tidy(g('freigabe')), bemerkung: tidy(g('bemerkung')),
-    _i: i, _raw: v
-  };
-  r._empty = !(r.nr || r.kunde || r.objekt);
-  return r;
+  const objRaw = tidy(g('objekt'));
+  const storno = objRaw.toUpperCase().startsWith('STORNIERT');
+  return { nr: tidy(g('nr')), kundeRaw: tidy(g('kunde')), objektRaw: objRaw,
+           objekt: storno ? objRaw.replace(/^STORNIERT\s*[–-]?\s*/i, '') : objRaw, abStorno: storno,
+           plz: tidy(g('plz')), ort: tidy(g('ort')), _i: i, _raw: v };
+}
+async function readAB(y){
+  const t = await readTbl(y.ref, y.table || 'Auftraege');
+  t.map = abMap(t.header);
+  if (t.map.nr === undefined || t.map.kunde === undefined || t.map.objekt === undefined) throw new Error(`In „${y.file}“ fehlen Spaltenüberschriften (Nummer / Auftraggeber / Objekt).`);
+  t.ab = t.rows.map(r => abRowFrom(r._raw, t.map, r._i)).filter(r => r.nr || r.kundeRaw || r.objektRaw);
+  return t;
+}
+function abArr(t, data, base){
+  const arr = base ? base.slice() : new Array(t.header.length).fill('');
+  Object.entries(data).forEach(([k, v]) => { if (t.map[k] !== undefined) arr[t.map[k]] = v; });
+  return arr;
 }
 // Vorjahr: Tabelle falls vorhanden, sonst benutzter Bereich ab der Kopfzeile
 async function readAny(ref){
   const t = await graph(`${wb(ref)}/tables?$select=name`);
   let vals;
-  if (t.value && t.value.length) {
-    vals = (await graph(`${wb(ref)}/tables/${encodeURIComponent(t.value[0].name)}/range?$select=values`)).values;
-  } else {
+  if (t.value && t.value.length) vals = (await graph(`${wb(ref)}/tables/${encodeURIComponent(t.value[0].name)}/range?$select=values`)).values;
+  else {
     const ws = await graph(`${wb(ref)}/worksheets?$select=name`);
     const r = await graph(`${wb(ref)}/worksheets/${encodeURIComponent(ws.value[0].name)}/usedRange(valuesOnly=true)?$select=values`);
     const h = r.values.findIndex(v => String(v[0]).trim().toLowerCase().startsWith('auftrags'));
-    vals = r.values.slice(h);
+    vals = r.values.slice(Math.max(0, h));
   }
   const header = (vals[0] || []).map(v => tidy(v));
-  const map = {}; COLS.forEach(c => { const i = header.findIndex(h => c.re.test(h)); if (i >= 0) map[c.key] = i; });
+  const map = abMap(header);
   if (map.nr === undefined) Object.assign(map, {nr:0, kunde:1, objekt:2, plz:3, ort:4});
-  return vals.slice(1).map((v, i) => rowFrom(v, map, i)).filter(x => !x._empty);
+  return vals.slice(1).map((v, i) => abRowFrom(v, map, i)).filter(r => r.nr || r.kundeRaw || r.objektRaw);
 }
 
-/* ---- Schreiben ---- */
-const sheetPath = t => `${wb(cfg.cur)}/worksheets/${encodeURIComponent(t.sheet)}`;
-const rowAddr = (t, i) => `${colLetter(t.startCol)}${t.startRow + 1 + i}:${colLetter(t.startCol + t.header.length - 1)}${t.startRow + 1 + i}`;
-
-function buildRow(t, data, base){
-  const arr = base ? base.slice() : new Array(t.header.length).fill('');
-  Object.entries(data).forEach(([k, v]) => { if (t.map[k] !== undefined) arr[t.map[k]] = v; });
-  return arr;
-}
-async function writeRow(t, i, arr){
-  await graph(`${sheetPath(t)}/range(address='${rowAddr(t, i)}')`, { method:'PATCH', body: JSON.stringify({ values: [arr] }) });
-  if (t.map.datum !== undefined) {
-    const a = `${colLetter(t.startCol + t.map.datum)}${t.startRow + 1 + i}`;
-    await graph(`${sheetPath(t)}/range(address='${a}')`, { method:'PATCH', body: JSON.stringify({ numberFormat: [['dd.mm.yyyy']] }) }).catch(()=>{});
-  }
-}
-async function appendRow(t, arr){
-  if (t.emptyIdx >= 0) { await writeRow(t, t.emptyIdx, arr); return t.emptyIdx; }
-  const r = await graph(`${tbl()}/rows/add`, { method:'POST', body: JSON.stringify({ index: null, values: [arr] }) });
-  const i = (r && typeof r.index === 'number') ? r.index : t.dataCount;
-  if (t.map.datum !== undefined) {
-    const a = `${colLetter(t.startCol + t.map.datum)}${t.startRow + 1 + i}`;
-    await graph(`${sheetPath(t)}/range(address='${a}')`, { method:'PATCH', body: JSON.stringify({ numberFormat: [['dd.mm.yyyy']] }) }).catch(()=>{});
-  }
-  return i;
-}
-
-/* ================= Daten & Index ================= */
-let T = null;            // aktuelle Tabelle
+/* ================= Zustand ================= */
+let C = null;             // Ref der Steuerungsdatei
+let years = [];           // [{jahr, prefix, ref, file, table, aktiv, test}]
+let Y = null, P = null;   // aktives Jahr, Vorjahr
+let ABT = null;           // Tabelle des aktiven Auftragsbuchs
+let MT = null;            // tblAuftraege
+let KT = null, ET = null; // tblKunden, tblEinstellungen
+let T = null;             // { rows: zusammengeführte Zeilen des aktiven Jahres }
 let rowsPrev = [];
-let kIndex = new Map();  // normKunde → {name, count, spellings:Map, objects:Map}
-let plzIndex = new Map();// plz → Map(ort→count)
+let KMAP = new Map();     // variante (klein) → Hauptname
+let NODUP = new Set();    // "a|b" normalisierte Paare
+let kIndex = new Map(), plzIndex = new Map();
+let freigeber = FREIGEBER_INIT.slice();
 
+const canon = n => { const t = tidy(n); return KMAP.get(t.toLowerCase()) || t; };
+const pairKey = (a, b) => [normKunde(a), normKunde(b)].sort().join('|');
+const metaKey = (jahr, nr) => `${jahr}|${nr}`;
+
+function parseYears(t){
+  return t.rows.map(r => ({
+    jahr: String(r['Jahr']).trim(), prefix: tidy(r['Präfix']) || String(r['Jahr']).slice(-2),
+    ref: { driveId: tidy(r['DriveId']), itemId: tidy(r['ItemId']), name: tidy(r['Datei']) },
+    file: tidy(r['Datei']), table: tidy(r['Tabelle']) || 'Auftraege', aktiv: yes(r['Aktiv']), test: yes(r['Testbetrieb']), _i: r._i
+  })).filter(y => /^\d{4}$/.test(y.jahr) && y.ref.driveId && y.ref.itemId);
+}
+
+function mergeRows(abRows, jahr, metaMap){
+  return abRows.map(a => {
+    const m = metaMap.get(metaKey(jahr, a.nr)) || {};
+    const status = tidy(m['Status']) || (a.abStorno ? ST.STORNO : '');
+    return { nr: a.nr, kunde: canon(a.kundeRaw), kundeRaw: a.kundeRaw, objekt: a.objekt, objektRaw: a.objektRaw, plz: a.plz, ort: a.ort,
+             datum: cellToIso(m['Datum']), status, erfasst: tidy(m['Erfasst']), freigabe: tidy(m['Freigabe']),
+             bezug: tidy(m['Bezug']).split(/[,;\s]+/).filter(Boolean), bemerkung: tidy(m['Bemerkung']), hasMeta: !!m['Nummer'], _i: a._i, _raw: a._raw };
+  });
+}
+
+// Liest Steuerungsdatei + aktives Auftragsbuch (ohne Vorjahr)
+async function loadCore(){
+  const [jt, mt, kt, et] = await Promise.all([
+    readTbl(C, CT.jahre.table), readTbl(C, CT.auftraege.table), readTbl(C, CT.kunden.table), readTbl(C, CT.einstellungen.table)
+  ]);
+  MT = mt; KT = kt; ET = et;
+  years = parseYears(jt).sort((a, b) => a.jahr.localeCompare(b.jahr));
+  Y = years.find(y => y.aktiv) || null;
+  P = Y ? years.find(y => +y.jahr === +Y.jahr - 1) || null : null;
+  KMAP = new Map(); NODUP = new Set();
+  kt.rows.forEach(r => {
+    const typ = tidy(r['Typ']).toLowerCase();
+    if (typ.startsWith('kein')) NODUP.add(pairKey(r['Variante'], r['Hauptname']));
+    else if (tidy(r['Variante']) && tidy(r['Hauptname'])) KMAP.set(tidy(r['Variante']).toLowerCase(), tidy(r['Hauptname']));
+  });
+  const fr = et.rows.find(r => tidy(r['Schlüssel']).toLowerCase() === 'freigabe');
+  freigeber = fr && tidy(fr['Wert']) ? tidy(fr['Wert']).toLowerCase().split(/[,;\s]+/).filter(Boolean) : FREIGEBER_INIT.slice();
+  me.freigeber = freigeber.includes(me.mail);
+  renderRole();
+  if (!Y) { ABT = null; T = { rows: [] }; return; }
+  ABT = await readAB(Y);
+  const metaMap = new Map(); mt.rows.forEach(r => metaMap.set(metaKey(String(r['Jahr']).trim(), tidy(r['Nummer'])), r));
+  T = { rows: mergeRows(ABT.ab, Y.jahr, metaMap), metaMap };
+}
+
+async function loadData(){
+  C = resolveConfigRefSync();
+  if (!C) { me.admin ? openAdmin() : openNoSetup(); return; }
+  msg('');
+  $('tbody').innerHTML = `<tr><td colspan="8" class="center"><span class="spin"></span> Lade Daten …</td></tr>`;
+  const errors = [];
+  try { await loadCore(); }
+  catch (e) {
+    T = null;
+    if (e instanceof GraphError && e.status === 404 && /tbl/i.test(e.message || '')) errors.push('Die Steuerungsdatei hat noch nicht alle Tabellen.' + (me.admin ? ' → Admin → „Struktur prüfen &amp; ergänzen“.' : ' Bitte Admin informieren.'));
+    else errors.push(explain(e));
+  }
+  if (T && !Y) errors.push('Noch kein aktives Jahr festgelegt.' + (me.admin ? ' → Admin → „Jahre &amp; Auftragsbuch-Dateien“.' : ' Bitte Admin informieren.'));
+  rowsPrev = [];
+  if (T && P) {
+    try { rowsPrev = mergeRows(await readAny(P.ref), P.jahr, T.metaMap); }
+    catch (e) { errors.push(`Vorjahr ${P.jahr}: ` + explain(e)); }
+  }
+  if (errors.length) msg(errors.join('<br>'), T ? 'warn' : 'err');
+  renderBadges();
+  buildIndex(); renderStats(); renderList();
+  await rememberTags();
+  setSync(T ? 'ok' : 'err');
+}
+
+function resolveConfigRefSync(){ return C || local.configRef || null; }
+async function resolveConfigRef(){
+  if (CONFIG_LINK) {
+    if (!local.fixedRef || local.fixedLink !== CONFIG_LINK) {
+      local.fixedRef = await resolveLink(CONFIG_LINK); local.fixedLink = CONFIG_LINK; saveLocal();
+    }
+    return local.fixedRef;
+  }
+  return local.configRef || null;
+}
+
+/* ================= Index (Kunden, Objekte, PLZ) ================= */
 function nextNumber(rows){
-  const p = cfg.prefix; const re = new RegExp('^' + p + '-(\\d{4})$');
+  const p = Y?.prefix || '00'; const re = new RegExp('^' + p + '-(\\d{4})$');
   let max = 0; rows.forEach(r => { const m = r.nr.match(re); if (m) max = Math.max(max, +m[1]); });
   return `${p}-${String(max + 1).padStart(4, '0')}`;
 }
-
 function buildIndex(){
   kIndex = new Map(); plzIndex = new Map();
   const add = (r, cur) => {
@@ -699,7 +825,7 @@ function buildIndex(){
       const k = normKunde(r.kunde);
       if (!kIndex.has(k)) kIndex.set(k, { count:0, spellings:new Map(), objects:new Map() });
       const e = kIndex.get(k); e.count++;
-      e.spellings.set(r.kunde, (e.spellings.get(r.kunde) || 0) + (cur ? 1.01 : 1)); // aktuelles Jahr leicht bevorzugt
+      e.spellings.set(r.kunde, (e.spellings.get(r.kunde) || 0) + (cur ? 1.01 : 1));
       if (r.objekt) {
         const ok = normObjekt(r.objekt);
         const o = e.objects.get(ok) || { objekt:r.objekt, plz:r.plz, ort:r.ort, count:0, last:'' };
@@ -707,40 +833,17 @@ function buildIndex(){
         e.objects.set(ok, o);
       }
     }
-    if (/^\d{5}$/.test(r.plz) && r.ort) {
-      const m = plzIndex.get(r.plz) || new Map(); m.set(r.ort, (m.get(r.ort) || 0) + 1); plzIndex.set(r.plz, m);
-    }
+    if (/^\d{5}$/.test(r.plz) && r.ort) { const m = plzIndex.get(r.plz) || new Map(); m.set(r.ort, (m.get(r.ort) || 0) + 1); plzIndex.set(r.plz, m); }
   };
   rowsPrev.forEach(r => add(r, false));
   (T?.rows || []).forEach(r => add(r, true));
   kIndex.forEach(e => { e.name = [...e.spellings.entries()].sort((a, b) => b[1] - a[1])[0][0]; });
 }
 
-async function loadData(){
-  if (!cfg.cur) { me.admin ? openAdmin() : openNoSetup(); return; }
-  msg('');
-  $('tbody').innerHTML = `<tr><td colspan="8" class="center"><span class="spin"></span> Lade Daten …</td></tr>`;
-  const errors = [];
-  try { T = await readCurTable(); } catch (e) { T = null; errors.push('Aktuelles Jahr: ' + explain(e)); }
-  try { rowsPrev = cfg.prev ? await readAny(cfg.prev) : []; } catch (e) { rowsPrev = []; errors.push('Vorjahr: ' + explain(e)); }
-  if (T) {
-    const missing = COLS.filter(c => T.map[c.key] === undefined);
-    if (missing.length) errors.push(`In der Tabelle fehlen Spalten: ${missing.map(c => c.name).join(', ')}.` + (me.admin ? ' → Admin → „Fehlende Spalten anlegen“.' : ' Bitte den Admin informieren.'));
-  }
-  if (errors.length) msg(errors.join('<br>'), T ? 'warn' : 'err');
-  buildIndex();
-  renderStats();
-  renderList();
-  try { knownTag = (await graph(`/drives/${cfg.cur.driveId}/items/${cfg.cur.itemId}?$select=cTag`)).cTag; } catch {}
-  setSync('ok');
-}
-
 /* ================= Automatische Aktualisierung ================= */
-// Alle 30 s wird nur der Änderungsstempel (cTag) der Datei abgefragt – das ist winzig.
-// Nur wenn er sich geändert hat, wird die Tabelle neu gelesen.
 const POLL_MS = 30000, WRITE_GRACE_MS = 20000;
-let knownTag = null, lastWriteAt = 0, polling = false, pollTimer = null;
-const myRecent = new Map();     // selbst vergebene Nummern der letzten 2 Minuten → Zeit
+let knownTags = {}, lastWriteAt = 0, polling = false, pollTimer = null;
+const myRecent = new Map();
 
 function setSync(state, text){
   const el = $('syncInfo'); if (!el) return;
@@ -751,63 +854,70 @@ function setSync(state, text){
   show(el, true);
 }
 function noteWrite(nr){ lastWriteAt = Date.now(); if (nr) myRecent.set(nr, Date.now()); }
+async function fetchTags(){
+  const refs = [C, Y?.ref].filter(Boolean);
+  const res = await Promise.all(refs.map(r => graph(`/drives/${r.driveId}/items/${r.itemId}?$select=cTag,lastModifiedBy`)));
+  const tags = {}; let who = '';
+  res.forEach((it, i) => { tags[refs[i].itemId] = it.cTag; if (refs[i] === Y?.ref) who = it.lastModifiedBy?.user?.displayName || ''; });
+  return { tags, who };
+}
+async function rememberTags(){ try { knownTags = (await fetchTags()).tags; } catch {} }
 
 async function pollOnce(force = false){
-  if (polling || !cfg.cur || !T || document.hidden) return;
-  if (!force && Date.now() - lastWriteAt < WRITE_GRACE_MS) return;      // eigene Änderung noch frisch
-  if (!$('askOv').classList.contains('hidden')) return;                 // Rückfrage offen
+  if (polling || !C || !T || document.hidden) return;
+  if (!force && Date.now() - lastWriteAt < WRITE_GRACE_MS) return;
+  if (!$('askOv').classList.contains('hidden')) return;
   polling = true;
   try {
-    const it = await graph(`/drives/${cfg.cur.driveId}/items/${cfg.cur.itemId}?$select=cTag,lastModifiedBy`);
-    if (!force && it.cTag === knownTag) { setSync('ok'); return; }
+    const { tags, who } = await fetchTags();
+    const changed = Object.keys(tags).some(k => tags[k] !== knownTags[k]);
+    if (!force && !changed) { setSync('ok'); return; }
     setSync('busy');
-    const fresh = await readCurTable();
-    // Sicherheitsnetz: fehlt eine eben selbst vergebene Nummer, ist der Stand noch alt → nächstes Mal
+    const before = new Map((T.rows || []).map(r => [r.nr, r.status]));
+    const keep = { ABT, MT, KT, ET, T, years, Y, P, KMAP, NODUP, freigeber };
+    await loadCore();
     const now = Date.now();
     for (const [nr, at] of myRecent) { if (now - at > 120000) myRecent.delete(nr); }
-    if ([...myRecent.keys()].some(nr => !fresh.rows.some(r => r.nr === nr))) { setSync('ok'); return; }
-    const before = new Set((T.rows || []).map(r => r.nr + '|' + r.status));
-    const added = fresh.rows.filter(r => !(T.rows || []).some(x => x.nr === r.nr));
-    const changed = fresh.rows.some(r => !before.has(r.nr + '|' + r.status)) || fresh.rows.length !== T.rows.length;
-    T = fresh; knownTag = it.cTag;
-    if (changed) {
-      buildIndex(); renderStats(); renderList();
-      if (!$('formOv').classList.contains('hidden')) updateNumPreview();
-      const who = it.lastModifiedBy?.user?.displayName;
-      if (added.length && who && who !== me.name) toast(`${added.length === 1 ? 'Neuer Auftrag' : added.length + ' neue Aufträge'} von ${esc(who)}: ${added.slice(0, 3).map(r => `<b>${esc(r.nr)}</b>`).join(', ')}`, 6000);
+    if ([...myRecent.keys()].some(nr => !T.rows.some(r => r.nr === nr))) {    // Stand noch alt → verwerfen
+      ({ ABT, MT, KT, ET, T, years, Y, P, KMAP, NODUP, freigeber } = keep); setSync('ok'); return;
     }
+    knownTags = tags;
+    const added = T.rows.filter(r => !before.has(r.nr));
+    const diff = added.length || T.rows.length !== before.size || T.rows.some(r => before.get(r.nr) !== r.status);
+    buildIndex(); renderStats(); renderList(); renderBadges();
+    if (!$('formOv').classList.contains('hidden')) updateNumPreview();
+    if (diff && added.length && who && who !== me.name) toast(`${added.length === 1 ? 'Neuer Auftrag' : added.length + ' neue Aufträge'} von ${esc(who)}: ${added.slice(0, 3).map(r => `<b>${esc(r.nr)}</b>`).join(', ')}`, 6000);
     setSync('ok');
   } catch (e) {
     setSync('err', 'Verbindung gestört – versuche erneut');
   } finally { polling = false; }
 }
-function startPolling(){
-  clearInterval(pollTimer);
-  pollTimer = setInterval(() => pollOnce(), POLL_MS);
-}
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden) setSync('paused');
-  else pollOnce(true);                     // zurück im Tab → sofort prüfen
-});
+function startPolling(){ clearInterval(pollTimer); pollTimer = setInterval(() => pollOnce(), POLL_MS); }
+document.addEventListener('visibilitychange', () => { if (document.hidden) setSync('paused'); else pollOnce(true); });
 $('syncInfo').onclick = () => pollOnce(true);
+function refreshAfterWrite(){ buildIndex(); renderStats(); renderList(); }
 
 /* ================= Liste ================= */
 let statusFilter = 'alle';
+const statusOf = r => r.status || (r._prev ? '' : ST.OFFEN);
+const stClass = s => s === ST.FREI ? 'frei' : s === ST.STORNO ? 'storno' : s === ST.OFFEN ? 'offen' : '';
+const bezugOf = r => r.bezug || [];
 
 function renderStats(){
   const rows = T?.rows || [];
-  $('stCount').textContent = rows.filter(r => r.status !== ST.STORNO).length;
-  $('stNext').textContent = nextNumber(rows);
-  $('stOpen').textContent = rows.filter(r => statusOf(r) === ST.OFFEN).length;
+  $('stCount').textContent = rows.filter(r => statusOf(r) !== ST.STORNO).length;
+  $('stNext').textContent = Y ? nextNumber(rows) : '–';
+  const open = rows.filter(r => statusOf(r) === ST.OFFEN).length;
+  $('stOpen').textContent = open;
   $('stKunden').textContent = kIndex.size;
   const seen = new Map(); rows.forEach(r => { if (r.nr) seen.set(r.nr, (seen.get(r.nr) || 0) + 1); });
   const dups = [...seen.values()].filter(n => n > 1).length;
   $('stDup').textContent = dups; show($('stDupBox'), dups > 0);
-  const open = rows.filter(r => statusOf(r) === ST.OFFEN).length;
   show($('btnBulk'), me.freigeber && open > 0);
   $('btnBulk').textContent = `✓ Alle offenen freigeben (${open})`;
   show($('freiBanner'), me.freigeber && open > 0 && statusFilter !== ST.OFFEN);
   $('freiText').innerHTML = `<b>${open}</b> ${open === 1 ? 'Auftrag wartet' : 'Aufträge warten'} auf Freigabe.`;
+  $('withPrevLbl').textContent = P ? `Vorjahr ${P.jahr} einbeziehen` : 'Vorjahr einbeziehen';
 }
 function setFilter(f){
   statusFilter = f;
@@ -815,8 +925,6 @@ function setFilter(f){
   renderStats(); renderList();
 }
 $('btnShowOpen').onclick = () => setFilter(ST.OFFEN);
-const statusOf = r => r.status || (r._prev ? '' : ST.OFFEN);
-const stClass = s => s === ST.FREI ? 'frei' : s === ST.STORNO ? 'storno' : s === ST.OFFEN ? 'offen' : '';
 
 function renderList(){
   const q = $('q').value.trim().toLowerCase();
@@ -824,9 +932,9 @@ function renderList(){
   if ($('withPrev').checked) all = all.concat(rowsPrev.map(r => ({...r, cur:false, _prev:true})));
   if (statusFilter !== 'alle') all = all.filter(r => r.cur && statusOf(r) === statusFilter);
   const words = q.split(/\s+/).filter(Boolean);
-  const hits = words.length ? all.filter(r => { const h = `${r.nr} ${r.kunde} ${r.objekt} ${r.plz} ${r.ort} ${r.bemerkung}`.toLowerCase(); return words.every(w => h.includes(w)); }) : all;
+  const hits = words.length ? all.filter(r => { const h = `${r.nr} ${r.kunde} ${r.kundeRaw} ${r.objekt} ${r.plz} ${r.ort} ${r.bemerkung} ${bezugOf(r).join(' ')}`.toLowerCase(); return words.every(w => h.includes(w)); }) : all;
   hits.sort((a, b) => b.nr.localeCompare(a.nr, 'de', {numeric:true}));
-  const yCur = '20' + cfg.prefix, yPrev = String(+yCur - 1);
+  const yCur = Y?.jahr || '', yPrev = P?.jahr || '';
   $('tbody').innerHTML = hits.length ? hits.slice(0, MAX_RENDER).map(r => {
     const s = statusOf(r);
     let act = '';
@@ -837,25 +945,23 @@ function renderList(){
       if (s !== ST.STORNO) act += `<button class="sm danger" data-a="storno" data-nr="${esc(r.nr)}" title="Stornieren (Zeile bleibt stehen)">⊘</button>`;
       act += `<button class="sm danger" data-a="del" data-nr="${esc(r.nr)}" title="Löschen (Zeile wird entfernt)">🗑</button>`;
       act += `<button class="sm ghost" data-a="copy" data-nr="${esc(r.nr)}" title="Nummer kopieren">⧉</button>`;
-    } else {
+    } else if (Y) {
       act += `<button class="sm" data-a="take" data-nr="${esc(r.nr)}" title="Als neuen Auftrag für ${yCur} übernehmen">➕ Übernehmen</button>`;
     }
-    const tip = [r.erfasst && 'Erfasst: ' + r.erfasst, r.freigabe && (s === ST.STORNO ? 'Storno: ' : 'Freigabe: ') + r.freigabe, r.bemerkung && 'Bemerkung: ' + r.bemerkung].filter(Boolean).join('\n');
+    const tip = [r.kundeRaw && r.kundeRaw !== r.kunde && 'Im Auftragsbuch: ' + r.kundeRaw, r.erfasst && 'Erfasst: ' + r.erfasst, r.freigabe && (s === ST.STORNO ? 'Storniert: ' : 'Freigabe: ') + r.freigabe, r.bemerkung && 'Bemerkung: ' + r.bemerkung].filter(Boolean).join('\n');
     return `<tr class="${s === ST.STORNO ? 'storno' : ''}" title="${esc(tip)}">
       <td class="nr">${esc(r.nr)}${bezugOf(r).map(b => ` <button class="bez" data-a="bez" data-nr="${esc(b)}" title="Verknüpfter Auftrag – anzeigen">↔ ${esc(b)}</button>`).join('')}</td><td>${esc(isoToDe(r.datum))}</td><td>${esc(r.kunde)}</td><td class="wrap">${esc(r.objekt)}</td>
       <td>${esc(r.plz)}</td><td>${esc(r.ort)}</td>
       <td>${r.cur ? `<span class="st ${stClass(s)}">${esc(s)}</span>` : `<span class="src">${yPrev}</span>`}</td>
       <td class="act">${act}</td></tr>`;
   }).join('') : `<tr><td colspan="8" class="center muted">${all.length ? 'Keine Treffer.' : 'Noch keine Einträge.'}</td></tr>`;
-  $('listNote').textContent = hits.length > MAX_RENDER ? `${hits.length} Treffer – angezeigt werden die ersten ${MAX_RENDER}.` : (hits.length ? `${hits.length} Einträge` + (isMobile() ? ' · Karte antippen für Details' : ' · Maus über eine Zeile zeigt Erfasst/Freigabe/Bemerkung') : '');
-  lastHits = hits;
+  $('listNote').textContent = hits.length > MAX_RENDER ? `${hits.length} Treffer – angezeigt werden die ersten ${MAX_RENDER}.` : (hits.length ? `${hits.length} Einträge` + (isMobile() ? ' · Karte antippen für Details' : ' · Maus über eine Zeile zeigt Details') : '');
   renderCards(hits, all.length, yPrev);
 }
 
 /* ---- Mobil: Karten + Detailblatt ---- */
 const mq = window.matchMedia('(max-width: 760px)');
 const isMobile = () => mq.matches;
-let lastHits = [];
 const MAX_CARDS = 150;
 
 function renderCards(hits, total, yPrev){
@@ -865,7 +971,7 @@ function renderCards(hits, total, yPrev){
     const bez = bezugOf(r).map(b => `<button class="bez" data-a="bez" data-nr="${esc(b)}">↔ ${esc(b)}</button>`).join('');
     let acts = '';
     if (r.cur && me.freigeber && s === ST.OFFEN) acts += `<button class="primary" data-a="frei" data-nr="${esc(r.nr)}">✓ Freigeben</button>`;
-    if (!r.cur) acts += `<button data-a="take" data-nr="${esc(r.nr)}">➕ Für ${'20' + cfg.prefix} übernehmen</button>`;
+    if (!r.cur && Y) acts += `<button data-a="take" data-nr="${esc(r.nr)}">➕ Für ${Y.jahr} übernehmen</button>`;
     return `<div class="acard ${s === ST.STORNO ? 'storno' : ''} ${r.cur ? '' : 'prev'}" data-card="${esc(r.nr)}">
       <div class="top"><span class="cnr">${esc(r.nr)}</span>${r.cur ? `<span class="st ${stClass(s)}">${esc(s)}</span>` : `<span class="src">${yPrev}</span>`}</div>
       <div class="k">${esc(r.kunde)}</div>
@@ -876,9 +982,10 @@ function renderCards(hits, total, yPrev){
   }).join('') : `<div class="center muted">${total ? 'Keine Treffer.' : 'Noch keine Einträge.'}</div>`;
   if (hits.length > MAX_CARDS) $('cards').insertAdjacentHTML('beforeend', `<div class="center muted small">${hits.length - MAX_CARDS} weitere – Suche verfeinern.</div>`);
 }
-
-function findAny(nr){ return (T?.rows || []).find(x => x.nr === nr) ? {...T.rows.find(x => x.nr === nr), cur:true} : (rowsPrev.find(x => x.nr === nr) ? {...rowsPrev.find(x => x.nr === nr), cur:false, _prev:true} : null); }
-
+function findAny(nr){
+  const c = (T?.rows || []).find(x => x.nr === nr); if (c) return {...c, cur:true};
+  const p = rowsPrev.find(x => x.nr === nr); return p ? {...p, cur:false, _prev:true} : null;
+}
 function openSheet(nr){
   const r = findAny(nr); if (!r) return;
   const s = statusOf(r);
@@ -891,13 +998,13 @@ function openSheet(nr){
     if (s !== ST.STORNO) acts += `<button data-a="edit" data-nr="${esc(nr)}">✎ Bearbeiten</button>`;
     if (s !== ST.STORNO) acts += `<button class="danger" data-a="storno" data-nr="${esc(nr)}">⊘ Stornieren</button>`;
     acts += `<button class="danger" data-a="del" data-nr="${esc(nr)}">🗑 Löschen</button>`;
-  } else {
-    acts += `<button class="primary" data-a="take" data-nr="${esc(nr)}">➕ Als neuen Auftrag für ${'20' + cfg.prefix} übernehmen</button>`;
+  } else if (Y) {
+    acts += `<button class="primary" data-a="take" data-nr="${esc(nr)}">➕ Als neuen Auftrag für ${Y.jahr} übernehmen</button>`;
   }
   acts += `<button class="ghost" data-a="close">Schließen</button>`;
   $('sheet').innerHTML = `<h2><span style="color:var(--accent)">${esc(nr)}</span>${r.cur ? `<span class="st ${stClass(s)}">${esc(s)}</span>` : ''}</h2>
-    <dl>${row('Auftraggeber', r.kunde)}${row('Objekt', r.objekt)}${row('Ort', [r.plz, r.ort].filter(Boolean).join(' '))}${row('Datum', isoToDe(r.datum))}
-      ${row('Erfasst', r.erfasst)}${row(s === ST.STORNO ? 'Storno' : 'Freigabe', r.freigabe)}${row('Bemerkung', r.bemerkung)}</dl>
+    <dl>${row('Auftraggeber', r.kunde)}${r.kundeRaw !== r.kunde ? row('Im Auftragsbuch', r.kundeRaw) : ''}${row('Objekt', r.objekt)}${row('Ort', [r.plz, r.ort].filter(Boolean).join(' '))}${row('Datum', isoToDe(r.datum))}
+      ${row('Erfasst', r.erfasst || (r.cur && !r.hasMeta ? '– (direkt in Excel eingetragen)' : ''))}${row(s === ST.STORNO ? 'Storniert' : 'Freigabe', r.freigabe)}${row('Bezug', bezugOf(r).join(', '))}${row('Bemerkung', r.bemerkung)}</dl>
     <div class="sacts">${acts}</div>`;
   show($('sheetOv'), true);
 }
@@ -913,11 +1020,8 @@ $('cards').addEventListener('click', e => {
   const c = e.target.closest('[data-card]'); if (c) openSheet(c.dataset.card);
 });
 mq.addEventListener('change', () => { if (T) renderList(); });
+$('tbody').addEventListener('click', e => { const b = e.target.closest('button[data-a]'); if (b) handleAction(b.dataset.a, b.dataset.nr); });
 
-$('tbody').addEventListener('click', e => {
-  const b = e.target.closest('button[data-a]'); if (!b) return;
-  handleAction(b.dataset.a, b.dataset.nr);
-});
 function handleAction(a, nr){
   if (a === 'take') { const r = rowsPrev.find(x => x.nr === nr); if (r) openForm(null, null, r); return; }
   if (a === 'copy') { navigator.clipboard?.writeText(nr); toast(`${esc(nr)} kopiert`, 2000); }
@@ -930,22 +1034,15 @@ function handleAction(a, nr){
 }
 
 /* ================= Formular ================= */
-let editNr = null;     // null = neu
-let relNr = null;      // Ursprungsauftrag bei „Weitere Nummer zu diesem Objekt“
-let lastHints = {};
-const BEZUG_RE = /Bezug: (\d{2}-\d{4}(?:-\d+)?)/g;
-const bezugOf = r => [...(r.bemerkung || '').matchAll(BEZUG_RE)].map(m => m[1]);
+let editNr = null, relNr = null;
 const withZusatz = (obj, z) => z ? `${obj} – ${z}` : obj;
-const appendBem = (bem, add) => tidy(`${bem || ''}${bem ? ' | ' : ''}${add}`);
 
 function openForm(nr = null, related = null, prefill = null){
-  if (!T) return;
-  const missing = COLS.filter(c => T.map[c.key] === undefined);
-  if (missing.length) { msg(`Speichern nicht möglich – in der Tabelle fehlen Spalten: ${missing.map(c => c.name).join(', ')}.`, 'warn'); return; }
+  if (!T || !Y || !ABT) { msg('Kein aktives Jahr / Auftragsbuch verknüpft.', 'warn'); return; }
   editNr = nr; relNr = related;
   const r = nr ? T.rows.find(x => x.nr === nr) : (related ? T.rows.find(x => x.nr === related) : prefill);
   $('fTitle').textContent = nr ? `Auftrag ${nr} bearbeiten` : related ? 'Weitere Nummer zu diesem Objekt' : prefill ? `Neuer Auftrag (aus ${prefill.nr})` : 'Neuer Auftrag';
-  $('fSub').textContent = nr ? 'Die Nummer bleibt unverändert. Die Änderung wird in der Bemerkung vermerkt.' : 'Die Nummer wird beim Speichern endgültig vergeben.';
+  $('fSub').textContent = nr ? 'Die Nummer bleibt unverändert. Die Änderung wird im Protokoll vermerkt.' : 'Die Nummer wird beim Speichern endgültig vergeben.';
   $('fSave').textContent = nr ? 'Änderung speichern' : 'Speichern & Nummer vergeben';
   $('fDate').value = (nr && r?.datum) || todayIso();
   $('fKunde').value = r?.kunde || '';
@@ -960,21 +1057,18 @@ function openForm(nr = null, related = null, prefill = null){
   $('fErr').innerHTML = '';
   show($('formOv'), true);
   updateNumPreview(); updateHints();
-  if (!nr) pollOnce(true);                 // vor neuer Vergabe frischen Stand holen
+  if (!nr) pollOnce(true);
   if (!isMobile() || !prefill) setTimeout(() => $(related ? 'fZusatz' : nr ? 'fObjekt' : 'fKunde').focus(), 50);
 }
 function closeForm(){ show($('formOv'), false); hideDDs(); }
-
-function updateNumPreview(){
-  $('fNum').textContent = editNr || nextNumber(T.rows);
-}
+function updateNumPreview(){ $('fNum').textContent = editNr || nextNumber(T.rows); }
 function updateRelPreview(){
   if (!relNr) { $('relPreview').innerHTML = ''; return; }
   const obj = tidy($('fObjekt').value);
   const orig = T.rows.find(x => x.nr === relNr);
-  let h = `Neu: <b>${esc(withZusatz(obj, tidy($('fZusatz').value)))}</b> · Bemerkung „Bezug: ${esc(relNr)}“`;
-  if ($('fAdjOrig').checked && orig) h += `<br>${esc(relNr)}: <b>${esc(withZusatz(orig.objekt, tidy($('fZusatzOrig').value)))}</b> · Bemerkung „Bezug: neue Nummer“`;
-  else if (orig) h += `<br>${esc(relNr)}: Objekt bleibt, Bemerkung „Bezug: neue Nummer“`;
+  let h = `Neu: <b>${esc(withZusatz(obj, tidy($('fZusatz').value)))}</b> · Bezug ${esc(relNr)}`;
+  if ($('fAdjOrig').checked && orig) h += `<br>${esc(relNr)}: <b>${esc(withZusatz(orig.objekt, tidy($('fZusatzOrig').value)))}</b> · Bezug neue Nummer`;
+  else if (orig) h += `<br>${esc(relNr)}: Objekt bleibt, Bezug neue Nummer`;
   $('relPreview').innerHTML = h;
 }
 ['fZusatz','fZusatzOrig','fObjekt'].forEach(id => $(id).addEventListener('input', updateRelPreview));
@@ -1002,7 +1096,6 @@ function makeCombo(input, dd, source, onPick){
   dd.addEventListener('mousedown', e => { const d = e.target.closest('div[data-i]'); if (d) { e.preventDefault(); onPick(items[+d.dataset.i]); show(dd, false); } });
   input.addEventListener('blur', () => setTimeout(() => show(dd, false), 120));
 }
-
 makeCombo($('fKunde'), $('ddKunde'), q => {
   const nq = normKunde(q); const lq = q.trim().toLowerCase();
   if (!lq) return [];
@@ -1011,9 +1104,8 @@ makeCombo($('fKunde'), $('ddKunde'), q => {
     .filter(x => x.s >= 0.75).sort((a, b) => b.s - a.s || b.e.count - a.e.count).slice(0, 12)
     .map(({e}) => ({ value: e.name, html: `${esc(e.name)} <small>· ${Math.round(e.count)} Aufträge · ${e.objects.size} Objekte</small>` }));
 }, it => { $('fKunde').value = it.value; updateHints(); $('fObjekt').focus(); });
-
 makeCombo($('fObjekt'), $('ddObjekt'), q => {
-  const e = kIndex.get(normKunde($('fKunde').value));
+  const e = kIndex.get(normKunde(canon($('fKunde').value)));
   if (!e) return [];
   const lq = q.trim().toLowerCase();
   return [...e.objects.values()].filter(o => !lq || `${o.objekt} ${o.plz} ${o.ort}`.toLowerCase().includes(lq))
@@ -1021,28 +1113,27 @@ makeCombo($('fObjekt'), $('ddObjekt'), q => {
     .map(o => ({ o, html: `${esc(o.objekt)} <small>· ${esc(o.plz)} ${esc(o.ort)} · zuletzt ${esc(o.last)}</small>` }));
 }, it => { $('fObjekt').value = it.o.objekt; $('fPlz').value = it.o.plz; $('fOrt').value = it.o.ort; updateHints(); });
 
-/* ---- Hinweise (Schreibweise, Dubletten, PLZ) ---- */
+/* ---- Hinweise ---- */
 function updateHints(){
   const kunde = tidy($('fKunde').value), objekt = tidy($('fObjekt').value), plz = tidy($('fPlz').value), ort = tidy($('fOrt').value);
-  lastHints = {};
-  // Auftraggeber
   let hk = '';
   if (kunde) {
-    const nk = normKunde(kunde), e = kIndex.get(nk);
-    if (e && e.name === kunde) hk = `<div class="hint ok">✓ Bekannter Auftraggeber · ${Math.round(e.count)} Aufträge</div>`;
-    else if (e) { hk = `<div class="hint warn">Im Bestand geschrieben als <b>${esc(e.name)}</b><button class="sm" data-fix="kunde" data-v="${esc(e.name)}">übernehmen</button></div>`; lastHints.kunde = true; }
+    const mapped = KMAP.get(kunde.toLowerCase());
+    const nk = normKunde(mapped || kunde), e = kIndex.get(nk);
+    if (mapped && mapped !== kunde) hk = `<div class="hint warn">Zugeordnet zu <b>${esc(mapped)}</b><button class="sm" data-fix="kunde" data-v="${esc(mapped)}">übernehmen</button></div>`;
+    else if (e && e.name === kunde) hk = `<div class="hint ok">✓ Bekannter Auftraggeber · ${Math.round(e.count)} Aufträge</div>`;
+    else if (e) hk = `<div class="hint warn">Im Bestand geschrieben als <b>${esc(e.name)}</b><button class="sm" data-fix="kunde" data-v="${esc(e.name)}">übernehmen</button></div>`;
     else {
       let best = null, bs = 0;
-      kIndex.forEach(x => { const s = sim(nk, normKunde(x.name)); if (s > bs) { bs = s; best = x; } });
-      if (best && bs >= 0.8) { hk = `<div class="hint warn">Neuer Name – meintest du <b>${esc(best.name)}</b>? (${Math.round(best.count)} Aufträge)<button class="sm" data-fix="kunde" data-v="${esc(best.name)}">übernehmen</button></div>`; lastHints.kunde = true; }
+      kIndex.forEach(x => { if (NODUP.has(pairKey(kunde, x.name))) return; const s = sim(nk, normKunde(x.name)); if (s > bs) { bs = s; best = x; } });
+      if (best && bs >= 0.8) hk = `<div class="hint warn">Neuer Name – meintest du <b>${esc(best.name)}</b>? (${Math.round(best.count)} Aufträge)<button class="sm" data-fix="kunde" data-v="${esc(best.name)}">übernehmen</button></div>`;
       else hk = `<div class="hint info">Neuer Auftraggeber – wird mit diesem Eintrag angelegt.</div>`;
     }
   }
   $('hKunde').innerHTML = hk;
-  // Objekt: Dubletten im aktuellen Jahr + Wechsel des Auftraggebers
   let ho = '';
   if (objekt) {
-    const no = normObjekt(objekt), nk = normKunde(kunde);
+    const no = normObjekt(objekt), nk = normKunde(canon(kunde));
     const same = T.rows.filter(r => r.nr !== editNr && r.nr !== relNr && r.status !== ST.STORNO && normObjekt(r.objekt) === no && (!plz || !r.plz || r.plz === plz));
     const sameK = same.filter(r => normKunde(r.kunde) === nk);
     if (sameK.length) ho += `<div class="hint warn">Dieses Objekt hat im aktuellen Jahr schon: ${sameK.slice(0, 5).map(r => `<b>${esc(r.nr)}</b> (${esc(isoToDe(r.datum) || '–')}, ${esc(statusOf(r))})`).join(', ')}${sameK.length > 5 ? ' …' : ''}. Doppelt angelegt?</div>`;
@@ -1050,7 +1141,6 @@ function updateHints(){
     if (otherK.length) { const last = otherK.sort((a, b) => b.nr.localeCompare(a.nr, 'de', {numeric:true}))[0]; ho += `<div class="hint info">Objekt war bisher bei <b>${esc(last.kunde)}</b> (${esc(last.nr)}) – Verwalterwechsel?</div>`; }
   }
   $('hObjekt').innerHTML = ho;
-  // PLZ / Ort
   let hp = '';
   if (plz && !/^\d{5}$/.test(plz)) hp = `<div class="hint warn">PLZ muss 5 Ziffern haben.</div>`;
   else if (plz) {
@@ -1063,13 +1153,34 @@ function updateHints(){
   }
   $('hPlz').innerHTML = hp;
 }
-document.getElementById('formOv').addEventListener('click', e => {
+$('formOv').addEventListener('click', e => {
   const b = e.target.closest('button[data-fix]'); if (!b) return;
   $(b.dataset.fix === 'kunde' ? 'fKunde' : 'fOrt').value = b.dataset.v; updateHints();
 });
 ['fKunde','fObjekt','fPlz','fOrt'].forEach(id => $(id).addEventListener('input', updateHints));
 $('fPlz').addEventListener('input', () => { $('fPlz').value = $('fPlz').value.replace(/\D/g, ''); });
 $('fCancel').onclick = closeForm;
+
+/* ================= Schreiben: Hilfen ================= */
+const stampMe = () => `${me.name} · ${nowStamp()}`;
+let PT = null;
+async function log(entries){       // entries: [[aktion, nr, details], …]
+  PT = await readTbl(C, CT.protokoll.table);
+  await appendRows(PT, entries.map(([aktion, nr, details]) => rowArr(PT, { 'Zeitpunkt': nowIsoTime(), 'Wer': me.name, 'Aktion': aktion, 'Jahr': Number(Y?.jahr || 0), 'Nummer': nr || '', 'Details': details || '' })));
+}
+async function metaUpsert(mt, jahr, nr, fields){
+  const r = mt.rows.find(x => String(x['Jahr']).trim() === String(jahr) && tidy(x['Nummer']) === nr);
+  if (r) { await writeRow(mt, r._i, rowArr(mt, fields, r._raw)); if ('Datum' in fields) await setDateFormat(mt, r._i, 'Datum'); return r._i; }
+  const i = await appendRows(mt, [rowArr(mt, { 'Jahr': Number(jahr), 'Nummer': nr, ...fields })]);
+  if ('Datum' in fields) await setDateFormat(mt, i, 'Datum');
+  mt.rows.push({ _i:i, _raw: rowArr(mt, { 'Jahr': Number(jahr), 'Nummer': nr, ...fields }), 'Jahr': jahr, 'Nummer': nr, ...fields });
+  return i;
+}
+async function metaDelete(mt, jahr, nr){
+  const r = mt.rows.find(x => String(x['Jahr']).trim() === String(jahr) && tidy(x['Nummer']) === nr);
+  if (r) await deleteRow(mt, r._i);
+}
+const freshMeta = () => readTbl(C, CT.auftraege.table);
 
 /* ---- Speichern ---- */
 $('fSave').onclick = async () => {
@@ -1081,12 +1192,12 @@ $('fSave').onclick = async () => {
   if (d.plz && !/^\d{5}$/.test(d.plz)) errs.push('PLZ muss 5 Ziffern haben.');
   if (relNr && $('fAdjOrig').checked && !tidy($('fZusatzOrig').value)) errs.push(`Zusatz für ${relNr} fehlt (oder Haken entfernen).`);
   if (errs.length) { $('fErr').innerHTML = `<div class="hint warn" style="margin-top:12px">${errs.join('<br>')}</div>`; return; }
-
   $('fSave').disabled = true; $('fErr').innerHTML = '<div class="status"><span class="spin"></span> Speichere …</div>';
+  const wasEdit = !!editNr;
   try {
-    const nr = await withSession(() => editNr ? saveEdit(d) : saveNew(d));
+    const nr = await withSessions([Y.ref, C], () => wasEdit ? saveEdit(d) : saveNew(d));
     closeForm();
-    toast(editNr ? `Auftrag <b>${esc(nr)}</b> geändert` : `Nummer <b style="color:var(--accent);font-size:18px">${esc(nr)}</b> vergeben <button class="sm" onclick="navigator.clipboard&&navigator.clipboard.writeText('${esc(nr)}');this.textContent='kopiert ✓'">Kopieren</button>`, 10000);
+    toast(wasEdit ? `Auftrag <b>${esc(nr)}</b> geändert` : `Nummer <b style="color:var(--accent);font-size:18px">${esc(nr)}</b> vergeben <button class="sm" onclick="navigator.clipboard&&navigator.clipboard.writeText('${esc(nr)}');this.textContent='kopiert ✓'">Kopieren</button>`, 10000);
     refreshAfterWrite();
   } catch (e) {
     $('fErr').innerHTML = `<div class="hint warn" style="margin-top:12px">${explain(e)}</div>`;
@@ -1094,54 +1205,64 @@ $('fSave').onclick = async () => {
 };
 
 async function saveNew(d){
-  const stamp = `${me.name} · ${nowStamp()}`;
-  if (relNr) { d.objekt = withZusatz(d.objekt, tidy($('fZusatz').value)); d.bemerkung = appendBem(d.bemerkung, `Bezug: ${relNr}`); }
-  let t = await readCurTable();                       // frisch lesen
-  let nr = nextNumber(t.rows);
-  const arr = buildRow(t, { nr, kunde:d.kunde, objekt:d.objekt, plz: d.plz ? Number(d.plz) : '', ort:d.ort, datum: isoToSerial(d.datum), status: ST.OFFEN, erfasst: stamp, freigabe:'', bemerkung:d.bemerkung });
-  await appendRow(t, arr);
+  const stamp = stampMe();
+  if (relNr) d.objekt = withZusatz(d.objekt, tidy($('fZusatz').value));
+  // 1) Nummer im offiziellen Auftragsbuch
+  let t = await readAB(Y);
+  let nr = nextNumber(t.ab);
+  const myIdx = await appendRows(t, [abArr(t, { nr, kunde: d.kunde, objekt: d.objekt, plz: d.plz ? Number(d.plz) : '', ort: d.ort })]);
   // Kontrolle: hat jemand gleichzeitig dieselbe Nummer gezogen?
-  for (let i = 0; i < 3; i++) {
-    t = await readCurTable();
-    const same = t.rows.filter(r => r.nr === nr);
-    const mine = same.find(r => r.erfasst === stamp);
-    if (!mine) throw new Error('Eintrag wurde nach dem Speichern nicht gefunden – bitte Liste prüfen.');
-    if (same.length === 1) break;
-    const firstOther = same.find(r => r !== mine);
-    if (firstOther._i < mine._i) {                      // der andere war zuerst → wir weichen aus
-      nr = nextNumber(t.rows);
-      await writeRow(t, mine._i, buildRow(t, { nr }, mine._raw));
+  for (let k = 0; k < 3; k++) {
+    t = await readAB(Y);
+    const same = t.ab.filter(r => r.nr === nr);
+    if (same.length <= 1) break;
+    if (same.some(r => r._i < myIdx)) {
+      nr = nextNumber(t.ab);
+      const mine = t.ab.find(r => r._i === myIdx);
+      if (mine) await writeRow(t, myIdx, abArr(t, { nr }, mine._raw));
       toast(`Nummer war gerade vergeben worden – neue Nummer: <b>${esc(nr)}</b>`, 8000);
     } else break;
   }
-  // Ursprungsauftrag verknüpfen (und ggf. Objekt ergänzen)
+  // 2) Zusatzdaten + Protokoll in der Steuerungsdatei
+  const mt = await freshMeta();
+  await metaUpsert(mt, Y.jahr, nr, { 'Datum': isoToSerial(d.datum), 'Status': ST.OFFEN, 'Erfasst': stamp, 'Freigabe': '', 'Bezug': relNr || '', 'Bemerkung': d.bemerkung });
+  const logs = [['Angelegt', nr, `${d.kunde} · ${d.objekt}${d.plz || d.ort ? ' · ' + [d.plz, d.ort].filter(Boolean).join(' ') : ''}`]];
+  // 3) Ursprungsauftrag verknüpfen (und ggf. Objekt im Auftragsbuch ergänzen)
   if (relNr) {
-    t = await readCurTable();
-    const o = t.rows.find(x => x.nr === relNr);
-    if (o) {
-      const upd = { bemerkung: appendBem(o.bemerkung, `Bezug: ${nr}`) };
-      const zo = tidy($('fZusatzOrig').value);
-      if ($('fAdjOrig').checked && zo) { upd.objekt = withZusatz(o.objekt, zo); upd.bemerkung = appendBem(upd.bemerkung, `geändert (Objekt) von ${me.name} am ${nowStamp()}`); }
-      await writeRow(t, o._i, buildRow(t, upd, o._raw));
+    const om = mt.rows.find(x => String(x['Jahr']).trim() === Y.jahr && tidy(x['Nummer']) === relNr);
+    const bez = [...new Set([...tidy(om?.['Bezug']).split(/[,;\s]+/).filter(Boolean), nr])].join(', ');
+    await metaUpsert(mt, Y.jahr, relNr, { 'Bezug': bez });
+    logs.push(['Verknüpft', relNr, `Bezug zu ${nr}`]);
+    const zo = tidy($('fZusatzOrig').value);
+    if ($('fAdjOrig').checked && zo) {
+      const ta = await readAB(Y); const o = ta.ab.find(x => x.nr === relNr);
+      if (o) {
+        const neu = (o.abStorno ? STORNO_PREFIX : '') + withZusatz(o.objekt, zo);
+        await writeRow(ta, o._i, abArr(ta, { objekt: neu }, o._raw));
+        logs.push(['Geändert', relNr, `Objekt: ${o.objekt} → ${withZusatz(o.objekt, zo)}`]);
+      }
     }
   }
+  await log(logs);
   return nr;
 }
 
 async function saveEdit(d){
-  const t = await readCurTable();
-  const r = t.rows.find(x => x.nr === editNr);
-  if (!r) throw new Error('Auftrag nicht mehr gefunden.');
-  const changes = [];
-  if (r.kunde !== d.kunde) changes.push('Auftraggeber'); if (r.objekt !== d.objekt) changes.push('Objekt');
-  if (r.plz !== d.plz) changes.push('PLZ'); if (r.ort !== d.ort) changes.push('Ort'); if (r.datum !== d.datum) changes.push('Datum');
-  let bem = d.bemerkung;
-  if (changes.length) bem = tidy(`${bem}${bem ? ' | ' : ''}geändert (${changes.join(', ')}) von ${me.name} am ${nowStamp()}`);
-  await writeRow(t, r._i, buildRow(t, { kunde:d.kunde, objekt:d.objekt, plz: d.plz ? Number(d.plz) : '', ort:d.ort, datum: isoToSerial(d.datum), bemerkung: bem }, r._raw));
+  const t = await readAB(Y);
+  const a = t.ab.find(x => x.nr === editNr); if (!a) throw new Error('Auftrag nicht mehr gefunden.');
+  const r = T.rows.find(x => x.nr === editNr) || {};
+  const ch = [];
+  const cmp = (lbl, alt, neu) => { if (tidy(alt) !== tidy(neu)) ch.push(`${lbl}: ${alt || '–'} → ${neu || '–'}`); };
+  cmp('Auftraggeber', a.kundeRaw, d.kunde); cmp('Objekt', a.objekt, d.objekt); cmp('PLZ', a.plz, d.plz); cmp('Ort', a.ort, d.ort);
+  cmp('Datum', isoToDe(r.datum), isoToDe(d.datum)); cmp('Bemerkung', r.bemerkung, d.bemerkung);
+  if (!ch.length) return editNr;
+  await writeRow(t, a._i, abArr(t, { kunde: d.kunde, objekt: (a.abStorno ? STORNO_PREFIX : '') + d.objekt, plz: d.plz ? Number(d.plz) : '', ort: d.ort }, a._raw));
+  await metaUpsert(await freshMeta(), Y.jahr, editNr, { 'Datum': isoToSerial(d.datum), 'Bemerkung': d.bemerkung });
+  await log([['Geändert', editNr, ch.join('; ')]]);
   return editNr;
 }
 
-/* ================= Freigabe / Storno ================= */
+/* ================= Freigabe / Storno / Löschen ================= */
 function ask({ title, text, okText = 'OK', danger = false, reason = false }){
   return new Promise(resolve => {
     $('askTitle').textContent = title; $('askText').innerHTML = text;
@@ -1160,12 +1281,14 @@ async function doFreigabe(nrs){
   if (!ok) return;
   const tst = toast('<span class="spin"></span> Gebe frei …', 60000);
   try {
-    await withSession(async () => {
-      const t = await readCurTable(); const stamp = `${me.name} · ${nowStamp()}`;
+    await withSessions([C], async () => {
+      const mt = await freshMeta(); const stamp = stampMe(); const logs = [];
       for (const nr of nrs) {
-        const r = t.rows.find(x => x.nr === nr && statusOf(x) === ST.OFFEN); if (!r) continue;
-        await writeRow(t, r._i, buildRow(t, { status: ST.FREI, freigabe: stamp }, r._raw));
+        const r = T.rows.find(x => x.nr === nr); if (!r || statusOf(r) !== ST.OFFEN) continue;
+        await metaUpsert(mt, Y.jahr, nr, { 'Status': ST.FREI, 'Freigabe': stamp });
+        logs.push(['Freigegeben', nr, '']);
       }
+      if (logs.length) await log(logs);
     });
     tst.remove(); toast(`${nrs.length > 1 ? nrs.length + ' Aufträge' : esc(nrs[0])} freigegeben ✓`, 3000);
   } catch (e) { tst.remove(); msg(explain(e)); }
@@ -1173,181 +1296,431 @@ async function doFreigabe(nrs){
 }
 
 async function doStorno(nr){
-  const reason = await ask({ title: `Auftrag ${nr} stornieren?`, text: 'Die Zeile bleibt im Auftragsbuch stehen (Nachvollziehbarkeit), wird als „Storniert“ markiert und die Nummer wird nicht erneut vergeben.', okText: 'Stornieren', danger: true, reason: true });
+  const reason = await ask({ title: `Auftrag ${nr} stornieren?`, text: `Die Zeile bleibt im Auftragsbuch stehen und bekommt den Hinweis „${STORNO_PREFIX.trim()}“ vor dem Objekt. Grund und Name stehen nur in der Steuerungsdatei. Die Nummer wird nicht erneut vergeben.`, okText: 'Stornieren', danger: true, reason: true });
   if (!reason) return;
   try {
-    await withSession(async () => {
-      const t = await readCurTable(); const r = t.rows.find(x => x.nr === nr); if (!r) throw new Error('Auftrag nicht gefunden.');
-      const bem = tidy(`${r.bemerkung}${r.bemerkung ? ' | ' : ''}Storno: ${reason}`);
-      await writeRow(t, r._i, buildRow(t, { status: ST.STORNO, freigabe: `${me.name} · ${nowStamp()}`, bemerkung: bem }, r._raw));
+    await withSessions([Y.ref, C], async () => {
+      const t = await readAB(Y); const a = t.ab.find(x => x.nr === nr); if (!a) throw new Error('Auftrag nicht gefunden.');
+      if (!a.abStorno) await writeRow(t, a._i, abArr(t, { objekt: STORNO_PREFIX + a.objekt }, a._raw));
+      const r = T.rows.find(x => x.nr === nr) || {};
+      await metaUpsert(await freshMeta(), Y.jahr, nr, { 'Status': ST.STORNO, 'Freigabe': stampMe(), 'Bemerkung': tidy(`${r.bemerkung || ''}${r.bemerkung ? ' | ' : ''}Storno: ${reason}`) });
+      await log([['Storniert', nr, reason]]);
     });
     toast(`${esc(nr)} storniert`, 3000);
   } catch (e) { msg(explain(e)); }
   refreshAfterWrite();
 }
+
 async function doDelete(nr){
   const rows = T?.rows || [];
   const r = rows.find(x => x.nr === nr); if (!r) return;
-  const p = cfg.prefix, re = new RegExp('^' + p + '-(\\d{4})$');
+  const re = new RegExp('^' + Y.prefix + '-(\\d{4})$');
   const m = nr.match(re);
   const maxMain = Math.max(0, ...rows.map(x => (x.nr.match(re) || [])[1]).filter(Boolean).map(Number));
-  const subs = rows.filter(x => x.nr.startsWith(nr + '-'));
+  const linked = rows.filter(x => bezugOf(x).includes(nr)).map(x => x.nr);
   let text = `<b>${esc(nr)}</b> · ${esc(r.kunde)} · ${esc(r.objekt)}<br><br>Nur löschen, wenn die Nummer <b>noch nirgends verwendet</b> wurde (kein Probenetikett, nichts im Labor, kein Bericht). Sonst bitte <b>stornieren</b>.`;
   if (m && +m[1] < maxMain) text += `<br><br>⚠ Es entsteht eine <b>Lücke</b> in der Nummernfolge – ${esc(nr)} wird nicht automatisch neu vergeben.`;
   else if (m) text += `<br><br>Das ist die letzte Nummer – sie wird danach wieder frei und als Nächstes neu vergeben.`;
-  if (subs.length) text += `<br><br>⚠ Zu diesem Auftrag gibt es Unternummern (${subs.map(x => esc(x.nr)).join(', ')}) – diese bleiben stehen.`;
+  if (linked.length) text += `<br><br>⚠ Verknüpft mit ${linked.map(esc).join(', ')}.`;
   if (statusOf(r) === ST.FREI) text += `<br><br>⚠ Der Auftrag ist bereits <b>freigegeben</b>.`;
+  text += `<br><br><span class="muted">Im Protokoll der Steuerungsdatei bleibt die Löschung nachvollziehbar.</span>`;
   const ok = await ask({ title: `Auftrag ${nr} löschen?`, text, okText: 'Endgültig löschen', danger: true });
   if (!ok) return;
   try {
-    await withSession(async () => {
-      const t = await readCurTable();
-      const row = t.rows.find(x => x.nr === nr); if (!row) throw new Error('Auftrag nicht mehr gefunden – wurde er schon gelöscht?');
-      if (t.dataCount <= 1) {
-        // letzte Datenzeile der Tabelle: nur leeren, sonst würde die Tabelle zerstört
-        await graph(`${sheetPath(t)}/range(address='${rowAddr(t, row._i)}')`, { method:'PATCH', body: JSON.stringify({ values: [new Array(t.header.length).fill('')] }) });
-      } else {
-        await graph(`${sheetPath(t)}/range(address='${rowAddr(t, row._i)}')/delete`, { method:'POST', body: JSON.stringify({ shift: 'Up' }) });
-      }
+    await withSessions([Y.ref, C], async () => {
+      const t = await readAB(Y);
+      const a = t.ab.find(x => x.nr === nr); if (!a) throw new Error('Auftrag nicht mehr gefunden – wurde er schon gelöscht?');
+      await deleteRow(t, a._i);
+      await metaDelete(await freshMeta(), Y.jahr, nr);
+      await log([['Gelöscht', nr, `${a.kundeRaw} · ${a.objektRaw}${a.plz || a.ort ? ' · ' + [a.plz, a.ort].filter(Boolean).join(' ') : ''}`]]);
     });
     myRecent.delete(nr);
     toast(`${esc(nr)} gelöscht`, 3000);
   } catch (e) { msg(explain(e)); }
   refreshAfterWrite();
 }
-
 $('btnBulk').onclick = () => doFreigabe((T?.rows || []).filter(r => statusOf(r) === ST.OFFEN).map(r => r.nr));
 
-/* ================= Admin ================= */
-async function renderInfo(which){
-  const box = $(which + 'Info'); const ref = cfg[which];
-  if (!ref) { box.innerHTML = '<div class="status muted">Noch keine Datei verknüpft.</div>'; return; }
-  box.innerHTML = '<div class="status"><span class="spin"></span> Prüfe Datei …</div>';
+/* ================= Admin: Steuerungsdatei ================= */
+async function renderCfgInfo(){
+  const box = $('cfgInfo');
+  show($('cfgLinkWrap'), !CONFIG_LINK); show($('cardSetup'), !CONFIG_LINK);
+  $('cfgFixed').innerHTML = CONFIG_LINK ? '<div class="status ok">✓ Ort fest im Code hinterlegt (gilt für alle Geräte).</div>' : '';
+  show($('btnMigrate'), !!(C && oldCfg && oldCfg.cur && !years.length));
+  if (!C) { box.innerHTML = '<div class="status warn">Noch keine Steuerungsdatei verknüpft. Vorlage hochladen (oder leere Excel anlegen), dann hier verknüpfen.</div>'; return; }
+  box.innerHTML = '<div class="status"><span class="spin"></span> Prüfe …</div>';
   try {
-    const it = await itemInfo(ref);
+    const it = await itemInfo(C);
     const folder = (it.parentReference?.path || '').replace(/^\/drives?\/[^:]*:?/, '') || '/';
-    let tableLine = '';
-    if (which === 'cur') {
-      try {
-        const t = await graph(`${wb(ref)}/tables?$select=name`); const names = (t.value || []).map(x => x.name);
-        tableLine = names.includes(cfg.tableName) ? `<div class="status ok">✓ Tabelle „${esc(cfg.tableName)}“ gefunden.</div>` : `<div class="status err">✗ Tabelle „${esc(cfg.tableName)}“ nicht gefunden. Vorhanden: ${names.length ? names.map(esc).join(', ') : 'keine'}.</div>`;
-      } catch (e) { tableLine = `<div class="status err">${explain(e)}</div>`; }
-    }
     box.innerHTML = `<div class="fileinfo"><b>${esc(it.name)}</b><br><span class="muted">Ordner:</span> ${esc(decodeURIComponent(folder))}<br>
       <span class="muted">Zuletzt geändert:</span> ${fmtDate(it.lastModifiedDateTime)} von ${esc(it.lastModifiedBy?.user?.displayName || '–')}<br>
-      <a href="${esc(it.webUrl)}" target="_blank" rel="noopener">In Excel öffnen ↗</a></div>${tableLine}`;
+      <a href="${esc(it.webUrl)}" target="_blank" rel="noopener">In Excel öffnen ↗</a></div>`;
   } catch (e) { box.innerHTML = `<div class="status err">${explain(e)}</div>`; }
+  $('setupLink').value = setupLink();
 }
-async function renderCols(){
-  const box = $('colInfo'); show($('btnAddCols'), false);
-  if (!cfg.cur) { box.textContent = 'Erst eine Datei verknüpfen.'; return; }
-  box.innerHTML = '<span class="spin"></span> Prüfe Spalten …';
-  try {
-    const t = await readCurTable();
-    const missing = COLS.filter(c => t.map[c.key] === undefined);
-    box.innerHTML = COLS.map(c => t.map[c.key] !== undefined ? `<span class="status ok">✓ ${esc(c.name)}</span>` : `<span class="status err">✗ ${esc(c.name)}</span>`).join(' &nbsp; ');
-    const baseMissing = missing.filter(c => c.base);
-    if (baseMissing.length) box.innerHTML += `<div class="status err">Grundspalten fehlen (${baseMissing.map(c => esc(c.name)).join(', ')}) – bitte Überschriften in Excel prüfen.</div>`;
-    else show($('btnAddCols'), missing.length > 0);
-  } catch (e) { box.innerHTML = `<span class="status err">${explain(e)}</span>`; }
+async function setConfigRef(ref){
+  local.configRef = ref; saveLocal(); C = ref;
+  await renderCfgInfo(); await ensureStructure(true);
 }
-$('btnAddCols').onclick = async () => {
-  $('btnAddCols').disabled = true;
+$('btnCfgLink').onclick = async () => {
+  const url = $('cfgLink').value.trim(); if (!url) return;
+  $('cfgInfo').innerHTML = '<div class="status"><span class="spin"></span> Löse Link auf …</div>';
+  try { await setConfigRef(await resolveLink(url)); $('cfgLink').value = ''; } catch (e) { $('cfgInfo').innerHTML = `<div class="status err">${explain(e)}</div>`; }
+};
+$('btnCfgSearch').onclick = () => searchOwn('cfgPick', 'Steuerung', ref => setConfigRef(ref));
+
+// Legt fehlende Blätter, Tabellen und Spalten in der Steuerungsdatei an
+async function ensureStructure(checkOnly = false){
+  const box = $('ensureInfo');
+  if (!C) { box.textContent = ''; return; }
+  box.innerHTML = '<span class="spin"></span> Prüfe Struktur …';
   try {
-    await withSession(async () => {
-      const t = await readCurTable();
-      for (const c of COLS.filter(c => t.map[c.key] === undefined)) {
-        const values = [[c.name], ...Array.from({length: t.dataCount}, () => [''])];
-        await graph(`${tbl()}/columns/add`, { method:'POST', body: JSON.stringify({ index: null, values }) });
+    const [ws, tb] = await Promise.all([graph(`${wb(C)}/worksheets?$select=name`), graph(`${wb(C)}/tables?$select=name`)]);
+    const sheets = new Set((ws.value || []).map(x => x.name)), tables = new Set((tb.value || []).map(x => x.name));
+    const missingT = Object.values(CT).filter(s => !tables.has(s.table));
+    const missingC = [];
+    for (const s of Object.values(CT).filter(s => tables.has(s.table))) {
+      const t = await readTbl(C, s.table); const miss = s.cols.filter(c => !t.header.includes(c)); if (miss.length) missingC.push({ s, t, miss });
+    }
+    if (!missingT.length && !missingC.length) { box.innerHTML = '<span class="status ok">✓ Struktur vollständig (Jahre, Aufträge, Protokoll, Kunden, Einstellungen).</span>'; return true; }
+    const what = [...missingT.map(s => `Tabelle ${s.table}`), ...missingC.map(x => `${x.s.table}: ${x.miss.join(', ')}`)].join(' · ');
+    if (checkOnly) { box.innerHTML = `<span class="status warn">Es fehlt: ${esc(what)} → „Struktur prüfen &amp; ergänzen“ klicken.</span>`; return false; }
+    await withSessions([C], async () => {
+      for (const s of missingT) {
+        if (!sheets.has(s.sheet)) await graph(`${wb(C)}/worksheets/add`, { method:'POST', body: JSON.stringify({ name: s.sheet }) });
+        const sp = `${wb(C)}/worksheets/${encodeURIComponent(s.sheet)}`;
+        const addr = `A1:${colLetter(s.cols.length - 1)}1`;
+        await graph(`${sp}/range(address='${addr}')`, { method:'PATCH', body: JSON.stringify({ values: [s.cols] }) });
+        const nt = await graph(`${sp}/tables/add`, { method:'POST', body: JSON.stringify({ address: addr, hasHeaders: true }) });
+        await graph(`${wb(C)}/tables/${encodeURIComponent(nt.id || nt.name)}`, { method:'PATCH', body: JSON.stringify({ name: s.table, style: 'TableStyleLight9' }) });
       }
-    });
-    toast('Spalten angelegt ✓', 3000);
+      for (const x of missingC) for (const c of x.miss) {
+        await graph(`${wb(C)}/tables/${encodeURIComponent(x.s.table)}/columns/add`, { method:'POST', body: JSON.stringify({ index: null, values: [[c], ...Array.from({length: x.t.dataCount}, () => [''])] }) });
+      }
+      // Grundeinstellung Freigabe
+      const et = await readTbl(C, CT.einstellungen.table);
+      if (!et.rows.some(r => tidy(r['Schlüssel']).toLowerCase() === 'freigabe'))
+        await appendRows(et, [rowArr(et, { 'Schlüssel':'Freigabe', 'Wert': FREIGEBER_INIT.join(', '), 'Hinweis':'E-Mail-Adressen, die freigeben dürfen' })]);
+    }).catch(e => { throw e; });
+    box.innerHTML = `<span class="status ok">✓ Angelegt: ${esc(what)}</span>`;
+    return true;
+  } catch (e) { box.innerHTML = `<span class="status err">${explain(e)}</span>`; return false; }
+}
+$('btnEnsure').onclick = async () => { $('btnEnsure').disabled = true; await ensureStructure(false); $('btnEnsure').disabled = false; loadAdminData(); };
+
+// Übernahme der Einrichtung aus v0.6 (Dateien aus dem Browser) in tblJahre
+$('btnMigrate').onclick = async () => {
+  try {
+    const y = 2000 + (+oldCfg.prefix || 27);
+    const jt = await readTbl(C, CT.jahre.table); const add = [];
+    if (oldCfg.cur && !jt.rows.some(r => String(r['Jahr']) === String(y)))
+      add.push(rowArr(jt, { 'Jahr': y, 'Präfix': String(y).slice(-2), 'DriveId': oldCfg.cur.driveId, 'ItemId': oldCfg.cur.itemId, 'Datei': oldCfg.cur.name, 'Tabelle': oldCfg.tableName || 'Auftraege', 'Aktiv': 'ja', 'Testbetrieb': oldCfg.isTest ? 'ja' : '' }));
+    if (oldCfg.prev && !jt.rows.some(r => String(r['Jahr']) === String(y - 1)))
+      add.push(rowArr(jt, { 'Jahr': y - 1, 'Präfix': String(y - 1).slice(-2), 'DriveId': oldCfg.prev.driveId, 'ItemId': oldCfg.prev.itemId, 'Datei': oldCfg.prev.name, 'Tabelle': '', 'Aktiv': '', 'Testbetrieb': '' }));
+    if (add.length) await withSessions([C], () => appendRows(jt, add));
+    toast(add.length ? `${add.length} Jahr(e) übernommen ✓` : 'Schon übernommen', 3000);
   } catch (e) { msg(explain(e)); }
-  $('btnAddCols').disabled = false; renderCols(); loadData();
+  loadAdminData();
 };
 
-async function linkFile(which){
-  const url = $(which + 'Link').value.trim(); if (!url) return;
-  $(which + 'Info').innerHTML = '<div class="status"><span class="spin"></span> Löse Link auf …</div>';
-  try {
-    cfg[which] = await resolveLink(url); if (which === 'cur') autoTestFlag(cfg.cur.name);
-    saveCfg(); $(which + 'Link').value = ''; afterCfgChange(which);
-  } catch (e) { $(which + 'Info').innerHTML = `<div class="status err">${explain(e)}</div>`; }
+/* ================= Admin: Jahre ================= */
+let yPicked = null;
+function renderYears(){
+  const box = $('yearList');
+  if (!years.length) { box.innerHTML = 'Noch keine Jahre eingetragen.'; return; }
+  box.innerHTML = years.map(y => `<div class="grp" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <b>${esc(y.jahr)}</b> <span class="muted">Präfix ${esc(y.prefix)}-</span> ${esc(y.file)} <span class="muted">· Tabelle ${esc(y.table)}</span>
+      ${y.aktiv ? '<span class="badge live">AKTIV</span>' : ''}${y.test ? '<span class="badge test">TEST</span>' : ''}
+      <span class="spacer"></span>
+      ${y.aktiv ? '' : `<button class="sm" data-ya="aktiv" data-y="${esc(y.jahr)}">Aktiv setzen</button>`}
+      <button class="sm" data-ya="edit" data-y="${esc(y.jahr)}">Bearbeiten</button>
+    </div>`).join('') + (P ? `<p class="muted small">Vorjahr (nur lesen): ${esc(P.jahr)}</p>` : '');
 }
-async function searchOwn(which){
-  const pick = $(which + 'Pick'); show(pick, true);
+$('yearList').addEventListener('click', async e => {
+  const b = e.target.closest('button[data-ya]'); if (!b) return;
+  const y = years.find(x => x.jahr === b.dataset.y); if (!y) return;
+  if (b.dataset.ya === 'edit') {
+    $('yJahr').value = y.jahr; $('yTable').value = y.table; $('yAktiv').checked = y.aktiv; $('yTest').checked = y.test;
+    yPicked = y.ref; $('yChosen').innerHTML = `Datei: <b>${esc(y.file)}</b>`; $('yJahr').scrollIntoView({behavior:'smooth', block:'center'});
+  }
+  if (b.dataset.ya === 'aktiv') await saveYear({ jahr: y.jahr, ref: y.ref, table: y.table, aktiv: true, test: y.test });
+});
+$('yLink').addEventListener('change', async () => {
+  const url = $('yLink').value.trim(); if (!url) return;
+  $('yChosen').innerHTML = '<span class="spin"></span> Löse Link auf …';
+  try { yPicked = await resolveLink(url); $('yChosen').innerHTML = `Datei: <b>${esc(yPicked.name)}</b>`; guessYear(yPicked.name); }
+  catch (e) { yPicked = null; $('yChosen').innerHTML = `<span class="status err">${explain(e)}</span>`; }
+});
+$('btnYSearch').onclick = () => searchOwn('yPick', 'Auftragsbuch', ref => { yPicked = ref; $('yChosen').innerHTML = `Datei: <b>${esc(ref.name)}</b>`; guessYear(ref.name); });
+function guessYear(name){
+  const m = String(name).match(/20\d{2}/); if (m && !$('yJahr').value) $('yJahr').value = m[0];
+  if (/test/i.test(name)) $('yTest').checked = true;
+}
+$('btnYSave').onclick = async () => {
+  const jahr = $('yJahr').value.trim();
+  if (!/^\d{4}$/.test(jahr)) { toast('Bitte ein 4-stelliges Jahr eintragen.', 3000); return; }
+  if (!yPicked) { toast('Bitte zuerst eine Datei wählen (Link einfügen oder suchen).', 3000); return; }
+  await saveYear({ jahr, ref: yPicked, table: $('yTable').value.trim() || 'Auftraege', aktiv: $('yAktiv').checked, test: $('yTest').checked });
+  $('yJahr').value = ''; $('yLink').value = ''; $('yChosen').innerHTML = ''; yPicked = null; $('yAktiv').checked = false; $('yTest').checked = false;
+};
+async function saveYear(y){
+  try {
+    // Tabelle der Datei prüfen (nur fürs aktive Jahr Pflicht)
+    if (y.aktiv) {
+      const tb = await graph(`${wb(y.ref)}/tables?$select=name`);
+      if (!(tb.value || []).some(t => t.name === y.table)) throw new Error(`In der Datei gibt es keine Tabelle „${y.table}“. Bereich ab Zeile 5 in Excel als Tabelle formatieren und so benennen.`);
+    }
+    await withSessions([C], async () => {
+      const jt = await readTbl(C, CT.jahre.table);
+      const vals = { 'Jahr': Number(y.jahr), 'Präfix': y.jahr.slice(-2), 'DriveId': y.ref.driveId, 'ItemId': y.ref.itemId, 'Datei': y.ref.name, 'Tabelle': y.table, 'Aktiv': y.aktiv ? 'ja' : '', 'Testbetrieb': y.test ? 'ja' : '' };
+      const ex = jt.rows.find(r => String(r['Jahr']).trim() === y.jahr);
+      if (ex) await writeRow(jt, ex._i, rowArr(jt, vals, ex._raw)); else await appendRows(jt, [rowArr(jt, vals)]);
+      if (y.aktiv) for (const r of jt.rows) if (String(r['Jahr']).trim() !== y.jahr && yes(r['Aktiv'])) await writeRow(jt, r._i, rowArr(jt, { 'Aktiv': '' }, r._raw));
+      PT = await readTbl(C, CT.protokoll.table);
+      await appendRows(PT, [rowArr(PT, { 'Zeitpunkt': nowIsoTime(), 'Wer': me.name, 'Aktion': 'Jahr gespeichert', 'Jahr': Number(y.jahr), 'Nummer': '', 'Details': `${y.ref.name}${y.aktiv ? ' · aktiv' : ''}${y.test ? ' · Test' : ''}` })]);
+    });
+    toast(`Jahr ${esc(y.jahr)} gespeichert ✓`, 3000);
+  } catch (e) { msg(explain(e)); }
+  loadAdminData();
+}
+
+/* ---- Zusatzspalten im aktiven Auftragsbuch (aus v0.2–0.6) entfernen ---- */
+function renderExtraCols(){
+  const box = $('extraCols'); box.innerHTML = '';
+  if (!ABT) return;
+  const base = new Set(Object.values(ABT.map));
+  const extra = ABT.header.map((h, i) => ({ h, i })).filter(x => !base.has(x.i) && x.h);
+  if (!extra.length) return;
+  box.innerHTML = `<div class="msg warn" style="margin:0;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <span>Im aktiven Auftragsbuch stehen zusätzliche Spalten: <b>${extra.map(x => esc(x.h)).join(', ')}</b>. Sie werden nicht mehr gebraucht.</span>
+    <button class="sm" id="btnDropCols">Zusatzspalten entfernen</button></div>`;
+  $('btnDropCols').onclick = async () => {
+    const ok = await ask({ title: 'Zusatzspalten entfernen?', text: `${extra.map(x => esc(x.h)).join(', ')}<br><br>Die Spalten werden aus der Tabelle „${esc(Y.table)}“ in „${esc(Y.file)}“ gelöscht – mit ihrem Inhalt. Nummer, Auftraggeber, Objekt, PLZ und Ort bleiben unverändert.`, okText: 'Entfernen', danger: true });
+    if (!ok) return;
+    try {
+      await withSessions([Y.ref, C], async () => {
+        for (const x of extra) await graph(`${wb(Y.ref)}/tables/${encodeURIComponent(Y.table)}/columns/${encodeURIComponent(x.h)}`, { method:'DELETE' });
+        await log([['Spalten entfernt', '', `${Y.file}: ${extra.map(x => x.h).join(', ')}`]]);
+      });
+      toast('Zusatzspalten entfernt ✓', 3000);
+    } catch (e) { msg(explain(e)); }
+    loadAdminData();
+  };
+}
+
+/* ================= Admin: Kunden aufräumen ================= */
+let groups = [];
+function buildGroups(){
+  // alle Rohnamen mit Anzahl je Jahr
+  const names = new Map();   // rohname → {cur, prev}
+  (T?.rows || []).forEach(r => { if (r.kundeRaw) { const e = names.get(r.kundeRaw) || {cur:0, prev:0}; e.cur++; names.set(r.kundeRaw, e); } });
+  rowsPrev.forEach(r => { if (r.kundeRaw) { const e = names.get(r.kundeRaw) || {cur:0, prev:0}; e.prev++; names.set(r.kundeRaw, e); } });
+  // nach Zielname (nach bestehender Zuordnung) gruppieren
+  const byTarget = new Map();
+  names.forEach((cnt, raw) => { const tgt = canon(raw); const g = byTarget.get(tgt) || { target: tgt, members: new Map() }; g.members.set(raw, cnt); byTarget.set(tgt, g); });
+  const tgts = [...byTarget.values()];
+  // Union-Find über Ziele: gleich normalisiert oder sehr ähnlich (ohne „kein Duplikat“)
+  const parent = tgts.map((_, i) => i); const find = i => parent[i] === i ? i : (parent[i] = find(parent[i]));
+  const keys = tgts.map(g => normKunde(g.target));
+  for (let i = 0; i < tgts.length; i++) for (let j = i + 1; j < tgts.length; j++) {
+    if (NODUP.has(pairKey(tgts[i].target, tgts[j].target))) continue;
+    const same = keys[i] === keys[j];
+    const close = !same && Math.abs(keys[i].length - keys[j].length) <= 4 && sim(keys[i], keys[j]) >= 0.86;
+    if (same || close) parent[find(i)] = find(j);
+  }
+  const clusters = new Map();
+  tgts.forEach((g, i) => { const r = find(i); if (!clusters.has(r)) clusters.set(r, []); clusters.get(r).push(g); });
+  groups = [];
+  clusters.forEach(list => {
+    const members = new Map(); list.forEach(g => g.members.forEach((c, n) => members.set(n, c)));
+    const distinct = new Set([...members.keys()].map(n => canon(n)));
+    if (distinct.size < 2) return;   // schon einheitlich
+    // Vorschlag: häufigste Schreibweise; bei Gleichstand die vollständigere (längere)
+    const sorted = [...members.entries()].sort((a, b) => (b[1].cur + b[1].prev) - (a[1].cur + a[1].prev) || b[0].length - a[0].length);
+    groups.push({ members: sorted, suggest: sorted[0][0] });
+  });
+  groups.sort((a, b) => b.members.length - a.members.length);
+}
+function renderClean(){
+  buildGroups();
+  const box = $('cleanList');
+  if (!T) { box.textContent = 'Erst Daten laden (Steuerungsdatei + aktives Jahr).'; return; }
+  box.innerHTML = groups.length ? groups.map((g, gi) => `<div class="grp" data-g="${gi}">
+      ${g.members.map(([n, c], i) => `<label class="chk" style="margin:4px 0;color:var(--text)">
+        <input type="radio" name="main${gi}" value="${esc(n)}" ${i === 0 ? 'checked' : ''}>
+        <input type="checkbox" data-m="${esc(n)}" checked>
+        <span>${esc(n)} <span class="muted">(${c.cur ? `${Y?.jahr}: ${c.cur}` : ''}${c.cur && c.prev ? ' · ' : ''}${c.prev ? `${P?.jahr}: ${c.prev}` : ''})</span></span></label>`).join('')}
+      <div class="row" style="margin-top:6px">
+        <div class="grow"><input type="text" data-custom placeholder="oder neue Schreibweise eintippen, z. B. „Scherer Immobilien GmbH“"></div>
+        <button class="sm primary" data-ca="merge">Zusammenführen</button>
+        <button class="sm" data-ca="nodup">Ist kein Duplikat</button>
+      </div></div>`).join('') + `<p class="muted small">Kreis = richtige Schreibweise · Haken = gehört dazu. ${groups.length} Gruppe(n).</p>`
+    : '<span class="status ok">✓ Keine Duplikate gefunden.</span>';
+  renderMaps();
+}
+function renderMaps(){
+  const box = $('mapList');
+  const rows = (KT?.rows || []);
+  box.innerHTML = rows.length ? rows.map(r => `<div style="display:flex;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid var(--line)">
+      <span>${esc(r['Variante'])}</span> <span class="muted">${tidy(r['Typ']).toLowerCase().startsWith('kein') ? '≠' : '→'}</span> <b>${esc(r['Hauptname'])}</b>
+      <span class="muted">· ${esc(r['Von'] || '')} ${esc(r['Am'] || '')}</span><span class="spacer"></span>
+      <button class="sm ghost" data-unmap="${r._i}" title="Zuordnung aufheben">✕</button></div>`).join('') : 'Noch keine Zuordnungen.';
+}
+$('cleanList').addEventListener('click', async e => {
+  const b = e.target.closest('button[data-ca]'); if (!b) return;
+  const box = b.closest('[data-g]'); const g = groups[+box.dataset.g];
+  const custom = tidy(box.querySelector('[data-custom]').value);
+  const main = custom || box.querySelector('input[type=radio]:checked')?.value;
+  const chosen = [...box.querySelectorAll('input[data-m]:checked')].map(x => x.dataset.m);
+  if (b.dataset.ca === 'nodup') {
+    if (chosen.length < 2) { toast('Mindestens zwei Namen anhaken.', 3000); return; }
+    const ok = await ask({ title: 'Kein Duplikat?', text: `${chosen.map(esc).join(' · ')}<br><br>Diese Namen werden künftig nicht mehr als mögliche Duplikate angezeigt.`, okText: 'Bestätigen' });
+    if (!ok) return;
+    try {
+      await withSessions([C], async () => {
+        const kt = await readTbl(C, CT.kunden.table); const add = [];
+        for (let i = 0; i < chosen.length; i++) for (let j = i + 1; j < chosen.length; j++) add.push(rowArr(kt, { 'Variante': chosen[i], 'Hauptname': chosen[j], 'Typ': 'Kein Duplikat', 'Von': me.name, 'Am': nowStamp() }));
+        await appendRows(kt, add);
+        PT = await readTbl(C, CT.protokoll.table);
+        await appendRows(PT, [rowArr(PT, { 'Zeitpunkt': nowIsoTime(), 'Wer': me.name, 'Aktion': 'Kein Duplikat', 'Jahr': Number(Y?.jahr || 0), 'Nummer': '', 'Details': chosen.join(' ≠ ') })]);
+      });
+      toast('Gespeichert ✓', 2500);
+    } catch (err) { msg(explain(err)); }
+    return loadAdminData();
+  }
+  const variants = chosen.filter(n => n !== main);
+  if (!main || !variants.length) { toast('Bitte richtige Schreibweise wählen und mindestens eine Variante anhaken.', 3500); return; }
+  const affected = (T?.rows || []).filter(r => variants.includes(r.kundeRaw)).length;
+  const ok = await ask({ title: 'Zusammenführen?', text: `<b>${esc(main)}</b> wird künftig für ${variants.map(n => `„${esc(n)}“`).join(', ')} verwendet.<br><br>${affected ? `Im aktiven Auftragsbuch ${esc(Y.jahr)} werden <b>${affected}</b> Einträge umbenannt.` : `Im aktiven Auftragsbuch ${esc(Y?.jahr || '')} ist nichts umzubenennen.`} Ältere Jahre bleiben unverändert und werden nur in der Anzeige vereinheitlicht.`, okText: 'Zusammenführen' });
+  if (!ok) return;
+  const tst = toast('<span class="spin"></span> Führe zusammen …', 60000);
+  try {
+    await withSessions([C, Y?.ref], async () => {
+      const kt = await readTbl(C, CT.kunden.table);
+      const stamp = nowStamp(); const add = [];
+      for (const v of variants) {
+        const ex = kt.rows.find(r => tidy(r['Variante']).toLowerCase() === v.toLowerCase() && !tidy(r['Typ']).toLowerCase().startsWith('kein'));
+        const vals = { 'Variante': v, 'Hauptname': main, 'Typ': 'Zuordnung', 'Von': me.name, 'Am': stamp };
+        if (ex) await writeRow(kt, ex._i, rowArr(kt, vals, ex._raw)); else add.push(rowArr(kt, vals));
+      }
+      // bestehende Zuordnungen, die auf eine der Varianten zeigen, umbiegen
+      for (const r of kt.rows) if (variants.map(v => v.toLowerCase()).includes(tidy(r['Hauptname']).toLowerCase()) && !tidy(r['Typ']).toLowerCase().startsWith('kein'))
+        await writeRow(kt, r._i, rowArr(kt, { 'Hauptname': main }, r._raw));
+      if (add.length) await appendRows(kt, add);
+      // aktives Jahr direkt umbenennen
+      let n = 0;
+      if (Y) {
+        const t = await readAB(Y);
+        for (const a of t.ab) if (variants.includes(a.kundeRaw)) { await writeRow(t, a._i, abArr(t, { kunde: main }, a._raw)); n++; }
+      }
+      PT = await readTbl(C, CT.protokoll.table);
+      await appendRows(PT, [rowArr(PT, { 'Zeitpunkt': nowIsoTime(), 'Wer': me.name, 'Aktion': 'Kunde zusammengeführt', 'Jahr': Number(Y?.jahr || 0), 'Nummer': '', 'Details': `${variants.join(', ')} → ${main}${n ? ` (${n} Einträge umbenannt)` : ''}` })]);
+    });
+    tst.remove(); toast('Zusammengeführt ✓', 3000);
+  } catch (err) { tst.remove(); msg(explain(err)); }
+  loadAdminData();
+});
+$('mapList').addEventListener('click', async e => {
+  const b = e.target.closest('button[data-unmap]'); if (!b) return;
+  const r = KT.rows.find(x => x._i === +b.dataset.unmap); if (!r) return;
+  const ok = await ask({ title: 'Zuordnung aufheben?', text: `${esc(r['Variante'])} ${tidy(r['Typ']).toLowerCase().startsWith('kein') ? '≠' : '→'} ${esc(r['Hauptname'])}<br><br>Bereits umbenannte Einträge im aktiven Jahr bleiben so.`, okText: 'Aufheben', danger: true });
+  if (!ok) return;
+  try {
+    await withSessions([C], async () => {
+      const kt = await readTbl(C, CT.kunden.table);
+      const x = kt.rows.find(q => tidy(q['Variante']) === tidy(r['Variante']) && tidy(q['Hauptname']) === tidy(r['Hauptname']));
+      if (x) await deleteRow(kt, x._i);
+      PT = await readTbl(C, CT.protokoll.table);
+      await appendRows(PT, [rowArr(PT, { 'Zeitpunkt': nowIsoTime(), 'Wer': me.name, 'Aktion': 'Zuordnung aufgehoben', 'Jahr': Number(Y?.jahr || 0), 'Nummer': '', 'Details': `${r['Variante']} / ${r['Hauptname']}` })]);
+    });
+  } catch (err) { msg(explain(err)); }
+  loadAdminData();
+});
+
+/* ================= Admin: Rollen & Protokoll ================= */
+function renderRole(){
+  const roles = [me.admin && 'Admin', me.freigeber && 'Freigabe'].filter(Boolean);
+  $('roleBadge').textContent = roles.join(' · '); show($('roleBadge'), roles.length > 0);
+  $('roleInfo').innerHTML = `Angemeldet als <b>${esc(me.mail)}</b> · Admin: ${ADMINS.map(esc).join(', ')}`;
+  if (document.activeElement !== $('freiList')) $('freiList').value = freigeber.join(', ');
+}
+$('btnSaveFrei').onclick = async () => {
+  const list = $('freiList').value.toLowerCase().split(/[,;\s]+/).filter(x => x.includes('@'));
+  try {
+    await withSessions([C], async () => {
+      const et = await readTbl(C, CT.einstellungen.table);
+      const ex = et.rows.find(r => tidy(r['Schlüssel']).toLowerCase() === 'freigabe');
+      const vals = { 'Schlüssel':'Freigabe', 'Wert': list.join(', '), 'Hinweis':'E-Mail-Adressen, die freigeben dürfen' };
+      if (ex) await writeRow(et, ex._i, rowArr(et, vals, ex._raw)); else await appendRows(et, [rowArr(et, vals)]);
+      PT = await readTbl(C, CT.protokoll.table);
+      await appendRows(PT, [rowArr(PT, { 'Zeitpunkt': nowIsoTime(), 'Wer': me.name, 'Aktion': 'Rollen geändert', 'Jahr': Number(Y?.jahr || 0), 'Nummer': '', 'Details': 'Freigabe: ' + list.join(', ') })]);
+    });
+    toast('Rollen gespeichert ✓', 2500);
+  } catch (e) { msg(explain(e)); }
+  loadAdminData();
+};
+let logRows = [];
+async function loadLog(){
+  const box = $('logList'); box.innerHTML = '<span class="spin"></span> Lade Protokoll …';
+  try { logRows = (await readTbl(C, CT.protokoll.table)).rows.slice().reverse(); renderLog(); }
+  catch (e) { box.innerHTML = `<span class="status err">${explain(e)}</span>`; }
+}
+function renderLog(){
+  const q = $('logQ').value.trim().toLowerCase();
+  const hits = logRows.filter(r => !q || `${r['Zeitpunkt']} ${r['Wer']} ${r['Aktion']} ${r['Nummer']} ${r['Details']}`.toLowerCase().includes(q)).slice(0, 200);
+  $('logList').innerHTML = hits.length ? `<div class="tablewrap" style="display:block"><table><thead><tr><th>Zeit</th><th>Wer</th><th>Aktion</th><th>Nummer</th><th>Details</th></tr></thead><tbody>${hits.map(r => `<tr><td>${esc(r['Zeitpunkt'])}</td><td>${esc(r['Wer'])}</td><td>${esc(r['Aktion'])}</td><td class="nr">${esc(r['Nummer'])}</td><td class="wrap">${esc(r['Details'])}</td></tr>`).join('')}</tbody></table></div><p class="muted small">${logRows.length} Einträge gesamt · neueste zuerst${hits.length === 200 ? ' · max. 200 angezeigt' : ''}</p>` : '<span class="muted">Keine Einträge.</span>';
+}
+$('btnLog').onclick = loadLog;
+$('logQ').oninput = renderLog;
+
+/* ---- Datei-Suche im eigenen OneDrive ---- */
+async function searchOwn(pickId, q, onPick){
+  const pick = $(pickId); show(pick, true);
   pick.innerHTML = '<div><span class="spin"></span> Suche .xlsx-Dateien …</div>';
   try {
-    const r = await graph(`/me/drive/root/search(q='Auftragsbuch')?$select=id,name,parentReference,lastModifiedDateTime&$top=50`);
+    const r = await graph(`/me/drive/root/search(q='${encodeURIComponent(q)}')?$select=id,name,parentReference,lastModifiedDateTime&$top=50`);
     const files = (r.value || []).filter(f => /\.xlsx$/i.test(f.name));
-    if (!files.length) { pick.innerHTML = '<div class="muted">Keine Datei mit „Auftragsbuch“ im Namen gefunden.</div>'; return; }
+    if (!files.length) { pick.innerHTML = `<div class="muted">Keine Datei mit „${esc(q)}“ im Namen gefunden.</div>`; return; }
     pick.innerHTML = files.map((f, i) => `<div data-i="${i}"><b>${esc(f.name)}</b><br><small>${esc(decodeURIComponent((f.parentReference?.path || '').replace(/^\/drive\/root:?/, '') || '/'))} · ${fmtDate(f.lastModifiedDateTime)}</small></div>`).join('');
-    pick.querySelectorAll('div[data-i]').forEach(d => d.onclick = () => {
-      const f = files[+d.dataset.i];
-      cfg[which] = { driveId: f.parentReference.driveId, itemId: f.id, name: f.name };
-      if (which === 'cur') autoTestFlag(f.name);
-      saveCfg(); show(pick, false); afterCfgChange(which);
-    });
+    pick.querySelectorAll('div[data-i]').forEach(d => d.onclick = () => { const f = files[+d.dataset.i]; show(pick, false); onPick({ driveId: f.parentReference.driveId, itemId: f.id, name: f.name }); });
   } catch (e) { pick.innerHTML = `<div class="status err">${explain(e)}</div>`; }
 }
-function afterCfgChange(which){ renderBadges(); renderInfo(which); if (which === 'cur') renderCols(); $('setupLink').value = setupLink(); }
-function autoTestFlag(name){ if (/test/i.test(name)) { cfg.isTest = true; $('isTest').checked = true; } }
-
-function renderVariants(){
-  const box = $('variantList');
-  const entries = [...kIndex.values()];
-  const groups = [];
-  entries.forEach(e => { if (e.spellings.size > 1) groups.push([...e.spellings.entries()]); });
-  // ähnliche, aber nicht gleich normalisierte Namen
-  const keys = [...kIndex.keys()];
-  for (let i = 0; i < keys.length; i++) for (let j = i + 1; j < keys.length; j++) {
-    if (Math.abs(keys[i].length - keys[j].length) > 4) continue;
-    if (sim(keys[i], keys[j]) >= 0.88) groups.push([[kIndex.get(keys[i]).name, kIndex.get(keys[i]).count], [kIndex.get(keys[j]).name, kIndex.get(keys[j]).count]]);
-  }
-  box.innerHTML = groups.length ? groups.map(g => `<div class="grp">${g.sort((a, b) => b[1] - a[1]).map(([n, c], i) => `${i ? '' : ''}<span${i ? ' class="muted"' : ''}>${i ? '' : '<b>'}${esc(n)}${i ? '' : '</b>'} (${Math.round(c)}×)</span>`).join(' · ')}</div>`).join('') + `<p class="muted small">${groups.length} Gruppen. Fett = Schreibweise, die das Formular vorschlägt. Nicht jede Gruppe ist zwingend derselbe Kunde (z. B. ähnliche Familiennamen).</p>` : 'Keine auffälligen Schreibweisen gefunden.';
-}
-
-$('btnCurLink').onclick = () => linkFile('cur');
-$('btnPrevLink').onclick = () => linkFile('prev');
-$('btnCurSearch').onclick = () => searchOwn('cur');
-$('btnPrevSearch').onclick = () => searchOwn('prev');
-$('btnPrevClear').onclick = () => { cfg.prev = null; saveCfg(); afterCfgChange('prev'); };
-$('btnSaveCfg').onclick = () => {
-  cfg.tableName = $('tblName').value.trim() || 'Auftraege';
-  cfg.prefix = ($('prefix').value.trim() || '27').replace(/\D/g, '').slice(0, 2) || '27';
-  cfg.isTest = $('isTest').checked; saveCfg(); afterCfgChange('cur');
-};
 $('btnCopySetup').onclick = () => { navigator.clipboard?.writeText($('setupLink').value); toast('Einrichtungslink kopiert', 2000); };
 
 /* ================= Ansichten ================= */
-function renderBadges(){ const on = !!cfg.cur; show($('testBadge'), on && cfg.isTest); show($('liveBadge'), on && !cfg.isTest); }
+function renderBadges(){ show($('testBadge'), !!Y && Y.test); show($('liveBadge'), !!Y && !Y.test); }
 function hideViews(){ ['viewList','viewAdmin','viewNoSetup','viewLogin'].forEach(id => show($(id), false)); show($('fab'), false); }
+async function loadAdminData(){
+  await renderCfgInfo();
+  if (!C) { renderYears(); return; }
+  const ok = await ensureStructure(true);
+  if (ok) {
+    try { await loadCore(); } catch (e) { msg(explain(e)); }
+    if (P && !rowsPrev.length) { try { rowsPrev = mergeRows(await readAny(P.ref), P.jahr, T.metaMap); } catch {} }
+    buildIndex(); renderBadges();
+  }
+  renderYears(); renderExtraCols(); renderRole(); renderClean();
+}
 function openAdmin(){
   if (!me.admin) return;
   hideViews(); show($('viewAdmin'), true); show($('btnList'), true);
-  $('tblName').value = cfg.tableName; $('prefix').value = cfg.prefix; $('isTest').checked = !!cfg.isTest;
-  $('setupLink').value = setupLink();
-  $('roleInfo').innerHTML = `Angemeldet als <b>${esc(me.mail)}</b><br>Admin: ${ADMINS.map(esc).join(', ')}<br>Freigabe: ${FREIGEBER.map(esc).join(', ')}`;
-  renderInfo('cur'); renderInfo('prev'); renderCols();
-  if (T) renderVariants();
+  loadAdminData();
 }
 function openList(){ hideViews(); show($('viewList'), true); show($('fab'), true); show($('btnList'), false); loadData(); if (!isMobile()) setTimeout(() => $('q').focus(), 50); }
-// Höhe der Kopfzeile für die klebende Suchleiste
 function setHdr(){ document.documentElement.style.setProperty('--hdr', document.querySelector('header').offsetHeight + 'px'); }
 window.addEventListener('resize', setHdr); setTimeout(setHdr, 0);
 function openNoSetup(){ hideViews(); show($('viewNoSetup'), true); }
 
-function signedInUI(account){
+async function signedInUI(account){
   const mail = (account.username || '').toLowerCase();
-  me = { name: account.name || account.username, mail, admin: ADMINS.includes(mail), freigeber: FREIGEBER.includes(mail) };
+  me = { name: account.name || account.username, mail, admin: ADMINS.includes(mail), freigeber: FREIGEBER_INIT.includes(mail) };
   $('userName').textContent = me.name;
-  const roles = [me.admin && 'Admin', me.freigeber && 'Freigabe'].filter(Boolean);
-  $('roleBadge').textContent = roles.join(' · '); show($('roleBadge'), roles.length > 0);
+  renderRole();
   ['userName','btnLogout','btnList'].forEach(id => show($(id), true));
   show($('btnAdmin'), me.admin);
-  renderBadges();
   if (sessionStorage.getItem('ab-setup-done')) { sessionStorage.removeItem('ab-setup-done'); toast('Einrichtung übernommen ✓', 3000); }
-  cfg.cur ? openList() : (me.admin ? openAdmin() : openNoSetup());
+  try { C = await resolveConfigRef(); } catch (e) { msg('Steuerungsdatei: ' + explain(e)); }
+  C ? openList() : (me.admin ? openAdmin() : openNoSetup());
   startPolling();
 }
 
@@ -1360,9 +1733,7 @@ $('fab').onclick = () => openForm(null);
 $('btnReload').onclick = loadData;
 $('q').oninput = renderList;
 $('withPrev').onchange = renderList;
-$('statusChips').addEventListener('click', e => {
-  const c = e.target.closest('.chip'); if (c) setFilter(c.dataset.f);
-});
+$('statusChips').addEventListener('click', e => { const c = e.target.closest('.chip'); if (c) setFilter(c.dataset.f); });
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && !$('sheetOv').classList.contains('hidden')) closeSheet();
   const typing = /INPUT|TEXTAREA/.test(document.activeElement?.tagName || '');
