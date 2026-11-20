@@ -62,6 +62,8 @@
   .stat.warn .v{color:var(--warn)}
   .tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
   .tools input[type=search]{flex:1;min-width:240px}
+  .searchbar input[type=search]{font-size:17px;padding:13px 16px;border-radius:12px}
+  .searchbar button{padding:12px 16px}
   .chk{display:flex;align-items:center;gap:6px;font-size:14px;color:var(--muted);margin:0}
   .chips{display:flex;gap:6px;flex-wrap:wrap}
   .chip{font-size:13px;padding:5px 11px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer}
@@ -223,17 +225,20 @@
 
   <!-- Liste -->
   <section id="viewList" class="hidden">
+    <div class="tools searchbar">
+      <input type="search" id="q" placeholder="🔍  Suchen: Nummer, Auftraggeber, Objekt, PLZ, Ort …   (Taste /)">
+      <button class="primary" id="btnNew">+ Neuer Auftrag</button>
+      <button id="btnReload" title="Neu laden">↻</button>
+    </div>
+    <div class="msg warn hidden" id="freiBanner" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <span id="freiText"></span><button class="sm" id="btnShowOpen">Offene anzeigen</button>
+    </div>
     <div class="stats">
       <div class="stat"><div class="v" id="stCount">–</div><div class="l">Aufträge aktuelles Jahr</div></div>
       <div class="stat"><div class="v" id="stNext">–</div><div class="l">Nächste freie Nummer</div></div>
       <div class="stat warn"><div class="v" id="stOpen">–</div><div class="l">Offen zur Freigabe</div></div>
       <div class="stat"><div class="v" id="stKunden">–</div><div class="l">Bekannte Auftraggeber</div></div>
       <div class="stat warn hidden" id="stDupBox"><div class="v" id="stDup">0</div><div class="l">Doppelte Nummern</div></div>
-    </div>
-    <div class="tools">
-      <button class="primary" id="btnNew">+ Neuer Auftrag</button>
-      <input type="search" id="q" placeholder="Suchen: Nummer, Auftraggeber, Objekt, PLZ, Ort …">
-      <button id="btnReload">↻ Neu laden</button>
     </div>
     <div class="tools">
       <div class="chips" id="statusChips">
@@ -325,7 +330,7 @@
 <script>
 /* ================= Konfiguration ================= */
 const APP_NAME   = 'NOVA Auftragsbuch';
-const APP_VER    = '0.2.0';
+const APP_VER    = '0.3.0';
 const CLIENT_ID  = '5af6d3d4-a161-4306-8af9-cdb6f392d9be';
 const TENANT_ID  = '376241b8-1f44-4ae5-84b1-4d3b67d4c112';
 const REDIRECT   = 'https://kaffeetrinker80.github.io/NOVA/auftragsbuch/';
@@ -336,8 +341,10 @@ const CFG_KEY    = 'nova-auftragsbuch-config-v1';
 const MAX_RENDER = 500;
 
 // Rollen (Anmeldename, klein geschrieben)
+// Alle Angemeldeten mit Zugriff auf die Excel: anlegen, bearbeiten, stornieren, löschen.
+// Freigabe: zusätzlich freigeben. Admin: zusätzlich Einstellungen (Dateien, Spalten, Einrichtungslink).
 const ADMINS    = ['marco.neudecker@nova-praxis.de'];
-const FREIGEBER = ['marco.neudecker@nova-praxis.de'];   // später: 'nico.schmid@nova-praxis.de'
+const FREIGEBER = ['marco.neudecker@nova-praxis.de', 'nico.schmid@nova-praxis.de'];
 
 // Spalten der Tabelle: Schlüssel → Erkennung der Überschrift / Name beim Anlegen
 const COLS = [
@@ -645,7 +652,15 @@ function renderStats(){
   const open = rows.filter(r => statusOf(r) === ST.OFFEN).length;
   show($('btnBulk'), me.freigeber && open > 0);
   $('btnBulk').textContent = `✓ Alle offenen freigeben (${open})`;
+  show($('freiBanner'), me.freigeber && open > 0 && statusFilter !== ST.OFFEN);
+  $('freiText').innerHTML = `<b>${open}</b> ${open === 1 ? 'Auftrag wartet' : 'Aufträge warten'} auf Freigabe.`;
 }
+function setFilter(f){
+  statusFilter = f;
+  document.querySelectorAll('#statusChips .chip').forEach(x => x.classList.toggle('on', x.dataset.f === f));
+  renderStats(); renderList();
+}
+$('btnShowOpen').onclick = () => setFilter(ST.OFFEN);
 const statusOf = r => r.status || (r._prev ? '' : ST.OFFEN);
 const stClass = s => s === ST.FREI ? 'frei' : s === ST.STORNO ? 'storno' : s === ST.OFFEN ? 'offen' : '';
 
@@ -662,10 +677,10 @@ function renderList(){
     const s = statusOf(r);
     let act = '';
     if (r.cur) {
-      const canEdit = s !== ST.STORNO && (me.admin || (s === ST.OFFEN && (me.freigeber || r.erfasst.startsWith(me.name + ' ·'))));
-      if (canEdit) act += `<button class="sm" data-a="edit" data-nr="${esc(r.nr)}" title="Bearbeiten">✎</button>`;
       if (me.freigeber && s === ST.OFFEN) act += `<button class="sm" data-a="frei" data-nr="${esc(r.nr)}" title="Freigeben">✓ Freigeben</button>`;
-      if ((me.admin || me.freigeber) && s !== ST.STORNO) act += `<button class="sm danger" data-a="storno" data-nr="${esc(r.nr)}" title="Stornieren">⊘</button>`;
+      if (s !== ST.STORNO) act += `<button class="sm" data-a="edit" data-nr="${esc(r.nr)}" title="Bearbeiten">✎</button>`;
+      if (s !== ST.STORNO) act += `<button class="sm danger" data-a="storno" data-nr="${esc(r.nr)}" title="Stornieren (Zeile bleibt stehen)">⊘</button>`;
+      act += `<button class="sm danger" data-a="del" data-nr="${esc(r.nr)}" title="Löschen (Zeile wird entfernt)">🗑</button>`;
       act += `<button class="sm ghost" data-a="copy" data-nr="${esc(r.nr)}" title="Nummer kopieren">⧉</button>`;
     }
     const tip = [r.erfasst && 'Erfasst: ' + r.erfasst, r.freigabe && (s === ST.STORNO ? 'Storno: ' : 'Freigabe: ') + r.freigabe, r.bemerkung && 'Bemerkung: ' + r.bemerkung].filter(Boolean).join('\n');
@@ -685,6 +700,7 @@ $('tbody').addEventListener('click', e => {
   if (a === 'edit') openForm(nr);
   if (a === 'frei') doFreigabe([nr]);
   if (a === 'storno') doStorno(nr);
+  if (a === 'del') doDelete(nr);
 });
 
 /* ================= Formular ================= */
@@ -927,6 +943,36 @@ async function doStorno(nr){
   } catch (e) { msg(explain(e)); }
   loadData();
 }
+async function doDelete(nr){
+  const rows = T?.rows || [];
+  const r = rows.find(x => x.nr === nr); if (!r) return;
+  const p = cfg.prefix, re = new RegExp('^' + p + '-(\\d{4})$');
+  const m = nr.match(re);
+  const maxMain = Math.max(0, ...rows.map(x => (x.nr.match(re) || [])[1]).filter(Boolean).map(Number));
+  const subs = rows.filter(x => x.nr.startsWith(nr + '-'));
+  let text = `<b>${esc(nr)}</b> · ${esc(r.kunde)} · ${esc(r.objekt)}<br><br>Nur löschen, wenn die Nummer <b>noch nirgends verwendet</b> wurde (kein Probenetikett, nichts im Labor, kein Bericht). Sonst bitte <b>stornieren</b>.`;
+  if (m && +m[1] < maxMain) text += `<br><br>⚠ Es entsteht eine <b>Lücke</b> in der Nummernfolge – ${esc(nr)} wird nicht automatisch neu vergeben.`;
+  else if (m) text += `<br><br>Das ist die letzte Nummer – sie wird danach wieder frei und als Nächstes neu vergeben.`;
+  if (subs.length) text += `<br><br>⚠ Zu diesem Auftrag gibt es Unternummern (${subs.map(x => esc(x.nr)).join(', ')}) – diese bleiben stehen.`;
+  if (statusOf(r) === ST.FREI) text += `<br><br>⚠ Der Auftrag ist bereits <b>freigegeben</b>.`;
+  const ok = await ask({ title: `Auftrag ${nr} löschen?`, text, okText: 'Endgültig löschen', danger: true });
+  if (!ok) return;
+  try {
+    await withSession(async () => {
+      const t = await readCurTable();
+      const row = t.rows.find(x => x.nr === nr); if (!row) throw new Error('Auftrag nicht mehr gefunden – wurde er schon gelöscht?');
+      if (t.dataCount <= 1) {
+        // letzte Datenzeile der Tabelle: nur leeren, sonst würde die Tabelle zerstört
+        await graph(`${sheetPath(t)}/range(address='${rowAddr(t, row._i)}')`, { method:'PATCH', body: JSON.stringify({ values: [new Array(t.header.length).fill('')] }) });
+      } else {
+        await graph(`${sheetPath(t)}/range(address='${rowAddr(t, row._i)}')/delete`, { method:'POST', body: JSON.stringify({ shift: 'Up' }) });
+      }
+    });
+    toast(`${esc(nr)} gelöscht`, 3000);
+  } catch (e) { msg(explain(e)); }
+  loadData();
+}
+
 $('btnBulk').onclick = () => doFreigabe((T?.rows || []).filter(r => statusOf(r) === ST.OFFEN).map(r => r.nr));
 
 /* ================= Admin ================= */
@@ -1042,7 +1088,7 @@ function openAdmin(){
   renderInfo('cur'); renderInfo('prev'); renderCols();
   if (T) renderVariants();
 }
-function openList(){ hideViews(); show($('viewList'), true); loadData(); }
+function openList(){ hideViews(); show($('viewList'), true); loadData(); setTimeout(() => $('q').focus(), 50); }
 function openNoSetup(){ hideViews(); show($('viewNoSetup'), true); }
 
 function signedInUI(account){
@@ -1067,10 +1113,11 @@ $('btnReload').onclick = loadData;
 $('q').oninput = renderList;
 $('withPrev').onchange = renderList;
 $('statusChips').addEventListener('click', e => {
-  const c = e.target.closest('.chip'); if (!c) return;
-  statusFilter = c.dataset.f; document.querySelectorAll('#statusChips .chip').forEach(x => x.classList.toggle('on', x === c)); renderList();
+  const c = e.target.closest('.chip'); if (c) setFilter(c.dataset.f);
 });
 document.addEventListener('keydown', e => {
+  const typing = /INPUT|TEXTAREA/.test(document.activeElement?.tagName || '');
+  if (e.key === '/' && !typing && !$('viewList').classList.contains('hidden')) { e.preventDefault(); $('q').focus(); }
   if (e.key === 'Escape' && !$('formOv').classList.contains('hidden') && $('ddKunde').classList.contains('hidden') && $('ddObjekt').classList.contains('hidden')) closeForm();
   if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && !$('formOv').classList.contains('hidden')) $('fSave').click();
 });
