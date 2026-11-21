@@ -191,7 +191,13 @@
   .sheet .sacts button{min-height:48px;font-size:16px;text-align:left;padding:10px 16px}
   .hbtn .ico{display:none}
   .mobonly{display:none !important}
-  @media (max-width:430px){ .brand h1 .nv{display:none} .hbtn{padding:6px 9px !important} }
+  @media (max-width:430px){
+    .brand{gap:6px} .brand h1{font-size:15px !important;letter-spacing:0}
+    .logo{width:30px !important;height:30px !important}
+    .hbtn{padding:5px 8px !important;min-height:36px !important}
+    .sync::before{width:9px !important;height:9px !important}
+  }
+  @media (max-width:340px){ .brand h1 .nv{display:none} }
   @media (max-width:760px){ .mobonly:not(.hidden){display:inline-block !important} }
 
   @media (max-width:760px){
@@ -537,7 +543,7 @@
 <script>
 /* ================= Konfiguration ================= */
 const APP_NAME   = 'NOVA Auftragsbuch';
-const APP_VER    = '0.8.4';
+const APP_VER    = '0.8.5';
 const CLIENT_ID  = '5af6d3d4-a161-4306-8af9-cdb6f392d9be';
 const TENANT_ID  = '376241b8-1f44-4ae5-84b1-4d3b67d4c112';
 const REDIRECT   = 'https://kaffeetrinker80.github.io/NOVA/auftragsbuch/';
