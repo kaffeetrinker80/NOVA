@@ -38,7 +38,7 @@
   h1,h2,h3{font-family:'Outfit',sans-serif;margin:0}
   a{color:var(--accent)}
   header{position:sticky;top:0;z-index:20;background:var(--hdr-bg);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
-  .bar{max-width:1280px;margin:0 auto;padding:12px 18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .bar{max-width:none;margin:0 auto;padding:12px clamp(18px,2vw,40px);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
   .brand{display:flex;align-items:center;gap:10px}
   .brand h1{font-size:20px;letter-spacing:.2px}
   .brand h1 span{color:var(--accent)}
@@ -67,7 +67,8 @@
   button.danger:hover{background:rgba(248,113,113,.12)}
   button.sm{padding:4px 9px;font-size:13px;border-radius:8px}
   button:disabled{opacity:.5;cursor:not-allowed}
-  main{max-width:1280px;margin:0 auto;padding:18px}
+  main{max-width:none;margin:0 auto;padding:18px clamp(18px,2vw,40px)}
+  #viewAdmin{max-width:1280px;margin:0 auto}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin-bottom:16px}
   .card h2{font-size:17px;margin-bottom:12px}
   .muted{color:var(--muted)} .small{font-size:13px}
@@ -104,6 +105,9 @@
   tr.storno td{color:var(--muted);text-decoration:line-through}
   tr.storno td.act{text-decoration:none}
   td.nr{font-family:'Outfit',sans-serif;color:var(--accent)}
+  .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:8px;vertical-align:1px;background:var(--ok)}
+  .dot.storno{background:var(--err)}
+  td.who{color:var(--muted);font-size:13px}
   .bez{font:inherit;font-size:11px;padding:1px 6px;margin-left:4px;border-radius:6px;background:rgba(94,234,212,.08);border:1px solid rgba(94,234,212,.35);color:var(--accent);cursor:pointer}
   td.act{text-align:right}
   td.act button{margin-left:4px}
@@ -144,7 +148,9 @@
   .hint.warn{background:rgba(251,191,36,.12);color:var(--hint-warn-fg)}
   .hint.info{background:rgba(94,234,212,.1);color:var(--hint-info-fg)}
   .hint button{margin-left:6px}
-  .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--accent);color:var(--text);padding:12px 18px;border-radius:12px;z-index:70;display:flex;gap:12px;align-items:center;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+  #toasts{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);z-index:70;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
+  #toasts .toast{pointer-events:auto}
+  .toast{position:relative;background:var(--panel2);border:1px solid var(--accent);color:var(--text);padding:12px 18px;border-radius:12px;z-index:70;display:flex;gap:12px;align-items:center;box-shadow:0 10px 30px rgba(0,0,0,.5)}
   .grp{padding:10px 12px;border:1px solid var(--line);border-radius:10px;margin-bottom:8px;font-size:14px}
   .grp b{color:var(--accent)}
   /* Karten (Mobil) */
@@ -220,12 +226,13 @@
     .overlay:has(.narrow),.sheetov{align-items:flex-end}
     .modal.narrow,.modal.sheet{min-height:0;max-height:88vh;overflow:auto;border-radius:18px 18px 0 0;border-top:1px solid var(--line);padding:18px 16px calc(18px + env(safe-area-inset-bottom))}
     .modal.narrow .foot{position:static;padding:0;border:none;background:none;margin-top:16px}
-    .toast{bottom:calc(92px + env(safe-area-inset-bottom));width:calc(100% - 24px);justify-content:space-between}
+    #toasts{bottom:calc(92px + env(safe-area-inset-bottom));width:calc(100% - 24px)}
+    .toast{width:100%;justify-content:space-between}
     .dd div{padding:12px}
     footer{margin-bottom:90px}
   }
   @media (min-width:761px){ .fab{display:none !important} .sheetov{align-items:center} .modal.sheet{max-width:520px} }
-  footer{max-width:1280px;margin:10px auto 30px;padding:0 18px;color:var(--muted);font-size:13px;text-align:center}
+  footer{max-width:none;margin:10px auto 30px;padding:0 18px;color:var(--muted);font-size:13px;text-align:center}
   footer a{text-decoration:none}
   .spin{display:inline-block;width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:s .8s linear infinite;vertical-align:-2px}
   @keyframes s{to{transform:rotate(360deg)}}
@@ -398,7 +405,7 @@
     <div class="cards" id="cards"></div>
     <div class="tablewrap">
       <table>
-        <thead><tr><th>Nummer</th><th>Datum</th><th>Auftraggeber</th><th>Objekt</th><th>PLZ</th><th>Ort</th><th>Status</th><th></th></tr></thead>
+        <thead><tr><th>Nummer</th><th>Datum</th><th>Auftraggeber</th><th>Objekt</th><th>PLZ</th><th>Ort</th><th>Erfasst von</th><th></th></tr></thead>
         <tbody id="tbody"></tbody>
       </table>
     </div>
@@ -493,7 +500,7 @@
 <script>
 /* ================= Konfiguration ================= */
 const APP_NAME   = 'NOVA Auftragsbuch';
-const APP_VER    = '0.8.0';
+const APP_VER    = '0.8.1';
 const CLIENT_ID  = '5af6d3d4-a161-4306-8af9-cdb6f392d9be';
 const TENANT_ID  = '376241b8-1f44-4ae5-84b1-4d3b67d4c112';
 const REDIRECT   = 'https://kaffeetrinker80.github.io/NOVA/auftragsbuch/';
@@ -604,8 +611,10 @@ function setupLink(){
 
 function msg(text, type = 'err'){ $('globalMsg').innerHTML = text ? `<div class="msg ${type}">${text}</div>` : ''; }
 function toast(html, ms = 6000){
+  let box = document.getElementById('toasts');
+  if (!box) { box = document.createElement('div'); box.id = 'toasts'; document.body.appendChild(box); }
   const t = document.createElement('div'); t.className = 'toast'; t.innerHTML = html;
-  document.body.appendChild(t); setTimeout(() => t.remove(), ms); return t;
+  box.appendChild(t); setTimeout(() => t.remove(), ms); return t;
 }
 
 /* ================= Anmeldung ================= */
@@ -850,7 +859,7 @@ async function loadData(){
   rowsPrev = [];
   if (T && P) {
     try { rowsPrev = mergeRows(await readAny(P.ref), P.jahr, T.metaMap); }
-    catch (e) { errors.push(`Vorjahr ${P.jahr}: ` + explain(e)); }
+    catch (e) { errors.push(`Vorjahr ${P.jahr}: ` + (e instanceof GraphError && e.status === 404 ? `Datei „${esc(P.file)}“ nicht gefunden.` + (me.admin ? ' → Admin → Jahre → „Eintrag entfernen“.' : ' Bitte Admin informieren.') : explain(e))); }
   }
   if (errors.length) msg(errors.join('<br>'), T ? 'warn' : 'err');
   renderBadges();
@@ -1011,9 +1020,9 @@ function renderList(){
     }
     const tip = [r.kundeRaw && r.kundeRaw !== r.kunde && 'Im Auftragsbuch: ' + r.kundeRaw, r.erfasst && 'Erfasst: ' + r.erfasst, s === ST.STORNO && r.freigabe && 'Storniert: ' + r.freigabe, r.bemerkung && 'Bemerkung: ' + r.bemerkung].filter(Boolean).join('\n');
     return `<tr class="${s === ST.STORNO ? 'storno' : ''}" data-row="${esc(r.nr)}" title="${esc(tip)}">
-      <td class="nr">${esc(r.nr)}${bezugOf(r).map(b => ` <button class="bez" data-a="bez" data-nr="${esc(b)}" title="Verknüpfter Auftrag – anzeigen">↔ ${esc(b)}</button>`).join('')}</td><td>${esc(isoToDe(r.datum))}</td><td>${esc(r.kunde)}</td><td class="wrap">${esc(r.objekt)}</td>
+      <td class="nr">${r.cur ? `<span class="dot ${s === ST.STORNO ? 'storno' : ''}" title="${s === ST.STORNO ? 'Storniert' : 'Aktiv'}"></span>` : ''}${esc(r.nr)}${bezugOf(r).map(b => ` <button class="bez" data-a="bez" data-nr="${esc(b)}" title="Verknüpfter Auftrag – anzeigen">↔ ${esc(b)}</button>`).join('')}</td><td>${esc(isoToDe(r.datum))}</td><td>${esc(r.kunde)}</td><td class="wrap">${esc(r.objekt)}</td>
       <td>${esc(r.plz)}</td><td>${esc(r.ort)}</td>
-      <td>${r.cur ? (s ? `<span class="st ${stClass(s)}">${esc(s)}</span>` : '') : `<span class="src">${yPrev}</span>`}</td>
+      <td class="who" title="${esc(r.erfasst)}">${r.cur ? esc((r.erfasst || '').split(' · ')[0] || (r.hasMeta ? '' : 'direkt in Excel')) : `<span class="src">${yPrev}</span>`}</td>
       <td class="act">${act}</td></tr>`;
   }).join('') : `<tr><td colspan="8" class="center muted">${all.length ? 'Keine Treffer.' : 'Noch keine Einträge.'}</td></tr>`;
   $('listNote').textContent = hits.length > MAX_RENDER ? `${hits.length} Treffer – angezeigt werden die ersten ${MAX_RENDER}.` : (hits.length ? `${hits.length} Einträge` + (isMobile() ? ' · Karte antippen für Details' : ' · Zeile anklicken für Details und alle Aktionen') : '');
@@ -1471,16 +1480,46 @@ $('btnMigrate').onclick = async () => {
 
 /* ================= Admin: Jahre ================= */
 let yPicked = null;
+const fileState = {};   // itemId → true (vorhanden) | false (nicht gefunden)
+async function checkYearFiles(){
+  await Promise.all(years.map(async y => {
+    try { await itemInfo(y.ref); fileState[y.ref.itemId] = true; }
+    catch (e) { if (e instanceof GraphError && e.status === 404) fileState[y.ref.itemId] = false; }
+  }));
+  renderYears(); renderNewYear();
+}
 function renderYears(){
   const box = $('yearList');
   if (!years.length) { box.innerHTML = 'Noch keine Jahre eingetragen.'; return; }
-  box.innerHTML = years.map(y => `<div class="grp" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+  box.innerHTML = years.map(y => {
+    const miss = fileState[y.ref.itemId] === false;
+    return `<div class="grp" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap${miss ? ';border-color:var(--err)' : ''}">
       <b>${esc(y.jahr)}</b> <span class="muted">Präfix ${esc(y.prefix)}-</span> ${esc(y.file)} <span class="muted">· Tabelle ${esc(y.table)}</span>
       ${y.aktiv ? '<span class="badge live">AKTIV</span>' : ''}${y.test ? '<span class="badge test">TEST</span>' : ''}
+      ${miss ? '<span class="status err" style="margin:0">⚠ Datei nicht gefunden (gelöscht oder verschoben)</span>' : ''}
       <span class="spacer"></span>
-      ${y.aktiv ? '' : `<button class="sm" data-ya="aktiv" data-y="${esc(y.jahr)}">Aktiv setzen</button>`}
-      <button class="sm" data-ya="edit" data-y="${esc(y.jahr)}">Bearbeiten</button>
-    </div>`).join('') + (P ? `<p class="muted small">Vorjahr (nur lesen): ${esc(P.jahr)}</p>` : '');
+      ${y.aktiv || miss ? '' : `<button class="sm" data-ya="aktiv" data-y="${esc(y.jahr)}">Aktiv setzen</button>`}
+      ${miss ? '' : `<button class="sm" data-ya="edit" data-y="${esc(y.jahr)}">Bearbeiten</button>`}
+      <button class="sm ${miss ? 'primary' : 'danger'}" data-ya="remove" data-y="${esc(y.jahr)}" title="Eintrag aus der Steuerungsdatei entfernen – die Excel-Datei selbst wird nicht gelöscht">Eintrag entfernen</button>
+    </div>`;
+  }).join('') + (P ? `<p class="muted small">Vorjahr (nur lesen): ${esc(P.jahr)}</p>` : '');
+}
+async function removeYear(y){
+  const miss = fileState[y.ref.itemId] === false;
+  const ok = await ask({ title: `Jahr ${y.jahr} austragen?`, text: `<b>${esc(y.file)}</b><br><br>Der Eintrag wird aus der Steuerungsdatei entfernt${miss ? '' : ' – <b>die Excel-Datei selbst bleibt erhalten</b>'}. Kundenvorschläge und Vorlagen aus diesem Jahr verschwinden.${y.aktiv ? '<br><br>⚠ Das ist das <b>aktive Jahr</b> – danach bitte ein anderes Jahr aktiv setzen.' : ''}`, okText: 'Austragen', danger: true });
+  if (!ok) return;
+  try {
+    await withSessions([C], async () => {
+      const jt = await readTbl(C, CT.jahre.table);
+      const r = jt.rows.find(x => String(x['Jahr']).trim() === y.jahr && tidy(x['ItemId']) === y.ref.itemId);
+      if (r) await deleteRow(jt, r._i);
+      expect(() => !years.some(q => q.jahr === y.jahr && q.ref.itemId === y.ref.itemId));
+      PT = await readTbl(C, CT.protokoll.table);
+      await appendRows(PT, [rowArr(PT, { 'Zeitpunkt': nowIsoTime(), 'Wer': me.name, 'Aktion': 'Jahr ausgetragen', 'Jahr': Number(y.jahr), 'Nummer': '', 'Details': `${y.file}${miss ? ' (Datei nicht mehr vorhanden)' : ''}` })]);
+    });
+    toast(`Jahr ${esc(y.jahr)} ausgetragen`, 3000);
+  } catch (e) { msg(explain(e)); }
+  rowsPrev = []; loadAdminData();
 }
 $('yearList').addEventListener('click', async e => {
   const b = e.target.closest('button[data-ya]'); if (!b) return;
@@ -1489,6 +1528,7 @@ $('yearList').addEventListener('click', async e => {
     $('yJahr').value = y.jahr; $('yTable').value = y.table; $('yAktiv').checked = y.aktiv; $('yTest').checked = y.test;
     yPicked = y.ref; $('yChosen').innerHTML = `Datei: <b>${esc(y.file)}</b>`; $('yJahr').scrollIntoView({behavior:'smooth', block:'center'});
   }
+  if (b.dataset.ya === 'remove') return removeYear(y);
   if (b.dataset.ya === 'aktiv') await saveYear({ jahr: y.jahr, ref: y.ref, table: y.table, aktiv: true, test: y.test });
 });
 $('yLink').addEventListener('change', async () => {
@@ -1512,7 +1552,7 @@ $('btnYSave').onclick = async () => {
 /* ---- Neues Jahr: leere Kopie eines Auftragsbuchs ---- */
 function renderNewYear(){
   const sel = $('nySrc'); const prevVal = sel.value;
-  const withTable = years.slice().sort((a, b) => b.jahr.localeCompare(a.jahr));
+  const withTable = years.filter(y => fileState[y.ref.itemId] !== false).sort((a, b) => b.jahr.localeCompare(a.jahr));
   sel.innerHTML = withTable.map(y => `<option value="${esc(y.jahr)}">${esc(y.jahr)} · ${esc(y.file)}</option>`).join('');
   if (prevVal && withTable.some(y => y.jahr === prevVal)) sel.value = prevVal; else if (Y) sel.value = Y.jahr;
   const maxY = Math.max(0, ...years.map(y => +y.jahr));
@@ -1910,6 +1950,7 @@ async function loadAdminData(){
     buildIndex(); renderBadges();
   }
   renderYears(); renderNewYear(); renderExtraCols(); renderRole(); renderClean();
+  checkYearFiles();
 }
 function openAdmin(){
   if (!me.admin) return;
