@@ -131,6 +131,14 @@
   .overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:50;display:flex;align-items:flex-start;justify-content:center;padding:40px 14px;overflow:auto}
   .modal{background:var(--panel);border:1px solid var(--line);border-radius:16px;width:100%;max-width:720px;padding:22px}
   .modal.narrow{max-width:460px}
+  .modal.wide{max-width:1000px}
+  .logrow{display:grid;grid-template-columns:150px 150px 170px 90px 1fr;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);align-items:baseline}
+  .logrow .t{color:var(--muted);font-variant-numeric:tabular-nums}
+  .logrow .a{font-weight:600}
+  .logrow .n{font-family:'Outfit',sans-serif;color:var(--accent);cursor:pointer}
+  .logrow .d{word-break:break-word}
+  .logrow.del .a{color:var(--err)} .logrow.storno .a{color:var(--warn)} .logrow.new .a{color:var(--ok)}
+  @media (max-width:760px){ .logrow{grid-template-columns:1fr auto;gap:2px 10px} .logrow .t{grid-column:1} .logrow .w{grid-column:2;text-align:right;color:var(--muted)} .logrow .a{grid-column:1} .logrow .n{grid-column:2;text-align:right} .logrow .d{grid-column:1 / -1;color:var(--muted)} }
   .modal h2{font-size:19px;margin-bottom:4px}
   .modal .foot{display:flex;gap:10px;justify-content:flex-end;margin-top:18px;flex-wrap:wrap}
   .numprev{font-family:'Outfit',sans-serif;font-size:26px;color:var(--accent)}
@@ -251,6 +259,7 @@
     <span class="sync hidden" id="syncInfo" title="Automatische Aktualisierung – antippen zum Prüfen"><span class="synctxt"></span></span>
     <span class="user hidden" id="userName"></span>
     <span class="badge role hidden" id="roleBadge"></span>
+    <button class="ghost hidden hbtn" id="btnLogOpen" title="Protokoll – alles, was im Tool passiert ist"><span class="ico">🕘</span><span class="lbl">Protokoll</span></button>
     <button class="ghost hbtn" id="btnTheme" title="Hell / Dunkel umschalten"><span class="ico" style="display:inline">◐</span></button>
     <button class="ghost hidden hbtn" id="btnList" title="Liste"><span class="ico">☰</span><span class="lbl">Liste</span></button>
     <button class="ghost hidden hbtn" id="btnAdmin" title="Admin"><span class="ico">⚙</span><span class="lbl">Admin</span></button>
@@ -370,8 +379,8 @@
 
     <div class="card">
       <h2>Protokoll</h2>
-      <div class="row"><div class="grow"><input type="search" id="logQ" placeholder="Filtern: Nummer, Name, Aktion …"></div><button id="btnLog">Laden</button></div>
-      <div id="logList" class="small" style="margin-top:10px"></div>
+      <p class="muted small">Jede Aktion im Tool wird im Blatt <b>Protokoll</b> der Steuerungsdatei festgehalten. Testeinträge kannst du dort einfach löschen – das Tool schreibt danach immer hinter der letzten befüllten Zeile weiter.</p>
+      <button id="btnLog">Protokoll öffnen</button>
     </div>
 
     <div class="card">
@@ -428,7 +437,7 @@
 
     <div class="combo">
       <label for="fKunde">Hausverwaltung / Auftraggeber</label>
-      <input type="text" id="fKunde" placeholder="Tippen zum Suchen …" autocomplete="off">
+      <input type="text" id="fKunde" placeholder="Auftraggeber, Straße, Ort oder PLZ tippen …" autocomplete="off">
       <div class="dd hidden" id="ddKunde"></div>
     </div>
     <div id="hKunde"></div>
@@ -476,6 +485,25 @@
   <div class="modal sheet" id="sheet"></div>
 </div>
 
+<!-- Protokoll -->
+<div class="overlay hidden" id="logOv">
+  <div class="modal wide">
+    <div class="row" style="justify-content:space-between;align-items:center"><h2>Protokoll</h2><button class="ghost" id="logClose">Schließen</button></div>
+    <div class="row" style="margin-top:12px">
+      <div class="grow"><input type="search" id="logQ" placeholder="Filtern: Nummer, Name, Straße, Aktion …"></div>
+      <div style="width:190px"><select id="logType">
+        <option value="">Alle Aktionen</option>
+        <option value="auftrag">Aufträge</option>
+        <option value="kunde">Kunden</option>
+        <option value="system">Jahre &amp; System</option>
+        <option value="login">Anmeldungen</option>
+      </select></div>
+      <button id="logReload" title="Neu laden">↻</button>
+    </div>
+    <div id="logList" class="small" style="margin-top:12px"></div>
+  </div>
+</div>
+
 <!-- Alle Kunden-Zuordnungen -->
 <div class="overlay hidden" id="mapOv">
   <div class="modal">
@@ -500,7 +528,7 @@
 <script>
 /* ================= Konfiguration ================= */
 const APP_NAME   = 'NOVA Auftragsbuch';
-const APP_VER    = '0.8.1';
+const APP_VER    = '0.8.3';
 const CLIENT_ID  = '5af6d3d4-a161-4306-8af9-cdb6f392d9be';
 const TENANT_ID  = '376241b8-1f44-4ae5-84b1-4d3b67d4c112';
 const REDIRECT   = 'https://kaffeetrinker80.github.io/NOVA/auftragsbuch/';
@@ -707,7 +735,9 @@ async function readTbl(ref, table){
   const data = r.values.slice(1);
   const rows = data.map((v, i) => { const o = { _i:i, _raw:v }; header.forEach((h, j) => o[h] = v[j]); o._empty = v.every(x => x === '' || x === null); return o; });
   return { ref, table, sheet: (m[1] || m[2]).replace(/''/g, "'"), startCol: colIndex(m[3]), startRow: +m[4], header,
-           rows: rows.filter(x => !x._empty), emptyIdx: rows.findIndex(x => x._empty), dataCount: data.length };
+           // emptyIdx = erste leere Zeile NACH der letzten befüllten. Werden in Excel Zeilen geleert oder gelöscht,
+           // schreibt das Tool trotzdem immer am Ende weiter – nie in eine Lücke mitten in der Liste.
+           rows: rows.filter(x => !x._empty), emptyIdx: (() => { let last = -1; rows.forEach((x, i) => { if (!x._empty) last = i; }); return rows.findIndex((x, i) => i > last && x._empty); })(), dataCount: data.length };
 }
 const sheetPath = t => `${wb(t.ref)}/worksheets/${encodeURIComponent(t.sheet)}`;
 const rowAddr = (t, i) => `${colLetter(t.startCol)}${t.startRow + 1 + i}:${colLetter(t.startCol + t.header.length - 1)}${t.startRow + 1 + i}`;
@@ -865,6 +895,7 @@ async function loadData(){
   renderBadges();
   buildIndex(); renderStats(); renderList();
   await rememberTags();
+  if (T && Y) logLogin();
   setSync(T ? 'ok' : 'err');
 }
 
@@ -1072,6 +1103,7 @@ function openSheet(nr){
   } else if (Y) {
     acts += `<button class="primary" data-a="take" data-nr="${esc(nr)}">➕ Als neuen Auftrag für ${Y.jahr} übernehmen</button>`;
   }
+  if (r.cur) acts += `<button data-a="log" data-nr="${esc(nr)}">🕘 Verlauf dieser Nummer</button>`;
   acts += `<button class="ghost" data-a="close">Schließen</button>`;
   $('sheet').innerHTML = `<h2><span style="color:var(--accent)">${esc(nr)}</span>${r.cur && s ? `<span class="st ${stClass(s)}">${esc(s)}</span>` : ''}</h2>
     <dl>${row('Auftraggeber', r.kunde)}${r.kundeRaw !== r.kunde ? row('Im Auftragsbuch', r.kundeRaw) : ''}${row('Objekt', r.objekt)}${row('Ort', [r.plz, r.ort].filter(Boolean).join(' '))}${row('Datum', isoToDe(r.datum))}
@@ -1099,6 +1131,7 @@ $('tbody').addEventListener('click', e => {
 function handleAction(a, nr){
   if (a === 'take') { const r = rowsPrev.find(x => x.nr === nr); if (r) openForm(null, null, r); return; }
   if (a === 'more') return openSheet(nr);
+  if (a === 'log') return openLog(nr);
   if (a === 'copy') { navigator.clipboard?.writeText(nr); toast(`${esc(nr)} kopiert`, 2000); }
   if (a === 'edit') openForm(nr);
   if (a === 'storno') doStorno(nr);
@@ -1170,22 +1203,54 @@ function makeCombo(input, dd, source, onPick){
   dd.addEventListener('mousedown', e => { const d = e.target.closest('div[data-i]'); if (d) { e.preventDefault(); onPick(items[+d.dataset.i]); show(dd, false); } });
   input.addEventListener('blur', () => setTimeout(() => show(dd, false), 120));
 }
+// Objekt-Suche über alle Auftraggeber: jedes Wort muss in Auftraggeber, Objekt, PLZ, Ort oder Nummer vorkommen.
+// „Stöberlstraße“, „stoeberlstr.“ und „Stöberlstr 15“ finden dasselbe.
+function findObjects(q, onlyKey = null, limit = 10){
+  const words = q.trim().split(/\s+/).map(normObjekt).filter(Boolean);
+  if (!words.length) return [];
+  const out = [];
+  kIndex.forEach((e, key) => {
+    if (onlyKey && key !== onlyKey) return;
+    e.objects.forEach(o => {
+      const hay = normObjekt(`${e.name} ${o.objekt} ${o.plz} ${o.ort} ${o.last}`);
+      if (words.every(w => hay.includes(w))) out.push({ kunde: e.name, key, ...o });
+    });
+  });
+  return out.sort((a, b) => b.last.localeCompare(a.last, 'de', {numeric:true})).slice(0, limit);
+}
+const objHtml = (o, withKunde) => `📍 ${esc(o.objekt)} <small>· ${esc([o.plz, o.ort].filter(Boolean).join(' '))}${withKunde ? ` · <b>${esc(o.kunde)}</b>` : ''} · zuletzt ${esc(o.last)}</small>`;
+function fillFromObject(o, setKunde){
+  if (setKunde) $('fKunde').value = o.kunde;
+  $('fObjekt').value = o.objekt; $('fPlz').value = o.plz; $('fOrt').value = o.ort;
+  updateHints(); updateRelPreview();
+  setTimeout(() => $('fBem').focus(), 30);
+}
+
+// Feld „Auftraggeber“: findet Auftraggeber UND Objekte (Straße, Ort, PLZ …)
 makeCombo($('fKunde'), $('ddKunde'), q => {
   const nq = normKunde(q); const lq = q.trim().toLowerCase();
   if (!lq) return [];
-  return [...kIndex.values()]
+  const kunden = [...kIndex.values()]
     .map(e => ({ e, s: [...e.spellings.keys()].some(sp => sp.toLowerCase().includes(lq)) || (nq && normKunde(e.name).includes(nq)) ? 2 : sim(nq, normKunde(e.name)) }))
-    .filter(x => x.s >= 0.75).sort((a, b) => b.s - a.s || b.e.count - a.e.count).slice(0, 12)
-    .map(({e}) => ({ value: e.name, html: `${esc(e.name)} <small>· ${Math.round(e.count)} Aufträge · ${e.objects.size} Objekte</small>` }));
-}, it => { $('fKunde').value = it.value; updateHints(); $('fObjekt').focus(); });
+    .filter(x => x.s >= 0.75).sort((a, b) => b.s - a.s || b.e.count - a.e.count).slice(0, 6)
+    .map(({e}) => ({ type: 'kunde', value: e.name, html: `👤 ${esc(e.name)} <small>· ${Math.round(e.count)} Aufträge · ${e.objects.size} Objekte</small>` }));
+  const objekte = lq.length >= 3 ? findObjects(q, null, 8).map(o => ({ type: 'objekt', o, html: objHtml(o, true) })) : [];
+  return [...kunden, ...objekte];
+}, it => {
+  if (it.type === 'objekt') return fillFromObject(it.o, true);
+  $('fKunde').value = it.value; updateHints(); $('fObjekt').focus();
+});
+
+// Feld „Objekt“: zuerst die Objekte des gewählten Auftraggebers, dann Treffer bei allen anderen
 makeCombo($('fObjekt'), $('ddObjekt'), q => {
-  const e = kIndex.get(normKunde(canon($('fKunde').value)));
-  if (!e) return [];
-  const lq = q.trim().toLowerCase();
-  return [...e.objects.values()].filter(o => !lq || `${o.objekt} ${o.plz} ${o.ort}`.toLowerCase().includes(lq))
-    .sort((a, b) => b.last.localeCompare(a.last, 'de', {numeric:true})).slice(0, 15)
-    .map(o => ({ o, html: `${esc(o.objekt)} <small>· ${esc(o.plz)} ${esc(o.ort)} · zuletzt ${esc(o.last)}</small>` }));
-}, it => { $('fObjekt').value = it.o.objekt; $('fPlz').value = it.o.plz; $('fOrt').value = it.o.ort; updateHints(); });
+  const key = normKunde(canon($('fKunde').value)); const e = kIndex.get(key);
+  const lq = q.trim();
+  let own = [];
+  if (e) own = (lq ? findObjects(q, key, 15) : [...e.objects.values()].map(o => ({ kunde: e.name, key, ...o })).sort((a, b) => b.last.localeCompare(a.last, 'de', {numeric:true})).slice(0, 15))
+    .map(o => ({ o, html: objHtml(o, false) }));
+  const others = lq.length >= 3 ? findObjects(q, null, 10).filter(o => o.key !== key).slice(0, 8).map(o => ({ o, other: true, html: objHtml(o, true) })) : [];
+  return [...own, ...others];
+}, it => fillFromObject(it.o, !tidy($('fKunde').value)));
 
 /* ---- Hinweise ---- */
 function updateHints(){
@@ -1429,9 +1494,11 @@ $('btnCfgLink').onclick = async () => {
 $('btnCfgSearch').onclick = () => searchOwn('cfgPick', 'Steuerung', ref => setConfigRef(ref));
 
 // Legt fehlende Blätter, Tabellen und Spalten in der Steuerungsdatei an
+let structOkAt = 0;    // kurz nach dem Anlegen liefert Microsoft evtl. noch den alten Stand
 async function ensureStructure(checkOnly = false){
   const box = $('ensureInfo');
   if (!C) { box.textContent = ''; return; }
+  if (checkOnly && Date.now() - structOkAt < 90000) { box.innerHTML = '<span class="status ok">✓ Struktur vollständig.</span>'; return true; }
   box.innerHTML = '<span class="spin"></span> Prüfe Struktur …';
   try {
     const [ws, tb] = await Promise.all([graph(`${wb(C)}/worksheets?$select=name`), graph(`${wb(C)}/tables?$select=name`)]);
@@ -1441,7 +1508,7 @@ async function ensureStructure(checkOnly = false){
     for (const s of Object.values(CT).filter(s => tables.has(s.table))) {
       const t = await readTbl(C, s.table); const miss = s.cols.filter(c => !t.header.includes(c)); if (miss.length) missingC.push({ s, t, miss });
     }
-    if (!missingT.length && !missingC.length) { box.innerHTML = '<span class="status ok">✓ Struktur vollständig (Jahre, Aufträge, Protokoll, Kunden, Einstellungen).</span>'; return true; }
+    if (!missingT.length && !missingC.length) { structOkAt = Date.now(); box.innerHTML = '<span class="status ok">✓ Struktur vollständig (Jahre, Aufträge, Protokoll, Kunden, Einstellungen).</span>'; return true; }
     const what = [...missingT.map(s => `Tabelle ${s.table}`), ...missingC.map(x => `${x.s.table}: ${x.miss.join(', ')}`)].join(' · ');
     if (checkOnly) { box.innerHTML = `<span class="status warn">Es fehlt: ${esc(what)} → „Struktur prüfen &amp; ergänzen“ klicken.</span>`; return false; }
     await withSessions([C], async () => {
@@ -1456,7 +1523,10 @@ async function ensureStructure(checkOnly = false){
       for (const x of missingC) for (const c of x.miss) {
         await graph(`${wb(C)}/tables/${encodeURIComponent(x.s.table)}/columns/add`, { method:'POST', body: JSON.stringify({ index: null, values: [[c], ...Array.from({length: x.t.dataCount}, () => [''])] }) });
       }
-    }).catch(e => { throw e; });
+      PT = await readTbl(C, CT.protokoll.table);
+      await appendRows(PT, [rowArr(PT, { 'Zeitpunkt': nowIsoTime(), 'Wer': me.name, 'Aktion': 'Struktur ergänzt', 'Jahr': 0, 'Nummer': '', 'Details': what })]);
+    });
+    structOkAt = Date.now();
     box.innerHTML = `<span class="status ok">✓ Angelegt: ${esc(what)}</span>`;
     return true;
   } catch (e) { box.innerHTML = `<span class="status err">${explain(e)}</span>`; return false; }
@@ -1472,7 +1542,11 @@ $('btnMigrate').onclick = async () => {
       add.push(rowArr(jt, { 'Jahr': y, 'Präfix': String(y).slice(-2), 'DriveId': oldCfg.cur.driveId, 'ItemId': oldCfg.cur.itemId, 'Datei': oldCfg.cur.name, 'Tabelle': oldCfg.tableName || 'Auftraege', 'Aktiv': 'ja', 'Testbetrieb': oldCfg.isTest ? 'ja' : '' }));
     if (oldCfg.prev && !jt.rows.some(r => String(r['Jahr']) === String(y - 1)))
       add.push(rowArr(jt, { 'Jahr': y - 1, 'Präfix': String(y - 1).slice(-2), 'DriveId': oldCfg.prev.driveId, 'ItemId': oldCfg.prev.itemId, 'Datei': oldCfg.prev.name, 'Tabelle': '', 'Aktiv': '', 'Testbetrieb': '' }));
-    if (add.length) { expect(() => years.length > 0); await withSessions([C], () => appendRows(jt, add)); }
+    if (add.length) { expect(() => years.length > 0); await withSessions([C], async () => {
+      await appendRows(jt, add);
+      PT = await readTbl(C, CT.protokoll.table);
+      await appendRows(PT, [rowArr(PT, { 'Zeitpunkt': nowIsoTime(), 'Wer': me.name, 'Aktion': 'Einrichtung übernommen', 'Jahr': 0, 'Nummer': '', 'Details': `${add.length} Jahr(e) aus v0.6` })]);
+    }); }
     toast(add.length ? `${add.length} Jahr(e) übernommen ✓` : 'Schon übernommen', 3000);
   } catch (e) { msg(explain(e)); }
   loadAdminData();
@@ -1906,21 +1980,58 @@ function renderRole(){
   $('roleBadge').textContent = me.admin ? 'Admin' : ''; show($('roleBadge'), me.admin);
   $('roleInfo').innerHTML = `Angemeldet als <b>${esc(me.mail)}</b> · Admin: ${ADMINS.map(esc).join(', ')}`;
 }
-let logRows = [], logShow = 25;
+let logRows = [], logShow = 50, logLoadedAt = 0;
+const LOG_TYPES = {
+  auftrag: ['Angelegt', 'Geändert', 'Verknüpft', 'Storniert', 'Gelöscht'],
+  kunde:   ['Kunde zusammengeführt', 'Kein Duplikat', 'Zuordnung aufgehoben'],
+  login:   ['Anmeldung'],
+};
 async function loadLog(){
   const box = $('logList'); box.innerHTML = '<span class="spin"></span> Lade Protokoll …';
-  try { logRows = (await readTbl(C, CT.protokoll.table)).rows.slice().reverse(); logShow = 25; renderLog(); }
+  try { logRows = (await readTbl(C, CT.protokoll.table)).rows.slice().reverse(); logLoadedAt = Date.now(); logShow = 50; renderLog(); }
   catch (e) { box.innerHTML = `<span class="status err">${explain(e)}</span>`; }
 }
+function logType(a){ for (const [k, list] of Object.entries(LOG_TYPES)) if (list.includes(a)) return k; return 'system'; }
 function renderLog(){
-  const q = $('logQ').value.trim().toLowerCase();
-  const all = logRows.filter(r => !q || `${r['Zeitpunkt']} ${r['Wer']} ${r['Aktion']} ${r['Nummer']} ${r['Details']}`.toLowerCase().includes(q));
+  const q = $('logQ').value.trim().toLowerCase(), typ = $('logType').value;
+  const all = logRows.filter(r => (!typ || logType(tidy(r['Aktion'])) === typ) && (!q || `${r['Zeitpunkt']} ${r['Wer']} ${r['Aktion']} ${r['Jahr']} ${r['Nummer']} ${r['Details']}`.toLowerCase().includes(q)));
   const hits = all.slice(0, logShow);
-  $('logList').innerHTML = hits.length ? `<div class="tablewrap" style="display:block"><table><thead><tr><th>Zeit</th><th>Wer</th><th>Aktion</th><th>Nummer</th><th>Details</th></tr></thead><tbody>${hits.map(r => `<tr><td>${esc(r['Zeitpunkt'])}</td><td>${esc(r['Wer'])}</td><td>${esc(r['Aktion'])}</td><td class="nr">${esc(r['Nummer'])}</td><td class="wrap">${esc(r['Details'])}</td></tr>`).join('')}</tbody></table></div><p class="muted small">${hits.length} von ${all.length} angezeigt · neueste zuerst${all.length > hits.length ? ` <button class="sm" id="btnLogMore">Weitere 50 anzeigen</button>` : ''}</p>` : '<span class="muted">Keine Einträge.</span>';
-  if ($('btnLogMore')) $('btnLogMore').onclick = () => { logShow += 50; renderLog(); };
+  const cls = a => a === 'Gelöscht' ? 'del' : a === 'Storniert' ? 'storno' : a === 'Angelegt' ? 'new' : '';
+  $('logList').innerHTML = hits.length ? hits.map(r => {
+      const a = tidy(r['Aktion']);
+      return `<div class="logrow ${cls(a)}"><span class="t">${esc(r['Zeitpunkt'])}</span><span class="w">${esc(r['Wer'])}</span><span class="a">${esc(a)}</span>
+        <span class="n" ${r['Nummer'] ? `data-lognr="${esc(r['Nummer'])}" title="Nur diese Nummer zeigen"` : ''}>${esc(r['Nummer'] || '')}</span><span class="d">${esc(r['Details'] || '')}</span></div>`;
+    }).join('') + `<p class="muted small" style="margin-top:10px">${hits.length} von ${all.length} angezeigt · neueste zuerst${all.length > hits.length ? ` <button class="sm" id="btnLogMore">Weitere 100 anzeigen</button>` : ''}</p>`
+    : '<span class="muted">Keine Einträge.</span>';
+  if ($('btnLogMore')) $('btnLogMore').onclick = () => { logShow += 100; renderLog(); };
 }
-$('btnLog').onclick = loadLog;
-$('logQ').oninput = () => { logShow = 25; renderLog(); };
+async function openLog(filter = ''){
+  if (!C) return;
+  $('logQ').value = filter; $('logType').value = filter ? '' : $('logType').value;
+  show($('logOv'), true);
+  if (!logRows.length || Date.now() - logLoadedAt > 15000) await loadLog(); else renderLog();
+  if (!isMobile()) setTimeout(() => $('logQ').focus(), 50);
+}
+$('btnLog').onclick = () => openLog();
+$('btnLogOpen').onclick = () => openLog();
+$('logReload').onclick = loadLog;
+$('logClose').onclick = () => show($('logOv'), false);
+$('logOv').addEventListener('click', e => {
+  if (e.target.id === 'logOv') return show($('logOv'), false);
+  const n = e.target.closest('[data-lognr]'); if (n) { $('logQ').value = n.dataset.lognr; logShow = 50; renderLog(); }
+});
+$('logQ').oninput = () => { logShow = 50; renderLog(); };
+$('logType').onchange = () => { logShow = 50; renderLog(); };
+
+// Anmeldung einmal pro Browser-Sitzung protokollieren
+async function logLogin(){
+  if (!C || sessionStorage.getItem('ab-login-logged')) return;
+  sessionStorage.setItem('ab-login-logged', '1');
+  try {
+    PT = await readTbl(C, CT.protokoll.table);
+    await appendRows(PT, [rowArr(PT, { 'Zeitpunkt': nowIsoTime(), 'Wer': me.name, 'Aktion': 'Anmeldung', 'Jahr': Number(Y?.jahr || 0), 'Nummer': '', 'Details': `${isMobile() ? 'Handy' : 'PC'} · V${APP_VER}` })]);
+  } catch { sessionStorage.removeItem('ab-login-logged'); }
+}
 
 /* ---- Datei-Suche im eigenen OneDrive ---- */
 async function searchOwn(pickId, q, onPick){
@@ -1945,7 +2056,10 @@ async function loadAdminData(){
   const ok = await ensureStructure(true);
   if (ok) {
     try { if (!(await loadCoreFresh())) setTimeout(() => { if (!$('viewAdmin').classList.contains('hidden')) loadAdminData(); }, 5000); }
-    catch (e) { msg(explain(e)); }
+    catch (e) {
+      if (e instanceof GraphError && e.status === 404 && Date.now() - structOkAt < 90000) setTimeout(() => { if (!$('viewAdmin').classList.contains('hidden')) loadAdminData(); }, 4000);
+      else msg(explain(e));
+    }
     if (P && !rowsPrev.length) { try { rowsPrev = mergeRows(await readAny(P.ref), P.jahr, T.metaMap); } catch {} }
     buildIndex(); renderBadges();
   }
@@ -1967,7 +2081,7 @@ async function signedInUI(account){
   me = { name: account.name || account.username, mail, admin: ADMINS.includes(mail) };
   $('userName').textContent = me.name;
   renderRole();
-  ['userName','btnLogout','btnList'].forEach(id => show($(id), true));
+  ['userName','btnLogout','btnList','btnLogOpen'].forEach(id => show($(id), true));
   show($('btnAdmin'), me.admin);
   if (sessionStorage.getItem('ab-setup-done')) { sessionStorage.removeItem('ab-setup-done'); toast('Einrichtung übernommen ✓', 3000); }
   try { C = await resolveConfigRef(); } catch (e) { msg('Steuerungsdatei: ' + explain(e)); }
@@ -1997,6 +2111,7 @@ $('statusChips').addEventListener('click', e => { const c = e.target.closest('.c
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && !$('sheetOv').classList.contains('hidden')) closeSheet();
   if (e.key === 'Escape' && !$('mapOv').classList.contains('hidden')) show($('mapOv'), false);
+  if (e.key === 'Escape' && !$('logOv').classList.contains('hidden')) show($('logOv'), false);
   const typing = /INPUT|TEXTAREA/.test(document.activeElement?.tagName || '');
   if (e.key === '/' && !typing && !$('viewList').classList.contains('hidden')) { e.preventDefault(); $('q').focus(); }
   if (e.key === 'Escape' && !$('formOv').classList.contains('hidden') && $('ddKunde').classList.contains('hidden') && $('ddObjekt').classList.contains('hidden')) closeForm();
