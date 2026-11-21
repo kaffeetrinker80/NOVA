@@ -11,17 +11,33 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@4.30.0/lib/msal-browser.min.js"></script>
+<script>
+  (function(){ try { var t = localStorage.getItem('nova-ab-theme'); if (!t) t = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'; document.documentElement.dataset.theme = t; } catch (e) { document.documentElement.dataset.theme = 'dark'; } })();
+</script>
 <style>
   :root{
     --bg:#0f1419; --panel:#161d24; --panel2:#1c252e; --line:#2a3540;
     --text:#e6edf3; --muted:#8b98a5; --accent:#5eead4; --accent2:#2dd4bf;
     --warn:#fbbf24; --err:#f87171; --ok:#4ade80; --radius:12px;
+    --on-accent:#06221e; --hdr-bg:rgba(15,20,25,.92); --obj-fg:#c9d4de; --danger-fg:#fecaca;
+    --msg-err-fg:#fecaca; --msg-warn-fg:#fde68a; --hint-ok-fg:#bbf7d0; --hint-warn-fg:#fde68a; --hint-info-fg:#ccfbf1;
+    color-scheme: dark;
   }
+  :root[data-theme=light]{
+    --bg:#f3f6f8; --panel:#ffffff; --panel2:#edf2f5; --line:#d5dde3;
+    --text:#13202b; --muted:#5b6a77; --accent:#0d9488; --accent2:#0f766e;
+    --warn:#b45309; --err:#dc2626; --ok:#15803d;
+    --on-accent:#ffffff; --hdr-bg:rgba(255,255,255,.92); --obj-fg:#2c3a46; --danger-fg:#b91c1c;
+    --msg-err-fg:#991b1b; --msg-warn-fg:#92400e; --hint-ok-fg:#166534; --hint-warn-fg:#92400e; --hint-info-fg:#115e59;
+    color-scheme: light;
+  }
+  :root[data-theme=light] .badge.test{color:#fff}
+  :root[data-theme=light] .fab,:root[data-theme=light] .toast,:root[data-theme=light] .dd{box-shadow:0 8px 24px rgba(0,0,0,.15)}
   *{box-sizing:border-box}
   html,body{margin:0;background:var(--bg);color:var(--text);font-family:'DM Sans',system-ui,sans-serif;font-size:15px}
   h1,h2,h3{font-family:'Outfit',sans-serif;margin:0}
   a{color:var(--accent)}
-  header{position:sticky;top:0;z-index:20;background:rgba(15,20,25,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  header{position:sticky;top:0;z-index:20;background:var(--hdr-bg);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
   .bar{max-width:1280px;margin:0 auto;padding:12px 18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
   .brand{display:flex;align-items:center;gap:10px}
   .brand h1{font-size:20px;letter-spacing:.2px}
@@ -44,10 +60,10 @@
   @keyframes pulse{50%{opacity:.3}}
   button{font:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--text);padding:8px 14px}
   button:hover{border-color:var(--accent)}
-  button.primary{background:var(--accent);color:#06221e;border-color:var(--accent);font-weight:700}
+  button.primary{background:var(--accent);color:var(--on-accent);border-color:var(--accent);font-weight:700}
   button.primary:hover{background:var(--accent2)}
   button.ghost{background:transparent}
-  button.danger{border-color:rgba(248,113,113,.5);color:#fecaca}
+  button.danger{border-color:rgba(248,113,113,.5);color:var(--danger-fg)}
   button.danger:hover{background:rgba(248,113,113,.12)}
   button.sm{padding:4px 9px;font-size:13px;border-radius:8px}
   button:disabled{opacity:.5;cursor:not-allowed}
@@ -56,8 +72,8 @@
   .card h2{font-size:17px;margin-bottom:12px}
   .muted{color:var(--muted)} .small{font-size:13px}
   label{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px}
+  select{width:100%;font:inherit;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:9px 12px}
   input[type=text],input[type=search],input[type=date],textarea{width:100%;font:inherit;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:9px 12px}
-  input[type=date]{color-scheme:dark}
   textarea{resize:vertical;min-height:60px}
   input:focus,textarea:focus{outline:none;border-color:var(--accent)}
   .row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
@@ -100,8 +116,8 @@
   .center{text-align:center;padding:40px 18px}
   .hidden{display:none !important}
   .msg{padding:12px 14px;border-radius:10px;margin-bottom:14px;font-size:14px}
-  .msg.err{background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.4);color:#fecaca}
-  .msg.warn{background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.4);color:#fde68a}
+  .msg.err{background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.4);color:var(--msg-err-fg)}
+  .msg.warn{background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.4);color:var(--msg-warn-fg)}
   .msg.info{background:rgba(94,234,212,.08);border:1px solid rgba(94,234,212,.3)}
   .pick{margin-top:8px;max-height:220px;overflow:auto;border:1px solid var(--line);border-radius:10px}
   .pick div{padding:8px 12px;border-bottom:1px solid var(--line);cursor:pointer;font-size:14px}
@@ -124,9 +140,9 @@
   .dd div.act,.dd div:hover{background:rgba(94,234,212,.1)}
   .dd small{color:var(--muted)}
   .hint{font-size:13px;margin-top:6px;padding:7px 10px;border-radius:8px}
-  .hint.ok{background:rgba(74,222,128,.08);color:#bbf7d0}
-  .hint.warn{background:rgba(251,191,36,.1);color:#fde68a}
-  .hint.info{background:rgba(94,234,212,.08);color:#ccfbf1}
+  .hint.ok{background:rgba(74,222,128,.1);color:var(--hint-ok-fg)}
+  .hint.warn{background:rgba(251,191,36,.12);color:var(--hint-warn-fg)}
+  .hint.info{background:rgba(94,234,212,.1);color:var(--hint-info-fg)}
   .hint button{margin-left:6px}
   .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--accent);color:var(--text);padding:12px 18px;border-radius:12px;z-index:70;display:flex;gap:12px;align-items:center;box-shadow:0 10px 30px rgba(0,0,0,.5)}
   .grp{padding:10px 12px;border:1px solid var(--line);border-radius:10px;margin-bottom:8px;font-size:14px}
@@ -139,7 +155,7 @@
   .acard .cnr{font-family:'Outfit',sans-serif;font-size:15px;color:var(--accent);flex:0 0 auto}
   .acard .k{font-weight:700;font-size:15px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .acard .top .st,.acard .top .src{flex:0 0 auto;font-size:11px;padding:1px 7px;margin-left:auto}
-  .acard .o{margin-top:3px;font-size:14px;line-height:1.3;color:#c9d4de;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .acard .o{margin-top:3px;font-size:14px;line-height:1.3;color:var(--obj-fg);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
   .acard .o .po{color:var(--muted)}
   .acard .m{color:var(--muted);font-size:12px;margin-top:4px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
   .acard .m .vm{flex:1 1 100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -152,7 +168,7 @@
   .acard.storno{opacity:.6} .acard.storno .k,.acard.storno .o{text-decoration:line-through}
   .acard.prev{border-style:dashed}
 
-  .fab{position:fixed;right:18px;bottom:calc(20px + env(safe-area-inset-bottom));width:60px;height:60px;border-radius:50%;background:var(--accent);color:#06221e;border:none;font-size:32px;font-weight:700;line-height:1;box-shadow:0 8px 24px rgba(0,0,0,.5);z-index:30;padding:0}
+  .fab{position:fixed;right:18px;bottom:calc(20px + env(safe-area-inset-bottom));width:60px;height:60px;border-radius:50%;background:var(--accent);color:var(--on-accent);border:none;font-size:32px;font-weight:700;line-height:1;box-shadow:0 8px 24px rgba(0,0,0,.5);z-index:30;padding:0}
   .sheet h2{display:flex;justify-content:space-between;align-items:center;gap:10px}
   .sheet dl{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:14px 0;font-size:14px}
   .sheet dt{color:var(--muted)} .sheet dd{margin:0;word-break:break-word}
@@ -184,8 +200,6 @@
     .chips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;width:100%}
     .chips::-webkit-scrollbar{display:none}
     .chip{flex:0 0 auto;padding:8px 14px}
-    #btnBulk{width:100%;min-height:46px}
-    #freiBanner{padding:8px 12px;flex-wrap:nowrap !important;justify-content:space-between;font-size:14px}
     .grid3{grid-template-columns:104px 1fr}
     .modal .foot button.primary{flex:2;font-size:15px}
     .tablewrap{display:none}
@@ -230,6 +244,7 @@
     <span class="sync hidden" id="syncInfo" title="Automatische Aktualisierung – antippen zum Prüfen"><span class="synctxt"></span></span>
     <span class="user hidden" id="userName"></span>
     <span class="badge role hidden" id="roleBadge"></span>
+    <button class="ghost hbtn" id="btnTheme" title="Hell / Dunkel umschalten"><span class="ico" style="display:inline">◐</span></button>
     <button class="ghost hidden hbtn" id="btnList" title="Liste"><span class="ico">☰</span><span class="lbl">Liste</span></button>
     <button class="ghost hidden hbtn" id="btnAdmin" title="Admin"><span class="ico">⚙</span><span class="lbl">Admin</span></button>
     <button class="ghost hidden hbtn" id="btnLogout" title="Abmelden"><span class="ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg></span><span class="lbl">Abmelden</span></button>
@@ -296,6 +311,29 @@
     </div>
 
     <div class="card">
+      <h2>Neues Jahr anlegen</h2>
+      <p class="muted small">Kopiert ein bestehendes Auftragsbuch als <b>leere</b> Datei fürs neue Jahr: DAkkS-Kopf, Logo, Spalten und Tabelle bleiben, alle Einträge werden entfernt. Die neue Datei wird gleich in „Jahre“ eingetragen.</p>
+      <div class="row">
+        <div style="width:200px"><label for="nySrc">Vorlage</label><select id="nySrc"></select></div>
+        <div style="width:110px"><label for="nyJahr">Neues Jahr</label><input type="text" id="nyJahr" inputmode="numeric" maxlength="4"></div>
+        <div class="grow"><label for="nyName">Dateiname</label><input type="text" id="nyName"></div>
+      </div>
+      <label>Speicherort</label>
+      <label class="chk" style="margin:6px 0;color:var(--text)"><input type="radio" name="nyWhere" value="same" checked> gleicher Ordner wie die Vorlage <span class="muted" id="nySameFolder"></span></label>
+      <label class="chk" style="margin:6px 0;color:var(--text)"><input type="radio" name="nyWhere" value="other"> anderer Ordner:</label>
+      <input type="text" id="nyFolder" placeholder="Freigabelink des Ordners (in OneDrive/SharePoint auf den Ordner → „Link kopieren“)" disabled>
+      <div class="row" style="margin-top:10px">
+        <label class="chk"><input type="checkbox" id="nyHeader" checked> Jahreszahl im Kopf ersetzen</label>
+        <label class="chk"><input type="checkbox" id="nyAktiv"> gleich als aktives Jahr setzen</label>
+        <label class="chk"><input type="checkbox" id="nyTest"> Testbetrieb</label>
+        <span class="spacer"></span>
+        <button class="primary" id="btnNyCreate">Leere Datei anlegen</button>
+      </div>
+      <div id="nyInfo" class="small" style="margin-top:8px"></div>
+      <p class="muted small">Tipp: im Dezember anlegen, „aktiv“ aber erst am 1. Januar setzen (Jahre → „Aktiv setzen“).</p>
+    </div>
+
+    <div class="card">
       <h2>Kunden aufräumen</h2>
       <p class="muted small">Gruppen, die vermutlich derselbe Auftraggeber sind – über alle geladenen Jahre. <b>Zusammenführen</b>: die gewählte Schreibweise gilt künftig überall. Im aktiven Jahr werden die Einträge direkt umbenannt; ältere Jahre bleiben unverändert und werden nur in der Anzeige vereinheitlicht.</p>
       <div id="cleanList" class="small muted">Wird nach dem Laden der Daten berechnet.</div>
@@ -314,9 +352,7 @@
     <div class="card">
       <h2>Rollen</h2>
       <div class="small" id="roleInfo"></div>
-      <label for="freiList">Freigabe – E-Mail-Adressen, mit Komma getrennt</label>
-      <div class="row"><div class="grow"><input type="text" id="freiList"></div><button id="btnSaveFrei">Speichern</button></div>
-      <p class="muted small">Admin steht fest im Code. Rollen steuern nur, welche Knöpfe man sieht – wer an die Dateien kommt, regelt SharePoint.</p>
+      <p class="muted small">Alle mit Zugriff auf die Dateien können Aufträge anlegen, bearbeiten, stornieren und löschen. Admin (dieser Bereich) steht fest im Code. Wer an die Dateien kommt, regelt SharePoint.</p>
     </div>
 
     <div class="card" id="cardSetup">
@@ -343,26 +379,21 @@
       <button class="primary" id="btnNew">+ Neuer Auftrag</button>
       <button id="btnReload" title="Neu laden">↻</button>
     </div>
-    <div class="msg warn hidden" id="freiBanner" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-      <span id="freiText"></span><button class="sm" id="btnShowOpen">Offene anzeigen</button>
-    </div>
     <div class="stats">
       <div class="stat"><div class="v" id="stCount">–</div><div class="l">Aufträge aktuelles Jahr</div></div>
       <div class="stat"><div class="v" id="stNext">–</div><div class="l">Nächste freie Nummer</div></div>
-      <div class="stat warn"><div class="v" id="stOpen">–</div><div class="l">Offen zur Freigabe</div></div>
+      <div class="stat"><div class="v" id="stMonth">–</div><div class="l">Aufträge diesen Monat</div></div>
       <div class="stat"><div class="v" id="stKunden">–</div><div class="l">Bekannte Auftraggeber</div></div>
       <div class="stat warn hidden" id="stDupBox"><div class="v" id="stDup">0</div><div class="l">Doppelte Nummern</div></div>
     </div>
     <div class="tools">
       <div class="chips" id="statusChips">
         <button class="chip on" data-f="alle">Alle</button>
-        <button class="chip" data-f="Offen">Offen</button>
-        <button class="chip" data-f="Freigegeben">Freigegeben</button>
+        <button class="chip" data-f="aktiv">Aktiv</button>
         <button class="chip" data-f="Storniert">Storniert</button>
       </div>
       <label class="chk"><input type="checkbox" id="withPrev"> <span id="withPrevLbl">Vorjahr einbeziehen</span></label>
       <div class="spacer"></div>
-      <button id="btnBulk" class="hidden">✓ Alle offenen freigeben</button>
     </div>
     <div class="cards" id="cards"></div>
     <div class="tablewrap">
@@ -462,7 +493,7 @@
 <script>
 /* ================= Konfiguration ================= */
 const APP_NAME   = 'NOVA Auftragsbuch';
-const APP_VER    = '0.7.7';
+const APP_VER    = '0.8.0';
 const CLIENT_ID  = '5af6d3d4-a161-4306-8af9-cdb6f392d9be';
 const TENANT_ID  = '376241b8-1f44-4ae5-84b1-4d3b67d4c112';
 const REDIRECT   = 'https://kaffeetrinker80.github.io/NOVA/auftragsbuch/';
@@ -478,9 +509,9 @@ const LS_KEY     = 'nova-auftragsbuch-v7';
 const LS_OLD     = 'nova-auftragsbuch-config-v1';
 const MAX_RENDER = 500;
 
-// Rollen: Admin fest im Code. Freigabe kommt aus der Steuerungsdatei (Einstellungen), sonst diese Vorgabe.
+// Rolle: Admin fest im Code. Alle anderen mit Zugriff auf die Dateien dürfen alles außer dem Admin-Bereich.
 const ADMINS         = ['marco.neudecker@nova-praxis.de'];
-const FREIGEBER_INIT = ['marco.neudecker@nova-praxis.de', 'nico.schmid@nova-praxis.de'];
+
 
 // Offizielles Auftragsbuch: nur diese 5 Spalten werden beschrieben
 const AB_COLS = [
@@ -500,7 +531,7 @@ const CT = {
   kunden:        { sheet:'Kunden',        table:'tblKunden',        cols:['Variante','Hauptname','Typ','Von','Am'] },
   einstellungen: { sheet:'Einstellungen', table:'tblEinstellungen', cols:['Schlüssel','Wert','Hinweis'] },
 };
-const ST = { OFFEN:'Offen', FREI:'Freigegeben', STORNO:'Storniert' };
+const ST = { STORNO:'Storniert' };
 
 /* ================= Hilfen ================= */
 const $ = id => document.getElementById(id);
@@ -582,7 +613,7 @@ const msalApp = new msal.PublicClientApplication({
   auth: { clientId: CLIENT_ID, authority: `https://login.microsoftonline.com/${TENANT_ID}`, redirectUri: REDIRECT },
   cache: { cacheLocation: 'localStorage' }
 });
-let me = { name:'', mail:'', admin:false, freigeber:false };
+let me = { name:'', mail:'', admin:false };
 
 async function getToken(){
   const account = msalApp.getActiveAccount();
@@ -758,7 +789,6 @@ let rowsPrev = [];
 let KMAP = new Map();     // variante (klein) → Hauptname
 let NODUP = new Set();    // "a|b" normalisierte Paare
 let kIndex = new Map(), plzIndex = new Map();
-let freigeber = FREIGEBER_INIT.slice();
 
 const canon = n => { const t = tidy(n); return KMAP.get(t.toLowerCase()) || t; };
 const pairKey = (a, b) => [normKunde(a), normKunde(b)].sort().join('|');
@@ -797,9 +827,6 @@ async function loadCore(){
     if (typ.startsWith('kein')) NODUP.add(pairKey(r['Variante'], r['Hauptname']));
     else if (tidy(r['Variante']) && tidy(r['Hauptname'])) KMAP.set(tidy(r['Variante']).toLowerCase(), tidy(r['Hauptname']));
   });
-  const fr = et.rows.find(r => tidy(r['Schlüssel']).toLowerCase() === 'freigabe');
-  freigeber = fr && tidy(fr['Wert']) ? tidy(fr['Wert']).toLowerCase().split(/[,;\s]+/).filter(Boolean) : FREIGEBER_INIT.slice();
-  me.freigeber = freigeber.includes(me.mail);
   renderRole();
   if (!Y) { ABT = null; T = { rows: [] }; return; }
   ABT = await readAB(Y);
@@ -879,8 +906,8 @@ let knownTags = {}, lastWriteAt = 0, polling = false, pollTimer = null;
 // Jede Änderung hinterlegt, was danach gelten muss; ein Stand, der das nicht erfüllt, wird verworfen.
 const expects = [];
 function expect(test){ expects.push({ until: Date.now() + 180000, test }); }
-function snapshot(){ return { ABT, MT, KT, ET, T, years, Y, P, KMAP, NODUP, freigeber, fr: me.freigeber }; }
-function restore(x){ ({ ABT, MT, KT, ET, T, years, Y, P, KMAP, NODUP, freigeber } = x); me.freigeber = x.fr; }
+function snapshot(){ return { ABT, MT, KT, ET, T, years, Y, P, KMAP, NODUP }; }
+function restore(x){ ({ ABT, MT, KT, ET, T, years, Y, P, KMAP, NODUP } = x); }
 function expectationsOk(){
   const now = Date.now();
   for (let i = expects.length - 1; i >= 0; i--) if (expects[i].until < now) expects.splice(i, 1);
@@ -941,24 +968,21 @@ function refreshAfterWrite(){ buildIndex(); renderStats(); renderList(); }
 
 /* ================= Liste ================= */
 let statusFilter = 'alle';
-const statusOf = r => r.status || (r._prev ? '' : ST.OFFEN);
-const stClass = s => s === ST.FREI ? 'frei' : s === ST.STORNO ? 'storno' : s === ST.OFFEN ? 'offen' : '';
+const statusOf = r => (r.status === ST.STORNO || r.abStorno) ? ST.STORNO : '';
+const stClass = s => s === ST.STORNO ? 'storno' : '';
 const bezugOf = r => r.bezug || [];
 
 function renderStats(){
   const rows = T?.rows || [];
-  $('stCount').textContent = rows.filter(r => statusOf(r) !== ST.STORNO).length;
+  const aktiv = rows.filter(r => statusOf(r) !== ST.STORNO);
+  $('stCount').textContent = aktiv.length;
   $('stNext').textContent = Y ? nextNumber(rows) : '–';
-  const open = rows.filter(r => statusOf(r) === ST.OFFEN).length;
-  $('stOpen').textContent = open;
+  const ym = todayIso().slice(0, 7);
+  $('stMonth').textContent = aktiv.filter(r => (r.datum || '').startsWith(ym)).length;
   $('stKunden').textContent = kIndex.size;
   const seen = new Map(); rows.forEach(r => { if (r.nr) seen.set(r.nr, (seen.get(r.nr) || 0) + 1); });
   const dups = [...seen.values()].filter(n => n > 1).length;
   $('stDup').textContent = dups; show($('stDupBox'), dups > 0);
-  show($('btnBulk'), me.freigeber && open > 0);
-  $('btnBulk').textContent = `✓ Alle offenen freigeben (${open})`;
-  show($('freiBanner'), me.freigeber && open > 0 && statusFilter !== ST.OFFEN);
-  $('freiText').innerHTML = `<b>${open}</b> ${open === 1 ? 'Auftrag wartet' : 'Aufträge warten'} auf Freigabe.`;
   $('withPrevLbl').textContent = P ? `Vorjahr ${P.jahr} einbeziehen` : 'Vorjahr einbeziehen';
 }
 function setFilter(f){
@@ -966,13 +990,13 @@ function setFilter(f){
   document.querySelectorAll('#statusChips .chip').forEach(x => x.classList.toggle('on', x.dataset.f === f));
   renderStats(); renderList();
 }
-$('btnShowOpen').onclick = () => setFilter(ST.OFFEN);
 
 function renderList(){
   const q = $('q').value.trim().toLowerCase();
   let all = (T?.rows || []).map(r => ({...r, cur:true}));
   if ($('withPrev').checked) all = all.concat(rowsPrev.map(r => ({...r, cur:false, _prev:true})));
-  if (statusFilter !== 'alle') all = all.filter(r => r.cur && statusOf(r) === statusFilter);
+  if (statusFilter === 'aktiv') all = all.filter(r => r.cur && statusOf(r) !== ST.STORNO);
+  if (statusFilter === ST.STORNO) all = all.filter(r => r.cur && statusOf(r) === ST.STORNO);
   const words = q.split(/\s+/).filter(Boolean);
   const hits = words.length ? all.filter(r => { const h = `${r.nr} ${r.kunde} ${r.kundeRaw} ${r.objekt} ${r.plz} ${r.ort} ${r.bemerkung} ${bezugOf(r).join(' ')}`.toLowerCase(); return words.every(w => h.includes(w)); }) : all;
   hits.sort((a, b) => b.nr.localeCompare(a.nr, 'de', {numeric:true}));
@@ -981,16 +1005,15 @@ function renderList(){
     const s = statusOf(r);
     let act = '';
     if (r.cur) {
-      if (me.freigeber && s === ST.OFFEN) act += `<button class="sm" data-a="frei" data-nr="${esc(r.nr)}" title="Freigeben">✓ Freigeben</button>`;
       act += `<button class="sm ghost" data-a="more" data-nr="${esc(r.nr)}" title="Details & Aktionen (Bearbeiten, weitere Nummer, Storno, Löschen …)">⋯</button>`;
     } else if (Y) {
       act += `<button class="sm" data-a="take" data-nr="${esc(r.nr)}" title="Als neuen Auftrag für ${yCur} übernehmen">➕ Neu</button>`;
     }
-    const tip = [r.kundeRaw && r.kundeRaw !== r.kunde && 'Im Auftragsbuch: ' + r.kundeRaw, r.erfasst && 'Erfasst: ' + r.erfasst, r.freigabe && (s === ST.STORNO ? 'Storniert: ' : 'Freigabe: ') + r.freigabe, r.bemerkung && 'Bemerkung: ' + r.bemerkung].filter(Boolean).join('\n');
+    const tip = [r.kundeRaw && r.kundeRaw !== r.kunde && 'Im Auftragsbuch: ' + r.kundeRaw, r.erfasst && 'Erfasst: ' + r.erfasst, s === ST.STORNO && r.freigabe && 'Storniert: ' + r.freigabe, r.bemerkung && 'Bemerkung: ' + r.bemerkung].filter(Boolean).join('\n');
     return `<tr class="${s === ST.STORNO ? 'storno' : ''}" data-row="${esc(r.nr)}" title="${esc(tip)}">
       <td class="nr">${esc(r.nr)}${bezugOf(r).map(b => ` <button class="bez" data-a="bez" data-nr="${esc(b)}" title="Verknüpfter Auftrag – anzeigen">↔ ${esc(b)}</button>`).join('')}</td><td>${esc(isoToDe(r.datum))}</td><td>${esc(r.kunde)}</td><td class="wrap">${esc(r.objekt)}</td>
       <td>${esc(r.plz)}</td><td>${esc(r.ort)}</td>
-      <td>${r.cur ? `<span class="st ${stClass(s)}">${esc(s)}</span>` : `<span class="src">${yPrev}</span>`}</td>
+      <td>${r.cur ? (s ? `<span class="st ${stClass(s)}">${esc(s)}</span>` : '') : `<span class="src">${yPrev}</span>`}</td>
       <td class="act">${act}</td></tr>`;
   }).join('') : `<tr><td colspan="8" class="center muted">${all.length ? 'Keine Treffer.' : 'Noch keine Einträge.'}</td></tr>`;
   $('listNote').textContent = hits.length > MAX_RENDER ? `${hits.length} Treffer – angezeigt werden die ersten ${MAX_RENDER}.` : (hits.length ? `${hits.length} Einträge` + (isMobile() ? ' · Karte antippen für Details' : ' · Zeile anklicken für Details und alle Aktionen') : '');
@@ -1008,14 +1031,13 @@ function renderCards(hits, total, yPrev){
     const s = statusOf(r);
     const bez = bezugOf(r).map(b => `<button class="bez" data-a="bez" data-nr="${esc(b)}">↔ ${esc(b)}</button>`).join('');
     let acts = '';
-    if (r.cur && me.freigeber && s === ST.OFFEN) acts += `<button class="primary" data-a="frei" data-nr="${esc(r.nr)}">✓ Freigeben</button>`;
     if (!r.cur && Y) acts += `<button data-a="take" data-nr="${esc(r.nr)}" title="Als neuen Auftrag übernehmen">➕ Neu</button>`;
     const po = [r.plz, r.ort].filter(Boolean).join(' ');
     const extra = [r.datum ? esc(isoToDe(r.datum)) : '', bez].filter(Boolean).join(' ');
     const vm = r.bemerkung ? `<span class="vm">Vermerk: ${esc(r.bemerkung)}</span>` : '';
     const meta = extra || vm ? `<div class="m">${extra}${vm}</div>` : '';
     return `<div class="acard ${s === ST.STORNO ? 'storno' : ''} ${r.cur ? '' : 'prev'}" data-card="${esc(r.nr)}">
-      <div class="top"><span class="cnr">${esc(r.nr)}</span><span class="k">${esc(r.kunde)}</span>${r.cur ? `<span class="st ${stClass(s)}">${esc(s)}</span>` : `<span class="src">${yPrev}</span>`}</div>
+      <div class="top"><span class="cnr">${esc(r.nr)}</span><span class="k">${esc(r.kunde)}</span>${r.cur ? (s ? `<span class="st ${stClass(s)}">${esc(s)}</span>` : '') : `<span class="src">${yPrev}</span>`}</div>
       <div class="o">${esc(r.objekt)}${po ? ` <span class="po">· ${esc(po)}</span>` : ''}</div>
       ${meta}
       ${acts ? `<div class="btns">${acts}</div>` : ''}
@@ -1033,7 +1055,6 @@ function openSheet(nr){
   const row = (l, v) => v ? `<dt>${l}</dt><dd>${esc(v)}</dd>` : '';
   let acts = '';
   if (r.cur) {
-    if (me.freigeber && s === ST.OFFEN) acts += `<button class="primary" data-a="frei" data-nr="${esc(nr)}">✓ Freigeben</button>`;
     acts += `<button data-a="copy" data-nr="${esc(nr)}">⧉ Nummer kopieren</button>`;
     if (s !== ST.STORNO) acts += `<button data-a="rel" data-nr="${esc(nr)}">➕ Weitere Nummer zu diesem Objekt</button>`;
     if (s !== ST.STORNO) acts += `<button data-a="edit" data-nr="${esc(nr)}">✎ Bearbeiten</button>`;
@@ -1043,9 +1064,9 @@ function openSheet(nr){
     acts += `<button class="primary" data-a="take" data-nr="${esc(nr)}">➕ Als neuen Auftrag für ${Y.jahr} übernehmen</button>`;
   }
   acts += `<button class="ghost" data-a="close">Schließen</button>`;
-  $('sheet').innerHTML = `<h2><span style="color:var(--accent)">${esc(nr)}</span>${r.cur ? `<span class="st ${stClass(s)}">${esc(s)}</span>` : ''}</h2>
+  $('sheet').innerHTML = `<h2><span style="color:var(--accent)">${esc(nr)}</span>${r.cur && s ? `<span class="st ${stClass(s)}">${esc(s)}</span>` : ''}</h2>
     <dl>${row('Auftraggeber', r.kunde)}${r.kundeRaw !== r.kunde ? row('Im Auftragsbuch', r.kundeRaw) : ''}${row('Objekt', r.objekt)}${row('Ort', [r.plz, r.ort].filter(Boolean).join(' '))}${row('Datum', isoToDe(r.datum))}
-      ${row('Erfasst', r.erfasst || (r.cur && !r.hasMeta ? '– (direkt in Excel eingetragen)' : ''))}${row(s === ST.STORNO ? 'Storniert' : 'Freigabe', r.freigabe)}${row('Bezug', bezugOf(r).join(', '))}${row('Bemerkung', r.bemerkung)}</dl>
+      ${row('Erfasst', r.erfasst || (r.cur && !r.hasMeta ? '– (direkt in Excel eingetragen)' : ''))}${s === ST.STORNO ? row('Storniert', r.freigabe) : ''}${row('Bezug', bezugOf(r).join(', '))}${row('Bemerkung', r.bemerkung)}</dl>
     <div class="sacts">${acts}</div>`;
   show($('sheetOv'), true);
 }
@@ -1071,7 +1092,6 @@ function handleAction(a, nr){
   if (a === 'more') return openSheet(nr);
   if (a === 'copy') { navigator.clipboard?.writeText(nr); toast(`${esc(nr)} kopiert`, 2000); }
   if (a === 'edit') openForm(nr);
-  if (a === 'frei') doFreigabe([nr]);
   if (a === 'storno') doStorno(nr);
   if (a === 'del') doDelete(nr);
   if (a === 'rel') openForm(null, nr);
@@ -1181,7 +1201,7 @@ function updateHints(){
     const no = normObjekt(objekt), nk = normKunde(canon(kunde));
     const same = T.rows.filter(r => r.nr !== editNr && r.nr !== relNr && r.status !== ST.STORNO && normObjekt(r.objekt) === no && (!plz || !r.plz || r.plz === plz));
     const sameK = same.filter(r => normKunde(r.kunde) === nk);
-    if (sameK.length) ho += `<div class="hint warn">Dieses Objekt hat im aktuellen Jahr schon: ${sameK.slice(0, 5).map(r => `<b>${esc(r.nr)}</b> (${esc(isoToDe(r.datum) || '–')}, ${esc(statusOf(r))})`).join(', ')}${sameK.length > 5 ? ' …' : ''}. Doppelt angelegt?</div>`;
+    if (sameK.length) ho += `<div class="hint warn">Dieses Objekt hat im aktuellen Jahr schon: ${sameK.slice(0, 5).map(r => `<b>${esc(r.nr)}</b> (${esc(isoToDe(r.datum) || 'ohne Datum')})`).join(', ')}${sameK.length > 5 ? ' …' : ''}. Doppelt angelegt?</div>`;
     const otherK = [...T.rows, ...rowsPrev].filter(r => r.status !== ST.STORNO && normObjekt(r.objekt) === no && (!plz || !r.plz || r.plz === plz) && kunde && normKunde(r.kunde) !== nk);
     if (otherK.length) { const last = otherK.sort((a, b) => b.nr.localeCompare(a.nr, 'de', {numeric:true}))[0]; ho += `<div class="hint info">Objekt war bisher bei <b>${esc(last.kunde)}</b> (${esc(last.nr)}) – Verwalterwechsel?</div>`; }
   }
@@ -1272,7 +1292,7 @@ async function saveNew(d){
   }
   // 2) Zusatzdaten + Protokoll in der Steuerungsdatei
   const mt = await freshMeta();
-  await metaUpsert(mt, Y.jahr, nr, { 'Datum': isoToSerial(d.datum), 'Status': ST.OFFEN, 'Erfasst': stamp, 'Freigabe': '', 'Bezug': relNr || '', 'Bemerkung': d.bemerkung });
+  await metaUpsert(mt, Y.jahr, nr, { 'Datum': isoToSerial(d.datum), 'Status': '', 'Erfasst': stamp, 'Freigabe': '', 'Bezug': relNr || '', 'Bemerkung': d.bemerkung });
   const logs = [['Angelegt', nr, `${d.kunde} · ${d.objekt}${d.plz || d.ort ? ' · ' + [d.plz, d.ort].filter(Boolean).join(' ') : ''}`]];
   // 3) Ursprungsauftrag verknüpfen (und ggf. Objekt im Auftragsbuch ergänzen)
   if (relNr) {
@@ -1326,26 +1346,6 @@ function ask({ title, text, okText = 'OK', danger = false, reason = false }){
   });
 }
 
-async function doFreigabe(nrs){
-  const ok = await ask({ title: nrs.length > 1 ? `${nrs.length} Aufträge freigeben?` : `Auftrag ${nrs[0]} freigeben?`, text: nrs.length > 1 ? nrs.map(esc).join(', ') : 'Freigegeben mit deinem Namen und Zeitstempel.', okText: 'Freigeben' });
-  if (!ok) return;
-  const tst = toast('<span class="spin"></span> Gebe frei …', 60000);
-  try {
-    await withSessions([C], async () => {
-      const mt = await freshMeta(); const stamp = stampMe(); const logs = [];
-      for (const nr of nrs) {
-        const r = T.rows.find(x => x.nr === nr); if (!r || statusOf(r) !== ST.OFFEN) continue;
-        await metaUpsert(mt, Y.jahr, nr, { 'Status': ST.FREI, 'Freigabe': stamp });
-        logs.push(['Freigegeben', nr, '']);
-        expect(() => { const x = T.rows.find(q => q.nr === nr); return !x || x.status !== ST.OFFEN; });
-      }
-      if (logs.length) await log(logs);
-    });
-    tst.remove(); toast(`${nrs.length > 1 ? nrs.length + ' Aufträge' : esc(nrs[0])} freigegeben ✓`, 3000);
-  } catch (e) { tst.remove(); msg(explain(e)); }
-  refreshAfterWrite();
-}
-
 async function doStorno(nr){
   const reason = await ask({ title: `Auftrag ${nr} stornieren?`, text: `Die Zeile bleibt im Auftragsbuch stehen und bekommt den Hinweis „${STORNO_PREFIX.trim()}“ vor dem Objekt. Grund und Name stehen nur in der Steuerungsdatei. Die Nummer wird nicht erneut vergeben.`, okText: 'Stornieren', danger: true, reason: true });
   if (!reason) return;
@@ -1374,7 +1374,6 @@ async function doDelete(nr){
   if (m && +m[1] < maxMain) text += `<br><br>⚠ Es entsteht eine <b>Lücke</b> in der Nummernfolge – ${esc(nr)} wird nicht automatisch neu vergeben.`;
   else if (m) text += `<br><br>Das ist die letzte Nummer – sie wird danach wieder frei und als Nächstes neu vergeben.`;
   if (linked.length) text += `<br><br>⚠ Verknüpft mit ${linked.map(esc).join(', ')}.`;
-  if (statusOf(r) === ST.FREI) text += `<br><br>⚠ Der Auftrag ist bereits <b>freigegeben</b>.`;
   text += `<br><br><span class="muted">Im Protokoll der Steuerungsdatei bleibt die Löschung nachvollziehbar.</span>`;
   const ok = await ask({ title: `Auftrag ${nr} löschen?`, text, okText: 'Endgültig löschen', danger: true });
   if (!ok) return;
@@ -1391,7 +1390,6 @@ async function doDelete(nr){
   } catch (e) { msg(explain(e)); }
   refreshAfterWrite();
 }
-$('btnBulk').onclick = () => doFreigabe((T?.rows || []).filter(r => statusOf(r) === ST.OFFEN).map(r => r.nr));
 
 /* ================= Admin: Steuerungsdatei ================= */
 async function renderCfgInfo(){
@@ -1449,10 +1447,6 @@ async function ensureStructure(checkOnly = false){
       for (const x of missingC) for (const c of x.miss) {
         await graph(`${wb(C)}/tables/${encodeURIComponent(x.s.table)}/columns/add`, { method:'POST', body: JSON.stringify({ index: null, values: [[c], ...Array.from({length: x.t.dataCount}, () => [''])] }) });
       }
-      // Grundeinstellung Freigabe
-      const et = await readTbl(C, CT.einstellungen.table);
-      if (!et.rows.some(r => tidy(r['Schlüssel']).toLowerCase() === 'freigabe'))
-        await appendRows(et, [rowArr(et, { 'Schlüssel':'Freigabe', 'Wert': FREIGEBER_INIT.join(', '), 'Hinweis':'E-Mail-Adressen, die freigeben dürfen' })]);
     }).catch(e => { throw e; });
     box.innerHTML = `<span class="status ok">✓ Angelegt: ${esc(what)}</span>`;
     return true;
@@ -1515,6 +1509,115 @@ $('btnYSave').onclick = async () => {
   await saveYear({ jahr, ref: yPicked, table: $('yTable').value.trim() || 'Auftraege', aktiv: $('yAktiv').checked, test: $('yTest').checked });
   $('yJahr').value = ''; $('yLink').value = ''; $('yChosen').innerHTML = ''; yPicked = null; $('yAktiv').checked = false; $('yTest').checked = false;
 };
+/* ---- Neues Jahr: leere Kopie eines Auftragsbuchs ---- */
+function renderNewYear(){
+  const sel = $('nySrc'); const prevVal = sel.value;
+  const withTable = years.slice().sort((a, b) => b.jahr.localeCompare(a.jahr));
+  sel.innerHTML = withTable.map(y => `<option value="${esc(y.jahr)}">${esc(y.jahr)} · ${esc(y.file)}</option>`).join('');
+  if (prevVal && withTable.some(y => y.jahr === prevVal)) sel.value = prevVal; else if (Y) sel.value = Y.jahr;
+  const maxY = Math.max(0, ...years.map(y => +y.jahr));
+  if (!$('nyJahr').value && maxY) $('nyJahr').value = String(maxY + 1);
+  nySuggest();
+}
+function nySuggest(force){
+  const src = years.find(y => y.jahr === $('nySrc').value); const ny = $('nyJahr').value.trim();
+  if (!src) return;
+  if (force || !$('nyName').dataset.touched) {
+    let name = src.file.includes(src.jahr) ? src.file.split(src.jahr).join(ny) : src.file.replace(/(\.xlsx)$/i, ` ${ny}$1`);
+    $('nyName').value = name;
+  }
+  $('nyTest').checked = src.test;
+  $('nySameFolder').textContent = '';
+  itemInfo(src.ref).then(it => { $('nySameFolder').textContent = '(' + decodeURIComponent((it.parentReference?.path || '').replace(/^\/drives?\/[^:]*:?/, '') || '/') + ')'; }).catch(() => {});
+}
+$('nySrc').onchange = () => nySuggest(true);
+$('nyJahr').oninput = () => nySuggest(true);
+$('nyName').oninput = () => { $('nyName').dataset.touched = '1'; };
+document.querySelectorAll('input[name=nyWhere]').forEach(r => r.onchange = () => { $('nyFolder').disabled = document.querySelector('input[name=nyWhere]:checked').value !== 'other'; });
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+async function childByName(driveId, folderId, name){
+  try { return await graph(`/drives/${driveId}/items/${folderId}:/${encodeURIComponent(name)}?$select=id,name,parentReference`); }
+  catch (e) { if (e instanceof GraphError && e.status === 404) return null; throw e; }
+}
+$('btnNyCreate').onclick = async () => {
+  const info = $('nyInfo'); const step = t => info.innerHTML = `<span class="spin"></span> ${t}`;
+  const src = years.find(y => y.jahr === $('nySrc').value);
+  const ny = $('nyJahr').value.trim(); let name = tidy($('nyName').value);
+  if (!src) return toast('Bitte eine Vorlage wählen.', 3000);
+  if (!/^\d{4}$/.test(ny)) return toast('Bitte ein 4-stelliges Jahr eintragen.', 3000);
+  if (years.some(y => y.jahr === ny)) return toast(`Für ${ny} ist schon eine Datei eingetragen.`, 3500);
+  if (!name) return toast('Bitte einen Dateinamen eintragen.', 3000);
+  if (!/\.xlsx$/i.test(name)) name += '.xlsx';
+  const ok = await ask({ title: `Auftragsbuch ${ny} anlegen?`, text: `Vorlage: <b>${esc(src.file)}</b><br>Neue Datei: <b>${esc(name)}</b><br><br>Die Kopie wird geleert – die Vorlage selbst bleibt unverändert.`, okText: 'Anlegen' });
+  if (!ok) return;
+  $('btnNyCreate').disabled = true;
+  try {
+    // Zielordner
+    step('Prüfe Vorlage und Zielordner …');
+    const srcInfo = await itemInfo(src.ref);
+    let target = { driveId: srcInfo.parentReference.driveId, id: srcInfo.parentReference.id };
+    if (document.querySelector('input[name=nyWhere]:checked').value === 'other') {
+      const url = $('nyFolder').value.trim(); if (!url) throw new Error('Bitte den Freigabelink des Zielordners einfügen.');
+      const f = await graph(`/shares/${encodeShare(url)}/driveItem?$select=id,name,folder,parentReference`);
+      if (!f.folder) throw new Error('Der Link zeigt nicht auf einen Ordner.');
+      target = { driveId: f.parentReference.driveId, id: f.id };
+    }
+    const tb = await graph(`${wb(src.ref)}/tables?$select=name`);
+    if (!(tb.value || []).some(t => t.name === src.table)) throw new Error(`Die Vorlage hat keine Tabelle „${src.table}“ – bitte ein Auftragsbuch mit Tabelle als Vorlage wählen.`);
+    if (await childByName(target.driveId, target.id, name)) throw new Error(`Im Zielordner gibt es schon eine Datei „${name}“.`);
+    // Kopieren (läuft bei Microsoft im Hintergrund)
+    step('Kopiere Datei …');
+    await graph(`/drives/${src.ref.driveId}/items/${src.ref.itemId}/copy`, { method:'POST', body: JSON.stringify({ parentReference: target, name }) });
+    let item = null;
+    for (let i = 0; i < 45 && !item; i++) { await sleep(2000); item = await childByName(target.driveId, target.id, name); }
+    if (!item) throw new Error('Die Kopie ist nach 90 Sekunden noch nicht da. Bitte später im Ordner nachsehen und die Datei unter „Jahre“ von Hand verknüpfen.');
+    const ref = { driveId: item.parentReference?.driveId || target.driveId, itemId: item.id, name: item.name };
+    // Auf die Arbeitsmappe warten
+    step('Öffne die neue Datei …');
+    let t = null;
+    for (let i = 0; i < 15 && !t; i++) { try { t = await readTbl(ref, src.table); } catch { await sleep(2000); } }
+    if (!t) throw new Error('Die neue Datei lässt sich noch nicht öffnen. Bitte in einer Minute erneut unter „Jahre“ verknüpfen.');
+    // Leeren + Kopf anpassen
+    step('Leere die Kopie …');
+    let changedHeader = [];
+    await withSessions([ref, C], async () => {
+      t = await readTbl(ref, src.table);
+      const lastCol = colLetter(t.startCol + t.header.length - 1), first = t.startRow + 1, last = t.startRow + t.dataCount;
+      if (t.dataCount > 1)
+        await graph(`${sheetPath(t)}/range(address='${colLetter(t.startCol)}${first + 1}:${lastCol}${last}')/delete`, { method:'POST', body: JSON.stringify({ shift: 'Up' }) });
+      if (t.dataCount >= 1)
+        await graph(`${sheetPath(t)}/range(address='${colLetter(t.startCol)}${first}:${lastCol}${first}')`, { method:'PATCH', body: JSON.stringify({ values: [new Array(t.header.length).fill('')] }) });
+      if ($('nyHeader').checked && t.startRow > 1) {
+        const hc = Math.max(t.header.length, 8) - 1;
+        const r = await graph(`${sheetPath(t)}/range(address='A1:${colLetter(hc)}${t.startRow - 1}')?$select=values`);
+        for (let i = 0; i < (r.values || []).length; i++) for (let j = 0; j < r.values[i].length; j++) {
+          const v = r.values[i][j];
+          if (typeof v === 'string' && v.includes(src.jahr)) {
+            const nv = v.split(src.jahr).join(ny);
+            await graph(`${sheetPath(t)}/range(address='${colLetter(j)}${i + 1}')`, { method:'PATCH', body: JSON.stringify({ values: [[nv]] }) });
+            changedHeader.push(`${v} → ${nv}`);
+          }
+        }
+      }
+      // in „Jahre“ eintragen
+      const jt = await readTbl(C, CT.jahre.table);
+      const aktiv = $('nyAktiv').checked;
+      await appendRows(jt, [rowArr(jt, { 'Jahr': Number(ny), 'Präfix': ny.slice(-2), 'DriveId': ref.driveId, 'ItemId': ref.itemId, 'Datei': ref.name, 'Tabelle': src.table, 'Aktiv': aktiv ? 'ja' : '', 'Testbetrieb': $('nyTest').checked ? 'ja' : '' })]);
+      if (aktiv) for (const r of jt.rows) if (yes(r['Aktiv'])) await writeRow(jt, r._i, rowArr(jt, { 'Aktiv': '' }, r._raw));
+      expect(() => years.some(q => q.jahr === ny));
+      PT = await readTbl(C, CT.protokoll.table);
+      await appendRows(PT, [rowArr(PT, { 'Zeitpunkt': nowIsoTime(), 'Wer': me.name, 'Aktion': 'Jahr angelegt', 'Jahr': Number(ny), 'Nummer': '', 'Details': `${ref.name} (Vorlage ${src.file})${changedHeader.length ? ' · Kopf: ' + changedHeader.join('; ') : ''}${aktiv ? ' · aktiv' : ''}` })]);
+    });
+    info.innerHTML = `<span class="status ok">✓ ${esc(name)} angelegt und als Jahr ${esc(ny)} eingetragen${changedHeader.length ? ` · Kopf angepasst (${changedHeader.map(esc).join('; ')})` : ''}.</span>`;
+    $('nyJahr').value = ''; delete $('nyName').dataset.touched;
+    toast(`Auftragsbuch ${esc(ny)} angelegt ✓`, 4000);
+  } catch (e) {
+    info.innerHTML = `<span class="status err">${explain(e)}</span>`;
+  } finally { $('btnNyCreate').disabled = false; }
+  loadAdminData();
+};
+
 async function saveYear(y){
   try {
     // Tabelle der Datei prüfen (nur fürs aktive Jahr Pflicht)
@@ -1760,27 +1863,9 @@ async function unmapHandler(e){
 
 /* ================= Admin: Rollen & Protokoll ================= */
 function renderRole(){
-  const roles = [me.admin && 'Admin', me.freigeber && 'Freigabe'].filter(Boolean);
-  $('roleBadge').textContent = roles.join(' · '); show($('roleBadge'), roles.length > 0);
+  $('roleBadge').textContent = me.admin ? 'Admin' : ''; show($('roleBadge'), me.admin);
   $('roleInfo').innerHTML = `Angemeldet als <b>${esc(me.mail)}</b> · Admin: ${ADMINS.map(esc).join(', ')}`;
-  if (document.activeElement !== $('freiList')) $('freiList').value = freigeber.join(', ');
 }
-$('btnSaveFrei').onclick = async () => {
-  const list = $('freiList').value.toLowerCase().split(/[,;\s]+/).filter(x => x.includes('@'));
-  try {
-    await withSessions([C], async () => {
-      const et = await readTbl(C, CT.einstellungen.table);
-      const ex = et.rows.find(r => tidy(r['Schlüssel']).toLowerCase() === 'freigabe');
-      const vals = { 'Schlüssel':'Freigabe', 'Wert': list.join(', '), 'Hinweis':'E-Mail-Adressen, die freigeben dürfen' };
-      if (ex) await writeRow(et, ex._i, rowArr(et, vals, ex._raw)); else await appendRows(et, [rowArr(et, vals)]);
-      expect(() => freigeber.join(',') === list.join(','));
-      PT = await readTbl(C, CT.protokoll.table);
-      await appendRows(PT, [rowArr(PT, { 'Zeitpunkt': nowIsoTime(), 'Wer': me.name, 'Aktion': 'Rollen geändert', 'Jahr': Number(Y?.jahr || 0), 'Nummer': '', 'Details': 'Freigabe: ' + list.join(', ') })]);
-    });
-    toast('Rollen gespeichert ✓', 2500);
-  } catch (e) { msg(explain(e)); }
-  loadAdminData();
-};
 let logRows = [], logShow = 25;
 async function loadLog(){
   const box = $('logList'); box.innerHTML = '<span class="spin"></span> Lade Protokoll …';
@@ -1824,7 +1909,7 @@ async function loadAdminData(){
     if (P && !rowsPrev.length) { try { rowsPrev = mergeRows(await readAny(P.ref), P.jahr, T.metaMap); } catch {} }
     buildIndex(); renderBadges();
   }
-  renderYears(); renderExtraCols(); renderRole(); renderClean();
+  renderYears(); renderNewYear(); renderExtraCols(); renderRole(); renderClean();
 }
 function openAdmin(){
   if (!me.admin) return;
@@ -1838,7 +1923,7 @@ function openNoSetup(){ hideViews(); show($('viewNoSetup'), true); }
 
 async function signedInUI(account){
   const mail = (account.username || '').toLowerCase();
-  me = { name: account.name || account.username, mail, admin: ADMINS.includes(mail), freigeber: FREIGEBER_INIT.includes(mail) };
+  me = { name: account.name || account.username, mail, admin: ADMINS.includes(mail) };
   $('userName').textContent = me.name;
   renderRole();
   ['userName','btnLogout','btnList'].forEach(id => show($(id), true));
@@ -1852,6 +1937,14 @@ async function signedInUI(account){
 $('btnLogin').onclick = () => msalApp.loginRedirect({ scopes: SCOPES });
 $('btnLogout').onclick = () => msalApp.logoutRedirect({ account: msalApp.getActiveAccount(), postLogoutRedirectUri: REDIRECT });
 $('btnAdmin').onclick = openAdmin;
+function applyTheme(t){
+  document.documentElement.dataset.theme = t;
+  document.querySelectorAll('meta[name=theme-color]').forEach(m => m.content = t === 'light' ? '#ffffff' : '#0f1419');
+  $('btnTheme').title = t === 'light' ? 'Dunkel umschalten' : 'Hell umschalten';
+  $('btnTheme').querySelector('.ico').textContent = t === 'light' ? '☾' : '☀';
+}
+applyTheme(document.documentElement.dataset.theme || 'dark');
+$('btnTheme').onclick = () => { const t = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light'; try { localStorage.setItem('nova-ab-theme', t); } catch {} applyTheme(t); };
 $('btnHome').onclick = e => { e.preventDefault(); if (msalApp.getActiveAccount()) { closeSheet(); if (!$('formOv').classList.contains('hidden')) closeForm(); openList(); window.scrollTo({top:0, behavior:'smooth'}); } };
 $('btnList').onclick = openList;
 $('btnNew').onclick = () => openForm(null);
