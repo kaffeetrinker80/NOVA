@@ -1,7 +1,9 @@
 {
   "name": "NOVA Tools",
   "short_name": "NOVA",
-  "start_url": "./index.html",
+  "id": "/NOVA/index.html",
+  "start_url": "/NOVA/index.html",
+  "scope": "/NOVA/index.html",
   "display": "standalone",
   "background_color": "#f3f6fa",
   "theme_color": "#172f4d",
