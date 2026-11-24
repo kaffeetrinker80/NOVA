@@ -200,6 +200,40 @@
       .icon-drive .car-body, .icon-drive .wheel, .icon-drive .road { animation: none; }
     }
 
+    /* ── Animiertes Buch-Icon (Probenahme-Nachschlagewerk) ── */
+    .icon.icon-book { overflow: hidden; }
+    .card:hover .icon.icon-book { transform: scale(1.1); }
+    .icon-book .drop { transform-box: fill-box; transform-origin: center bottom; animation: dropFall 2.6s ease-in infinite; }
+    .icon-book .ripple { transform-box: fill-box; transform-origin: center; animation: ripple 2.6s ease-out infinite; opacity: 0; }
+    .icon-book .page-line { opacity: .55; }
+    .icon-book .page-l { animation: pageGlow 2.6s ease-in-out infinite; }
+    .card:hover .icon-book .drop, .card:hover .icon-book .ripple, .card:hover .icon-book .page-l { animation-duration: 1.3s; }
+    @keyframes dropFall {
+      0%   { transform: translateY(-4px) scale(.7); opacity: 0; }
+      18%  { transform: translateY(0) scale(1); opacity: 1; }
+      62%  { transform: translateY(1.5px) scale(1); opacity: 1; }
+      78%  { transform: translateY(4px) scale(.8, 1.05); opacity: 0; }
+      100% { transform: translateY(4px); opacity: 0; }
+    }
+    @keyframes ripple {
+      0%, 70% { transform: scale(.3); opacity: 0; }
+      78%     { opacity: .9; }
+      100%    { transform: scale(1.4); opacity: 0; }
+    }
+    @keyframes pageGlow { 0%, 70%, 100% { opacity: .55; } 82% { opacity: 1; } }
+    @media (prefers-reduced-motion: reduce) {
+      .icon-book .drop, .icon-book .ripple, .icon-book .page-l { animation: none; }
+      .icon-book .drop { opacity: 1; }
+    }
+
+    .card-note {
+      display: flex; gap: 8px; align-items: flex-start;
+      font-size: 0.78rem; color: var(--muted); line-height: 1.45;
+      background: rgba(255,255,255,0.03); border: 1px dashed var(--border);
+      border-radius: 10px; padding: 8px 10px; margin: -6px 0 18px;
+    }
+    .card-note svg { flex: none; margin-top: 2px; color: var(--nova); opacity: .8; }
+
     /* ── Dev Area (Test Tool) ── */
     .dev-area {
       margin-top: 20px;
@@ -356,8 +390,47 @@
     </section>
 
     <!-- SEKTION 2: Lokale Tools ohne Login -->
-    <h2 class="section-title animate-in delay-3">Lokale Auswertungen (Kein Login)</h2>
+    <h2 class="section-title animate-in delay-3">Lokale Tools &amp; Nachschlagewerk (Kein Login)</h2>
     <section class="grid animate-in delay-3">
+
+      <!-- Probenahme-Nachschlagewerk -->
+      <article class="card">
+        <span class="card-tag">Aktiv · Kein Login</span>
+        <div class="icon icon-book">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path class="drop" d="M12 2.4c1.5 1.9 2.4 3.2 2.4 4.3a2.4 2.4 0 0 1-4.8 0c0-1.1.9-2.4 2.4-4.3z"/>
+            <ellipse class="ripple" cx="12" cy="11.2" rx="3" ry="1"/>
+            <path d="M12 11.2c-2.4-1.4-5.6-1.6-8.5-.7v9.6c2.9-.9 6.1-.7 8.5.7"/>
+            <path d="M12 11.2c2.4-1.4 5.6-1.6 8.5-.7v9.6c-2.9-.9-6.1-.7-8.5.7"/>
+            <path d="M12 11.2v9.6"/>
+            <g class="page-l" stroke-width="1.4">
+              <path class="page-line" d="M6 13.4h3.6"/>
+              <path class="page-line" d="M6 16h3.6"/>
+              <path class="page-line" d="M14.4 13.4h3.6"/>
+              <path class="page-line" d="M14.4 16h3.6"/>
+            </g>
+          </svg>
+        </div>
+        <h3>Probenahme-Nachschlagewerk</h3>
+        <p>Mobiles Nachschlagewerk für Probenehmer: Probenahme nach TrinkwV, Normen und Fristen schnell am Handy nachgeschlagen – auch direkt beim Kunden.</p>
+        <ul class="list">
+          <li>Legionellen, Mikrobiologie & Schwimmbad</li>
+          <li>Normen, Fristen & Kennzeichnung kompakt</li>
+          <li>Vorbereitung auf das Witness-Audit</li>
+        </ul>
+        <div class="card-note">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 7.5h.01"/></svg>
+          <span>Keine offizielle SOP. Maßgeblich sind die Prüfanweisungen, das QM-Handbuch und die aktuelle Normfassung.</span>
+        </div>
+        <a class="btn-card btn-nova-card" href="https://kaffeetrinker80.github.io/NOVA/TrinkwV/">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <line x1="10" y1="14" x2="21" y2="3"></line>
+          </svg>
+          Nachschlagewerk öffnen
+        </a>
+      </article>
 
       <!-- NEU: Prüfberichte-Viewer -->
       <article class="card">
